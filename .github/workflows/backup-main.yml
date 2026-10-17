@@ -1,0 +1,46 @@
+# Backup Main Branch — mirror the repository to secondary git forges.
+#
+# Converged from the family's backup-main.yml. Destinations are opt-in by
+# secret: with neither BACKUP_REPO_AZURE_DEVOPS_SSH_KEY nor
+# BACKUP_REPO_GITLAB_* configured, the check job reports both false and every
+# downstream job is skipped. Push to main seeds the mirror; the monthly
+# schedule re-verifies it.
+
+name: Backup Main Branch
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 5 * *'
+
+jobs:
+  check-secrets:
+    name: Check Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      azure-configured: ${{ steps.check.outputs.azure }}
+      gitlab-configured: ${{ steps.check.outputs.gitlab }}
+    steps:
+      - name: Detect Configured Destinations
+        id: check
+        env:
+          AZURE_KEY: ${{ secrets.BACKUP_REPO_AZURE_DEVOPS_SSH_KEY }}
+          AZURE_URL: ${{ secrets.BACKUP_REPO_AZURE_DEVOPS_REPO_URL }}
+          GITLAB_KEY: ${{ secrets.BACKUP_REPO_GITLAB_SSH_KEY }}
+          GITLAB_URL: ${{ secrets.BACKUP_REPO_GITLAB_REPO_URL }}
+        run: |
+          if [ -n "$AZURE_KEY" ] && [ -n "$AZURE_URL" ]; then
+            echo "azure=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "azure=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$GITLAB_KEY" ] && [ -n "$GITLAB_URL" ]; then
+            echo "gitlab=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gitlab=false" >> "$GITHUB_OUTPUT"
+          fi

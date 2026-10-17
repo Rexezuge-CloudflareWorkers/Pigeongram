@@ -1,0 +1,167 @@
+# Continuous Integration — the family's converged gate (the superset in
+# `@rexezuge/tooling`'s `github/workflows/continuous-integration.yml`), trimmed
+# to the jobs that gate something in this repository.
+#
+# Dropped against the superset, with the reason:
+#   * locales / migration lock — no locale bundles and no D1 here; the session
+#     engine's storage is the Durable Object's SQLite, migrated by wrangler.
+#   * web-tests / integration-tests — this repo runs one Vitest config whose two
+#     projects partition the suite (see vitest.config.mts), and there is nothing
+#     to run under the Workers pool yet.
+#   * spa-shell — the worker is API-only and serves no embedded shell.
+#
+# Job `name:` values (Checks, Unit Tests, Build Web App) are the required-check
+# names configured in branch protection; keep them stable.
+
+name: Continuous Integration
+
+permissions:
+  contents: read
+
+on:
+  repository_dispatch:
+    types:
+      - Upstream Sync Integration
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: continuous-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      # `pnpm run typecheck` reaches every workspace package and the repo's own
+      # scripts (see the root package.json).
+      - name: Run Type Check and Lint
+        run: pnpm run typecheck && pnpm run lint
+
+      # Its own step, and read-only, because the lint step cannot catch this:
+      # `pnpm run lint` is `eslint --fix --quiet`, and `--fix` repairs what it
+      # can while `--quiet` suppresses the rest — so CI can exit 0 on a tree
+      # Prettier rejects, the repairs land in the runner's checkout, and they are
+      # thrown away. `prettier --check` is the one command that fails instead of
+      # repairing.
+      - name: Check Formatting
+        run: pnpm run format:check
+
+      # A file growing past the limit is invisible to typecheck, lint, and the
+      # tests — they all pass on a 500-line component.
+      - name: Check God-Files
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm run check:god-files
+          max_attempts: '2'
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Run Tests with Coverage
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm run test:coverage
+          max_attempts: '2'
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  # Only the SPA build. The worker is covered by the `checks` job
+  # (`pnpm -r typecheck` reaches worker/); `wrangler deploy --dry-run` in CD is
+  # what proves it bundles.
+  build:
+    name: Build Web App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Build Web App
+        run: pnpm --filter @telegram-web-client/pages build
+
+  dependabot-auto-merge:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}
+    name: Auto-Merge Dependabot PR
+    needs:
+      - checks
+      - unit-tests
+      - build
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      # Auto-merge only after every gate above is green, which is what makes it
+      # safe: a dependency bump that breaks the suite waits for a human instead
+      # of merging itself.
+      - name: Enable Auto-Merge
+        uses: ./.github/actions/retry-step
+        with:
+          command: gh pr merge --auto --merge "$PR_URL"
+          max_attempts: '5'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+  dispatch-upstream-sync-deployment:
+    if: ${{ github.event_name == 'repository_dispatch' && github.event.action == 'Upstream Sync Integration' }}
+    name: Dispatch Upstream Sync Deployment
+    needs:
+      - checks
+      - unit-tests
+      - build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      # The second half of the upstream-sync contract: a fork's sync runs CI,
+      # and CI — not the sync workflow — is what authorises the deploy.
+      - name: Dispatch Deployment
+        uses: ./.github/actions/retry-step
+        with:
+          command: >
+            printf '{"event_type":"Upstream Sync Deployment","client_payload":{"branch":"%s","sha":"%s"}}\n'
+            "$PAYLOAD_BRANCH" "$PAYLOAD_SHA"
+            | gh api repos/${{ github.repository }}/dispatches --method POST --input -
+          max_attempts: '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD_BRANCH: ${{ github.event.client_payload.branch || 'main' }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha || github.sha }}

@@ -1,0 +1,16 @@
+wrangler.jsonc
+worker-configuration.d.ts
+
+node_modules/
+dist/
+coverage/
+.wrangler/
+.dev.vars
+.vscode/
+*.log
+*.tsbuildinfo
+
+# Node heap-crash dumps. `eslint` without the NODE_OPTIONS bump in the `lint`
+# script dies with a heap-limit crash and leaves one of these behind, sized in
+# gigabytes.
+core.*

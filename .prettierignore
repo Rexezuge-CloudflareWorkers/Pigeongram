@@ -1,0 +1,14 @@
+# Prettier ignores `node_modules` by default but does NOT read `.gitignore`, so
+# every gitignored build artifact has to be named here. Without these entries a
+# `format:check` run after a build walks generated output — `worker-configuration.d.ts`
+# alone is 600 KB of generated types.
+dist/
+coverage/
+node_modules/
+.wrangler/
+worker-configuration.d.ts
+wrangler.jsonc
+
+# Machine-generated. Reformatting the lockfile produces a diff no human reads and
+# no reviewer should approve by reflex.
+pnpm-lock.yaml

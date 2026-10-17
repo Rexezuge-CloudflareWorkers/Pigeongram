@@ -1,0 +1,62 @@
+# Upstream Sync — a fork's scheduled pull from the repository it forked.
+#
+# Converged from eight repos (all but Records-Provider and CalDAV-Bridge ship this
+# file, and the two that differ do so only in the upstream repository name).
+#
+# The contract has two sides and they change in the same commit: this workflow
+# publishes `Upstream Sync Integration`, and continuous-integration.yml listens for
+# it. The event is named `Upstream Sync Integration` rather than `Upstream Sync`
+# precisely so it cannot be confused with the `Upstream Sync Deployment` event the
+# deploy workflow listens for — one sync, two dispatches, and the name is what keeps
+# a reader from wiring the wrong one.
+
+name: Upstream Sync
+
+on:
+  schedule:
+    # Weekly, Monday 02:00 UTC. Off the hour on purpose: GitHub drops scheduled
+    # workflows that share a minute with high-traffic crons.
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    # Adapted from the kit's template, which gates on `!fork`: every live
+    # consumer (and this repo) ships the mirrored condition instead. The sync
+    # pulls from `upstream_sync_repo` into a **fork**, so it is dormant here and
+    # active on this repository's forks — each of which names this repo as its
+    # upstream (see `upstream_sync_repo` below).
+    if: ${{ github.event.repository.fork }}
+    name: Sync From Upstream
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      # Pinned by commit rather than a tag: this action writes a config file and
+      # fetches a binary onto the runner, so a moved tag is a supply-chain change
+      # arriving through a version bump nobody reviewed.
+      - name: Sync Changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          # This repository itself: a fork of it syncs from it, which is how
+          # every sibling repo in the family wires this file.
+          upstream_sync_repo: Rexezuge-CloudflareWorkers/Telegram-Web-Client
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          test_mode: false
+
+      - name: Trigger Continuous Integration
+        if: steps.sync.outputs.has_new_commits == 'true'
+        uses: ./.github/actions/retry-step
+        with:
+          command: gh api repos/${{ github.repository }}/dispatches --method POST -f event_type='Upstream Sync Integration'
+          max_attempts: '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

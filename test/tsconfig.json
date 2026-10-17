@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  // `worker-configuration.d.ts` is included because the tests import the worker
+  // package, whose source references generated globals like `DurableObjectState`.
+  "include": ["../worker-configuration.d.ts", "**/*.ts", "**/*.tsx"]
+}

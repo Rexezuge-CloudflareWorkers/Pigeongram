@@ -1,0 +1,21 @@
+packages:
+  - 'worker'
+  - 'pages'
+  # The test suite is a workspace project so `pnpm -r typecheck` actually
+  # reaches it. It also has to be in the workspace for its bare imports to
+  # resolve at all: pnpm's layout is strict, so an unhooked `test/` could not
+  # import the worker package it exercises.
+  - 'test'
+
+# pnpm 11 refuses to run dependency build scripts unless allowlisted. esbuild and
+# workerd are what Vite/Vitest/Wrangler need; without them installs succeed but
+# binaries are missing at runtime.
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# pnpm 11 reads settings from this file, not `.npmrc`, so a
+# `minimum-release-age` carried there does nothing and pnpm's 24-hour default
+# applies instead — which blocks installing a just-published `@rexezuge/tooling`
+# release the day it lands.
+minimumReleaseAge: 0

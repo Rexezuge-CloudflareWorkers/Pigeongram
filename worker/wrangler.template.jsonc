@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Materialized to `./wrangler.jsonc` at the repo root before dev/deploy (see
+  // scripts/prepare-wrangler-config.ts), which is why `main` and every other
+  // path here is root-relative. Do not move it under worker/.
+  "name": "telegram-web-client",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2025-12-31",
+  "placement": { "mode": "off" },
+  // One DO class, one binding. The `v1` SQLite migration must be present on the
+  // very first deploy; renaming the class or the binding later requires a new
+  // migration tag, so only change them deliberately.
+  "durable_objects": {
+    "bindings": [{ "name": "SESSION_ENGINE", "class_name": "SessionEngine" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionEngine"] }],
+  "vars": {
+    "ENVIRONMENT": "production",
+  },
+}

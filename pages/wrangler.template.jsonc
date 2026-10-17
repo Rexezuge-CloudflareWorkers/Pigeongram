@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Materialized to `./wrangler.jsonc` at the repo root before deploy (the CD
+  // workflow copies it there), which is why `pages_build_output_dir` is
+  // root-relative (`pages/dist/`, not `dist/`). If Pages Functions are ever
+  // added they must live at repo-root `functions/` for the same reason.
+  "name": "telegram-web-client-web",
+  "compatibility_date": "2025-12-31",
+  "pages_build_output_dir": "pages/dist/",
+  // Prepares the future RPC bridge to the worker; the binding is inert until
+  // Pages Functions exist.
+  "services": [{ "binding": "API_WORKER", "service": "telegram-web-client" }],
+}

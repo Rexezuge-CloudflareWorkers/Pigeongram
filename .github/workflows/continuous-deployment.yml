@@ -1,0 +1,148 @@
+# Continuous Deployment — deploy the worker and the Pages project after CI
+# passes on main. Based on `@rexezuge/tooling`'s
+# `github/workflows/continuous-deployment.yml`; the removed steps are the ones
+# this repo has no machinery for:
+#   * Initialize Cloudflare Secrets — no Secrets Store bindings at scaffold time.
+#   * Apply Database Migration — no D1; the DO's SQLite is migrated by the
+#     `durable_objects` migrations in worker/wrangler.template.jsonc.
+#   * Build Web App (in deploy-worker) — this worker is API-only and serves no
+#     embedded shell.
+#
+# The two jobs run in parallel by design. `cancel-in-progress: false` is
+# deliberate: a deploy in flight must not be cancelled mid-run.
+
+name: Continuous Deployment
+
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows:
+      - Continuous Integration
+    branches:
+      - main
+    types:
+      - completed
+  repository_dispatch:
+    types:
+      - Upstream Sync Deployment
+  workflow_dispatch:
+
+concurrency:
+  group: continuous-deployment-${{ github.event.workflow_run.head_branch || github.event.client_payload.branch || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-worker:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy Cloudflare Worker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          # The SHA CI approved, not the tip of main: a push that lands while the
+          # workflow_run is in flight must not be what gets deployed.
+          ref: ${{ github.event.workflow_run.head_sha || github.event.client_payload.sha || github.sha }}
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Prepare Wrangler Configuration
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec tsx scripts/prepare-wrangler-config.ts
+          max_attempts: '3'
+        env:
+          WRANGLER_JSONC: ${{ vars.WRANGLER_JSONC }}
+          WRANGLER_PATCH_JSON: ${{ vars.WRANGLER_PATCH_JSON }}
+          WRANGLER_VARS_PATCH_JSON: ${{ vars.WRANGLER_VARS_PATCH_JSON }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # A gate, not a rehearsal. Separate from the deploy below and deliberately
+      # **not** retried: a dry run that fails is a real defect — a bundle over
+      # the size limit, a binding the template no longer declares — and retrying
+      # it three times only delays the report while making the log harder to read.
+      - name: Dry Run Deploy with Wrangler
+        run: pnpm exec wrangler deploy --dry-run
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy with Wrangler
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec wrangler deploy
+          max_attempts: '3'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-pages:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy Cloudflare Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.client_payload.sha || github.sha }}
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Build Frontend
+        run: pnpm --filter @telegram-web-client/pages build
+
+      - name: Configure Pages Service Bindings
+        run: cp pages/wrangler.template.jsonc wrangler.jsonc
+
+      # Created if absent, and then polled until it is visible, because a project
+      # that exists but is not yet listed makes the deploy below fail with an
+      # error that names the deploy rather than the propagation delay.
+      - name: Ensure Pages Project Exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'telegram-web-client-web' }}
+          DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch || github.event.client_payload.branch || github.ref_name }}
+        run: |
+          if CREATE_OUTPUT="$(pnpm exec wrangler pages project create "${PROJECT}" --production-branch "${DEPLOY_BRANCH}" 2>&1)"; then
+            echo "Created Pages project \"${PROJECT}\"."
+          elif echo "${CREATE_OUTPUT}" | grep -qi "already exists"; then
+            echo "Pages project \"${PROJECT}\" already exists."
+          else
+            echo "${CREATE_OUTPUT}"
+            echo "Failed to create Pages project \"${PROJECT}\"." >&2
+            exit 1
+          fi
+          for _ in $(seq 1 18); do
+            if pnpm exec wrangler pages project list 2>/dev/null | grep -qE "(^|[[:space:]])${PROJECT}([[:space:]]|$)"; then
+              echo "Pages project \"${PROJECT}\" is ready."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Pages project \"${PROJECT}\" is still not visible after polling." >&2
+          exit 1
+
+      - name: Deploy with Wrangler Pages
+        uses: ./.github/actions/retry-step
+        with:
+          command: >
+            pnpm exec wrangler pages deploy pages/dist
+            --project-name "${PROJECT}"
+            --branch "${DEPLOY_BRANCH}"
+            --commit-hash "${DEPLOY_SHA}"
+            --commit-message "$(git log -1 --pretty=%s)"
+          max_attempts: '3'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'telegram-web-client-web' }}
+          DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch || github.event.client_payload.branch || github.ref_name }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.event.client_payload.sha || github.sha }}

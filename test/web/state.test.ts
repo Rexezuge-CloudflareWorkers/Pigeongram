@@ -38,6 +38,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     service: false,
     media: null,
     reply: null,
+    comments: null,
     ...overrides,
   };
 }

@@ -41,13 +41,14 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 
 - `worker/` — the API worker. `src/index.ts` is the Hono entry (health, the `SPIKE_TOKEN` gate on `/api/*`, forwarding
   to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export. `src/session/` holds
-  the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`, `media`, `stats`, `login-flow`,
-  `driver`, `http`, `socket-hub`) and the mtcute integration (`mtproto/{client,crypto,transport,sqlite,platform}.ts`).
-  `wrangler.template.jsonc` declares the DO binding (`SESSION_ENGINE`), the `v1` SQLite migration, `workers_dev: false`
-  and `WAKE_INTERVAL_SECONDS`.
+  the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`, `media`, `comments`, `stats`,
+  `login-flow`, `driver`, `http`, `socket-hub`) and the mtcute integration (`mtproto/{client,crypto,transport,sqlite,platform}.ts`).
+  The bridge contract is `src/types.ts` (the DTOs) plus `src/rpc-types.ts` (the RPC method shapes), both mirrored in
+  the SPA. `wrangler.template.jsonc` declares the DO binding (`SESSION_ENGINE`), the `v1` SQLite migration,
+  `workers_dev: false` and `WAKE_INTERVAL_SECONDS`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
-  reducers, `components/` the screens).
+  reducers, `useComments.ts` the comments screen's controller, `components/` the screens).
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` is a pass-through to `env.API_WORKER`; it must
   not import workspace packages (Pages bundles it separately).

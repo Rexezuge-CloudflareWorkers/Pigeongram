@@ -1,11 +1,13 @@
 import type {
   EngineStateDto,
+  GetCommentsResult,
   GetDialogsResult,
   GetHistoryResult,
   GetMeResult,
   PeerId,
   RpcMethod,
   SearchMessagesResult,
+  SendCommentResult,
   SendMessageResult,
   SendReactionResult,
   UploadKind,
@@ -129,6 +131,15 @@ export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Pro
 
 export const readHistory = (chatId: PeerId): Promise<unknown> => rpc('readHistory', { chatId });
 
+export const fetchComments = (
+  chatId: PeerId,
+  messageId: number,
+  options: { limit?: number; offsetId?: number; offsetDate?: number } = {},
+): Promise<GetCommentsResult> => rpc('getComments', { chatId, messageId, ...options });
+
+export const sendComment = (chatId: PeerId, messageId: number, text: string, replyTo?: number): Promise<SendCommentResult> =>
+  rpc('sendComment', { chatId, messageId, text, ...(replyTo !== undefined && { replyTo }) });
+
 export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
   rpc('searchMessages', { chatId, query, limit: 50 });
 
@@ -140,7 +151,12 @@ export interface UploadInput {
   size: number;
   caption?: string;
   /**
-  Id of the message being replied to, when the upload is a reply.
+  Id of the channel post being commented on, when the upload is a comment.
+  */
+  commentTo?: number;
+  /**
+  Id of the message being replied to: a comment when `commentTo` is set,
+  otherwise a message in `chatId`.
   */
   replyTo?: number;
   width?: number;
@@ -164,6 +180,7 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
     size: String(input.size),
   });
   if (input.caption) params.set('caption', input.caption);
+  if (input.commentTo !== undefined) params.set('commentTo', String(input.commentTo));
   if (input.replyTo !== undefined) params.set('replyTo', String(input.replyTo));
   if (input.width !== undefined) params.set('width', String(input.width));
   if (input.height !== undefined) params.set('height', String(input.height));

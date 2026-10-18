@@ -3,6 +3,7 @@ import type {
   ChatDto,
   DialogDto,
   MeDto,
+  MessageCommentsDto,
   MessageDto,
   MessageEntityDto,
   MessageMediaDto,
@@ -126,6 +127,20 @@ function toMessageReplyDto(message: Message): MessageReplyDto | null {
   };
 }
 
+/**
+Maps the `replies` header of a channel post onto the wire shape: the flag and
+count the UI renders, plus the linked discussion group the thread lives in.
+*/
+function toMessageCommentsDto(message: Message): MessageCommentsDto | null {
+  const replies = message.replies;
+  if (!replies) return null;
+  return {
+    hasComments: replies.hasComments,
+    count: replies.count,
+    discussionChatId: replies.discussion,
+  };
+}
+
 export function toMessageDto(message: Message): MessageDto {
   // `sender` is typed as `Peer`, but service messages from anonymous admins
   // carry a sender without an id; guard at runtime instead of trusting the
@@ -144,6 +159,7 @@ export function toMessageDto(message: Message): MessageDto {
     service: message.isService,
     media: toMessageMediaDto(message.media),
     reply: toMessageReplyDto(message),
+    comments: toMessageCommentsDto(message),
   };
 }
 

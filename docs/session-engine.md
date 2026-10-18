@@ -94,25 +94,28 @@ server-side by requesting from the aligned offset and dropping the extra prefix 
 `POST /api/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
 `content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), and
-optional `width`/`height`/`duration`. The body is
-streamed through the DO into mtcute's upload connection pool, so nothing buffers in the isolate, and
-`UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) rejects oversized requests with a 413 before Telegram is
-touched. The query is parsed once more at the edge with the same parser, so a rejected upload never reaches the
-DO at all — workerd reads a request stream after its response when a Durable Object answers without consuming the
-body (cloudflare/workerd#918). The kind is never guessed server-side: the SPA converts non-JPEG
+optional `width`/`height`/`duration`. `commentTo` (a channel post id) turns the upload into a comment on that
+post: it is sent to the linked discussion group, and `replyTo` then names a comment inside the thread instead
+of a message in `chatId`. The body is streamed through the DO into mtcute's upload connection pool, so nothing
+buffers in the isolate, and `UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) rejects oversized requests with a
+413 before Telegram is touched. The query is parsed once more at the edge with the same parser, so a rejected
+upload never reaches the DO at all — workerd reads a request stream after its response when a Durable Object
+answers without consuming the body (cloudflare/workerd#918). The kind is never guessed server-side: the SPA converts non-JPEG
 canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else.
 
 ### RPC methods
 
-| Method           | Params                                             | Returns                                   |
-| ---------------- | -------------------------------------------------- | ----------------------------------------- |
-| `getMe`          | —                                                  | `{me}`                                    |
-| `getDialogs`     | `{limit?: 1..200}`                                 | `{dialogs: DialogDto[]}` (pinned first)   |
-| `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}` | `{messages: MessageDto[]}` (oldest first) |
-| `sendMessage`    | `{chatId, text, replyTo?}`                         | `{message}`                               |
-| `readHistory`    | `{chatId}`                                         | `{}`                                      |
-| `searchMessages` | `{chatId, query, limit?, offsetId?}`               | `{messages, nextOffsetId?}`               |
-| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`      | `{message: MessageDto \| null}`           |
+| Method           | Params                                                        | Returns                                                                                    |
+| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `getMe`          | —                                                             | `{me}`                                                                                     |
+| `getDialogs`     | `{limit?: 1..200}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                    |
+| `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}`            | `{messages: MessageDto[]}` (oldest first)                                                  |
+| `sendMessage`    | `{chatId, text, replyTo?}`                                    | `{message}`                                                                                |
+| `readHistory`    | `{chatId}`                                                    | `{}`                                                                                       |
+| `searchMessages` | `{chatId, query, limit?, offsetId?}`                          | `{messages, nextOffsetId?}`                                                                |
+| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                 | `{message: MessageDto \| null}`                                                            |
+| `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}` | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}` |
+| `sendComment`    | `{chatId, messageId, text, replyTo?}`                         | `{message}`                                                                                |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -126,6 +129,26 @@ A message that replies to another carries `reply`: where the original lives (`or
 when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag. Same-chat
 headers carry only the message id, so the SPA resolves the quote's sender and snippet from the thread it already
 has; `sendMessage` takes `replyTo` (a message id in the same chat) to send one.
+
+### Channel-post comments
+
+A channel post's `comments` field (`hasComments`, `count`, `discussionChatId`) comes from Telegram's `replies`
+header — the pointer into the channel's linked discussion group. Comments themselves live in that group: the
+post is mirrored there as a root message and every comment replies into its thread.
+
+`getComments` resolves the group with `messages.getDiscussionMessage` and reads one window of the thread with
+`messages.getReplies` (oldest first, newest window unless a cursor is passed); the root message is dropped and
+the cursor is the oldest comment of the window. `discussionChatId`/`discussionMessageId` are null while the
+thread does not exist yet, and the pre-thread `FLOOD_WAIT` Telegram answers the lookup with is read as "no
+thread yet". `sendComment` posts through mtcute's `commentText`/`commentMedia` for a top-level comment (which
+also covers the first comment, when Telegram still has to create the thread) and resolves the group itself for
+a reply, so `replyTo` names a comment in the thread. Reads never require membership in the group; posting
+requires it, and Telegram's error surfaces to the SPA verbatim.
+
+Reactions on comments target the group and arrive live, and the SPA merges them into the open screen by
+matching the update's chat id and reply header against the thread. Reply counts on the post are only as fresh
+as the last load plus the caller's own sends: this TL layer has no reply-count update, so a comment from
+someone else does not bump the button until the channel thread reloads.
 
 ### Updates socket protocol
 

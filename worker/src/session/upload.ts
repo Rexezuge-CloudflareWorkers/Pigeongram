@@ -2,6 +2,7 @@ import type { InputMediaLike } from '@mtcute/core';
 import { InputMedia } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { MessageDto, UploadKind } from '../types';
+import { requireCommentPost, requireDiscussion } from './comments';
 import { toMessageDto } from './dto';
 
 /**
@@ -15,7 +16,12 @@ export interface UploadSpec {
   kind: UploadKind;
   caption?: string;
   /**
-  Id of the message being replied to, when the upload is a reply.
+  Id of the channel post being commented on, when the upload is a comment.
+  */
+  commentTo?: number;
+  /**
+  Id of the message being replied to: a comment in the thread when `commentTo`
+  is set, otherwise a message in `chatId`.
   */
   replyTo?: number;
   fileName?: string;
@@ -40,10 +46,26 @@ export async function sendUploadedMedia(
   body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
 ): Promise<MessageDto> {
-  const message = await client.sendMedia(spec.chatId, buildInputMedia(spec, body), {
+  const media = buildInputMedia(spec, body);
+  const params = {
     ...(spec.caption !== undefined && { caption: spec.caption }),
-    ...(spec.replyTo !== undefined && { replyTo: spec.replyTo }),
     ...(signal !== undefined && { abortSignal: signal }),
+  };
+
+  if (spec.commentTo !== undefined) {
+    const post = await requireCommentPost(client, spec.chatId, spec.commentTo);
+    if (spec.replyTo === undefined) {
+      // `commentMedia` resolves the thread itself and covers the
+      // first-comment case Telegram accepts through the channel.
+      return toMessageDto(await client.commentMedia(post, media, params));
+    }
+    const discussion = await requireDiscussion(client, spec.chatId, spec.commentTo);
+    return toMessageDto(await client.sendMedia(discussion.peer, media, { ...params, replyTo: spec.replyTo }));
+  }
+
+  const message = await client.sendMedia(spec.chatId, media, {
+    ...params,
+    ...(spec.replyTo !== undefined && { replyTo: spec.replyTo }),
   });
   return toMessageDto(message);
 }

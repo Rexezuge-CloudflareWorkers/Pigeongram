@@ -98,6 +98,7 @@ const dialogs: DialogDto[] = [
       service: false,
       media: null,
       reply: null,
+      comments: null,
     },
     unread: 1,
     pinned: false,
@@ -119,6 +120,7 @@ const history: MessageDto[] = [
     service: false,
     media: null,
     reply: null,
+    comments: null,
   },
   {
     id: 10,
@@ -133,6 +135,7 @@ const history: MessageDto[] = [
     service: false,
     media: null,
     reply: null,
+    comments: null,
   },
 ];
 
@@ -154,6 +157,7 @@ const carolHistory: MessageDto[] = [
     service: false,
     media: null,
     reply: null,
+    comments: null,
   },
 ];
 
@@ -172,6 +176,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     service: false,
     media: null,
     reply: null,
+    comments: null,
     ...overrides,
   };
 }
@@ -549,6 +554,269 @@ describe('App', () => {
       await waitFor(() => {
         expect(screen.queryByText('Reply to Bob')).toBeNull();
       });
+    });
+  });
+
+  describe('channel comments', () => {
+    const GROUP = -1_000_000_000_030;
+    /**
+    Id of the thread's root message in the discussion group.
+    */
+    const ROOT = 10;
+
+    const channel: ChatDto = { id: -1_000_000_000_020, kind: 'channel', title: 'Announcements', username: 'announce', photo: null };
+
+    const post = message({
+      id: 7,
+      chatId: channel.id,
+      text: 'A new feature shipped',
+      comments: { hasComments: true, count: 2, discussionChatId: GROUP },
+    });
+
+    const channelDialog: DialogDto = { chat: channel, lastMessage: post, unread: 0, pinned: false, muted: false };
+
+    function comment(overrides: Partial<MessageDto> & { id: number }): MessageDto {
+      return message({ chatId: GROUP, senderName: 'Dana', ...overrides });
+    }
+
+    /**
+    A same-chat reply header into the thread, as the discussion group carries
+    it (top-level comments point at the root).
+    */
+    function replyHeader(messageId: number): MessageDto['reply'] {
+      return {
+        origin: 'same_chat',
+        messageId,
+        chatId: null,
+        senderName: null,
+        date: null,
+        text: '',
+        entities: [],
+        mediaKind: null,
+        quote: false,
+      };
+    }
+
+    const commentList: MessageDto[] = [
+      comment({ id: ROOT + 1, text: 'nice', reply: replyHeader(ROOT) }),
+      comment({ id: ROOT + 2, text: 'congrats', reply: replyHeader(ROOT + 1) }),
+    ];
+
+    function openComments(): void {
+      const button = screen.getByRole('button', { name: /2 comments/ });
+      fireEvent.click(button);
+    }
+
+    function commentReplyButton(messageId: number): HTMLElement {
+      const button = threadSection().querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(messageId))}"] .reply-button`);
+      if (!button) throw new Error(`Comment ${String(messageId)} has no reply button`);
+      return button;
+    }
+
+    /**
+    Routes the channel's history and the test-specific comments RPCs, keeping
+    the signed-in base surface (state, dialogs, reads) intact.
+    */
+    function installCommentsFetch(rpc: (call: FetchCall) => Response | undefined): FetchCall[] {
+      return installSignedInFetch({
+        dialogs: [channelDialog],
+        history: () => json({ messages: [post] }),
+        rpc,
+      });
+    }
+
+    it('opens a dedicated comments screen with the post and its thread', async () => {
+      const calls: FetchCall[] = [];
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        calls.push(call);
+        return json({
+          comments: commentList,
+          count: 2,
+          discussionChatId: GROUP,
+          discussionMessageId: ROOT,
+        });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+
+      openComments();
+
+      expect(await screen.findByText('Comments')).toBeDefined();
+      expect(within(threadSection()).getAllByText('nice').length).toBeGreaterThan(0);
+      expect(within(threadSection()).getByText('congrats')).toBeDefined();
+      expect(screen.getByPlaceholderText('Comment')).toBeDefined();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
+    });
+
+    it('leaves the comments button off non-channel chats', async () => {
+      installSignedInFetch({ history: () => json({ messages: [history[0]] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+      expect(within(threadSection()).queryByRole('button', { name: /comments/ })).toBeNull();
+    });
+
+    it('sends a comment and replies to a comment through sendComment', async () => {
+      const sent: FetchCall[] = [];
+      installCommentsFetch((call) => {
+        if (call.body?.method === 'getComments') {
+          return json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT });
+        }
+        if (call.body?.method !== 'sendComment') return;
+        sent.push(call);
+        const params = call.body.params as { text: string; replyTo?: number };
+        return json({ message: comment({ id: 20, text: params.text, outgoing: true, senderName: 'Ada' }) });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
+
+      // A top-level comment posts without a reply target.
+      fireEvent.change(screen.getByPlaceholderText('Comment'), { target: { value: 'shipping it' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => {
+        expect(sent).toHaveLength(1);
+      });
+      expect(sent[0].body).toEqual({
+        method: 'sendComment',
+        params: { chatId: channel.id, messageId: 7, text: 'shipping it' },
+      });
+      expect(await within(threadSection()).findByText('shipping it')).toBeDefined();
+
+      // Replying to a comment carries its id.
+      fireEvent.click(commentReplyButton(ROOT + 1));
+      expect(screen.getByText('Reply to Dana')).toBeDefined();
+      fireEvent.keyDown(screen.getByPlaceholderText('Comment'), { key: 'Escape' });
+      expect(screen.queryByText('Reply to Dana')).toBeNull();
+
+      fireEvent.click(commentReplyButton(ROOT + 1));
+      fireEvent.change(screen.getByPlaceholderText('Comment'), { target: { value: 'thanks' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => {
+        expect(sent).toHaveLength(2);
+      });
+      expect(sent[1].body).toEqual({
+        method: 'sendComment',
+        params: { chatId: channel.id, messageId: 7, text: 'thanks', replyTo: ROOT + 1 },
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('Reply to Dana')).toBeNull();
+      });
+    });
+
+    it('loads older comments with the cursor getComments returned', async () => {
+      const calls: FetchCall[] = [];
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        calls.push(call);
+        return calls.length === 1
+          ? json({
+              comments: commentList,
+              count: 3,
+              discussionChatId: GROUP,
+              discussionMessageId: ROOT,
+              nextOffsetId: ROOT + 1,
+              nextOffsetDate: 1_700_000_000,
+            })
+          : json({
+              comments: [comment({ id: ROOT - 1, text: 'first ever', reply: replyHeader(ROOT) })],
+              count: 3,
+              discussionChatId: GROUP,
+              discussionMessageId: ROOT,
+            });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Load older comments' }));
+      expect(await within(threadSection()).findByText('first ever')).toBeDefined();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].body).toEqual({
+        method: 'getComments',
+        params: { chatId: channel.id, messageId: 7, limit: 50, offsetId: ROOT + 1, offsetDate: 1_700_000_000 },
+      });
+      // The thread start is loaded, so the button goes away.
+      expect(screen.queryByRole('button', { name: 'Load older comments' })).toBeNull();
+    });
+
+    it('merges live comments from the discussion group only', async () => {
+      installCommentsFetch((call) => {
+        if (call.body?.method === 'getComments') {
+          return json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT });
+        }
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
+
+      deliver({ type: 'new_message', message: comment({ id: 30, text: 'live reply', reply: replyHeader(ROOT + 2) }) });
+      expect(await within(threadSection()).findByText('live reply')).toBeDefined();
+
+      // A message in the group that belongs to a different thread stays out.
+      deliver({ type: 'new_message', message: comment({ id: 31, text: 'other thread', reply: replyHeader(999) }) });
+      expect(within(threadSection()).queryByText('other thread')).toBeNull();
+    });
+
+    it('posts the first comment through the channel and re-reads the new thread', async () => {
+      const sent: FetchCall[] = [];
+      let reads = 0;
+      installCommentsFetch((call) => {
+        if (call.body?.method === 'getComments') {
+          reads += 1;
+          return reads === 1
+            ? json({ comments: [], count: 0, discussionChatId: null, discussionMessageId: null })
+            : json({
+                comments: [comment({ id: 40, text: 'first!', outgoing: true, senderName: 'Ada' })],
+                count: 1,
+                discussionChatId: GROUP,
+                discussionMessageId: ROOT,
+              });
+        }
+        if (call.body?.method !== 'sendComment') {
+          return;
+        }
+
+        sent.push(call);
+        // The first comment is mirrored into the group by Telegram; the
+        // bridge may answer with the channel-side copy.
+        return json({ message: comment({ id: 40, chatId: channel.id, text: 'first!', outgoing: true, senderName: 'Ada' }) });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect(await within(threadSection()).findByText('No comments yet — be the first.')).toBeDefined();
+
+      fireEvent.change(screen.getByPlaceholderText('Comment'), { target: { value: 'first!' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1);
+      });
+      expect(sent[0].body).toEqual({
+        method: 'sendComment',
+        params: { chatId: channel.id, messageId: 7, text: 'first!' },
+      });
+      await waitFor(() => {
+        expect(reads).toBe(2);
+      });
+      expect(await within(threadSection()).findByText('first!')).toBeDefined();
     });
   });
 

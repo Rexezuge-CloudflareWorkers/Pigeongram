@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { fileUrl } from '../api';
 import { formatBytes, formatDay, formatTime, isSameDay } from '../format';
-import type { ChatDto, MessageDto, MessageMediaDto } from '../types';
+import { renderMessageText } from '../richtext';
+import { reactionKey } from '../state';
+import type { ChatDto, MessageDto, MessageMediaDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 
 interface ThreadViewProps {
@@ -13,10 +15,15 @@ interface ThreadViewProps {
   uploading: boolean;
   uploadProgress: number | null;
   error: string | null;
+  /**
+  Message ids with a reaction request in flight; their chips are disabled.
+  */
+  reactingIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string) => Promise<void>;
   onAttach: (file: File, caption: string) => Promise<void>;
+  onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
 }
 
 export function ThreadView({
@@ -28,10 +35,12 @@ export function ThreadView({
   uploading,
   uploadProgress,
   error,
+  reactingIds,
   onBack,
   onLoadOlder,
   onSend,
   onAttach,
+  onReact,
 }: ThreadViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -109,7 +118,7 @@ export function ThreadView({
             {index === 0 || !isSameDay(messages[index - 1].date, message.date) ? (
               <div className="day">{formatDay(message.date)}</div>
             ) : null}
-            <MessageRow message={message} chat={chat} />
+            <MessageRow message={message} chat={chat} reacting={reactingIds.has(message.id)} onReact={onReact} />
           </Fragment>
         ))}
       </div>
@@ -169,14 +178,40 @@ function uploadStatus(progress: number | null): string {
   return `Uploading ${Math.round(progress * 100)}%`;
 }
 
-function MessageRow({ message, chat }: { message: MessageDto; chat: ChatDto }) {
+interface MessageRowProps {
+  message: MessageDto;
+  chat: ChatDto;
+  reacting: boolean;
+  onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+}
+
+function MessageRow({ message, chat, reacting, onReact }: MessageRowProps) {
   const own = message.outgoing;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   return (
     <div className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}>
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {message.media ? <MessageMedia message={message} media={message.media} /> : null}
-      {message.text ? <span className="text">{message.text}</span> : null}
+      {message.text ? <div className="text">{renderMessageText(message.text, message.entities)}</div> : null}
+      {message.reactions.length > 0 ? (
+        <div className="reactions">
+          {message.reactions.map((reaction) => (
+            <button
+              key={reactionKey(reaction)}
+              type="button"
+              className={`reaction${reaction.chosen ? ' chosen' : ''}`}
+              disabled={reacting}
+              title={reaction.emoji ?? 'Custom emoji'}
+              aria-label={`React ${reaction.emoji ?? 'with a custom emoji'} (${String(reaction.count)})`}
+              aria-pressed={reaction.chosen}
+              onClick={() => onReact(message, reaction)}
+            >
+              <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>
+              <span className="reaction-count">{reaction.count}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       <span className="meta">{formatTime(message.date)}</span>
     </div>
   );

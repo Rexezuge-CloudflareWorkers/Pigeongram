@@ -7,6 +7,7 @@ import type {
   RpcMethod,
   SearchMessagesResult,
   SendMessageResult,
+  SendReactionResult,
   UploadKind,
 } from './types';
 
@@ -185,6 +186,22 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
     xhr.send(body);
   });
 }
+
+/**
+Sets (or, with `null`, removes) the current user's reaction on a message.
+Custom emoji reactions are addressed by their decimal document id.
+*/
+export const sendReaction = (
+  chatId: PeerId,
+  messageId: number,
+  reaction: { emoji?: string } | { customEmojiId: string } | null,
+): Promise<SendReactionResult> =>
+  rpc('sendReaction', {
+    chatId,
+    messageId,
+    emoji: reaction && 'emoji' in reaction ? reaction.emoji : null,
+    customEmojiId: reaction && 'customEmojiId' in reaction ? reaction.customEmojiId : null,
+  });
 
 export function fileUrl(chatId: PeerId, messageId: number, options: { thumb?: boolean } = {}): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });

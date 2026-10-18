@@ -17,6 +17,28 @@ export function requirePeerId(value: unknown): number {
   return value;
 }
 
+export function requireMessageId(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    throw new EngineError('messageId must be a positive Telegram message id', 400);
+  }
+  return value;
+}
+
+/**
+Like `requireText`, but `null`/`undefined` mean "not provided" instead of an
+error — used where omission carries meaning (e.g. removing a reaction).
+*/
+export function optionalText(value: unknown, max = 4096, name = 'value'): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new EngineError(`${name} must be a non-empty string`, 400);
+  }
+  if (value.length > max) {
+    throw new EngineError(`${name} must be at most ${max} characters`, 400);
+  }
+  return value;
+}
+
 export function optionalInt(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {

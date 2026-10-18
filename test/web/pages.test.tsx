@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@telegram-web-client/pages';
 import type { DialogDto, MessageDto } from '../../pages/src/types';
@@ -77,6 +77,8 @@ const dialogs: DialogDto[] = [
       outgoing: false,
       date: 1_700_000_000_000,
       text: 'see you',
+      entities: [],
+      reactions: [],
       service: false,
       media: null,
     },
@@ -95,6 +97,8 @@ const history: MessageDto[] = [
     outgoing: false,
     date: 1_699_999_900_000,
     text: 'oldest',
+    entities: [],
+    reactions: [],
     service: false,
     media: null,
   },
@@ -106,6 +110,8 @@ const history: MessageDto[] = [
     outgoing: false,
     date: 1_700_000_000_000,
     text: 'see you',
+    entities: [],
+    reactions: [{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }],
     service: false,
     media: null,
   },
@@ -222,5 +228,60 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bob'));
     expect(await screen.findByText('oldest')).toBeDefined();
     expect(screen.getAllByText('see you').length).toBeGreaterThan(0);
+  });
+
+  it('toggles a reaction optimistically and posts sendReaction', async () => {
+    const sent: unknown[] = [];
+    installFetch((call) => {
+      if (call.path === '/api/state') {
+        return json({ phase: 'authorized', authorized: true, me });
+      }
+      if (call.path === '/api/rpc') {
+        switch (call.body?.method) {
+          case 'getMe': {
+            return json({ me });
+          }
+          case 'getDialogs': {
+            return json({ dialogs });
+          }
+          case 'getHistory': {
+            return json({ messages: history });
+          }
+          case 'readHistory': {
+            return json({});
+          }
+          case 'sendReaction': {
+            sent.push(call.body);
+            return json({ message: null });
+          }
+          default: {
+            return json({ error: 'Unknown RPC method' }, 404);
+          }
+        }
+      }
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByText('Bob'));
+    const chip = await screen.findByRole('button', { name: 'React 👍 (1)' });
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'React 👍 (2)' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect(screen.getByRole('button', { name: 'React 👍 (2)' }).getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'React 👍 (2)' }));
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'React 👍 (1)' }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect(screen.getByRole('button', { name: 'React 👍 (1)' }).getAttribute('aria-pressed')).toBe('false');
+
+    expect(sent).toEqual([
+      { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '👍', customEmojiId: null } },
+      { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: null, customEmojiId: null } },
+    ]);
   });
 });

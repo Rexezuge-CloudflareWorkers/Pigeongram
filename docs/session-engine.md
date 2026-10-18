@@ -111,15 +111,22 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `sendMessage`    | `{chatId, text}`                                   | `{message}`                               |
 | `readHistory`    | `{chatId}`                                         | `{}`                                      |
 | `searchMessages` | `{chatId, query, limit?, offsetId?}`               | `{messages, nextOffsetId?}`               |
+| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`      | `{message: MessageDto \| null}`           |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
+
+`MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
+code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
+a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
+`customEmojiId` for a custom emoji document), or removes it when both are null/omitted.
 
 ### Updates socket protocol
 
 Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"read", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"read", …}}`.
+The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 
 ## Local development
 

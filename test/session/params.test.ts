@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { EngineError } from '../../worker/src/session/errors';
-import { clampInt, optionalInt, requirePeerId, requireQuery, requireText } from '../../worker/src/session/params';
+import {
+  clampInt,
+  optionalInt,
+  optionalText,
+  requireMessageId,
+  requirePeerId,
+  requireQuery,
+  requireText,
+} from '../../worker/src/session/params';
 
 describe('bridge parameter validation', () => {
   it('accepts marked peer ids and rejects everything else', () => {
@@ -9,6 +17,22 @@ describe('bridge parameter validation', () => {
     for (const bad of [undefined, null, '42', 0, 1.5, NaN, Infinity]) {
       expect(() => requirePeerId(bad)).toThrow(EngineError);
     }
+  });
+
+  it('requires positive message ids', () => {
+    expect(requireMessageId(7)).toBe(7);
+    for (const bad of [undefined, null, '7', 0, -1, 1.5, NaN, Infinity]) {
+      expect(() => requireMessageId(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('treats absent optional text as undefined and rejects empty strings', () => {
+    expect(optionalText(undefined, 32, 'emoji')).toBeUndefined();
+    expect(optionalText(null, 32, 'emoji')).toBeUndefined();
+    expect(optionalText('👍', 32, 'emoji')).toBe('👍');
+    expect(() => optionalText('', 32, 'emoji')).toThrow(EngineError);
+    expect(() => optionalText(42, 32, 'emoji')).toThrow(EngineError);
+    expect(() => optionalText('x'.repeat(33), 32, 'emoji')).toThrow(EngineError);
   });
 
   it('clamps integers into range and falls back when absent', () => {

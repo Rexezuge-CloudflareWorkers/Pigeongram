@@ -111,7 +111,7 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `getDialogs`     | `{limit?: 1..200}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                    |
 | `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}`            | `{messages: MessageDto[]}` (oldest first)                                                  |
 | `sendMessage`    | `{chatId, text, replyTo?}`                                    | `{message}`                                                                                |
-| `readHistory`    | `{chatId}`                                                    | `{}`                                                                                       |
+| `readHistory`    | `{chatId, maxId?}`                                            | `{}`                                                                                       |
 | `searchMessages` | `{chatId, query, limit?, offsetId?}`                          | `{messages, nextOffsetId?}`                                                                |
 | `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                 | `{message: MessageDto \| null}`                                                            |
 | `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}` | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}` |
@@ -119,6 +119,11 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
+
+`DialogDto` carries the chat, its `lastMessage`, `unread` and `readInboxMaxId` (the read watermark: the
+last read incoming message), plus `pinned`/`muted`. The SPA opens a chat at the first incoming message after
+the watermark instead of the bottom, and `readHistory`'s optional `maxId` reports how far the user actually
+scrolled (omitted, it reads the whole history — the comments screen's behavior).
 
 `MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
@@ -156,6 +161,8 @@ Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"p
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
 `{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"read", …}}`.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
+The `read` update carries `{chatId, maxId, unread, inbox}`: `inbox` distinguishes the account's own inbox
+from the peer reading the account's messages, and only inbox reads move `unread` and `readInboxMaxId`.
 
 ## Local development
 

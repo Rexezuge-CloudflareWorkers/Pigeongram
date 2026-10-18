@@ -4,6 +4,7 @@ import {
   applyEditedMessage,
   applyNewMessage,
   applyReactionUpdate,
+  applyReadThrough,
   applyReadUpdate,
   findChatTitle,
   mergeMessages,
@@ -12,6 +13,7 @@ import {
   toggleReaction,
   updateThread,
 } from '../../pages/src/state';
+import { firstUnread, readWatermark } from '../../pages/src/reading';
 import type { ChatDto, DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
@@ -52,6 +54,7 @@ function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
     chat: chat(id),
     lastMessage: null,
     unread: 0,
+    readInboxMaxId: 0,
     pinned: false,
     muted: false,
     ...overrides,
@@ -88,12 +91,36 @@ describe('chat-list state', () => {
 
   it('applies read updates and edited last messages', () => {
     const dialogs = [dialog(1, { unread: 5 }), dialog(2)];
-    expect(applyReadUpdate(dialogs, 1, 0)[0].unread).toBe(0);
+    const read = applyReadUpdate(dialogs, 1, 0, 7);
+    expect(read[0].unread).toBe(0);
+    expect(read[0].readInboxMaxId).toBe(7);
+    // A stale read update must not rewind the watermark reading stopped at.
+    expect(applyReadUpdate(read, 1, 4, 3)[0].readInboxMaxId).toBe(7);
 
     const withLast = dialogs.map((entry) => (entry.chat.id === 1 ? { ...entry, lastMessage: message({ id: 9, chatId: 1 }) } : entry));
     const edited = applyEditedMessage(withLast, message({ id: 9, chatId: 1, text: 'edited' }));
     expect(edited[0].lastMessage?.text).toBe('edited');
     expect(edited[1].lastMessage).toBeNull();
+  });
+
+  it('advances the watermark through what the viewport read, incoming only', () => {
+    const dialogs = [dialog(1, { unread: 3, readInboxMaxId: 6 }), dialog(2, { unread: 1 })];
+    const messages = [
+      message({ id: 7, chatId: 1 }),
+      message({ id: 8, chatId: 1, outgoing: true }),
+      message({ id: 9, chatId: 1 }),
+      message({ id: 10, chatId: 1 }),
+    ];
+
+    const through9 = applyReadThrough(dialogs, 1, 9, messages);
+    expect(through9[0]).toMatchObject({ readInboxMaxId: 9, unread: 1 });
+    expect(through9[1]).toBe(dialogs[1]);
+
+    // Reading on clears the badge; the outgoing message in between counts for
+    // nothing.
+    expect(applyReadThrough(through9, 1, 10, messages)[0]).toMatchObject({ readInboxMaxId: 10, unread: 0 });
+    // A watermark behind the dialog's own leaves it untouched.
+    expect(applyReadThrough(through9, 1, 7, messages)[0]).toBe(through9[0]);
   });
 
   it('finds chat titles by id', () => {
@@ -122,16 +149,18 @@ describe('thread state', () => {
   });
 
   it('applies thread updates only while the thread belongs to the chat', () => {
-    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })] };
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 5 };
     const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
     expect(foreign).toBe(thread);
 
     const next = updateThread(thread, 1, (messages) => mergeMessages(messages, [message({ id: 2, chatId: 1 })]));
     expect(next?.messages.map((entry) => entry.id)).toEqual([1, 2]);
+    // The thread's read watermark rides along with its messages.
+    expect(next?.readInboxMaxId).toBe(5);
   });
 
   it('keeps the thread value when nothing changes or no thread is open', () => {
-    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })] };
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 0 };
     expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
     expect(updateThread(null, 1, (messages) => messages)).toBeNull();
   });
@@ -215,5 +244,32 @@ describe('formatting helpers', () => {
     expect(formatBytes(2048)).toBe('2.0 KB');
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
     expect(formatBytes(1024 * 1024 * 1024).length).toBeGreaterThan(0);
+  });
+});
+
+describe('unread reading', () => {
+  const thread = [
+    message({ id: 6, chatId: 1 }),
+    message({ id: 7, chatId: 1, outgoing: true }),
+    message({ id: 8, chatId: 1 }),
+    message({ id: 9, chatId: 1 }),
+  ];
+
+  it('anchors on the first incoming message after the watermark', () => {
+    expect(firstUnread(thread, 6)?.id).toBe(8);
+    expect(firstUnread(thread, 8)?.id).toBe(9);
+    expect(firstUnread(thread, 9)).toBeNull();
+    expect(firstUnread([], 0)).toBeNull();
+  });
+
+  it('measures the read watermark from the visible ids or the bottom', () => {
+    expect(readWatermark(thread, new Set([6]), false)).toBe(6);
+    // Outgoing messages never carry the watermark; the highest visible
+    // incoming one does.
+    expect(readWatermark(thread, new Set([6, 7, 8]), false)).toBe(8);
+    expect(readWatermark(thread, new Set(), false)).toBeNull();
+    // Pinned to the bottom, everything is on screen.
+    expect(readWatermark(thread, new Set(), true)).toBe(9);
+    expect(readWatermark([], new Set(), true)).toBeNull();
   });
 });

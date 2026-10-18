@@ -1,26 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage, sendReaction, uploadFile } from './api';
+import { fetchDialogs, fetchMe, logout, readHistory } from './api';
 import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { CommentsView } from './components/CommentsView';
 import { LoginScreen } from './components/LoginScreen';
 import { ThreadView } from './components/ThreadView';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
-import {
-  applyCommentCountDelta,
-  applyEditedMessage,
-  applyNewMessage,
-  applyReactionUpdate,
-  applyReadUpdate,
-  mergeMessages,
-  replaceMessage,
-  toggleReaction,
-  updateThread,
-} from './state';
-import type { ChatThread } from './state';
-import type { ChatDto, DialogDto, MeDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
-import { prepareUpload } from './upload';
+import { applyEditedMessage, applyNewMessage, applyReadThrough, applyReadUpdate } from './state';
+import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useComments } from './useComments';
+import { useThread } from './useThread';
 
 export function App() {
   const { state, gate, error, reportError, onToken, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
@@ -29,14 +18,20 @@ export function App() {
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
   const [dialogsLoading, setDialogsLoading] = useState(false);
 
-  const [thread, setThread] = useState<ChatThread | null>(null);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [olderLoading, setOlderLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [threadError, setThreadError] = useState<string | null>(null);
-  const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
+  /**
+  A message the caller sent (or uploaded) was accepted: fold it into the
+  dialogs. The thread's own copy is the controller's.
+  */
+  const handleSent = useCallback((message: MessageDto): void => {
+    setDialogs((current) => applyNewMessage(current, message, message.chatId));
+  }, []);
+
+  const threads = useThread({ onSent: handleSent, onError: reportError });
+  // Stable helpers, so the callbacks that depend on them keep their identity.
+  const applyThreadUpdate = threads.applyUpdate;
+  const closeThread = threads.close;
+  const setReadWatermark = threads.setReadWatermark;
+  const bumpCommentCount = threads.bumpCommentCount;
 
   /**
   A comment the caller sent was accepted: bump the post's count in the open
@@ -45,29 +40,30 @@ export function App() {
   (Telegram mirrors it into the group but the send response may describe it in
   the channel), so that case is left to the dialogs' own update.
   */
-  const handleCommentSent = useCallback((chatId: PeerId, postId: number, comment: MessageDto): void => {
-    setThread((current) => updateThread(current, chatId, (messages) => applyCommentCountDelta(messages, postId)));
-    if (comment.chatId !== chatId) {
-      setDialogs((current) => applyNewMessage(current, comment, null));
-    }
-  }, []);
+  const handleCommentSent = useCallback(
+    (chatId: PeerId, postId: number, comment: MessageDto): void => {
+      bumpCommentCount(chatId, postId);
+      if (comment.chatId !== chatId) {
+        setDialogs((current) => applyNewMessage(current, comment, null));
+      }
+    },
+    [bumpCommentCount],
+  );
 
   const comments = useComments({ onCommentSent: handleCommentSent, onError: reportError });
-  // Stable helpers, so the callbacks that depend on them keep their identity.
   const closeComments = comments.close;
   const applyCommentUpdate = comments.applyUpdate;
 
   const selectedRef = useRef<PeerId | null>(null);
-  const selected = thread?.chat ?? null;
-  const messages = thread?.messages ?? [];
+  const selected = threads.thread?.chat ?? null;
   const authorized = state?.authorized ?? false;
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest selection. A layout effect runs with the commit, so
   // no socket event can observe the previous chat after a switch.
   useLayoutEffect(() => {
-    selectedRef.current = thread?.chat.id ?? null;
-  }, [thread]);
+    selectedRef.current = selected?.id ?? null;
+  }, [selected]);
 
   // ---- signed-in data: dialogs, live updates, thread ----------------------
 
@@ -104,38 +100,29 @@ export function App() {
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
-      // The comments screen listens to the same stream: it folds the open
-      // thread's comments in and lets everything else pass.
+      // The comments screen and the open thread listen to the same stream:
+      // each folds in what belongs to it and lets everything else pass.
       applyCommentUpdate(update);
+      applyThreadUpdate(update);
       if (update.type === 'new_message') {
-        const message = update.message;
-        setDialogs((current) => applyNewMessage(current, message, selectedRef.current));
-        setThread((current) => updateThread(current, message.chatId, (messages) => mergeMessages(messages, [message])));
-        if (message.chatId === selectedRef.current) {
-          void readHistory(message.chatId).catch(() => {
-            // Read receipts are best-effort; the next open retries.
-          });
-        }
+        setDialogs((current) => applyNewMessage(current, update.message, selectedRef.current));
+        // Reading is driven by the view's scroll position: a message pinned to
+        // the bottom of the open thread is reported read from there, and one
+        // arriving while the user is scrolled up stays unread.
         return;
       }
       if (update.type === 'edit_message') {
         setDialogs((current) => applyEditedMessage(current, update.message));
-        setThread((current) => updateThread(current, update.message.chatId, (messages) => replaceMessage(messages, update.message)));
         return;
       }
-      if (update.type === 'reactions') {
-        setThread((current) =>
-          updateThread(current, update.chatId, (messages) =>
-            applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
-          ),
-        );
-        return;
-      }
-      if (update.type === 'read') {
-        setDialogs((current) => applyReadUpdate(current, update.chatId, update.unread));
+      // The peer reading the account's own messages says nothing about the
+      // account's unread incoming ones, so only inbox reads move the badge.
+      // The thread's watermark is folded by the controller above.
+      if (update.type === 'read' && update.inbox) {
+        setDialogs((current) => applyReadUpdate(current, update.chatId, update.unread, update.maxId));
       }
     },
-    [applyCommentUpdate],
+    [applyCommentUpdate, applyThreadUpdate],
   );
 
   const connected = useUpdatesSocket(authorized, handleUpdate, () => {
@@ -144,144 +131,32 @@ export function App() {
 
   const openChat = useCallback(
     async (chat: ChatDto): Promise<void> => {
-      setThread({ chat, messages: [] });
+      // The dialog's watermark is where reading stopped: the thread opens
+      // there instead of the bottom and reports its own progress from then on.
+      const boundary = dialogs.find((dialog) => dialog.chat.id === chat.id)?.readInboxMaxId ?? 0;
       closeComments();
-      setThreadError(null);
-      setThreadLoading(true);
-      try {
-        const result = await fetchHistory(chat.id, { limit: 50 });
-        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
-        setDialogs((current) => applyReadUpdate(current, chat.id, 0));
-        void readHistory(chat.id).catch(() => {
-          // Best-effort.
-        });
-      } catch (failure) {
-        setThreadError(failure instanceof Error ? failure.message : String(failure));
-      } finally {
-        setThreadLoading(false);
-      }
+      await threads.open(chat, boundary);
     },
-    [closeComments],
+    [closeComments, dialogs, threads.open],
   );
 
-  const loadOlder = useCallback(async (): Promise<void> => {
-    const chat = thread?.chat;
-    const oldest = thread?.messages[0];
-    if (!chat || !oldest) return;
-    setOlderLoading(true);
-    try {
-      const result = await fetchHistory(chat.id, {
-        limit: 50,
-        offsetId: oldest.id,
-        offsetDate: oldest.date,
+  /**
+  Persists what the user read, as reported by the thread's scroll position:
+  the dialog's badge and watermark move immediately, the receipt is
+  best-effort, and the server's own `read` update settles the exact count.
+  */
+  const markRead = useCallback(
+    (chatId: PeerId, maxId: number): void => {
+      const open = threads.thread && threads.thread.chat.id === chatId ? threads.thread : null;
+      const boundary = open?.readInboxMaxId ?? dialogs.find((dialog) => dialog.chat.id === chatId)?.readInboxMaxId ?? 0;
+      if (maxId <= boundary) return;
+      setReadWatermark(chatId, maxId);
+      setDialogs((current) => applyReadThrough(current, chatId, maxId, open?.messages ?? []));
+      void readHistory(chatId, maxId).catch(() => {
+        // Read receipts are best-effort; the next open retries.
       });
-      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
-    } catch (failure) {
-      setThreadError(failure instanceof Error ? failure.message : String(failure));
-    } finally {
-      setOlderLoading(false);
-    }
-  }, [thread]);
-
-  const handleSend = useCallback(
-    async (text: string, replyTo?: number): Promise<void> => {
-      const chat = thread?.chat;
-      if (!chat) return;
-      setSending(true);
-      setThreadError(null);
-      try {
-        const result = await sendMessage(chat.id, text, replyTo);
-        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
-        setDialogs((current) => applyNewMessage(current, result.message, chat.id));
-      } catch (failure) {
-        setThreadError(failure instanceof Error ? failure.message : String(failure));
-        throw failure;
-      } finally {
-        setSending(false);
-      }
     },
-    [thread],
-  );
-
-  const handleAttach = useCallback(
-    async (file: File, caption: string, replyTo?: number): Promise<void> => {
-      const chat = thread?.chat;
-      if (!chat) return;
-      setUploading(true);
-      setUploadProgress(null);
-      setThreadError(null);
-      try {
-        const prepared = await prepareUpload(file);
-        const result = await uploadFile(
-          {
-            chatId: chat.id,
-            kind: prepared.kind,
-            fileName: prepared.fileName,
-            mime: prepared.mime,
-            size: prepared.body.size,
-            ...(caption.length > 0 && { caption }),
-            ...(replyTo !== undefined && { replyTo }),
-            ...(prepared.width !== undefined && { width: prepared.width }),
-            ...(prepared.height !== undefined && { height: prepared.height }),
-            ...(prepared.duration !== undefined && { duration: prepared.duration }),
-          },
-          prepared.body,
-          setUploadProgress,
-        );
-        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
-        setDialogs((current) => applyNewMessage(current, result.message, chat.id));
-      } catch (failure) {
-        setThreadError(failure instanceof Error ? failure.message : String(failure));
-        throw failure;
-      } finally {
-        setUploading(false);
-        setUploadProgress(null);
-      }
-    },
-    [thread],
-  );
-
-  const handleReact = useCallback(
-    (message: MessageDto, reaction: MessageReactionDto): void => {
-      if (reactingIds.has(message.id)) return;
-      if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
-      const before = message.reactions;
-      const after = toggleReaction(before, reaction);
-      setThread((current) =>
-        updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, after)),
-      );
-      setReactingIds((current) => new Set(current).add(message.id));
-      const target = reaction.chosen
-        ? null
-        : reaction.emoji === null
-          ? { customEmojiId: reaction.customEmojiId as string }
-          : { emoji: reaction.emoji };
-      void sendReaction(message.chatId, message.id, target)
-        .then((result) => {
-          const updated = result.message;
-          if (updated) {
-            setThread((current) =>
-              updateThread(current, message.chatId, (messages) =>
-                applyReactionUpdate(messages, message.chatId, message.id, updated.reactions),
-              ),
-            );
-          }
-        })
-        .catch((failure: unknown) => {
-          setThread((current) =>
-            updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, before)),
-          );
-          reportError(failure);
-        })
-        .finally(() => {
-          setReactingIds((current) => {
-            const next = new Set(current);
-            next.delete(message.id);
-            return next;
-          });
-        });
-    },
-    [reactingIds, reportError],
+    [dialogs, setReadWatermark, threads.thread],
   );
 
   const handleLogout = useCallback(async (): Promise<void> => {
@@ -290,12 +165,12 @@ export function App() {
     } catch (failure) {
       reportError(failure);
     }
-    setThread(null);
+    closeThread();
     closeComments();
     setDialogs([]);
     setMe(null);
     reset();
-  }, [closeComments, reportError, reset]);
+  }, [closeComments, closeThread, reportError, reset]);
 
   if (gate || !authorized) {
     return (
@@ -347,22 +222,24 @@ export function App() {
       ) : (
         <ThreadView
           chat={selected}
-          messages={messages}
-          loading={threadLoading}
-          loadingOlder={olderLoading}
-          sending={sending}
-          uploading={uploading}
-          uploadProgress={uploadProgress}
-          error={threadError}
-          reactingIds={reactingIds}
+          messages={threads.thread?.messages ?? []}
+          loading={threads.loading}
+          loadingOlder={threads.loadingOlder}
+          sending={threads.sending}
+          uploading={threads.uploading}
+          uploadProgress={threads.uploadProgress}
+          error={threads.error}
+          reactingIds={threads.reactingIds}
+          readInboxMaxId={threads.thread?.readInboxMaxId ?? 0}
           onBack={() => {
-            setThread(null);
+            closeThread();
             closeComments();
           }}
-          onLoadOlder={() => void loadOlder()}
-          onSend={handleSend}
-          onAttach={handleAttach}
-          onReact={handleReact}
+          onLoadOlder={() => void threads.loadOlder()}
+          onSend={threads.send}
+          onAttach={threads.attach}
+          onReact={threads.react}
+          onReadThrough={markRead}
           onOpenComments={(message) => {
             if (selected) void comments.open(selected, message);
           }}

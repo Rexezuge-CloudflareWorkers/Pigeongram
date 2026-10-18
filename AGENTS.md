@@ -48,7 +48,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `workers_dev: false` and `WAKE_INTERVAL_SECONDS`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
-  reducers, `useComments.ts` the comments screen's controller, `components/` the screens).
+  reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
+  — `reading.ts` the unread-position logic they share, `components/` the screens).
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` is a pass-through to `env.API_WORKER`; it must
   not import workspace packages (Pages bundles it separately).

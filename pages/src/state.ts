@@ -35,8 +35,30 @@ export function applyEditedMessage(dialogs: DialogDto[], message: MessageDto): D
   );
 }
 
-export function applyReadUpdate(dialogs: DialogDto[], chatId: PeerId, unread: number): DialogDto[] {
-  return dialogs.map((dialog) => (dialog.chat.id === chatId ? { ...dialog, unread } : dialog));
+/**
+Folds a server inbox read into the dialogs: the remaining unread count and the
+read watermark, which only ever moves forward (a stale update must not rewind
+the position the thread opens at).
+*/
+export function applyReadUpdate(dialogs: DialogDto[], chatId: PeerId, unread: number, readInboxMaxId: number): DialogDto[] {
+  return dialogs.map((dialog) =>
+    dialog.chat.id === chatId ? { ...dialog, unread, readInboxMaxId: Math.max(dialog.readInboxMaxId, readInboxMaxId) } : dialog,
+  );
+}
+
+/**
+The optimistic half of a read receipt: advances the dialog's watermark to the
+message the user just scrolled through and subtracts the incoming messages the
+loaded window proves were read. The server's own `read` update settles the
+exact count a moment later; this only keeps the badge from lagging behind the
+view.
+*/
+export function applyReadThrough(dialogs: DialogDto[], chatId: PeerId, maxId: number, messages: readonly MessageDto[]): DialogDto[] {
+  return dialogs.map((dialog) => {
+    if (dialog.chat.id !== chatId || maxId <= dialog.readInboxMaxId) return dialog;
+    const read = messages.filter((message) => !message.outgoing && message.id > dialog.readInboxMaxId && message.id <= maxId).length;
+    return { ...dialog, readInboxMaxId: maxId, unread: Math.max(0, dialog.unread - read) };
+  });
 }
 
 /**
@@ -67,6 +89,12 @@ disagree about which chat the thread belongs to.
 export interface ChatThread {
   chat: ChatDto;
   messages: MessageDto[];
+  /**
+  Id of the last read incoming message, seeded from the dialog when the chat
+  opens and advanced as the user reads; the thread's first unread message is
+  the first incoming one after it.
+  */
+  readInboxMaxId: number;
 }
 
 /**

@@ -1,9 +1,22 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
-import type { ChatDto, MessageDto, MessageReactionDto } from '../types';
+import { firstUnread, readWatermark } from '../reading';
+import type { ChatDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
+
+/**
+ * The list counts as "at the bottom" within this many pixels, for both the
+ * stick-to-bottom pin and the read watermark.
+ */
+const BOTTOM_PX = 80;
+
+/**
+ * How long a read watermark is held back before it is reported: scrolling
+ * advances it message by message, and every advance is a round trip.
+ */
+const READ_DEBOUNCE_MS = 250;
 
 interface ThreadViewProps {
   chat: ChatDto | null;
@@ -18,12 +31,22 @@ interface ThreadViewProps {
   Message ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;
+  /**
+  The chat's read watermark: the thread opens at the first unread message
+  after it, and reading advances it.
+  */
+  readInboxMaxId: number;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   onOpenComments: (message: MessageDto) => void;
+  /**
+  Reports the highest message id the viewport proves read, for the chat the
+  watermark was measured in (a pending report can outlive a switch).
+  */
+  onReadThrough: (chatId: PeerId, maxId: number) => void;
 }
 
 export function ThreadView({
@@ -42,19 +65,109 @@ export function ThreadView({
   onAttach,
   onReact,
   onOpenComments,
+  readInboxMaxId,
+  onReadThrough,
 }: ThreadViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  // Position and read bookkeeping lives in refs so scrolling never re-renders.
+  const positionedChat = useRef<number | null>(null);
+  const readThrough = useRef(0);
+  const readTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pendingRead = useRef<{ chatId: number; maxId: number } | null>(null);
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
 
-  const lastId = messages.at(-1)?.id ?? 0;
+  // The caller is refreshed every render (the `hooks.ts` pattern), so a read
+  // the debounce flushes still reaches it; the chat id captured with the
+  // watermark is what keeps a late report pointed at the right dialog.
+  const onReadThroughRef = useRef(onReadThrough);
   useEffect(() => {
+    onReadThroughRef.current = onReadThrough;
+  });
+
+  const flushRead = useCallback((): void => {
+    readTimer.current = undefined;
+    const pending = pendingRead.current;
+    pendingRead.current = null;
+    if (pending) onReadThroughRef.current(pending.chatId, pending.maxId);
+  }, []);
+
+  const scheduleRead = useCallback(
+    (chatId: PeerId, maxId: number): void => {
+      if (maxId <= readThrough.current) return;
+      readThrough.current = maxId;
+      pendingRead.current = { chatId, maxId };
+      if (readTimer.current !== undefined) clearTimeout(readTimer.current);
+      readTimer.current = setTimeout(flushRead, READ_DEBOUNCE_MS);
+    },
+    [flushRead],
+  );
+
+  // A read still inside the debounce window must not be lost when the view
+  // goes away (the comments screen opens, sign-out, tab close).
+  useEffect(
+    () => () => {
+      if (readTimer.current === undefined) {
+        return;
+      }
+
+      clearTimeout(readTimer.current);
+      flushRead();
+    },
+    [flushRead],
+  );
+
+  /**
+  Reduces the scroll container's current position to a read watermark: every
+  incoming message at least partially in view, or the newest one when pinned
+  to the bottom. An already-reported watermark is left alone.
+  */
+  const reportVisible = useCallback(
+    (element: HTMLDivElement): void => {
+      const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+      const visible = new Set<number>();
+      if (!atBottom) {
+        const container = element.getBoundingClientRect();
+        for (const node of element.querySelectorAll<HTMLElement>('[data-message-id]')) {
+          const rect = node.getBoundingClientRect();
+          if (rect.top < container.bottom && rect.bottom > container.top) visible.add(Number(node.dataset.messageId));
+        }
+      }
+      const watermark = readWatermark(messages, visible, atBottom);
+      if (watermark !== null && chat) scheduleRead(chat.id, watermark);
+    },
+    [chat, messages, scheduleRead],
+  );
+
+  const lastId = messages.at(-1)?.id ?? 0;
+  useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (!element || !stickToBottom.current) return;
+    if (!element || !chat) return;
+    if (positionedChat.current !== chat.id) {
+      // Wait for the first window: deciding on an empty list would land the
+      // position before the messages it belongs to exist.
+      if (loading || messages.length === 0) return;
+      positionedChat.current = chat.id;
+      readThrough.current = 0;
+      const anchor = firstUnread(messages, readInboxMaxId);
+      if (anchor) {
+        const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
+        const target = divider ?? element.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(anchor.id))}"]`);
+        target?.scrollIntoView({ block: 'start' });
+      } else {
+        element.scrollTop = element.scrollHeight;
+      }
+      stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+      reportVisible(element);
+      return;
+    }
+    if (!stickToBottom.current) return;
     element.scrollTop = element.scrollHeight;
-  }, [lastId, chat?.id, messages.length]);
+    // A live message pinned to the bottom is on screen; report it read.
+    reportVisible(element);
+  }, [chat, lastId, messages, loading, readInboxMaxId, reportVisible]);
 
   if (!chat) {
     return (
@@ -66,6 +179,7 @@ export function ThreadView({
 
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
   const messageById = new Map(messages.map((message) => [message.id, message]));
+  const unreadAnchorId = firstUnread(messages, readInboxMaxId)?.id ?? null;
 
   /**
   Scrolls the thread to a loaded message and flashes it, so a quote click
@@ -103,7 +217,8 @@ export function ThreadView({
         ref={scrollRef}
         onScroll={(event) => {
           const element = event.currentTarget;
-          stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+          stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+          reportVisible(element);
         }}
       >
         {messages.length > 0 ? (
@@ -117,6 +232,11 @@ export function ThreadView({
           <Fragment key={message.id}>
             {index === 0 || !isSameDay(messages[index - 1].date, message.date) ? (
               <div className="day">{formatDay(message.date)}</div>
+            ) : null}
+            {message.id === unreadAnchorId ? (
+              <div className="unread-divider" data-unread-divider>
+                Unread messages
+              </div>
             ) : null}
             <MessageRow
               message={message}

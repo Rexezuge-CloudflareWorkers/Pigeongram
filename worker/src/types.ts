@@ -253,6 +253,11 @@ export interface DialogDto {
   chat: ChatDto;
   lastMessage: MessageDto | null;
   unread: number;
+  /**
+  Id of the last read incoming message; incoming messages after it are the
+  unread ones. The SPA opens a chat at this watermark instead of the bottom.
+  */
+  readInboxMaxId: number;
   pinned: boolean;
   muted: boolean;
 }
@@ -264,7 +269,20 @@ export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
   | { type: 'reactions'; chatId: PeerId; messageId: number; reactions: MessageReactionDto[] }
-  | { type: 'read'; chatId: PeerId; maxId: number; unread: number };
+  | {
+      type: 'read';
+      chatId: PeerId;
+      maxId: number;
+      /**
+      Remaining unread count; only meaningful for inbox reads.
+      */
+      unread: number;
+      /**
+      Whether the account's own inbox was read (as opposed to the peer reading
+      the account's messages); only inbox reads advance `readInboxMaxId`.
+      */
+      inbox: boolean;
+    };
 
 /**
 Messages the SPA sends over the updates socket.

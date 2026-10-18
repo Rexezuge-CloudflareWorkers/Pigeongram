@@ -129,7 +129,8 @@ export const fetchHistory = (
 export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Promise<SendMessageResult> =>
   rpc('sendMessage', { chatId, text, ...(replyTo !== undefined && { replyTo }) });
 
-export const readHistory = (chatId: PeerId): Promise<unknown> => rpc('readHistory', { chatId });
+export const readHistory = (chatId: PeerId, maxId?: number): Promise<unknown> =>
+  rpc('readHistory', { chatId, ...(maxId !== undefined && { maxId }) });
 
 export const fetchComments = (
   chatId: PeerId,

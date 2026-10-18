@@ -17,6 +17,11 @@ export interface MeDto {
   lastName: string | null;
   username: string | null;
   phone: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null. It changes
+  when the photo changes and only exists to bust the `/api/avatar` cache.
+  */
+  photo: string | null;
 }
 
 export type ChatKind = 'user' | 'bot' | 'group' | 'supergroup' | 'channel';
@@ -26,6 +31,10 @@ export interface ChatDto {
   kind: ChatKind;
   title: string;
   username: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null.
+  */
+  photo: string | null;
 }
 
 export interface MessageDto {
@@ -41,10 +50,44 @@ export interface MessageDto {
   text: string;
   service: boolean;
   /**
-  Whether the message carries a downloadable photo.
+  The message's downloadable media, or null for text/service messages.
   */
-  photo: boolean;
+  media: MessageMediaDto | null;
 }
+
+/**
+Kinds of user-visible media the bridge carries. `animation` is Telegram's
+GIF-style silent video.
+*/
+export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';
+
+export interface MessageMediaDto {
+  kind: MessageMediaKind;
+  /**
+  Original file name for documents; null for photos.
+  */
+  fileName: string | null;
+  /**
+  MIME type as sent by the uploader, when known.
+  */
+  mime: string | null;
+  /**
+  Size in bytes, when known.
+  */
+  size: number | null;
+  width: number | null;
+  height: number | null;
+  /**
+  Duration in seconds for videos/audio/voice.
+  */
+  duration: number | null;
+}
+
+/**
+Media kinds `POST /api/upload` accepts. The SPA maps the file's MIME onto one
+of these; the engine never guesses from bytes.
+*/
+export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
 
 export interface DialogDto {
   chat: ChatDto;

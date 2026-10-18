@@ -4,6 +4,7 @@ import { EngineError } from './errors';
 import { errorResponse, readJsonBody } from './http';
 import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
+import { avatarResponse, fileResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
 import { UpdatesSocketHub } from './socket-hub';
 import { EngineStore } from './stats';
@@ -125,6 +126,11 @@ export class SessionEngine {
       case 'POST /api/rpc': {
         return Response.json(await this.rpc(request));
       }
+      case 'POST /api/upload': {
+        const response = await uploadResponse(this.driver, request, url, this.env);
+        this.afterActivity();
+        return response;
+      }
       case 'POST /api/wake': {
         return Response.json(await this.runWake('manual'));
       }
@@ -132,7 +138,14 @@ export class SessionEngine {
         return Response.json(this.stats(url));
       }
       case 'GET /api/file': {
-        return await this.file(url);
+        const response = await fileResponse(this.driver, request, url);
+        this.afterActivity();
+        return response;
+      }
+      case 'GET /api/avatar': {
+        const response = await avatarResponse(this.driver, url);
+        this.afterActivity();
+        return response;
       }
       default: {
         return Response.json({ error: 'Not found' }, { status: 404 });
@@ -171,22 +184,6 @@ export class SessionEngine {
   private stats(url: URL): StatsDto {
     const days = url.searchParams.has('days') ? clampInt(Number(url.searchParams.get('days')), 1, 30, 7) : 7;
     return this.store.stats(days);
-  }
-
-  private async file(url: URL): Promise<Response> {
-    const chatId = Number(url.searchParams.get('chatId'));
-    const messageId = Number(url.searchParams.get('messageId'));
-    if (!Number.isSafeInteger(chatId) || chatId === 0 || !Number.isSafeInteger(messageId)) {
-      throw new EngineError('chatId and messageId query parameters are required', 400);
-    }
-    const stream = await this.driver.downloadPhoto(chatId, messageId);
-    this.afterActivity();
-    return new Response(stream, {
-      headers: {
-        'content-type': 'application/octet-stream',
-        'cache-control': 'private, max-age=3600',
-      },
-    });
   }
 
   private async logout(): Promise<{ ok: true }> {

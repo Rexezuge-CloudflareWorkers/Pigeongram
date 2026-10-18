@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
+import { formatBytes, formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
 import { applyEditedMessage, applyNewMessage, applyReadUpdate, findChatTitle, mergeMessages, replaceMessage } from '../../pages/src/state';
-import type { DialogDto, MessageDto } from '../../pages/src/types';
+import type { DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
+
+const PHOTO: MessageMediaDto = {
+  kind: 'photo',
+  fileName: null,
+  mime: null,
+  size: 1000,
+  width: 320,
+  height: 240,
+  duration: null,
+};
 
 function message(overrides: Partial<MessageDto> & { id: number; chatId: number }): MessageDto {
   return {
@@ -13,14 +23,14 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     date: NOW,
     text: `message ${overrides.id}`,
     service: false,
-    photo: false,
+    media: null,
     ...overrides,
   };
 }
 
 function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
   return {
-    chat: { id, kind: 'user', title: `Chat ${id}`, username: null },
+    chat: { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null },
     lastMessage: null,
     unread: 0,
     pinned: false,
@@ -119,8 +129,18 @@ describe('formatting helpers', () => {
     expect(initials('Ada Lovelace')).toBe('AL');
     expect(initials('Telegram')).toBe('T');
     expect(initials(' '.repeat(3))).toBe('?');
-    expect(previewOf('hello', false)).toBe('hello');
-    expect(previewOf('', true)).toBe('Photo');
-    expect(previewOf('', false)).toBe('—');
+    expect(previewOf('hello', null)).toBe('hello');
+    expect(previewOf('caption', PHOTO)).toBe('caption');
+    expect(previewOf('', PHOTO)).toBe('Photo');
+    expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice message');
+    expect(previewOf('', null)).toBe('—');
+  });
+
+  it('formats byte sizes', () => {
+    expect(formatBytes(null)).toBe('');
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(2048)).toBe('2.0 KB');
+    expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
+    expect(formatBytes(1024 * 1024 * 1024).length).toBeGreaterThan(0);
   });
 });

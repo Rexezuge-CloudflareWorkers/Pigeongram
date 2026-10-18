@@ -41,7 +41,7 @@ class FakeDriver {
   }
 }
 
-const ME: MeDto = { id: 1, firstName: 'Ada', lastName: null, username: 'ada', phone: null };
+const ME: MeDto = { id: 1, firstName: 'Ada', lastName: null, username: 'ada', phone: null, photo: null };
 
 function createFlow(): {
   driver: FakeDriver;

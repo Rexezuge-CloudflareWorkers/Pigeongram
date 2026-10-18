@@ -1,8 +1,11 @@
 import type { ConnectionState } from '@mtcute/core';
 import { User } from '@mtcute/core';
-import type { MeDto, UpdateEvent } from '../types';
+import type { MeDto, MessageDto, UpdateEvent } from '../types';
 import { toMeDto } from './dto';
-import { streamPhoto } from './media';
+import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
+import { streamAvatar, streamMessageMedia } from './media';
+import type { UploadSpec } from './upload';
+import { sendUploadedMedia } from './upload';
 import { createMtBundle } from './mtproto/client';
 import type { MtBundle } from './mtproto/client';
 import type { TransactionalStorageLike } from './mtproto/sqlite';
@@ -242,8 +245,16 @@ export class TelegramDriver {
     return dispatchRpc(this.#ensure().client, method, params);
   }
 
-  async downloadPhoto(chatId: number, messageId: number): Promise<ReadableStream<Uint8Array>> {
-    return streamPhoto(this.#ensure().client, chatId, messageId);
+  async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
+    return streamMessageMedia(this.#ensure().client, chatId, messageId, options);
+  }
+
+  async streamAvatar(chatId: number, size: AvatarSize): Promise<MediaDownload> {
+    return streamAvatar(this.#ensure().client, chatId, size);
+  }
+
+  async sendUpload(spec: UploadSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto> {
+    return sendUploadedMedia(this.#ensure().client, spec, body, signal);
   }
 
   /**

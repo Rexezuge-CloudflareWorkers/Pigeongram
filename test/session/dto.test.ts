@@ -39,6 +39,23 @@ const rawGroup = {
   version: 1,
 } as unknown as tl.RawChat;
 
+const rawUserWithPhoto = {
+  ...rawUser,
+  id: 3,
+  firstName: 'Grace',
+  lastName: 'Hopper',
+  username: 'grace',
+  accessHash: Long.fromNumber(3000),
+  photo: { _: 'userProfilePhoto', photoId: Long.fromNumber(70), dcId: 2, hasVideo: false },
+} as unknown as tl.RawUser;
+
+const rawGroupWithPhoto = {
+  ...rawGroup,
+  id: 11,
+  title: 'Photo Group',
+  photo: { _: 'chatPhoto', photoId: Long.fromNumber(71), dcId: 2, hasVideo: false },
+} as unknown as tl.RawChat;
+
 const rawChannel = {
   _: 'channel',
   id: 20,
@@ -88,31 +105,62 @@ describe('toChatDto', () => {
       kind: 'user',
       title: 'Ada Lovelace',
       username: 'ada',
+      photo: null,
     });
     expect(toChatDto(new User(rawBot))).toEqual({
       id: 5,
       kind: 'bot',
       title: 'Helper',
       username: 'helper_bot',
+      photo: null,
     });
     expect(toChatDto(new Chat(rawGroup))).toEqual({
       id: -10,
       kind: 'group',
       title: 'Old Group',
       username: null,
+      photo: null,
     });
     expect(toChatDto(new Chat(rawChannel))).toEqual({
       id: getMarkedPeerId(20, 'channel'),
       kind: 'channel',
       title: 'Announcements',
       username: 'announce',
+      photo: null,
     });
     expect(toChatDto(new Chat(rawSupergroup))).toEqual({
       id: getMarkedPeerId(30, 'channel'),
       kind: 'supergroup',
       title: 'Team',
       username: null,
+      photo: null,
     });
+  });
+
+  it('carries the small photo as an opaque cache-busting token', () => {
+    // The tokens are mtcute's `uniqueFileId`s for the fixtures above; pinning
+    // them keeps the cache-busting contract (same bytes => same URL) testable.
+    expect(toChatDto(new User(rawUserWithPhoto))).toEqual({
+      id: 3,
+      kind: 'user',
+      title: 'Grace Hopper',
+      username: 'grace',
+      photo: 'AQADRgAI',
+    });
+    expect(toChatDto(new Chat(rawGroupWithPhoto))).toEqual({
+      id: -11,
+      kind: 'group',
+      title: 'Photo Group',
+      username: null,
+      photo: 'AQADRwAI',
+    });
+  });
+
+  it('falls back to no avatar when the peer has no usable access hash', () => {
+    // `User.photo` builds an input peer internally and throws without an
+    // access hash; the mapping must degrade to the initials fallback.
+    const noAccessHash = { ...rawUserWithPhoto, accessHash: undefined } as unknown as tl.RawUser;
+    expect(toChatDto(new User(noAccessHash)).photo).toBeNull();
   });
 });
 
@@ -127,11 +175,11 @@ describe('toMessageDto', () => {
       date: 1_700_000_000_000,
       text: 'hello',
       service: false,
-      photo: false,
+      media: null,
     });
   });
 
-  it('flags outgoing, service and photo messages', () => {
+  it('flags outgoing and service messages', () => {
     expect(toMessageDto(message({ out: true })).outgoing).toBe(true);
 
     const service = new Message(
@@ -149,7 +197,9 @@ describe('toMessageDto', () => {
     expect(serviceDto.service).toBe(true);
     expect(serviceDto.text).toBe('');
     expect(serviceDto.id).toBe(8);
+  });
 
+  it('maps a photo message into the media DTO', () => {
     const photo = message({
       media: {
         _: 'messageMediaPhoto',
@@ -165,7 +215,56 @@ describe('toMessageDto', () => {
       },
     });
     expect(photo.media?.type).toBe('photo');
-    expect(toMessageDto(photo).photo).toBe(true);
+    expect(toMessageDto(photo).media).toEqual({
+      kind: 'photo',
+      fileName: null,
+      mime: null,
+      size: 1000,
+      width: 320,
+      height: 240,
+      duration: null,
+    });
+  });
+
+  it('maps a video document into the media DTO', () => {
+    const video = message({
+      media: {
+        _: 'messageMediaDocument',
+        document: {
+          _: 'document',
+          id: Long.fromNumber(9),
+          accessHash: Long.fromNumber(99),
+          fileReference: new Uint8Array([3]),
+          date: 1_700_000_000,
+          mimeType: 'video/mp4',
+          size: 4096,
+          dcId: 2,
+          attributes: [
+            { _: 'documentAttributeVideo', w: 1280, h: 720, duration: 12, supportsStreaming: true },
+            { _: 'documentAttributeFilename', fileName: 'clip.mp4' },
+          ],
+        },
+      },
+    });
+    expect(toMessageDto(video).media).toEqual({
+      kind: 'video',
+      fileName: 'clip.mp4',
+      mime: 'video/mp4',
+      size: 4096,
+      width: 1280,
+      height: 720,
+      duration: 12,
+    });
+  });
+
+  it('leaves non-file media out of the DTO', () => {
+    const geo = message({
+      media: {
+        _: 'messageMediaGeo',
+        geo: { _: 'geoPoint', lat: 51.5, long: -0.12, accuracyRadius: 5 },
+      },
+    });
+    expect(toMessageDto(geo).media).toBeNull();
   });
 
   it('maps a channel message to the marked channel id', () => {

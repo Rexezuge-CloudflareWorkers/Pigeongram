@@ -46,9 +46,12 @@ The Free plan gives 10 ms CPU per invocation (wall time on waits is not CPU). Th
 
 - **No history backfill.** `getDifference` updates and reference messages are persisted; no dialogs/messages are
   fetched into the DO. History and media are served live through the bridge while the session is connected.
+- **Chunked crypto, not buffered payloads.** `/api/file`, `/api/avatar` and `/api/upload` stream; uploads are
+  chunked and encrypted (AES-IGE) part by part on mtcute's upload pool. Upload CPU grows with the file size, so
+  `UPLOAD_MAX_BYTES` is also the CPU-affordability knob — lower it if large uploads exhaust the budget.
 - **WASM crypto.** SHA-1/IGE/gzip come from `@mtcute/wasm` (57 KB), imported as a `CompiledWasm` module and
   instantiated synchronously; the JS crypto is only for the random pool and 2FA (`crypto.subtle`).
-- **Small bundle.** mtcute core is ~427 KB gzip in the worker bundle; the 3 MiB Free limit has plenty of room.
+- **Small bundle.** mtcute core is ~470 KB gzip in the worker bundle; the 3 MiB Free limit has plenty of room.
 - **Bounded storage.** The DO's SQLite is the only storage (no D1, no R2). `GET /api/stats` reports
   `databaseBytes` so growth is visible in the soak.
 
@@ -69,11 +72,34 @@ the engine's configuration message.
 | `POST /api/logout`         | —                                       | `{"ok": true}`; logs out, closes updates sockets, re-arms  |
 | `POST /api/rpc`            | `{"method": string, "params"?: object}` | method-specific JSON (below)                               |
 | `GET /api/updates`         | WebSocket                               | server events (below)                                      |
-| `GET /api/file`            | `?chatId=&messageId=`                   | photo bytes (`image/*` served as octet-stream)             |
+| `GET /api/file`            | `?chatId=&messageId=&thumb=1` + `Range` | media bytes (see below)                                    |
+| `GET /api/avatar`          | `?chatId=&size=small\|big`              | profile photo bytes (`image/jpeg`, cached a day)           |
+| `POST /api/upload`         | query params + raw body (see below)     | `{"message": MessageDto}`; sends one file                  |
 | `POST /api/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                 |
 | `GET /api/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)  |
 
 `GET /health` lives on the worker, not the engine, and is never gated.
+
+### Media routes
+
+`GET /api/file` serves every downloadable kind (photo/video/audio/voice/sticker/document) with the right content
+type, resolved fresh from the message on each request — no file location or `file_reference` ever reaches the
+browser. `thumb=1` answers with the best thumbnail instead (video posters). Videos and documents are served with
+`accept-ranges`/`content-range` so `<video>` seeking works; Telegram's 4 KB offset alignment is handled
+server-side by requesting from the aligned offset and dropping the extra prefix bytes.
+
+`GET /api/avatar` resolves the peer's photo server-side. The DTOs carry an opaque `photo` token
+(`ChatPhoto.uniqueFileId`) purely to bust the browser cache; the SPA appends it to the URL as `v=`.
+
+`POST /api/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
+string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
+`content-length` when set), `fileName`, `mime`, `caption`, and optional `width`/`height`/`duration`. The body is
+streamed through the DO into mtcute's upload connection pool, so nothing buffers in the isolate, and
+`UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) rejects oversized requests with a 413 before Telegram is
+touched. The query is parsed once more at the edge with the same parser, so a rejected upload never reaches the
+DO at all — workerd reads a request stream after its response when a Durable Object answers without consuming the
+body (cloudflare/workerd#918). The kind is never guessed server-side: the SPA converts non-JPEG
+canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else.
 
 ### RPC methods
 
@@ -128,7 +154,8 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
    `GET /api/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.
 4. QR login completes end-to-end: `phase` walks `qr → scanned → (password) → authorized`, and `me` is populated.
 5. A message sent to the account from another device appears in the SPA within a wake interval or immediately while
-   a tab is open (live mode); sends and reads round-trip.
+   a tab is open (live mode); sends and reads round-trip, a photo/video upload lands in the thread and as the chat
+   preview, and avatars render in the chat list, thread header and sidebar.
 6. `wrangler tail` shows no unhandled exceptions during the cycles above.
 
 ## Milestone 2 — 72 h soak

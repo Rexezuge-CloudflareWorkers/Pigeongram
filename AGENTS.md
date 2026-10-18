@@ -106,21 +106,25 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - **The test partition is a convention:** the SPA suite lives in `test/web/**` (the `defineRepoVitestConfig` web project's
   shape); everything else in `test/` runs under `node` as the backend half.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
-  filename. Job names (`Checks`, `Unit Tests`, `Build Web App`) are the required-check names; keep them stable.
+  filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Unit Tests`, `Build Web App`) are the required-check
+  names; keep them stable.
 - **`pnpm run lint` uses `--fix`.** Run it locally and commit its fixes; CI's `--quiet` discards warnings, which is why the
-  separate `format:check` step exists.
+  separate `format:check` job exists.
+- **No `backup-d1.yml`.** The family's database backup exports D1, which this repo does not have; the DO's SQLite is
+  covered by Cloudflare's point-in-time recovery, and it holds only the mtcute session, update state and small caches.
+  The README's CI section says so where a reader would look for the workflow.
 - **`minimumReleaseAge: 0` lives in `pnpm-workspace.yaml`.** pnpm 11 reads settings from there, not `.npmrc`; without it the
   default 24-hour window blocks installing a just-published `@rexezuge/tooling` release.
 
 ## Workflows
 
-| Workflow                       | Trigger                                    | What it does                                                                                                                                                                     |
-| ------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `continuous-integration.yml`   | PR, push to `main`, upstream-sync dispatch | `Checks` (typecheck+lint, format:check, god-files), `Unit Tests` (+coverage artifact), `Build Web App`; Dependabot auto-merge and upstream-sync deployment dispatch as tail jobs |
-| `continuous-deployment.yml`    | CI success on `main`, manual dispatch      | `deploy-worker` (materialize config → dry-run gate → deploy) and `deploy-pages` (build → ensure project → deploy) in parallel                                                    |
-| `backup-main.yml`              | push to `main`, monthly                    | Mirrors the repo to Azure DevOps / GitLab — opt-in by secrets; skips green when unset                                                                                            |
-| `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                        |
-| `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                    |
+| Workflow                       | Trigger                                    | What it does                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `continuous-integration.yml`   | PR, push to `main`, upstream-sync dispatch | One job per gate — Typecheck, Lint, Format, God Files, Unit Tests (+coverage artifact), Build Web App — with Dependabot auto-merge and upstream-sync deployment dispatch as tails |
+| `continuous-deployment.yml`    | CI success on `main`, manual dispatch      | `deploy-worker` (materialize config → dry-run gate → deploy) and `deploy-pages` (build → ensure project → deploy) in parallel                                                     |
+| `backup-main.yml`              | push to `main`, monthly                    | Mirrors the repo to Azure DevOps / GitLab — opt-in by secrets; skips green when unset                                                                                             |
+| `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                         |
+| `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                     |
 
 Secrets/variables and the branch-protection checklist live in `README.md` (required settings) and are mirrored in the
 workflow files themselves.
@@ -133,7 +137,8 @@ The session engine, the bridge (`POST /api/rpc`, `WS /api/updates`, the media ro
 exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the **`telegram-tt` fork** behind
 the existing bridge contract, which also needs the domain + Cloudflare Access setup so the interim `SPIKE_TOKEN`
 gate can be removed. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
-Secrets Store initialization, DO storage backups, coverage floors, integration tests, and
+Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's
+point-in-time recovery is the current answer), coverage floors, integration tests, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.
 
 ## Keeping AGENTS.md current

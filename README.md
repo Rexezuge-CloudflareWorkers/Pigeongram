@@ -67,24 +67,35 @@ milestone acceptance checklists.
 ## CI and deployment
 
 - **Continuous Integration** (`.github/workflows/continuous-integration.yml`) runs on PRs, pushes to `main`, and
-  upstream-sync dispatches. Jobs: **Checks** (typecheck + lint, formatting, god-files), **Unit Tests** (coverage artifact),
-  **Build Web App**, plus the two tail jobs (Dependabot auto-merge, upstream-sync deployment dispatch).
+  upstream-sync dispatches. One job per gate: **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**
+  (coverage artifact), **Build Web App**, plus the two tail jobs (Dependabot auto-merge, upstream-sync deployment
+  dispatch).
 - **Continuous Deployment** (`.github/workflows/continuous-deployment.yml`) runs after CI succeeds on `main`, with
   `deploy-worker` and `deploy-pages` in parallel. The worker deploy materializes `wrangler.jsonc`, runs
   `wrangler deploy --dry-run` as a gate, then deploys; the Pages deploy builds the SPA, creates the Pages project if
   absent, and deploys.
+- **Backup Main Branch** (`.github/workflows/backup-main.yml`) mirrors `main` to Azure DevOps and/or GitLab after every
+  push and on a monthly schedule. Both destinations are opt-in by secret; with neither configured the workflow skips
+  green.
+
+There is deliberately no database-backup workflow: the family's `backup-d1.yml` exports a D1 database, which this repo
+does not use. The session engine's storage is the Durable Object's SQLite, which Cloudflare streams to object storage
+with point-in-time recovery, and it holds the mtcute session, the update state and small caches — losing it costs a QR
+re-login, not history.
 
 ### Repository settings (set before merging the first scaffold PR)
 
-| Kind                | Name                                                                  | Purpose                                                  |
-| ------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
-| Secret              | `CLOUDFLARE_API_TOKEN`                                                | Workers Scripts:Edit + Pages:Edit, scoped to the account |
-| Secret              | `CLOUDFLARE_ACCOUNT_ID`                                               | Cloudflare account id                                    |
-| Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                       | Overrides the default `telegram-web-client-web`          |
-| Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON` | Per-environment wrangler overrides                       |
+| Kind                | Name                                                                     | Purpose                                                  |
+| ------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Secret              | `CLOUDFLARE_API_TOKEN`                                                   | Workers Scripts:Edit + Pages:Edit, scoped to the account |
+| Secret              | `CLOUDFLARE_ACCOUNT_ID`                                                  | Cloudflare account id                                    |
+| Secret (optional)   | `BACKUP_REPO_AZURE_DEVOPS_SSH_KEY` / `BACKUP_REPO_AZURE_DEVOPS_REPO_URL` | Mirrors `main` to Azure DevOps (backup workflow)         |
+| Secret (optional)   | `BACKUP_REPO_GITLAB_SSH_KEY` / `BACKUP_REPO_GITLAB_REPO_URL`             | Mirrors `main` to GitLab (backup workflow)               |
+| Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                          | Overrides the default `telegram-web-client-web`          |
+| Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`    | Per-environment wrangler overrides                       |
 
 Also: enable **Allow auto-merge** (the Dependabot job depends on it), and after the first CI run set branch protection
-on `main` with required checks **Checks**, **Unit Tests**, **Build Web App**.
+on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Build Web App**.
 
 ### First-deploy verification
 

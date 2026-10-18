@@ -14,9 +14,11 @@ name: Upstream Sync
 
 on:
   schedule:
-    # Weekly, Monday 02:00 UTC. Off the hour on purpose: GitHub drops scheduled
-    # workflows that share a minute with high-traffic crons.
-    - cron: '0 2 * * 1'
+    # Weekly, Monday 02:17 UTC. Deliberately off the hour: scheduled jobs queued
+    # at `:00` are delayed and can be dropped under load — a sibling repo's weekly
+    # syncs stopped firing that way, and changing the value restarts a schedule
+    # that has silently stopped.
+    - cron: '17 2 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -42,7 +44,7 @@ jobs:
       # arriving through a version bump nobody reviewed.
       - name: Sync Changes
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        uses: aormsby/Fork-Sync-With-Upstream-action@9e2e4fd0829a2fe8ca4b13693faac9230c414d51 # v3.4
         with:
           # This repository itself: a fork of it syncs from it, which is how
           # every sibling repo in the family wires this file.

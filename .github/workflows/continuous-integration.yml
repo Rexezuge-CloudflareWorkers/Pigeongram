@@ -1,17 +1,25 @@
 # Continuous Integration — the family's converged gate (the superset in
 # `@rexezuge/tooling`'s `github/workflows/continuous-integration.yml`), trimmed
-# to the jobs that gate something in this repository.
+# to the jobs that gate something in this repository and split per tool the way
+# the sibling repos ship it.
 #
 # Dropped against the superset, with the reason:
-#   * locales / migration lock — no locale bundles and no D1 here; the session
-#     engine's storage is the Durable Object's SQLite, migrated by wrangler.
+#   * locales — no locale bundles here.
+#   * migration lock — no D1; the session engine's storage is the Durable Object's
+#     SQLite, migrated by the `durable_objects` migrations in
+#     worker/wrangler.template.jsonc, and the family's `validate:migrations`
+#     script has no counterpart here.
 #   * web-tests / integration-tests — this repo runs one Vitest config whose two
-#     projects partition the suite (see vitest.config.mts), and there is nothing
-#     to run under the Workers pool yet.
+#     projects partition the suite (see vitest.config.mts), so `unit-tests`
+#     already runs everything; there is nothing to run under the Workers pool yet.
+#   * floci-smoke — no AWS clients and no service emulator.
 #   * spa-shell — the worker is API-only and serves no embedded shell.
 #
-# Job `name:` values (Checks, Unit Tests, Build Web App) are the required-check
-# names configured in branch protection; keep them stable.
+# A job per gate because a failure is then named by the job rather than arriving
+# inside a combined `checks` log, and a retry re-runs only the tool that broke.
+# Job `name:` values — Typecheck, Lint, Format, God Files, Unit Tests, Build Web
+# App — are the required-check names configured in branch protection; keep them
+# stable.
 
 name: Continuous Integration
 
@@ -33,8 +41,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Checks
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
 
     steps:
@@ -46,20 +54,64 @@ jobs:
 
       # `pnpm run typecheck` reaches every workspace package and the repo's own
       # scripts (see the root package.json).
-      - name: Run Type Check and Lint
-        run: pnpm run typecheck && pnpm run lint
+      - name: Run Typecheck
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm run typecheck
+          max_attempts: '2'
 
-      # Its own step, and read-only, because the lint step cannot catch this:
-      # `pnpm run lint` is `eslint --fix --quiet`, and `--fix` repairs what it
-      # can while `--quiet` suppresses the rest — so CI can exit 0 on a tree
-      # Prettier rejects, the repairs land in the runner's checkout, and they are
-      # thrown away. `prettier --check` is the one command that fails instead of
-      # repairing.
+  # Lint and typecheck share nothing: `noEmit` everywhere, no project references,
+  # and ESLint builds its own TS program, so neither consumes the other's output.
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Run Lint
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm run lint
+          max_attempts: '2'
+
+  # Its own job, and read-only, because the lint job cannot catch this:
+  # `pnpm run lint` is `eslint --fix --quiet`, and `--fix` repairs what it can
+  # while `--quiet` suppresses the rest — so CI can exit 0 on a tree Prettier
+  # rejects, the repairs land in the runner's checkout, and they are thrown away.
+  # `prettier --check` is the one command that fails instead of repairing, so it
+  # is deliberately not retried: a formatting failure is a defect, not a flake.
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
       - name: Check Formatting
         run: pnpm run format:check
 
+  god-files:
+    name: God Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
       # A file growing past the limit is invisible to typecheck, lint, and the
-      # tests — they all pass on a 500-line component.
+      # tests — they all pass perfectly well on a 500-line component.
       - name: Check God-Files
         uses: ./.github/actions/retry-step
         with:
@@ -77,6 +129,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-env
 
+      # One Vitest run, both projects (worker under `node`, SPA under jsdom).
       - name: Run Tests with Coverage
         uses: ./.github/actions/retry-step
         with:
@@ -91,7 +144,7 @@ jobs:
           path: coverage/
           retention-days: 14
 
-  # Only the SPA build. The worker is covered by the `checks` job
+  # Only the SPA build. The worker is covered by the `typecheck` job
   # (`pnpm -r typecheck` reaches worker/); `wrangler deploy --dry-run` in CD is
   # what proves it bundles.
   build:
@@ -112,7 +165,10 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}
     name: Auto-Merge Dependabot PR
     needs:
-      - checks
+      - typecheck
+      - lint
+      - format
+      - god-files
       - unit-tests
       - build
     permissions:
@@ -140,7 +196,10 @@ jobs:
     if: ${{ github.event_name == 'repository_dispatch' && github.event.action == 'Upstream Sync Integration' }}
     name: Dispatch Upstream Sync Deployment
     needs:
-      - checks
+      - typecheck
+      - lint
+      - format
+      - god-files
       - unit-tests
       - build
     permissions:

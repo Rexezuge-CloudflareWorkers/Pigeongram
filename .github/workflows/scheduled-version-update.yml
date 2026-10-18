@@ -1,9 +1,10 @@
 # Scheduled Version Update — stamp .github/.version twice a month.
 #
-# The stamp is the family's cache-buster: the CD workflow reads it, and the
-# backup workflows use it in branch names. Forked repos skip the schedule
-# (`if: !github.event.repository.fork`) because a fork must not race its
-# upstream's push.
+# The stamp is the family's cache-buster. Nothing in this repository reads it
+# today — the siblings' deploy workflows and backup branch names do — so here it
+# is a marker that keeps the file's shape identical across the family. Forked
+# repos skip the schedule (`if: !github.event.repository.fork`) because a fork
+# must not race its upstream's push.
 
 name: Scheduled Version Update
 
@@ -34,5 +35,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add .github/.version
-          git diff --staged --quiet || git commit -m "chore: update .version stamp"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "CHORE: Version Update"
+
+          # The push is the one step that races the repository's own CI, so it is
+          # retried rather than failing the run on a transient rejection.
+          for i in {1..3}; do
+            if git push; then
+              break
+            fi
+            if [ $i -lt 3 ]; then sleep 10; else exit 1; fi
+          done

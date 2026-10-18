@@ -103,6 +103,54 @@ export interface MessageReactionDto {
   chosen: boolean;
 }
 
+/**
+The message a message replies to, mapped from Telegram's reply header.
+
+Same-chat headers carry only the message id, so the SPA resolves the sender
+and snippet from the loaded thread; cross-chat headers carry the sender, date
+and (sometimes) a media descriptor, but their text usually only exists when
+the reply quotes a fragment explicitly.
+*/
+export interface MessageReplyDto {
+  /**
+  Where the replied-to message lives.
+  */
+  origin: 'same_chat' | 'other_chat' | 'private';
+  /**
+  Id of the replied-to message in its chat; null for private-thread replies.
+  */
+  messageId: number | null;
+  /**
+  Marked id of the chat the replied-to message lives in (cross-chat replies only).
+  */
+  chatId: PeerId | null;
+  /**
+  The replied-to message's sender name, when the header names one; null for
+  same-chat replies.
+  */
+  senderName: string | null;
+  /**
+  Unix milliseconds of the replied-to message, when the header carries it.
+  */
+  date: number | null;
+  /**
+  Explicit quote text, or the text the header carried; empty when neither is present.
+  */
+  text: string;
+  /**
+  Rich-text spans of `text` (empty when the reply has none).
+  */
+  entities: MessageEntityDto[];
+  /**
+  Kind of the replied-to message's media, when the header embeds it (cross-chat replies).
+  */
+  mediaKind: MessageMediaKind | null;
+  /**
+  Whether the reply quotes a fragment of the replied-to message.
+  */
+  quote: boolean;
+}
+
 export interface MessageDto {
   id: number;
   chatId: PeerId;
@@ -127,6 +175,10 @@ export interface MessageDto {
   The message's downloadable media, or null for text/service messages.
   */
   media: MessageMediaDto | null;
+  /**
+  The message this one replies to, or null for a plain message.
+  */
+  reply: MessageReplyDto | null;
 }
 
 export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';

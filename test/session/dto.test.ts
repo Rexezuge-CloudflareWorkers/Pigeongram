@@ -178,6 +178,101 @@ describe('toMessageDto', () => {
       reactions: [],
       service: false,
       media: null,
+      reply: null,
+    });
+  });
+
+  it('maps a same-chat reply header, which carries only the message id', () => {
+    const dto = toMessageDto(
+      message({
+        replyTo: { _: 'messageReplyHeader', replyToMsgId: 3 },
+      }),
+    );
+    expect(dto.reply).toEqual({
+      origin: 'same_chat',
+      messageId: 3,
+      chatId: null,
+      senderName: null,
+      date: null,
+      text: '',
+      entities: [],
+      mediaKind: null,
+      quote: false,
+    });
+  });
+
+  it('maps a quote reply with its text and entities', () => {
+    const dto = toMessageDto(
+      message({
+        replyTo: {
+          _: 'messageReplyHeader',
+          replyToMsgId: 3,
+          quote: true,
+          quoteText: 'excerpt',
+          quoteEntities: [{ _: 'messageEntityBold', offset: 0, length: 7 }],
+        },
+      }),
+    );
+    expect(dto.reply?.quote).toBe(true);
+    expect(dto.reply?.text).toBe('excerpt');
+    expect(dto.reply?.entities).toEqual([{ offset: 0, length: 7, kind: 'bold' }]);
+  });
+
+  it('maps a cross-chat reply with sender, date and media kind', () => {
+    const dto = toMessageDto(
+      message({
+        replyTo: {
+          _: 'messageReplyHeader',
+          replyToMsgId: 3,
+          replyToPeerId: { _: 'peerChannel', channelId: 20 },
+          replyFrom: { _: 'messageFwdHeader', date: 1_700_000_000, fromId: { _: 'peerUser', userId: 1 } },
+          replyMedia: {
+            _: 'messageMediaPhoto',
+            photo: {
+              _: 'photo',
+              id: 5,
+              accessHash: Long.fromNumber(55),
+              fileReference: new Uint8Array([1, 2]),
+              date: 1_700_000_000,
+              dcId: 2,
+              sizes: [{ _: 'photoSize', type: 'm', w: 320, h: 240, size: 1000 }],
+            },
+          },
+        },
+      }),
+    );
+    expect(dto.reply).toEqual({
+      origin: 'other_chat',
+      messageId: 3,
+      chatId: getMarkedPeerId(20, 'channel'),
+      senderName: 'Ada Lovelace',
+      date: 1_700_000_000_000,
+      text: '',
+      entities: [],
+      mediaKind: 'photo',
+      quote: false,
+    });
+  });
+
+  it('maps a private-thread reply header to a named sender', () => {
+    const dto = toMessageDto(
+      message({
+        replyTo: {
+          _: 'messageReplyHeader',
+          replyFrom: { _: 'messageFwdHeader', date: 1_700_000_000, fromName: 'Anonymous' },
+        },
+      }),
+    );
+    expect(dto.reply).toEqual({
+      origin: 'private',
+      messageId: null,
+      chatId: null,
+      senderName: 'Anonymous',
+      date: 1_700_000_000_000,
+      text: '',
+      entities: [],
+      mediaKind: null,
+      quote: false,
     });
   });
 

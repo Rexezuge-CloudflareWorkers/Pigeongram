@@ -124,7 +124,8 @@ export const fetchHistory = (
   options: { limit?: number; offsetId?: number; offsetDate?: number } = {},
 ): Promise<GetHistoryResult> => rpc('getHistory', { chatId, ...options });
 
-export const sendMessage = (chatId: PeerId, text: string): Promise<SendMessageResult> => rpc('sendMessage', { chatId, text });
+export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Promise<SendMessageResult> =>
+  rpc('sendMessage', { chatId, text, ...(replyTo !== undefined && { replyTo }) });
 
 export const readHistory = (chatId: PeerId): Promise<unknown> => rpc('readHistory', { chatId });
 
@@ -138,6 +139,10 @@ export interface UploadInput {
   mime: string;
   size: number;
   caption?: string;
+  /**
+  Id of the message being replied to, when the upload is a reply.
+  */
+  replyTo?: number;
   width?: number;
   height?: number;
   duration?: number;
@@ -159,6 +164,7 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
     size: String(input.size),
   });
   if (input.caption) params.set('caption', input.caption);
+  if (input.replyTo !== undefined) params.set('replyTo', String(input.replyTo));
   if (input.width !== undefined) params.set('width', String(input.width));
   if (input.height !== undefined) params.set('height', String(input.height));
   if (input.duration !== undefined) params.set('duration', String(input.duration));

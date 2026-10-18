@@ -1,7 +1,32 @@
-import type { DayBucketDto, StatsDto, WakeCountersDto } from '../types';
 import type { SqlStorageLike } from './mtproto/sqlite';
 
 const RETENTION_MS = 8 * 24 * 60 * 60 * 1000;
+
+/**
+The `GET /api/stats` payloads. Only the worker serves this route, so the
+shapes live with their producer rather than in the shared bridge contract.
+*/
+export interface WakeCountersDto {
+  totalWakes: number;
+  failedWakes: number;
+  avgWakeMs: number;
+  updatesSeen: number;
+  lastWakeAt: number | null;
+}
+
+export interface DayBucketDto {
+  day: string;
+  wakes: number;
+  failures: number;
+  avgMs: number;
+  updates: number;
+}
+
+export interface StatsDto {
+  counters: WakeCountersDto;
+  days: DayBucketDto[];
+  databaseBytes: number | null;
+}
 
 export interface WakeRecord {
   reason: string;

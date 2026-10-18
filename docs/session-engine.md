@@ -93,7 +93,8 @@ server-side by requesting from the aligned offset and dropping the extra prefix 
 
 `POST /api/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
-`content-length` when set), `fileName`, `mime`, `caption`, and optional `width`/`height`/`duration`. The body is
+`content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), and
+optional `width`/`height`/`duration`. The body is
 streamed through the DO into mtcute's upload connection pool, so nothing buffers in the isolate, and
 `UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) rejects oversized requests with a 413 before Telegram is
 touched. The query is parsed once more at the edge with the same parser, so a rejected upload never reaches the
@@ -108,7 +109,7 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `getMe`          | —                                                  | `{me}`                                    |
 | `getDialogs`     | `{limit?: 1..200}`                                 | `{dialogs: DialogDto[]}` (pinned first)   |
 | `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}` | `{messages: MessageDto[]}` (oldest first) |
-| `sendMessage`    | `{chatId, text}`                                   | `{message}`                               |
+| `sendMessage`    | `{chatId, text, replyTo?}`                         | `{message}`                               |
 | `readHistory`    | `{chatId}`                                         | `{}`                                      |
 | `searchMessages` | `{chatId, query, limit?, offsetId?}`               | `{messages, nextOffsetId?}`               |
 | `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`      | `{message: MessageDto \| null}`           |
@@ -120,6 +121,11 @@ The client never sends raw MTProto; the engine resolves peers server-side.
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
 a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
 `customEmojiId` for a custom emoji document), or removes it when both are null/omitted.
+
+A message that replies to another carries `reply`: where the original lives (`origin`), its `messageId`/`chatId`
+when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag. Same-chat
+headers carry only the message id, so the SPA resolves the quote's sender and snippet from the thread it already
+has; `sendMessage` takes `replyTo` (a message id in the same chat) to send one.
 
 ### Updates socket protocol
 

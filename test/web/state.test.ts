@@ -37,6 +37,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     reactions: [],
     service: false,
     media: null,
+    reply: null,
     ...overrides,
   };
 }

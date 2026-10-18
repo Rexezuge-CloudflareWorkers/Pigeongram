@@ -88,6 +88,7 @@ export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv):
   }
 
   const caption = parseCaption(url.searchParams.get('caption'));
+  const replyTo = parseOptionalMessageId(url.searchParams.get('replyTo'));
   const fileName = parseFileName(url.searchParams.get('fileName'));
   const mime = parseMime(url.searchParams.get('mime'));
   const width = parseQuantity(url.searchParams.get('width'));
@@ -99,6 +100,7 @@ export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv):
     kind,
     size,
     ...(caption !== null && { caption }),
+    ...(replyTo !== null && { replyTo }),
     ...(fileName !== null && { fileName }),
     ...(mime !== null && { mime }),
     ...(width !== null && { width }),
@@ -142,6 +144,19 @@ function requireMessageId(value: string | null): number {
   const messageId = parseNumber(value);
   if (!Number.isSafeInteger(messageId) || messageId <= 0) {
     throw new EngineError('messageId query parameter is required', 400);
+  }
+  return messageId;
+}
+
+/**
+A positive message id from the query string, or null when absent/unusable —
+but an explicitly present garbage value is an error, not an omission.
+*/
+function parseOptionalMessageId(value: string | null): number | null {
+  if (value === null) return null;
+  const messageId = parseNumber(value);
+  if (!Number.isSafeInteger(messageId) || messageId <= 0) {
+    throw new EngineError('replyTo must be a positive message id', 400);
   }
   return messageId;
 }

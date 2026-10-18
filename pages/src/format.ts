@@ -45,8 +45,16 @@ Preview line for the chat list.
 */
 export function previewOf(text: string, media: MessageMediaDto | null): string {
   if (text) return text;
-  if (media) return MEDIA_PREVIEWS[media.kind];
+  if (media) return mediaPreview(media.kind);
   return '—';
+}
+
+/**
+Label for a media kind, when only the kind is known — reply headers carry a
+media descriptor (not a full DTO) for cross-chat replies.
+*/
+export function mediaPreview(kind: MessageMediaDto['kind']): string {
+  return MEDIA_PREVIEWS[kind];
 }
 
 const MEDIA_PREVIEWS: Record<MessageMediaDto['kind'], string> = {

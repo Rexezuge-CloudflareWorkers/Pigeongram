@@ -1,0 +1,30 @@
+/* Channel-post comments: the button in the thread and the comments screen. */
+
+.message .comments-button {
+  align-self: flex-start;
+  color: var(--accent);
+  font-size: 13px;
+  text-align: left;
+  padding: 2px 0;
+}
+
+.message .comments-button:hover {
+  text-decoration: underline;
+}
+
+/* Reaction chips rendered without a handler (the comments screen's post header). */
+.message .reaction.static {
+  cursor: default;
+}
+
+.message .reaction.static:hover {
+  border-color: transparent;
+}
+
+/* The post being discussed, pinned at the top of the comments screen. */
+.comments-post .message {
+  max-width: 100%;
+  align-self: stretch;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}

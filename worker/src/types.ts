@@ -1,5 +1,7 @@
 /**
- * The JSON contract shared by the worker, the Pages proxy function and the SPA.
+ * The JSON contract shared by the worker, the Pages proxy function and the SPA:
+ * the DTOs the bridge carries. The RPC method shapes — `RpcMethod`, each
+ * method's parameters and results — live in `rpc-types.ts`.
  *
  * The SPA keeps its own copy of these types (`pages/src/types.ts`) because it
  * is a separate build with its own tsconfig; keep the two in sync when the
@@ -160,6 +162,25 @@ export interface MessageReplyDto {
   quote: boolean;
 }
 
+/**
+Channel posts keep their replies in the channel's linked discussion group;
+Telegram's `replies` header is the post's pointer into that group.
+*/
+export interface MessageCommentsDto {
+  /**
+  Whether the post has a comments section (telegram's `comments` flag).
+  */
+  hasComments: boolean;
+  /**
+  Total number of comments in the thread.
+  */
+  count: number;
+  /**
+  Marked id of the linked discussion group, when the post names one.
+  */
+  discussionChatId: PeerId | null;
+}
+
 export interface MessageDto {
   id: number;
   chatId: PeerId;
@@ -188,6 +209,10 @@ export interface MessageDto {
   The message this one replies to, or null for a plain message.
   */
   reply: MessageReplyDto | null;
+  /**
+  Channel-post comments metadata, or null for messages without a thread.
+  */
+  comments: MessageCommentsDto | null;
 }
 
 /**
@@ -293,89 +318,4 @@ export interface EngineStateDto {
   Present when `phase` is `error`.
   */
   error?: string;
-}
-
-export interface RpcRequestDto {
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-/**
-Methods exposed over `POST /api/rpc`.
-*/
-export type RpcMethod = 'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction';
-
-export interface GetDialogsParams {
-  limit?: number;
-}
-
-export interface GetHistoryParams {
-  chatId: PeerId;
-  limit?: number;
-  /**
-   * Pagination cursor: return messages older than this message. Both fields
-   * come from the oldest loaded message; the UI de-duplicates by id anyway.
-   */
-  offsetId?: number;
-  offsetDate?: number;
-}
-
-export interface SendMessageParams {
-  chatId: PeerId;
-  text: string;
-  /**
-  Id of the message to reply to, in the same chat.
-  */
-  replyTo?: number;
-}
-
-export interface ReadHistoryParams {
-  chatId: PeerId;
-}
-
-export interface SearchMessagesParams {
-  chatId: PeerId;
-  query: string;
-  limit?: number;
-}
-
-export interface SendReactionParams {
-  chatId: PeerId;
-  messageId: number;
-  /**
-  Unicode emoji to set, e.g. `👍`. Mutually exclusive with `customEmojiId`.
-  */
-  emoji?: string | null;
-  /**
-  Decimal document id of a custom emoji to set.
-  */
-  customEmojiId?: string | null;
-}
-
-export interface GetMeResult {
-  me: MeDto;
-}
-
-export interface GetDialogsResult {
-  dialogs: DialogDto[];
-}
-
-export interface GetHistoryResult {
-  messages: MessageDto[];
-}
-
-export interface SendMessageResult {
-  message: MessageDto;
-}
-
-export interface SendReactionResult {
-  /**
-  The reacted message, when Telegram returned it; `null` otherwise.
-  */
-  message: MessageDto | null;
-}
-
-export interface SearchMessagesResult {
-  messages: MessageDto[];
-  nextOffsetId?: number;
 }

@@ -1,9 +1,9 @@
 /**
  * The SPA's copy of the bridge contract.
  *
- * This mirrors `worker/src/types.ts` — the two packages are separate builds,
- * so the types are duplicated rather than shared. Keep them in sync when the
- * contract changes.
+ * This mirrors `worker/src/types.ts` and `worker/src/rpc-types.ts` — the two
+ * packages are separate builds, so the types are duplicated rather than
+ * shared. Keep them in sync when the contract changes.
  */
 
 export type PeerId = number;
@@ -179,6 +179,29 @@ export interface MessageDto {
   The message this one replies to, or null for a plain message.
   */
   reply: MessageReplyDto | null;
+  /**
+  Channel-post comments metadata, or null for messages without a thread.
+  */
+  comments: MessageCommentsDto | null;
+}
+
+/**
+Channel posts keep their replies in the channel's linked discussion group;
+Telegram's `replies` header is the post's pointer into that group.
+*/
+export interface MessageCommentsDto {
+  /**
+  Whether the post has a comments section (telegram's `comments` flag).
+  */
+  hasComments: boolean;
+  /**
+  Total number of comments in the thread.
+  */
+  count: number;
+  /**
+  Marked id of the linked discussion group, when the post names one.
+  */
+  discussionChatId: PeerId | null;
 }
 
 export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';
@@ -244,7 +267,8 @@ export interface EngineStateDto {
   error?: string;
 }
 
-export type RpcMethod = 'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction';
+export type RpcMethod =
+  'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction' | 'getComments' | 'sendComment';
 
 export interface GetMeResult {
   me: MeDto;
@@ -272,4 +296,35 @@ export interface SendReactionResult {
 export interface SearchMessagesResult {
   messages: MessageDto[];
   nextOffsetId?: number;
+}
+
+export interface GetCommentsResult {
+  /**
+  Comments of one thread window, oldest first.
+  */
+  comments: MessageDto[];
+  /**
+  Total number of comments in the thread.
+  */
+  count: number;
+  /**
+  Marked id of the linked discussion group; null when the thread does not
+  exist yet (no comment was ever posted).
+  */
+  discussionChatId: PeerId | null;
+  /**
+  Id of the thread's root message in the discussion group; null when the
+  thread does not exist yet.
+  */
+  discussionMessageId: number | null;
+  /**
+  Pagination cursor for older comments; absent when the oldest comment is
+  loaded.
+  */
+  nextOffsetId?: number;
+  nextOffsetDate?: number;
+}
+
+export interface SendCommentResult {
+  message: MessageDto;
 }

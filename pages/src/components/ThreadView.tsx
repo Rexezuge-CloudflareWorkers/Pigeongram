@@ -1,11 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { fileUrl } from '../api';
-import { formatBytes, formatDay, formatTime, isSameDay } from '../format';
-import { renderMessageText } from '../richtext';
-import { reactionKey } from '../state';
-import type { ChatDto, MessageDto, MessageMediaDto, MessageReactionDto } from '../types';
+import { formatDay, isSameDay } from '../format';
+import type { ChatDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
-import { ComposerReply, MessageReplyQuote } from './ReplyQuote';
+import { Composer } from './Composer';
+import { MessageRow } from './MessageRow';
 
 interface ThreadViewProps {
   chat: ChatDto | null;
@@ -25,6 +23,7 @@ interface ThreadViewProps {
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+  onOpenComments: (message: MessageDto) => void;
 }
 
 export function ThreadView({
@@ -42,15 +41,13 @@ export function ThreadView({
   onSend,
   onAttach,
   onReact,
+  onOpenComments,
 }: ThreadViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState('');
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
-  const busy = sending || uploading;
 
   const lastId = messages.at(-1)?.id ?? 0;
   useEffect(() => {
@@ -82,30 +79,9 @@ export function ThreadView({
     setTimeout(() => target.classList.remove('reply-flash'), 1200);
   };
 
-  const submit = (): void => {
-    const text = draft.trim();
-    if (!text || busy) return;
-    const replyTo = replyTarget?.id;
-    setDraft('');
-    void onSend(text, replyTo)
-      .then(() => setReplyingTo(null))
-      .catch(() => setDraft(text));
-  };
-
-  const attach = (file: File | undefined): void => {
-    if (!file || busy) return;
-    // Whatever is in the box rides along as the caption, Telegram-style.
-    const caption = draft.trim();
-    const replyTo = replyTarget?.id;
-    void onAttach(file, caption, replyTo)
-      .then(() => {
-        setDraft((current) => (current === caption ? '' : current));
-        setReplyingTo(null);
-      })
-      .catch(() => {
-        // The caption stays in the box so the upload can be retried.
-      });
-  };
+  const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
+  const attach = (file: File, caption: string, replyTo?: number): Promise<void> =>
+    onAttach(file, caption, replyTo).then(() => setReplyingTo(null));
 
   return (
     <section className="thread">
@@ -154,180 +130,22 @@ export function ThreadView({
               onReact={onReact}
               onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
               onJump={jumpToMessage}
+              onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}
             />
           </Fragment>
         ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      <form
-        className="composer"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        {replyTarget ? <ComposerReply message={replyTarget} onCancel={() => setReplyingTo(null)} /> : null}
-        <input
-          ref={fileRef}
-          type="file"
-          className="attach-input"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            attach(file);
-          }}
-        />
-        <button
-          type="button"
-          className="attach"
-          disabled={busy}
-          aria-label="Attach a file"
-          title="Attach a file"
-          onClick={() => fileRef.current?.click()}
-        >
-          📎
-        </button>
-        <textarea
-          value={draft}
-          rows={1}
-          placeholder="Message"
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && replyTarget) {
-              event.preventDefault();
-              setReplyingTo(null);
-              return;
-            }
-            if (event.key !== 'Enter' || event.shiftKey) {
-              return;
-            }
-
-            event.preventDefault();
-            submit();
-          }}
-        />
-        {uploading ? <span className="upload-status">{uploadStatus(uploadProgress)}</span> : null}
-        <button type="submit" disabled={busy || draft.trim().length === 0}>
-          {sending ? '…' : 'Send'}
-        </button>
-      </form>
+      <Composer
+        placeholder="Message"
+        sending={sending}
+        uploading={uploading}
+        uploadProgress={uploadProgress}
+        replyTarget={replyTarget}
+        onCancelReply={() => setReplyingTo(null)}
+        onSend={send}
+        onAttach={attach}
+      />
     </section>
-  );
-}
-
-function uploadStatus(progress: number | null): string {
-  if (progress === null || progress >= 1) return 'Sending…';
-  return `Uploading ${Math.round(progress * 100)}%`;
-}
-
-interface MessageRowProps {
-  message: MessageDto;
-  chat: ChatDto;
-  /**
-  The loaded message this one replies to, when it is still in the thread.
-  */
-  original: MessageDto | null;
-  reacting: boolean;
-  onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
-  onReply: (message: MessageDto) => void;
-  onJump: (messageId: number) => void;
-}
-
-function MessageRow({ message, chat, original, reacting, onReact, onReply, onJump }: MessageRowProps) {
-  const own = message.outgoing;
-  const showSender = !own && chat.kind !== 'user' && !message.service;
-  return (
-    <div
-      className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
-      data-message-id={message.id}
-      onDoubleClick={() => {
-        if (!message.service) onReply(message);
-      }}
-    >
-      {message.service ? null : (
-        <button type="button" className="reply-button" aria-label="Reply" title="Reply" onClick={() => onReply(message)}>
-          ↩
-        </button>
-      )}
-      {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
-      {message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
-      {message.media ? <MessageMedia message={message} media={message.media} /> : null}
-      {message.text ? <div className="text">{renderMessageText(message.text, message.entities)}</div> : null}
-      {message.reactions.length > 0 ? (
-        <div className="reactions">
-          {message.reactions.map((reaction) => (
-            <button
-              key={reactionKey(reaction)}
-              type="button"
-              className={`reaction${reaction.chosen ? ' chosen' : ''}`}
-              disabled={reacting}
-              title={reaction.emoji ?? 'Custom emoji'}
-              aria-label={`React ${reaction.emoji ?? 'with a custom emoji'} (${String(reaction.count)})`}
-              aria-pressed={reaction.chosen}
-              onClick={() => onReact(message, reaction)}
-            >
-              <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>
-              <span className="reaction-count">{reaction.count}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <span className="meta">{formatTime(message.date)}</span>
-    </div>
-  );
-}
-
-function MessageMedia({ message, media }: { message: MessageDto; media: MessageMediaDto }) {
-  const src = fileUrl(message.chatId, message.id);
-  switch (media.kind) {
-    case 'photo': {
-      return <img className="photo" src={src} alt={media.fileName ?? 'Photo'} loading="lazy" />;
-    }
-    case 'video':
-    case 'animation': {
-      const animation = media.kind === 'animation';
-      return (
-        <video
-          className="video"
-          src={src}
-          poster={fileUrl(message.chatId, message.id, { thumb: true })}
-          controls={!animation}
-          autoPlay={animation}
-          loop={animation}
-          muted={animation}
-          playsInline
-          preload="metadata"
-        />
-      );
-    }
-    case 'audio':
-    case 'voice': {
-      return <audio className="audio" src={src} controls preload="metadata" />;
-    }
-    case 'sticker': {
-      if (media.mime === 'image/webp') {
-        return <img className="sticker" src={src} alt="Sticker" loading="lazy" />;
-      }
-      return <DocumentLink message={message} />;
-    }
-    default: {
-      return <DocumentLink message={message} />;
-    }
-  }
-}
-
-function DocumentLink({ message }: { message: MessageDto }) {
-  const media = message.media;
-  return (
-    <a
-      className="document"
-      href={fileUrl(message.chatId, message.id)}
-      download={media?.fileName ?? 'download'}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <span className="doc-name">{media?.fileName ?? 'File'}</span>
-      {media && media.size !== null ? <span className="doc-size">{formatBytes(media.size)}</span> : null}
-    </a>
   );
 }

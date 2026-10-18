@@ -1,6 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { DialogDto, MessageDto } from '../types';
+import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto } from './dto';
 import { EngineError } from './errors';
 import {
@@ -95,6 +96,43 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       }
       const message = await client.sendReaction({ chatId, message: messageId, emoji: reaction });
       return { message: message ? toMessageDto(message) : null };
+    }
+
+    case 'getComments': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const limit = clampInt(params.limit, 1, 100, 50);
+      const offsetId = optionalInt(params.offsetId);
+      const offsetDate = optionalInt(params.offsetDate);
+      const { discussion, page } = await readComments(client, {
+        chatId,
+        messageId,
+        limit,
+        ...(offsetId !== undefined && { offsetId }),
+        ...(offsetDate !== undefined && { offsetDate }),
+      });
+      return {
+        comments: page.comments.map(toMessageDto),
+        count: page.count,
+        discussionChatId: discussion?.chatId ?? null,
+        discussionMessageId: discussion?.rootId ?? null,
+        ...(page.nextOffset && { nextOffsetId: page.nextOffset.id, nextOffsetDate: page.nextOffset.date }),
+      };
+    }
+
+    case 'sendComment': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const text = requireText(params.text);
+      const replyTo = optionalMessageId(params.replyTo);
+      const post = await requireCommentPost(client, chatId, messageId);
+      if (replyTo === undefined) {
+        // `commentText` resolves the thread itself and covers the
+        // first-comment case Telegram accepts through the channel.
+        return { message: toMessageDto(await client.commentText(post, text)) };
+      }
+      const discussion = await requireDiscussion(client, chatId, messageId);
+      return { message: toMessageDto(await client.sendText(discussion.peer, text, { replyTo })) };
     }
 
     default: {

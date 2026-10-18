@@ -86,6 +86,111 @@ export function updateThread(
   return messages === thread.messages ? thread : { ...thread, messages };
 }
 
+/**
+The comments screen's state: the channel post being discussed, the loaded
+window of its thread and the cursor for older comments.
+*/
+export interface CommentsThread {
+  /**
+  The channel that owns the post.
+  */
+  chat: ChatDto;
+  /**
+  The post whose comments are open.
+  */
+  post: MessageDto;
+  /**
+  Marked id of the linked discussion group, once `getComments` resolved it;
+  null while the thread does not exist yet.
+  */
+  discussionChatId: PeerId | null;
+  /**
+  Id of the thread's root message in the group, once resolved.
+  */
+  discussionMessageId: number | null;
+  /**
+  Loaded comments, oldest first.
+  */
+  comments: MessageDto[];
+  /**
+  Number of comments Telegram reports.
+  */
+  count: number;
+  /**
+  Cursor for older comments; null when the thread start is loaded.
+  */
+  nextOffset: { id: number; date: number } | null;
+}
+
+/**
+Runs a transform against the open comments thread, but only while it still
+belongs to `post`. Comment ids are per-group, so an unguarded merge of a late
+response or live update for another post would silently mix threads.
+*/
+export function updateCommentsThread(
+  thread: CommentsThread | null,
+  post: { chatId: PeerId; messageId: number },
+  update: (thread: CommentsThread) => CommentsThread,
+): CommentsThread | null {
+  if (!thread || thread.chat.id !== post.chatId || thread.post.id !== post.messageId) return thread;
+  return update(thread);
+}
+
+/**
+Whether a message arriving from the discussion group belongs to the loaded
+thread: thread messages carry a reply header pointing at the root or at a
+comment the view already knows.
+*/
+export function isThreadComment(thread: CommentsThread, message: MessageDto): boolean {
+  if (thread.discussionChatId === null || message.chatId !== thread.discussionChatId) return false;
+  const replyTo = message.reply?.messageId ?? null;
+  if (replyTo === null) return false;
+  if (replyTo === thread.discussionMessageId) return true;
+  return thread.comments.some((comment) => comment.id === replyTo);
+}
+
+/**
+Merges a live comment into the open thread and bumps the reported count, but
+only when the thread owns the message and has not seen it yet (an outgoing
+comment can arrive by socket after the send response already merged it).
+*/
+export function applyCommentMessage(thread: CommentsThread | null, message: MessageDto): CommentsThread | null {
+  if (!thread || !isThreadComment(thread, message)) return thread;
+  if (thread.comments.some((comment) => comment.id === message.id)) return thread;
+  return { ...thread, comments: mergeMessages(thread.comments, [message]), count: thread.count + 1 };
+}
+
+export function applyCommentEdit(thread: CommentsThread | null, message: MessageDto): CommentsThread | null {
+  if (!thread || thread.discussionChatId !== message.chatId) return thread;
+  if (thread.comments.every((comment) => comment.id !== message.id)) return thread;
+  return { ...thread, comments: replaceMessage(thread.comments, message) };
+}
+
+export function applyCommentReactions(
+  thread: CommentsThread | null,
+  chatId: PeerId,
+  messageId: number,
+  reactions: MessageReactionDto[],
+): CommentsThread | null {
+  if (!thread || thread.discussionChatId !== chatId) return thread;
+  if (thread.comments.every((comment) => comment.id !== messageId)) return thread;
+  return { ...thread, comments: applyReactionUpdate(thread.comments, chatId, messageId, reactions) };
+}
+
+/**
+Bumps a loaded channel post's comment count by one after one of the caller's
+own comments was sent. Counts carried by live updates are not mapped back to
+posts (that would need the thread root id), so they stay as fresh as the last
+load plus the caller's own sends.
+*/
+export function applyCommentCountDelta(messages: MessageDto[], postId: number): MessageDto[] {
+  return messages.map((message) =>
+    message.id === postId && message.comments
+      ? { ...message, comments: { ...message.comments, count: message.comments.count + 1 } }
+      : message,
+  );
+}
+
 export function findChatTitle(dialogs: DialogDto[], chatId: PeerId): string | null {
   return dialogs.find((dialog) => dialog.chat.id === chatId)?.chat.title ?? null;
 }

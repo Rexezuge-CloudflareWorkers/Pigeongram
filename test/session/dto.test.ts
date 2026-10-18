@@ -179,7 +179,37 @@ describe('toMessageDto', () => {
       service: false,
       media: null,
       reply: null,
+      comments: null,
     });
+  });
+
+  it("maps a channel post's replies header into the comments DTO", () => {
+    const dto = toMessageDto(
+      message({
+        peerId: { _: 'peerChannel', channelId: 20 },
+        fromId: null,
+        message: 'news',
+        replies: {
+          _: 'messageReplies',
+          comments: true,
+          replies: 3,
+          channelId: 30,
+          maxId: 12,
+          readMaxId: 11,
+          recentRepliers: [],
+        },
+      }),
+    );
+    expect(dto.comments).toEqual({
+      hasComments: true,
+      count: 3,
+      discussionChatId: getMarkedPeerId(30, 'channel'),
+    });
+  });
+
+  it('leaves posts without a replies header without comment metadata', () => {
+    const dto = toMessageDto(message({ peerId: { _: 'peerChannel', channelId: 20 }, fromId: null }));
+    expect(dto.comments).toBeNull();
   });
 
   it('maps a same-chat reply header, which carries only the message id', () => {

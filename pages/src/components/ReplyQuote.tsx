@@ -19,7 +19,10 @@ export function MessageReplyQuote({
   The loaded message this one replies to, when it is still in the thread.
   */
   original: MessageDto | null;
-  onJump: (messageId: number) => void;
+  /**
+  Scrolls to the replied-to message; without it the quote renders inert.
+  */
+  onJump?: (messageId: number) => void;
 }) {
   const name = original ? (original.outgoing ? 'You' : original.senderName) : reply.senderName;
   let body: ReactNode;
@@ -43,7 +46,7 @@ export function MessageReplyQuote({
     </>
   );
 
-  if (jumpTarget === null) {
+  if (jumpTarget === null || !onJump) {
     return <div className="reply-quote">{content}</div>;
   }
   return (

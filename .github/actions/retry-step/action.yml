@@ -1,6 +1,11 @@
 name: Retry Step
 description: Retry a bash command on failure
 
+# Deliberately ahead of the family's copy in some sibling repositories: the inputs
+# reach the script through `env` and are validated there, because interpolating
+# `${{ inputs.* }}` straight into the shell is a script-injection surface. Do not
+# "sync" this file back to the interpolating form.
+
 inputs:
   command:
     description: The bash command to run

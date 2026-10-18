@@ -1,4 +1,4 @@
-import type { DialogDto, MessageDto, PeerId } from './types';
+import type { DialogDto, MessageDto, MessageReactionDto, PeerId } from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state. Kept in its own
@@ -62,4 +62,51 @@ export function replaceMessage(messages: MessageDto[], message: MessageDto): Mes
 
 export function findChatTitle(dialogs: DialogDto[], chatId: PeerId): string | null {
   return dialogs.find((dialog) => dialog.chat.id === chatId)?.chat.title ?? null;
+}
+
+/**
+Stable identity of a reaction aggregate: the unicode emoji, or the custom
+emoji document id.
+*/
+export function reactionKey(reaction: MessageReactionDto): string {
+  return reaction.emoji ?? `custom:${reaction.customEmojiId ?? ''}`;
+}
+
+/**
+Replaces one message's reaction aggregates. Reaction updates carry no full
+message, so the message is found by `chatId`/`messageId` and left untouched
+when it is not loaded.
+*/
+export function applyReactionUpdate(
+  messages: MessageDto[],
+  chatId: PeerId,
+  messageId: number,
+  reactions: MessageReactionDto[],
+): MessageDto[] {
+  return messages.map((message) => (message.chatId === chatId && message.id === messageId ? { ...message, reactions } : message));
+}
+
+/**
+Optimistic reaction toggle, applied before the RPC round trip: flips the tapped
+reaction on, clears the previously chosen one (Telegram allows one), and drops
+aggregates whose count reached zero.
+*/
+export function toggleReaction(reactions: MessageReactionDto[], reaction: MessageReactionDto): MessageReactionDto[] {
+  const key = reactionKey(reaction);
+  const exists = reactions.some((candidate) => reactionKey(candidate) === key);
+  const next = reactions.map((candidate) => {
+    if (reactionKey(candidate) === key) {
+      return { ...candidate, chosen: !candidate.chosen, count: candidate.count + (candidate.chosen ? -1 : 1) };
+    }
+    return candidate.chosen ? { ...candidate, chosen: false, count: candidate.count - 1 } : candidate;
+  });
+  if (!exists) {
+    next.push({
+      emoji: reaction.emoji,
+      customEmojiId: reaction.customEmojiId,
+      count: 1,
+      chosen: true,
+    });
+  }
+  return next.filter((candidate) => candidate.count > 0);
 }

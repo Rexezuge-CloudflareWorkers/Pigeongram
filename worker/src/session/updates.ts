@@ -1,7 +1,7 @@
-import { getMarkedPeerId, Message } from '@mtcute/core';
+import { getMarkedPeerId, Message, MessageReactions } from '@mtcute/core';
 import type { RawUpdateInfo } from '@mtcute/core';
 import type { UpdateEvent } from '../types';
-import { toMessageDto } from './dto';
+import { toMessageDto, toMessageReactionDtos } from './dto';
 
 /**
  * Maps the raw updates the engine cares about onto bridge events.
@@ -19,6 +19,16 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
       return {
         type: 'edit_message',
         message: toMessageDto(new Message(update.message, info.peers)),
+      };
+    }
+    case 'updateMessageReactions': {
+      const chatId = getMarkedPeerId(update.peer);
+      const reactions = new MessageReactions(update.msgId, chatId, update.reactions, info.peers);
+      return {
+        type: 'reactions',
+        chatId,
+        messageId: update.msgId,
+        reactions: toMessageReactionDtos(reactions.reactions),
       };
     }
     case 'updateReadHistoryInbox': {

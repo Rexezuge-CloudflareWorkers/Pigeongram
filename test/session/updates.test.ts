@@ -78,6 +78,45 @@ describe('mapRawUpdate', () => {
     expect(event).toMatchObject({ type: 'edit_message', message: { text: 'edited' } });
   });
 
+  it('maps reaction updates with the aggregate list', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updateMessageReactions',
+        peer: { _: 'peerUser', userId: 1 },
+        msgId: 7,
+        reactions: {
+          _: 'messageReactions',
+          results: [{ _: 'reactionCount', reaction: { _: 'reactionEmoji', emoticon: '🔥' }, count: 2, chosenOrder: 1 }],
+        },
+        pts: 7,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toEqual({
+      type: 'reactions',
+      chatId: 1,
+      messageId: 7,
+      reactions: [{ emoji: '🔥', customEmojiId: null, count: 2, chosen: true }],
+    });
+
+    const channelEvent = mapRawUpdate(
+      info({
+        _: 'updateMessageReactions',
+        peer: { _: 'peerChannel', channelId: 20 },
+        msgId: 9,
+        reactions: { _: 'messageReactions', results: [] },
+        pts: 8,
+        ptsCount: 1,
+      }),
+    );
+    expect(channelEvent).toEqual({
+      type: 'reactions',
+      chatId: getMarkedPeerId(20, 'channel'),
+      messageId: 9,
+      reactions: [],
+    });
+  });
+
   it('maps inbox reads with the remaining unread count', () => {
     const event = mapRawUpdate(
       info({

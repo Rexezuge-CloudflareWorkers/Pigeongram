@@ -174,9 +174,57 @@ describe('toMessageDto', () => {
       outgoing: false,
       date: 1_700_000_000_000,
       text: 'hello',
+      entities: [],
+      reactions: [],
       service: false,
       media: null,
     });
+  });
+
+  it('maps rich-text entities', () => {
+    const dto = toMessageDto(
+      message({
+        message: 'hello world ts abc def',
+        entities: [
+          { _: 'messageEntityBold', offset: 0, length: 5 },
+          { _: 'messageEntityTextUrl', offset: 6, length: 5, url: 'https://example.com' },
+          { _: 'messageEntityPre', offset: 12, length: 2, language: 'ts' },
+          { _: 'messageEntityMentionName', offset: 15, length: 3, userId: 1 },
+          { _: 'messageEntitySpoiler', offset: 19, length: 3 },
+        ],
+      }),
+    );
+    expect(dto.entities).toEqual([
+      { offset: 0, length: 5, kind: 'bold' },
+      { offset: 6, length: 5, kind: 'text_link', url: 'https://example.com' },
+      { offset: 12, length: 2, kind: 'pre', language: 'ts' },
+      { offset: 15, length: 3, kind: 'text_mention', userId: 1 },
+      { offset: 19, length: 3, kind: 'spoiler' },
+    ]);
+  });
+
+  it('maps reaction aggregates, including custom emoji and the chosen state', () => {
+    const dto = toMessageDto(
+      message({
+        reactions: {
+          _: 'messageReactions',
+          results: [
+            { _: 'reactionCount', reaction: { _: 'reactionEmoji', emoticon: '👍' }, count: 3 },
+            { _: 'reactionCount', reaction: { _: 'reactionEmoji', emoticon: '🔥' }, count: 1, chosenOrder: 2 },
+            {
+              _: 'reactionCount',
+              reaction: { _: 'reactionCustomEmoji', documentId: Long.fromNumber(42) },
+              count: 2,
+            },
+          ],
+        },
+      }),
+    );
+    expect(dto.reactions).toEqual([
+      { emoji: '👍', customEmojiId: null, count: 3, chosen: false },
+      { emoji: '🔥', customEmojiId: null, count: 1, chosen: true },
+      { emoji: null, customEmojiId: '42', count: 2, chosen: false },
+    ]);
   });
 
   it('flags outgoing and service messages', () => {

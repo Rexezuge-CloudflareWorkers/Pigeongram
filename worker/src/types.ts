@@ -37,6 +37,81 @@ export interface ChatDto {
   photo: string | null;
 }
 
+/**
+Kinds of rich-text entity the bridge forwards. Mirrors mtcute's
+`MessageEntityKind`; the SPA styles the ones it knows and falls back to plain
+text for the rest.
+*/
+export type MessageEntityKind =
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'strikethrough'
+  | 'spoiler'
+  | 'code'
+  | 'pre'
+  | 'blockquote'
+  | 'text_link'
+  | 'url'
+  | 'email'
+  | 'phone_number'
+  | 'mention'
+  | 'hashtag'
+  | 'cashtag'
+  | 'bot_command'
+  | 'text_mention'
+  | 'emoji'
+  | 'date_time'
+  | 'bank_card'
+  | 'ton_address'
+  | 'diff_insert'
+  | 'diff_delete'
+  | 'diff_replace'
+  | 'unknown';
+
+/**
+One formatting or link span inside a message text.
+
+`offset`/`length` are UTF-16 code units — the same indexing JS strings use, so
+the SPA slices `text` directly.
+*/
+export interface MessageEntityDto {
+  offset: number;
+  length: number;
+  kind: MessageEntityKind;
+  /**
+  `text_link` only: where the span points.
+  */
+  url?: string;
+  /**
+  `pre` only: the code block's language, when known.
+  */
+  language?: string;
+  /**
+  `text_mention` only: the mentioned user's id.
+  */
+  userId?: PeerId;
+}
+
+/**
+One reaction aggregate on a message.
+*/
+export interface MessageReactionDto {
+  /**
+  Unicode emoji (paid reactions are `⭐`), or `null` for a custom emoji.
+  */
+  emoji: string | null;
+  /**
+  Decimal document id of a custom emoji reaction, else `null`.
+  */
+  customEmojiId: string | null;
+  count: number;
+  /**
+  Whether the current user is one of the reactors.
+  */
+  chosen: boolean;
+}
+
 export interface MessageDto {
   id: number;
   chatId: PeerId;
@@ -48,6 +123,14 @@ export interface MessageDto {
   */
   date: number;
   text: string;
+  /**
+  Rich-text spans of `text` (empty when the message has none).
+  */
+  entities: MessageEntityDto[];
+  /**
+  Reaction aggregates, most relevant first (empty when the message has none).
+  */
+  reactions: MessageReactionDto[];
   service: boolean;
   /**
   The message's downloadable media, or null for text/service messages.
@@ -103,6 +186,7 @@ Updates pushed over the `/api/updates` WebSocket.
 export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
+  | { type: 'reactions'; chatId: PeerId; messageId: number; reactions: MessageReactionDto[] }
   | { type: 'read'; chatId: PeerId; maxId: number; unread: number };
 
 /**
@@ -189,7 +273,7 @@ export interface RpcRequestDto {
 /**
 Methods exposed over `POST /api/rpc`.
 */
-export type RpcMethod = 'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages';
+export type RpcMethod = 'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction';
 
 export interface GetDialogsParams {
   limit?: number;
@@ -221,6 +305,19 @@ export interface SearchMessagesParams {
   limit?: number;
 }
 
+export interface SendReactionParams {
+  chatId: PeerId;
+  messageId: number;
+  /**
+  Unicode emoji to set, e.g. `👍`. Mutually exclusive with `customEmojiId`.
+  */
+  emoji?: string | null;
+  /**
+  Decimal document id of a custom emoji to set.
+  */
+  customEmojiId?: string | null;
+}
+
 export interface GetMeResult {
   me: MeDto;
 }
@@ -235,6 +332,13 @@ export interface GetHistoryResult {
 
 export interface SendMessageResult {
   message: MessageDto;
+}
+
+export interface SendReactionResult {
+  /**
+  The reacted message, when Telegram returned it; `null` otherwise.
+  */
+  message: MessageDto | null;
 }
 
 export interface SearchMessagesResult {

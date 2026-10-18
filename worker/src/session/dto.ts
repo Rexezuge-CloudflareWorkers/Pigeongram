@@ -1,5 +1,5 @@
-import type { Chat, Dialog, Message, MessageMedia, Peer, User } from '@mtcute/core';
-import type { ChatDto, DialogDto, MeDto, MessageDto, MessageMediaDto } from '../types';
+import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, ReactionCount, User } from '@mtcute/core';
+import type { ChatDto, DialogDto, MeDto, MessageDto, MessageEntityDto, MessageMediaDto, MessageReactionDto } from '../types';
 
 /**
 Converts mtcute's high-level objects into the bridge's JSON DTOs.
@@ -60,6 +60,35 @@ function chatKind(chat: Chat): ChatDto['kind'] {
   }
 }
 
+function toMessageEntityDto(entity: MessageEntity): MessageEntityDto {
+  const params = entity.params;
+  const dto: MessageEntityDto = {
+    offset: entity.offset,
+    length: entity.length,
+    kind: entity.kind,
+  };
+  if (params.kind === 'text_link') dto.url = params.url;
+  if (params.kind === 'pre' && params.language !== undefined) dto.language = params.language;
+  if (params.kind === 'text_mention') dto.userId = params.userId;
+  return dto;
+}
+
+/**
+Maps mtcute's reaction aggregates onto the wire shape. Custom emoji carry
+their document id as a decimal string (a `Long` has no JSON representation).
+*/
+export function toMessageReactionDtos(reactions: readonly ReactionCount[]): MessageReactionDto[] {
+  return reactions.map((reaction) => {
+    const emoji = reaction.emoji;
+    return {
+      emoji: typeof emoji === 'string' ? emoji : null,
+      customEmojiId: typeof emoji === 'string' ? null : emoji.toString(),
+      count: reaction.count,
+      chosen: reaction.order !== null,
+    };
+  });
+}
+
 export function toMessageDto(message: Message): MessageDto {
   // `sender` is typed as `Peer`, but service messages from anonymous admins
   // carry a sender without an id; guard at runtime instead of trusting the
@@ -73,6 +102,8 @@ export function toMessageDto(message: Message): MessageDto {
     outgoing: message.isOutgoing,
     date: message.date.getTime(),
     text: message.text,
+    entities: message.entities.map(toMessageEntityDto),
+    reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
     media: toMessageMediaDto(message.media),
   };

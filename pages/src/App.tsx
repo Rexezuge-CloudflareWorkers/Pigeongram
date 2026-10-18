@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage, uploadFile } from './api';
+import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage, sendReaction, uploadFile } from './api';
 import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { LoginScreen } from './components/LoginScreen';
 import { ThreadView } from './components/ThreadView';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
-import { applyEditedMessage, applyNewMessage, applyReadUpdate, mergeMessages, replaceMessage } from './state';
-import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
+import {
+  applyEditedMessage,
+  applyNewMessage,
+  applyReactionUpdate,
+  applyReadUpdate,
+  mergeMessages,
+  replaceMessage,
+  toggleReaction,
+} from './state';
+import type { ChatDto, DialogDto, MeDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 
 export function App() {
@@ -24,6 +32,7 @@ export function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
 
   const selectedRef = useRef<PeerId | null>(null);
   const authorized = state?.authorized ?? false;
@@ -84,7 +93,13 @@ export function App() {
       setMessages((current) => replaceMessage(current, update.message));
       return;
     }
-    setDialogs((current) => applyReadUpdate(current, update.chatId, update.unread));
+    if (update.type === 'reactions') {
+      setMessages((current) => applyReactionUpdate(current, update.chatId, update.messageId, update.reactions));
+      return;
+    }
+    if (update.type === 'read') {
+      setDialogs((current) => applyReadUpdate(current, update.chatId, update.unread));
+    }
   }, []);
 
   const connected = useUpdatesSocket(authorized, handleUpdate, () => {
@@ -186,6 +201,41 @@ export function App() {
     [selected],
   );
 
+  const handleReact = useCallback(
+    (message: MessageDto, reaction: MessageReactionDto): void => {
+      if (reactingIds.has(message.id)) return;
+      if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
+      const before = message.reactions;
+      const after = toggleReaction(before, reaction);
+      setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, after));
+      setReactingIds((current) => new Set(current).add(message.id));
+      const target = reaction.chosen
+        ? null
+        : reaction.emoji === null
+          ? { customEmojiId: reaction.customEmojiId as string }
+          : { emoji: reaction.emoji };
+      void sendReaction(message.chatId, message.id, target)
+        .then((result) => {
+          const updated = result.message;
+          if (updated) {
+            setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, updated.reactions));
+          }
+        })
+        .catch((failure: unknown) => {
+          setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, before));
+          reportError(failure);
+        })
+        .finally(() => {
+          setReactingIds((current) => {
+            const next = new Set(current);
+            next.delete(message.id);
+            return next;
+          });
+        });
+    },
+    [reactingIds, reportError],
+  );
+
   const handleLogout = useCallback(async (): Promise<void> => {
     try {
       await logout();
@@ -239,10 +289,12 @@ export function App() {
         uploading={uploading}
         uploadProgress={uploadProgress}
         error={threadError}
+        reactingIds={reactingIds}
         onBack={() => setSelected(null)}
         onLoadOlder={() => void loadOlder()}
         onSend={handleSend}
         onAttach={handleAttach}
+        onReact={handleReact}
       />
       {error ? (
         <p className="toast" role="alert">

@@ -1,8 +1,9 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
+import { Long } from '@mtcute/core';
 import type { DialogDto, MessageDto } from '../types';
 import { toDialogDto, toMeDto, toMessageDto } from './dto';
 import { EngineError } from './errors';
-import { clampInt, optionalInt, requirePeerId, requireQuery, requireRecord, requireText } from './params';
+import { clampInt, optionalInt, optionalText, requireMessageId, requirePeerId, requireQuery, requireRecord, requireText } from './params';
 
 /**
  * The curated method surface of `POST /api/rpc`.
@@ -64,6 +65,25 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
         ...(offset !== undefined && { offset }),
       });
       return { messages: found.map(toMessageDto), nextOffsetId: found.next };
+    }
+
+    case 'sendReaction': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const emoji = optionalText(params.emoji, 32, 'emoji');
+      const customEmojiId = optionalText(params.customEmojiId, 32, 'customEmojiId');
+      if (emoji !== undefined && customEmojiId !== undefined) {
+        throw new EngineError('Provide emoji or customEmojiId, not both', 400);
+      }
+      let reaction: string | Long | null = emoji ?? null;
+      if (customEmojiId !== undefined) {
+        if (!/^\d+$/.test(customEmojiId)) {
+          throw new EngineError('customEmojiId must be a decimal document id', 400);
+        }
+        reaction = Long.fromString(customEmojiId);
+      }
+      const message = await client.sendReaction({ chatId, message: messageId, emoji: reaction });
+      return { message: message ? toMessageDto(message) : null };
     }
 
     default: {

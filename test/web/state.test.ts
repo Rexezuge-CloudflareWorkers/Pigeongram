@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { formatBytes, formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
-import { applyEditedMessage, applyNewMessage, applyReadUpdate, findChatTitle, mergeMessages, replaceMessage } from '../../pages/src/state';
+import {
+  applyEditedMessage,
+  applyNewMessage,
+  applyReactionUpdate,
+  applyReadUpdate,
+  findChatTitle,
+  mergeMessages,
+  reactionKey,
+  replaceMessage,
+  toggleReaction,
+} from '../../pages/src/state';
 import type { DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
@@ -22,6 +32,8 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     outgoing: false,
     date: NOW,
     text: `message ${overrides.id}`,
+    entities: [],
+    reactions: [],
     service: false,
     media: null,
     ...overrides,
@@ -100,6 +112,45 @@ describe('thread state', () => {
     expect(replaced[1].text).toBe('new');
     expect(replaced.length).toBe(2);
     expect(replaceMessage(messages, message({ id: 3, chatId: 1 })).length).toBe(3);
+  });
+});
+
+describe('reaction state', () => {
+  it('identifies reactions by emoji or custom document id', () => {
+    expect(reactionKey({ emoji: '👍', customEmojiId: null, count: 1, chosen: false })).toBe('👍');
+    expect(reactionKey({ emoji: null, customEmojiId: '42', count: 1, chosen: false })).toBe('custom:42');
+  });
+
+  it('applies reaction updates only to the matching loaded message', () => {
+    const messages = [message({ id: 1, chatId: 1 }), message({ id: 2, chatId: 1 }), message({ id: 1, chatId: 2 })];
+    const reactions = [{ emoji: '🔥', customEmojiId: null, count: 2, chosen: false }];
+    const next = applyReactionUpdate(messages, 1, 1, reactions);
+    expect(next[0].reactions).toBe(reactions);
+    expect(next[1].reactions).toEqual([]);
+    expect(next[2].reactions).toEqual([]);
+  });
+
+  it('toggles a reaction on, clearing the previously chosen one', () => {
+    const thumbs = { emoji: '👍', customEmojiId: null, count: 1, chosen: false };
+    const fire = { emoji: '🔥', customEmojiId: null, count: 2, chosen: true };
+    expect(toggleReaction([thumbs, fire], thumbs)).toEqual([
+      { emoji: '👍', customEmojiId: null, count: 2, chosen: true },
+      { emoji: '🔥', customEmojiId: null, count: 1, chosen: false },
+    ]);
+  });
+
+  it('toggles a reaction off and drops aggregates that reach zero', () => {
+    const chosen = { emoji: '👍', customEmojiId: null, count: 2, chosen: true };
+    expect(toggleReaction([chosen], chosen)).toEqual([{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }]);
+
+    const last = { emoji: '👍', customEmojiId: null, count: 1, chosen: true };
+    expect(toggleReaction([last], last)).toEqual([]);
+  });
+
+  it('adds a reaction that is not in the list yet', () => {
+    expect(toggleReaction([], { emoji: '❤', customEmojiId: null, count: 0, chosen: false })).toEqual([
+      { emoji: '❤', customEmojiId: null, count: 1, chosen: true },
+    ]);
   });
 });
 

@@ -61,7 +61,12 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
 
     case 'readHistory': {
       const chatId = requirePeerId(params.chatId);
-      await client.readHistory(chatId);
+      const maxId = optionalInt(params.maxId);
+      if (maxId === undefined || maxId === 0) {
+        await client.readHistory(chatId);
+      } else {
+        await client.readHistory(chatId, { maxId });
+      }
       return {};
     }
 

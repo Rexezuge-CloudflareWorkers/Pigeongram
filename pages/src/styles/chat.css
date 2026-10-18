@@ -133,6 +133,25 @@
   border-radius: 999px;
 }
 
+/* Where reading stopped: the thread jumps here instead of the bottom. */
+.unread-divider {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent);
+  font-size: 12px;
+  margin: 10px 0 2px;
+}
+
+.unread-divider::before,
+.unread-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid currentcolor;
+  opacity: 0.45;
+}
+
 .message {
   max-width: min(560px, 82%);
   align-self: flex-start;

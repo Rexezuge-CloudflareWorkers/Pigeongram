@@ -44,6 +44,11 @@ export interface SendMessageParams {
 
 export interface ReadHistoryParams {
   chatId: PeerId;
+  /**
+  Read only up to this message id; omitted reads the whole history. The SPA
+  passes what the user actually scrolled through.
+  */
+  maxId?: number;
 }
 
 export interface SearchMessagesParams {

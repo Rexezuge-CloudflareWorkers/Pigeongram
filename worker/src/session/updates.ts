@@ -38,11 +38,12 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         chatId: peer.id,
         maxId: update.maxId,
         unread: update.stillUnreadCount,
+        inbox: true,
       };
     }
     case 'updateReadHistoryOutbox': {
       const peer = info.peers.get(update.peer);
-      return { type: 'read', chatId: peer.id, maxId: update.maxId, unread: 0 };
+      return { type: 'read', chatId: peer.id, maxId: update.maxId, unread: 0, inbox: false };
     }
     case 'updateReadChannelInbox': {
       return {
@@ -50,6 +51,7 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         chatId: getMarkedPeerId(update.channelId, 'channel'),
         maxId: update.maxId,
         unread: update.stillUnreadCount,
+        inbox: true,
       };
     }
     case 'updateReadChannelOutbox': {
@@ -58,6 +60,7 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         chatId: getMarkedPeerId(update.channelId, 'channel'),
         maxId: update.maxId,
         unread: 0,
+        inbox: false,
       };
     }
     default: {

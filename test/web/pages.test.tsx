@@ -101,6 +101,7 @@ const dialogs: DialogDto[] = [
       comments: null,
     },
     unread: 1,
+    readInboxMaxId: 9,
     pinned: false,
     muted: false,
   },
@@ -141,7 +142,7 @@ const history: MessageDto[] = [
 
 const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null };
 
-const carolDialog: DialogDto = { chat: carol, lastMessage: null, unread: 0, pinned: false, muted: false };
+const carolDialog: DialogDto = { chat: carol, lastMessage: null, unread: 0, readInboxMaxId: 1, pinned: false, muted: false };
 
 const carolHistory: MessageDto[] = [
   {
@@ -211,7 +212,7 @@ function installSignedInFetch(
         return options.history ? options.history(Number(params.chatId)) : json({ messages: history });
       }
       case 'readHistory': {
-        return json({});
+        return options.rpc?.(call) ?? json({});
       }
       default: {
         return options.rpc?.(call) ?? json({ error: `Unknown RPC method: ${String(call.body?.method)}` }, 404);
@@ -240,9 +241,20 @@ function deliver(update: UpdateEvent): void {
   });
 }
 
+/**
+jsdom has no `scrollIntoView`, and the thread calls it for the open jump and
+for quote jumps; every suite gets a no-op spy it can assert on.
+*/
+function stubScrollIntoView(): ReturnType<typeof vi.fn> {
+  const spy = vi.fn();
+  Element.prototype.scrollIntoView = spy as unknown as Element['scrollIntoView'];
+  return spy;
+}
+
 beforeEach(() => {
   FakeWebSocket.instances.length = 0;
   vi.stubGlobal('WebSocket', FakeWebSocket);
+  stubScrollIntoView();
 });
 
 afterEach(() => {
@@ -416,12 +428,7 @@ describe('App', () => {
     let scrollIntoView: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-      scrollIntoView = vi.fn();
-      Element.prototype.scrollIntoView = scrollIntoView as unknown as Element['scrollIntoView'];
-    });
-
-    afterEach(() => {
-      delete (Element.prototype as Partial<Element>).scrollIntoView;
+      scrollIntoView = stubScrollIntoView();
     });
 
     const bobReply = (): MessageDto =>
@@ -557,6 +564,184 @@ describe('App', () => {
     });
   });
 
+  describe('unread position', () => {
+    /**
+    Bob's dialog with reading stopped at message 8: 9, 11 and 13 are unread
+    (10 and 12 are the account's own messages).
+    */
+    const unreadDialog: DialogDto = { ...dialogs[0], unread: 3, readInboxMaxId: 8 };
+
+    function unreadMessage(id: number, text: string, outgoing = false): MessageDto {
+      return message({ id, chatId: 2, senderId: outgoing ? 1 : 2, senderName: outgoing ? 'Ada' : 'Bob', outgoing, text });
+    }
+
+    const unreadHistory: MessageDto[] = [
+      unreadMessage(8, 'read already'),
+      unreadMessage(9, 'unread one'),
+      unreadMessage(10, 'my reply', true),
+      unreadMessage(11, 'unread two'),
+      unreadMessage(12, 'another reply', true),
+      unreadMessage(13, 'unread three'),
+    ];
+
+    let scrollIntoView: ReturnType<typeof vi.fn>;
+    /**
+    Descriptors `stubLayout` replaced, restored after each test.
+    */
+    let layout: Array<[string, PropertyDescriptor | undefined]> | null;
+
+    beforeEach(() => {
+      scrollIntoView = stubScrollIntoView();
+      layout = null;
+    });
+
+    afterEach(() => {
+      for (const [key, descriptor] of layout ?? []) {
+        if (descriptor) Object.defineProperty(Element.prototype, key, descriptor);
+        else delete (Element.prototype as unknown as Record<string, unknown>)[key];
+      }
+    });
+
+    function rect(top: number, bottom: number): DOMRect {
+      return { top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+    }
+
+    /**
+    jsdom has no layout, so paint one: each message is a 50px row in document
+    order inside a `listHeight` list, and the `.messages` viewport is
+    `viewportHeight` tall at its current `scrollTop`. Only the rows
+    overlapping the viewport (or a bottom before the last row) are reported
+    read.
+    */
+    function stubLayout({ listHeight, viewportHeight }: { listHeight: number; viewportHeight: number }): void {
+      let scroll = 0;
+      layout = [];
+      for (const key of ['scrollHeight', 'clientHeight', 'scrollTop', 'getBoundingClientRect'] as const) {
+        layout.push([key, Object.getOwnPropertyDescriptor(Element.prototype, key)]);
+      }
+      Object.defineProperties(Element.prototype, {
+        scrollHeight: { configurable: true, get: () => listHeight },
+        clientHeight: { configurable: true, get: () => viewportHeight },
+        scrollTop: {
+          configurable: true,
+          get: () => scroll,
+          set: (value: number) => {
+            scroll = value;
+          },
+        },
+      });
+      Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
+        if (this.classList.contains('messages')) return rect(0, viewportHeight);
+        const rows = this.parentElement?.querySelectorAll('[data-message-id]');
+        const index = rows ? Array.from(rows).indexOf(this) : -1;
+        if (index < 0) return rect(0, 0);
+        const top = index * 50 - scroll;
+        return rect(top, top + 50);
+      } as Element['getBoundingClientRect'];
+    }
+
+    function scrollContainer(): HTMLElement {
+      const element = threadSection().querySelector<HTMLElement>('.messages');
+      if (!element) throw new Error('The thread has no scroll container');
+      return element;
+    }
+
+    function installUnreadFetch(): FetchCall[] {
+      const reads: FetchCall[] = [];
+      installSignedInFetch({
+        dialogs: [unreadDialog],
+        history: () => json({ messages: unreadHistory }),
+        rpc: (call) => {
+          if (call.body?.method !== 'readHistory') return;
+          reads.push(call);
+          return json({});
+        },
+      });
+      return reads;
+    }
+
+    it('opens at the first unread message, under the divider', async () => {
+      installUnreadFetch();
+      // A viewport showing only the already-read row: opening must not jump to
+      // the bottom just because more (unread) messages follow.
+      stubLayout({ listHeight: 300, viewportHeight: 50 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+
+      const divider = threadSection().querySelector('[data-unread-divider]');
+      expect(divider?.textContent).toBe('Unread messages');
+      // The divider sits right above the first unread message.
+      expect(divider?.nextElementSibling?.dataset.messageId).toBe('9');
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    });
+
+    it('reads only the incoming messages the viewport covers, as the user scrolls', async () => {
+      const reads = installUnreadFetch();
+      stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+
+      // Rows 8 and 9 are in view; 10 is outgoing and carries no watermark, so
+      // the receipt stops at 9 rather than reading the chat wholesale.
+      await waitFor(() => {
+        expect(reads.map((read) => read.body?.params)).toEqual([{ chatId: 2, maxId: 9 }]);
+      });
+
+      // One more screen brings 10–12 into view; the outgoing rows are skipped
+      // and 11 is the read watermark.
+      scrollContainer().scrollTop = 100;
+      fireEvent.scroll(scrollContainer());
+      await waitFor(() => {
+        expect(reads.map((read) => read.body?.params)).toEqual([
+          { chatId: 2, maxId: 9 },
+          { chatId: 2, maxId: 11 },
+        ]);
+      });
+
+      // Reaching the bottom follows the newest unread message.
+      scrollContainer().scrollTop = 200;
+      fireEvent.scroll(scrollContainer());
+      await waitFor(() => {
+        expect(reads.at(-1)?.body?.params).toEqual({ chatId: 2, maxId: 13 });
+      });
+      expect(reads).toHaveLength(3);
+    });
+
+    it('folds inbox reads into the badge and the divider, and ignores outbox reads', async () => {
+      installUnreadFetch();
+      // The viewport covers only the already-read row, so the test's own
+      // read updates are the only ones moving anything.
+      stubLayout({ listHeight: 300, viewportHeight: 50 });
+
+      render(<App />);
+      expect(await screen.findByText('Bob')).toBeDefined();
+      expect(document.querySelector('.badge')?.textContent).toBe('3');
+
+      fireEvent.click(screen.getByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+      expect(threadSection().querySelector('[data-unread-divider]')).not.toBeNull();
+
+      // The peer reading the account's own messages says nothing about the
+      // account's unread incoming ones.
+      deliver({ type: 'read', chatId: 2, maxId: 12, unread: 0, inbox: false });
+      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(threadSection().querySelector('[data-unread-divider]')).not.toBeNull();
+
+      // The account's own read moves the badge and the divider on together.
+      deliver({ type: 'read', chatId: 2, maxId: 11, unread: 1, inbox: true });
+      expect(document.querySelector('.badge')?.textContent).toBe('1');
+      expect(threadSection().querySelector('[data-unread-divider]')?.nextElementSibling?.dataset.messageId).toBe('13');
+
+      deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
+      expect(document.querySelector('.badge')).toBeNull();
+      expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
+    });
+  });
+
   describe('channel comments', () => {
     const GROUP = -1_000_000_000_030;
     /**
@@ -573,7 +758,7 @@ describe('App', () => {
       comments: { hasComments: true, count: 2, discussionChatId: GROUP },
     });
 
-    const channelDialog: DialogDto = { chat: channel, lastMessage: post, unread: 0, pinned: false, muted: false };
+    const channelDialog: DialogDto = { chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false };
 
     function comment(overrides: Partial<MessageDto> & { id: number }): MessageDto {
       return message({ chatId: GROUP, senderName: 'Dana', ...overrides });

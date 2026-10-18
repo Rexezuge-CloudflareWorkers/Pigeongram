@@ -128,7 +128,7 @@ describe('mapRawUpdate', () => {
         ptsCount: 1,
       }),
     );
-    expect(event).toEqual({ type: 'read', chatId: 1, maxId: 12, unread: 3 });
+    expect(event).toEqual({ type: 'read', chatId: 1, maxId: 12, unread: 3, inbox: true });
   });
 
   it('maps outbox and channel reads onto marked ids', () => {
@@ -142,7 +142,7 @@ describe('mapRawUpdate', () => {
           ptsCount: 1,
         }),
       ),
-    ).toEqual({ type: 'read', chatId: 1, maxId: 9, unread: 0 });
+    ).toEqual({ type: 'read', chatId: 1, maxId: 9, unread: 0, inbox: false });
 
     expect(
       mapRawUpdate(
@@ -155,7 +155,19 @@ describe('mapRawUpdate', () => {
           ptsCount: 1,
         }),
       ),
-    ).toEqual({ type: 'read', chatId: getMarkedPeerId(20, 'channel'), maxId: 99, unread: 0 });
+    ).toEqual({ type: 'read', chatId: getMarkedPeerId(20, 'channel'), maxId: 99, unread: 0, inbox: true });
+
+    expect(
+      mapRawUpdate(
+        info({
+          _: 'updateReadChannelOutbox',
+          channelId: 20,
+          maxId: 98,
+          pts: 7,
+          ptsCount: 1,
+        }),
+      ),
+    ).toEqual({ type: 'read', chatId: getMarkedPeerId(20, 'channel'), maxId: 98, unread: 0, inbox: false });
   });
 
   it('ignores updates the bridge has no event for', () => {

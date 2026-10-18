@@ -1,7 +1,7 @@
-import { Chat, getMarkedPeerId, Long, Message, PeersIndex, User } from '@mtcute/core';
+import { Chat, Dialog, getMarkedPeerId, Long, Message, PeersIndex, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { toChatDto, toMessageDto } from '../../worker/src/session/dto';
+import { toChatDto, toDialogDto, toMessageDto } from '../../worker/src/session/dto';
 
 const rawUser = {
   _: 'user',
@@ -450,5 +450,36 @@ describe('toMessageDto', () => {
     );
     expect(dto.chatId).toBe(getMarkedPeerId(20, 'channel'));
     expect(dto.text).toBe('news');
+  });
+});
+
+describe('toDialogDto', () => {
+  it('carries the unread count and the read watermark the thread opens at', () => {
+    const raw = {
+      _: 'dialog',
+      peer: { _: 'peerUser', userId: 1 },
+      unreadCount: 3,
+      readInboxMaxId: 12,
+      pinned: false,
+      notifySettings: { _: 'peerNotifySettings', silent: false },
+    } as unknown as tl.RawDialog;
+    const dto = toDialogDto(new Dialog(raw, index(), new Map()));
+    expect(dto).toEqual({
+      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null },
+      lastMessage: null,
+      unread: 3,
+      readInboxMaxId: 12,
+      pinned: false,
+      muted: false,
+    });
+  });
+
+  it('reads a dialog with no watermark as never read', () => {
+    const raw = {
+      _: 'dialog',
+      peer: { _: 'peerUser', userId: 1 },
+      notifySettings: { _: 'peerNotifySettings', silent: false },
+    } as unknown as tl.RawDialog;
+    expect(toDialogDto(new Dialog(raw, index(), new Map())).readInboxMaxId).toBe(0);
   });
 });

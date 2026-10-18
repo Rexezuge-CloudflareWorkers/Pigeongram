@@ -1,0 +1,17 @@
+# Local secrets for `wrangler dev`. Copy to `.dev.vars` (gitignored) and fill in:
+#   cp .dev.vars.example .dev.vars
+#
+# Production values are Worker secrets, set once per environment:
+#   pnpm exec wrangler secret put TELEGRAM_API_ID
+#   pnpm exec wrangler secret put TELEGRAM_API_HASH
+#   pnpm exec wrangler secret put SPIKE_TOKEN
+
+# api_id / api_hash from https://my.telegram.org → "API development tools".
+# The id is read as a string and parsed as a number by the engine.
+TELEGRAM_API_ID="1234567"
+TELEGRAM_API_HASH="0123456789abcdef0123456789abcdef"
+
+# Shared secret gating every /api/* route while Cloudflare Access is not yet
+# in front of the Pages project. Generate with `openssl rand -hex 32`.
+# The SPA asks for it on first load and stores it in localStorage.
+SPIKE_TOKEN="replace-with-a-random-value"

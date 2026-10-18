@@ -1,0 +1,49 @@
+import { formatListStamp, initials, previewOf } from '../format';
+import type { ChatDto, DialogDto, PeerId } from '../types';
+
+interface ChatListProps {
+  dialogs: DialogDto[];
+  activeChatId: PeerId | null;
+  loading: boolean;
+  onSelect: (chat: ChatDto) => void;
+}
+
+export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListProps) {
+  if (loading && dialogs.length === 0) {
+    return <p className="muted pad">Loading chats…</p>;
+  }
+  if (dialogs.length === 0) {
+    return <p className="muted pad">No chats yet.</p>;
+  }
+  return (
+    <ul className="chats">
+      {dialogs.map((dialog) => {
+        const last = dialog.lastMessage;
+        return (
+          <li key={dialog.chat.id}>
+            <button
+              type="button"
+              className={`chat${dialog.chat.id === activeChatId ? ' active' : ''}`}
+              onClick={() => onSelect(dialog.chat)}
+            >
+              <span className={`avatar kind-${dialog.chat.kind}`}>{initials(dialog.chat.title)}</span>
+              <span className="chat-body">
+                <span className="chat-top">
+                  <span className="chat-title">{dialog.chat.title}</span>
+                  {last ? <span className="chat-stamp">{formatListStamp(last.date)}</span> : null}
+                </span>
+                <span className="chat-bottom">
+                  <span className="chat-preview">
+                    {dialog.pinned ? '📌 ' : ''}
+                    {last ? previewOf(last.text, last.photo) : '—'}
+                  </span>
+                  {dialog.unread > 0 ? <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span> : null}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

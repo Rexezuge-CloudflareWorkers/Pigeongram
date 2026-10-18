@@ -2,9 +2,12 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
   // `worker-configuration.d.ts` is included because the tests import the worker
   // package, whose source references generated globals like `DurableObjectState`.
-  "include": ["../worker-configuration.d.ts", "**/*.ts", "**/*.tsx"]
+  // `worker/src/env.d.ts` adds the secret-backed `CloudflareEnv` members (the
+  // generated file cannot know about secrets); ambient files are not pulled in
+  // by importing worker sources, so the test project lists it explicitly.
+  "include": ["../worker-configuration.d.ts", "../worker/src/env.d.ts", "**/*.ts", "**/*.tsx"]
 }

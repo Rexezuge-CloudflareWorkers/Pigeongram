@@ -1,0 +1,13 @@
+{
+  // The Pages Functions tree is compiled by the Pages build with its own
+  // esbuild pass; this tsconfig exists so `pnpm run typecheck:functions`
+  // type-checks it like any other workspace code. The generated
+  // `worker-configuration.d.ts` supplies the global `Fetcher` type.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["**/*.ts", "../worker-configuration.d.ts"],
+  "exclude": ["node_modules"]
+}

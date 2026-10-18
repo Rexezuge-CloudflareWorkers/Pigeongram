@@ -7,6 +7,13 @@
   "main": "worker/src/index.ts",
   "compatibility_date": "2025-12-31",
   "placement": { "mode": "off" },
+  // The worker is API-only and is reached exclusively through the Pages
+  // project's `/api/*` proxy (declared by the `API_WORKER` service binding in
+  // pages/wrangler.template.jsonc) — never from the public internet directly.
+  "workers_dev": false,
+  // Workers Logs: per-invocation CPU time is what the session-engine spike is
+  // measured against, so the engine (and its Durable Object) must be logged.
+  "observability": { "enabled": true },
   // One DO class, one binding. The `v1` SQLite migration must be present on the
   // very first deploy; renaming the class or the binding later requires a new
   // migration tag, so only change them deliberately.
@@ -16,5 +23,8 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionEngine"] }],
   "vars": {
     "ENVIRONMENT": "production",
+    // Cadence of the session engine's wake alarm, in seconds. The Free-tier
+    // budget assumes 300 (12 wakes/hour); raise it to trade presence for cost.
+    "WAKE_INTERVAL_SECONDS": "300",
   },
 }

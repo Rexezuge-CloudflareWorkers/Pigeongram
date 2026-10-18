@@ -1,0 +1,250 @@
+/* Base chrome: theme, controls, login, signed-in shell. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1621;
+  --panel: #17212b;
+  --panel-2: #1e2c3a;
+  --border: #25333f;
+  --text: #e9eef3;
+  --muted: #7f91a4;
+  --accent: #5eb5f7;
+  --own: #2b5278;
+  --badge: #3f8fd0;
+  --danger: #ff7b72;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font:
+    15px/1.45 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+button[type='submit'] {
+  background: var(--accent);
+  color: #08121c;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+}
+
+button[type='submit']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.ghost {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--muted);
+}
+
+button.ghost:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.pad {
+  padding: 12px;
+}
+
+/* ---- login ------------------------------------------------------------- */
+
+.login {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.card h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.qr {
+  width: 256px;
+  height: 256px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  /* The bitmap is generated at a module-aligned size and then scaled to fit;
+     nearest-neighbour keeps the modules sharp for camera scanners. */
+  image-rendering: pixelated;
+}
+
+.qr.placeholder {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+.status {
+  margin: 0;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.row input {
+  flex: 1;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ---- signed-in shell ---------------------------------------------------- */
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.me-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.me-id strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- avatars ------------------------------------------------------------ */
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: linear-gradient(160deg, #4f7ea8, #2c4a66);
+  flex-shrink: 0;
+}
+
+.avatar.small {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.avatar.kind-bot {
+  background: linear-gradient(160deg, #6d8bc7, #40527e);
+}
+
+.avatar.kind-group,
+.avatar.kind-supergroup {
+  background: linear-gradient(160deg, #63a97d, #38664a);
+}
+
+.avatar.kind-channel {
+  background: linear-gradient(160deg, #b279c0, #663d72);
+}
+
+/* ---- toast -------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: #5b1f1f;
+  border: 1px solid var(--danger);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 10px;
+  max-width: min(560px, 90vw);
+}

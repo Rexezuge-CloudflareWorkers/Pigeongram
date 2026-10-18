@@ -97,6 +97,7 @@ const dialogs: DialogDto[] = [
       reactions: [],
       service: false,
       media: null,
+      reply: null,
     },
     unread: 1,
     pinned: false,
@@ -117,6 +118,7 @@ const history: MessageDto[] = [
     reactions: [],
     service: false,
     media: null,
+    reply: null,
   },
   {
     id: 10,
@@ -130,6 +132,7 @@ const history: MessageDto[] = [
     reactions: [{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }],
     service: false,
     media: null,
+    reply: null,
   },
 ];
 
@@ -150,6 +153,7 @@ const carolHistory: MessageDto[] = [
     reactions: [],
     service: false,
     media: null,
+    reply: null,
   },
 ];
 
@@ -167,6 +171,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     reactions: [],
     service: false,
     media: null,
+    reply: null,
     ...overrides,
   };
 }
@@ -397,6 +402,154 @@ describe('App', () => {
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '👍', customEmojiId: null } },
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: null, customEmojiId: null } },
     ]);
+  });
+
+  describe('replies', () => {
+    /**
+    jsdom has no layout, so `scrollIntoView` is a spy the jump tests can watch.
+    */
+    let scrollIntoView: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView as unknown as Element['scrollIntoView'];
+    });
+
+    afterEach(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
+
+    const bobReply = (): MessageDto =>
+      message({
+        id: 11,
+        chatId: 2,
+        senderName: 'Bob',
+        text: 'right back',
+        reply: {
+          origin: 'same_chat',
+          messageId: 10,
+          chatId: null,
+          senderName: null,
+          date: null,
+          text: '',
+          entities: [],
+          mediaKind: null,
+          quote: false,
+        },
+      });
+
+    function replyButton(messageId: number): HTMLElement {
+      const button = threadSection().querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(messageId))}"] .reply-button`);
+      if (!button) throw new Error(`Message ${String(messageId)} has no reply button`);
+      return button;
+    }
+
+    it('shows the loaded original in a same-chat quote and jumps to it on click', async () => {
+      installSignedInFetch({ history: () => json({ messages: [...history, bobReply()] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('right back')).toBeDefined();
+
+      const quote = await within(threadSection()).findByTitle('Go to the replied message');
+      expect(quote.textContent).toContain('Bob');
+      expect(quote.textContent).toContain('see you');
+
+      expect(document.querySelector('[data-message-id="10"]')?.classList.contains('reply-flash')).toBe(false);
+      fireEvent.click(quote);
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+      expect(document.querySelector('[data-message-id="10"]')?.classList.contains('reply-flash')).toBe(true);
+    });
+
+    it('falls back to the reply header for cross-chat and unloaded originals', async () => {
+      installSignedInFetch({
+        history: () =>
+          json({
+            messages: [
+              message({
+                id: 12,
+                chatId: 2,
+                senderName: 'Bob',
+                text: 'from the channel',
+                reply: {
+                  origin: 'other_chat',
+                  messageId: 3,
+                  chatId: -1_000_000_000_020,
+                  senderName: 'Announcements',
+                  date: 1_699_999_000_000,
+                  text: '',
+                  entities: [],
+                  mediaKind: 'photo',
+                  quote: false,
+                },
+              }),
+              message({
+                id: 13,
+                chatId: 2,
+                senderName: 'Bob',
+                text: 'missing original',
+                reply: {
+                  origin: 'same_chat',
+                  messageId: 5,
+                  chatId: null,
+                  senderName: null,
+                  date: null,
+                  text: '',
+                  entities: [],
+                  mediaKind: null,
+                  quote: false,
+                },
+              }),
+            ],
+          }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('from the channel')).toBeDefined();
+
+      const quotes = threadSection().querySelectorAll('.reply-quote');
+      expect(quotes.length).toBe(2);
+      expect(quotes[0].tagName).toBe('DIV');
+      expect(quotes[0].textContent).toContain('Announcements');
+      expect(quotes[0].textContent).toContain('Photo');
+      expect(quotes[1].textContent).toContain('Original message');
+    });
+
+    it('prefills the composer from the reply button and sends replyTo', async () => {
+      const sent: FetchCall[] = [];
+      installSignedInFetch({
+        history: () => json({ messages: [...history, bobReply()] }),
+        rpc: (call) => {
+          if (call.body?.method !== 'sendMessage') return;
+          sent.push(call);
+          return json({ message: message({ id: 12, chatId: 2, senderName: 'Ada', outgoing: true, text: 'sure' }) });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      fireEvent.click(replyButton(10));
+      expect(screen.getByText('Reply to Bob')).toBeDefined();
+
+      // Escape clears the reply target without touching the draft.
+      fireEvent.keyDown(screen.getByPlaceholderText('Message'), { key: 'Escape' });
+      expect(screen.queryByText('Reply to Bob')).toBeNull();
+
+      fireEvent.click(replyButton(10));
+      fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'sure' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      await waitFor(() => {
+        expect(sent.length).toBe(1);
+      });
+      expect(sent[0].body).toEqual({ method: 'sendMessage', params: { chatId: 2, text: 'sure', replyTo: 10 } });
+      await waitFor(() => {
+        expect(screen.queryByText('Reply to Bob')).toBeNull();
+      });
+    });
   });
 
   describe('thread scoping', () => {

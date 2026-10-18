@@ -152,13 +152,13 @@ export function App() {
   }, [thread]);
 
   const handleSend = useCallback(
-    async (text: string): Promise<void> => {
+    async (text: string, replyTo?: number): Promise<void> => {
       const chat = thread?.chat;
       if (!chat) return;
       setSending(true);
       setThreadError(null);
       try {
-        const result = await sendMessage(chat.id, text);
+        const result = await sendMessage(chat.id, text, replyTo);
         setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
         setDialogs((current) => applyNewMessage(current, result.message, chat.id));
       } catch (failure) {
@@ -172,7 +172,7 @@ export function App() {
   );
 
   const handleAttach = useCallback(
-    async (file: File, caption: string): Promise<void> => {
+    async (file: File, caption: string, replyTo?: number): Promise<void> => {
       const chat = thread?.chat;
       if (!chat) return;
       setUploading(true);
@@ -188,6 +188,7 @@ export function App() {
             mime: prepared.mime,
             size: prepared.body.size,
             ...(caption.length > 0 && { caption }),
+            ...(replyTo !== undefined && { replyTo }),
             ...(prepared.width !== undefined && { width: prepared.width }),
             ...(prepared.height !== undefined && { height: prepared.height }),
             ...(prepared.duration !== undefined && { duration: prepared.duration }),

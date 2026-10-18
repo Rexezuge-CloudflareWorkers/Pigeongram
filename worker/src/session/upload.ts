@@ -14,6 +14,10 @@ export interface UploadSpec {
   chatId: number;
   kind: UploadKind;
   caption?: string;
+  /**
+  Id of the message being replied to, when the upload is a reply.
+  */
+  replyTo?: number;
   fileName?: string;
   mime?: string;
   size?: number;
@@ -38,6 +42,7 @@ export async function sendUploadedMedia(
 ): Promise<MessageDto> {
   const message = await client.sendMedia(spec.chatId, buildInputMedia(spec, body), {
     ...(spec.caption !== undefined && { caption: spec.caption }),
+    ...(spec.replyTo !== undefined && { replyTo: spec.replyTo }),
     ...(signal !== undefined && { abortSignal: signal }),
   });
   return toMessageDto(message);

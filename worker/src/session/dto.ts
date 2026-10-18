@@ -1,5 +1,14 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, ReactionCount, User } from '@mtcute/core';
-import type { ChatDto, DialogDto, MeDto, MessageDto, MessageEntityDto, MessageMediaDto, MessageReactionDto } from '../types';
+import type {
+  ChatDto,
+  DialogDto,
+  MeDto,
+  MessageDto,
+  MessageEntityDto,
+  MessageMediaDto,
+  MessageReactionDto,
+  MessageReplyDto,
+} from '../types';
 
 /**
 Converts mtcute's high-level objects into the bridge's JSON DTOs.
@@ -89,6 +98,34 @@ export function toMessageReactionDtos(reactions: readonly ReactionCount[]): Mess
   });
 }
 
+/**
+Maps mtcute's reply header onto the wire shape.
+
+A same-chat header carries only the replied-to message id, so the SPA
+resolves sender and snippet from the thread it already has; cross-chat
+headers carry sender/date/media instead.
+*/
+function toMessageReplyDto(message: Message): MessageReplyDto | null {
+  const reply = message.replyToMessage;
+  if (!reply) return null;
+  const sender = reply.sender;
+  // The getter is typed non-null but returns null whenever the header has no
+  // media (which is the common case for same-chat replies).
+  const media = reply.media;
+  return {
+    origin: reply.origin,
+    messageId: reply.id,
+    chatId: reply.chat?.id ?? null,
+    senderName: sender?.displayName ?? null,
+    date: reply.date?.getTime() ?? null,
+    text: reply.quoteText,
+    entities: reply.quoteEntities.map(toMessageEntityDto),
+    mediaKind: media ? (toMessageMediaDto(media)?.kind ?? null) : null,
+    // The getter is typed `boolean` but passes the raw optional flag through.
+    quote: reply.isQuote ?? false,
+  };
+}
+
 export function toMessageDto(message: Message): MessageDto {
   // `sender` is typed as `Peer`, but service messages from anonymous admins
   // carry a sender without an id; guard at runtime instead of trusting the
@@ -106,6 +143,7 @@ export function toMessageDto(message: Message): MessageDto {
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
     media: toMessageMediaDto(message.media),
+    reply: toMessageReplyDto(message),
   };
 }
 

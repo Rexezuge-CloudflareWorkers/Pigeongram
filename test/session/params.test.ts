@@ -3,6 +3,7 @@ import { EngineError } from '../../worker/src/session/errors';
 import {
   clampInt,
   optionalInt,
+  optionalMessageId,
   optionalText,
   requireMessageId,
   requirePeerId,
@@ -23,6 +24,15 @@ describe('bridge parameter validation', () => {
     expect(requireMessageId(7)).toBe(7);
     for (const bad of [undefined, null, '7', 0, -1, 1.5, NaN, Infinity]) {
       expect(() => requireMessageId(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('treats an absent reply target as undefined but validates a present one', () => {
+    expect(optionalMessageId(undefined)).toBeUndefined();
+    expect(optionalMessageId(null)).toBeUndefined();
+    expect(optionalMessageId(7)).toBe(7);
+    for (const bad of ['7', 0, -1, 1.5, NaN, Infinity]) {
+      expect(() => optionalMessageId(bad)).toThrow(EngineError);
     }
   });
 

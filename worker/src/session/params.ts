@@ -25,6 +25,15 @@ export function requireMessageId(value: unknown): number {
 }
 
 /**
+Like `requireMessageId`, but `null`/`undefined` mean "not provided" instead of
+an error — used where omission carries meaning (e.g. a plain reply).
+*/
+export function optionalMessageId(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  return requireMessageId(value);
+}
+
+/**
 Like `requireText`, but `null`/`undefined` mean "not provided" instead of an
 error — used where omission carries meaning (e.g. removing a reaction).
 */

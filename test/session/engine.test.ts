@@ -221,6 +221,8 @@ describe('SessionEngine (request handling)', () => {
       ['chatId=1&kind=sticker&size=4', 'abcd', 400], // unknown kind
       ['chatId=1&kind=document', 'abcd', 400], // no size
       ['chatId=1&kind=document&size=0', 'abcd', 400], // non-positive size
+      ['chatId=1&kind=document&size=4&replyTo=0', 'abcd', 400], // non-positive reply target
+      ['chatId=1&kind=document&size=4&replyTo=nope', 'abcd', 400], // non-numeric reply target
     ];
     for (const [query, body, status] of cases) {
       const { engine } = createHarness(FAKE_CREDENTIALS);
@@ -258,6 +260,14 @@ describe('SessionEngine (configured client)', () => {
   it('400s invalid RPC params before any network call', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(request('POST', '/api/rpc', { method: 'getHistory', params: {} }));
+    expect(response.status).toBe(400);
+  });
+
+  it('400s a sendMessage with a malformed reply target before any network call', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS);
+    const response = await engine.fetch(
+      request('POST', '/api/rpc', { method: 'sendMessage', params: { chatId: 1, text: 'hi', replyTo: 0 } }),
+    );
     expect(response.status).toBe(400);
   });
 

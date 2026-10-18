@@ -5,6 +5,7 @@ import { renderMessageText } from '../richtext';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageDto, MessageMediaDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
+import { ComposerReply, MessageReplyQuote } from './ReplyQuote';
 
 interface ThreadViewProps {
   chat: ChatDto | null;
@@ -21,8 +22,8 @@ interface ThreadViewProps {
   reactingIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
-  onSend: (text: string) => Promise<void>;
-  onAttach: (file: File, caption: string) => Promise<void>;
+  onSend: (text: string, replyTo?: number) => Promise<void>;
+  onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
 }
 
@@ -46,6 +47,9 @@ export function ThreadView({
   const stickToBottom = useRef(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState('');
+  // The reply target carries its chat id, so switching threads invalidates it
+  // without an effect.
+  const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
   const busy = sending || uploading;
 
   const lastId = messages.at(-1)?.id ?? 0;
@@ -63,20 +67,40 @@ export function ThreadView({
     );
   }
 
+  const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
+  const messageById = new Map(messages.map((message) => [message.id, message]));
+
+  /**
+  Scrolls the thread to a loaded message and flashes it, so a quote click
+  reads as a jump rather than a no-op. Unloaded originals stay inert.
+  */
+  const jumpToMessage = (messageId: number): void => {
+    const target = scrollRef.current?.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+    if (!(target instanceof HTMLElement)) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('reply-flash');
+    setTimeout(() => target.classList.remove('reply-flash'), 1200);
+  };
+
   const submit = (): void => {
     const text = draft.trim();
     if (!text || busy) return;
+    const replyTo = replyTarget?.id;
     setDraft('');
-    void onSend(text).catch(() => setDraft(text));
+    void onSend(text, replyTo)
+      .then(() => setReplyingTo(null))
+      .catch(() => setDraft(text));
   };
 
   const attach = (file: File | undefined): void => {
     if (!file || busy) return;
     // Whatever is in the box rides along as the caption, Telegram-style.
     const caption = draft.trim();
-    void onAttach(file, caption)
+    const replyTo = replyTarget?.id;
+    void onAttach(file, caption, replyTo)
       .then(() => {
         setDraft((current) => (current === caption ? '' : current));
+        setReplyingTo(null);
       })
       .catch(() => {
         // The caption stays in the box so the upload can be retried.
@@ -118,7 +142,19 @@ export function ThreadView({
             {index === 0 || !isSameDay(messages[index - 1].date, message.date) ? (
               <div className="day">{formatDay(message.date)}</div>
             ) : null}
-            <MessageRow message={message} chat={chat} reacting={reactingIds.has(message.id)} onReact={onReact} />
+            <MessageRow
+              message={message}
+              chat={chat}
+              original={
+                message.reply?.origin === 'same_chat' && message.reply.messageId !== null
+                  ? (messageById.get(message.reply.messageId) ?? null)
+                  : null
+              }
+              reacting={reactingIds.has(message.id)}
+              onReact={onReact}
+              onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+              onJump={jumpToMessage}
+            />
           </Fragment>
         ))}
       </div>
@@ -130,6 +166,7 @@ export function ThreadView({
           submit();
         }}
       >
+        {replyTarget ? <ComposerReply message={replyTarget} onCancel={() => setReplyingTo(null)} /> : null}
         <input
           ref={fileRef}
           type="file"
@@ -156,6 +193,11 @@ export function ThreadView({
           placeholder="Message"
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
+            if (event.key === 'Escape' && replyTarget) {
+              event.preventDefault();
+              setReplyingTo(null);
+              return;
+            }
             if (event.key !== 'Enter' || event.shiftKey) {
               return;
             }
@@ -181,16 +223,34 @@ function uploadStatus(progress: number | null): string {
 interface MessageRowProps {
   message: MessageDto;
   chat: ChatDto;
+  /**
+  The loaded message this one replies to, when it is still in the thread.
+  */
+  original: MessageDto | null;
   reacting: boolean;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+  onReply: (message: MessageDto) => void;
+  onJump: (messageId: number) => void;
 }
 
-function MessageRow({ message, chat, reacting, onReact }: MessageRowProps) {
+function MessageRow({ message, chat, original, reacting, onReact, onReply, onJump }: MessageRowProps) {
   const own = message.outgoing;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   return (
-    <div className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}>
+    <div
+      className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
+      data-message-id={message.id}
+      onDoubleClick={() => {
+        if (!message.service) onReply(message);
+      }}
+    >
+      {message.service ? null : (
+        <button type="button" className="reply-button" aria-label="Reply" title="Reply" onClick={() => onReply(message)}>
+          ↩
+        </button>
+      )}
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
+      {message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
       {message.media ? <MessageMedia message={message} media={message.media} /> : null}
       {message.text ? <div className="text">{renderMessageText(message.text, message.entities)}</div> : null}
       {message.reactions.length > 0 ? (

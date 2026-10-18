@@ -1,4 +1,4 @@
-import type { EngineStateDto, MeDto, StatsDto, UpdateEvent, WakeCountersDto } from '../types';
+import type { EngineStateDto, MeDto, UpdateEvent } from '../types';
 import { TelegramDriver } from './driver';
 import { EngineError } from './errors';
 import { errorResponse, readJsonBody } from './http';
@@ -8,7 +8,7 @@ import { avatarResponse, fileResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
 import { UpdatesSocketHub } from './socket-hub';
 import { EngineStore } from './stats';
-import type { WakeRecord } from './stats';
+import type { StatsDto, WakeCountersDto, WakeRecord } from './stats';
 
 /**
 Name of the single Durable Object instance that owns the account.

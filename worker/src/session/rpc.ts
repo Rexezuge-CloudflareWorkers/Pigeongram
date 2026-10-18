@@ -3,7 +3,17 @@ import { Long } from '@mtcute/core';
 import type { DialogDto, MessageDto } from '../types';
 import { toDialogDto, toMeDto, toMessageDto } from './dto';
 import { EngineError } from './errors';
-import { clampInt, optionalInt, optionalText, requireMessageId, requirePeerId, requireQuery, requireRecord, requireText } from './params';
+import {
+  clampInt,
+  optionalInt,
+  optionalMessageId,
+  optionalText,
+  requireMessageId,
+  requirePeerId,
+  requireQuery,
+  requireRecord,
+  requireText,
+} from './params';
 
 /**
  * The curated method surface of `POST /api/rpc`.
@@ -44,7 +54,8 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
     case 'sendMessage': {
       const chatId = requirePeerId(params.chatId);
       const text = requireText(params.text);
-      return { message: toMessageDto(await client.sendText(chatId, text)) };
+      const replyTo = optionalMessageId(params.replyTo);
+      return { message: toMessageDto(await client.sendText(chatId, text, { ...(replyTo !== undefined && { replyTo }) })) };
     }
 
     case 'readHistory': {

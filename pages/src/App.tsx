@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage } from './api';
+import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage, uploadFile } from './api';
+import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { LoginScreen } from './components/LoginScreen';
 import { ThreadView } from './components/ThreadView';
-import { initials } from './format';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { applyEditedMessage, applyNewMessage, applyReadUpdate, mergeMessages, replaceMessage } from './state';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
+import { prepareUpload } from './upload';
 
 export function App() {
   const { state, gate, error, reportError, onToken, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
@@ -20,6 +21,8 @@ export function App() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [olderLoading, setOlderLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [threadError, setThreadError] = useState<string | null>(null);
 
   const selectedRef = useRef<PeerId | null>(null);
@@ -146,6 +149,43 @@ export function App() {
     [selected],
   );
 
+  const handleAttach = useCallback(
+    async (file: File, caption: string): Promise<void> => {
+      const chat = selected;
+      if (!chat) return;
+      setUploading(true);
+      setUploadProgress(null);
+      setThreadError(null);
+      try {
+        const prepared = await prepareUpload(file);
+        const result = await uploadFile(
+          {
+            chatId: chat.id,
+            kind: prepared.kind,
+            fileName: prepared.fileName,
+            mime: prepared.mime,
+            size: prepared.body.size,
+            ...(caption.length > 0 && { caption }),
+            ...(prepared.width !== undefined && { width: prepared.width }),
+            ...(prepared.height !== undefined && { height: prepared.height }),
+            ...(prepared.duration !== undefined && { duration: prepared.duration }),
+          },
+          prepared.body,
+          setUploadProgress,
+        );
+        setMessages((current) => mergeMessages(current, [result.message]));
+        setDialogs((current) => applyNewMessage(current, result.message, chat.id));
+      } catch (failure) {
+        setThreadError(failure instanceof Error ? failure.message : String(failure));
+        throw failure;
+      } finally {
+        setUploading(false);
+        setUploadProgress(null);
+      }
+    },
+    [selected],
+  );
+
   const handleLogout = useCallback(async (): Promise<void> => {
     try {
       await logout();
@@ -179,7 +219,7 @@ export function App() {
     <div className={`app${selected ? ' thread-open' : ''}`}>
       <aside className="sidebar">
         <header className="me">
-          <span className="avatar small">{initials(displayName)}</span>
+          <Avatar chatId={me?.id ?? 0} photo={me?.photo ?? null} title={displayName} small />
           <div className="me-id">
             <strong>{displayName}</strong>
             <span className="muted small">{connected ? 'live' : 'polling'}</span>
@@ -196,10 +236,13 @@ export function App() {
         loading={threadLoading}
         loadingOlder={olderLoading}
         sending={sending}
+        uploading={uploading}
+        uploadProgress={uploadProgress}
         error={threadError}
         onBack={() => setSelected(null)}
         onLoadOlder={() => void loadOlder()}
         onSend={handleSend}
+        onAttach={handleAttach}
       />
       {error ? (
         <p className="toast" role="alert">

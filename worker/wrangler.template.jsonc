@@ -26,5 +26,10 @@
     // Cadence of the session engine's wake alarm, in seconds. The Free-tier
     // budget assumes 300 (12 wakes/hour); raise it to trade presence for cost.
     "WAKE_INTERVAL_SECONDS": "300",
+    // Maximum accepted body of the raw-body `POST /api/upload` route, in
+    // bytes. Cloudflare's own request-body cap is 100 MB on Free/Pro, so this
+    // only exists to fail early and to lower the ceiling when the account's
+    // CPU budget cannot afford large encrypted uploads.
+    "UPLOAD_MAX_BYTES": "104857600",
   },
 }

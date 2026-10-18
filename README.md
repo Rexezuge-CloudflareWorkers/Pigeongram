@@ -115,7 +115,8 @@ on `main` with required checks **Checks**, **Unit Tests**, **Build Web App**.
    per wake measured against the Free-plan limit. The runbook is `docs/session-engine.md`.
 2. **72 h soak** — _pending the spike_: 5-minute alarm cadence; watch duration/rows/storage against Free-tier limits.
 3. **UI fork** — _bridge done, fork pending_: the minimal first-party SPA already uses the remote-session bridge
-   (`POST /api/rpc`, `WS /api/updates`, `GET /api/file`); `telegram-tt` can be dropped in behind the same contract.
+   (`POST /api/rpc`, `WS /api/updates`, media routes `GET /api/file`, `GET /api/avatar`, `POST /api/upload`);
+   `telegram-tt` can be dropped in behind the same contract.
 4. **API routing** — _implemented_: the Pages Function at repo-root `functions/` proxies `/api/*` over the
    `API_WORKER` service binding, keeping the worker off the public internet.
 

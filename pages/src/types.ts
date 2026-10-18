@@ -14,6 +14,10 @@ export interface MeDto {
   lastName: string | null;
   username: string | null;
   phone: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null.
+  */
+  photo: string | null;
 }
 
 export type ChatKind = 'user' | 'bot' | 'group' | 'supergroup' | 'channel';
@@ -23,6 +27,10 @@ export interface ChatDto {
   kind: ChatKind;
   title: string;
   username: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null.
+  */
+  photo: string | null;
 }
 
 export interface MessageDto {
@@ -38,10 +46,30 @@ export interface MessageDto {
   text: string;
   service: boolean;
   /**
-  Whether the message carries a downloadable photo.
+  The message's downloadable media, or null for text/service messages.
   */
-  photo: boolean;
+  media: MessageMediaDto | null;
 }
+
+export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';
+
+export interface MessageMediaDto {
+  kind: MessageMediaKind;
+  fileName: string | null;
+  mime: string | null;
+  size: number | null;
+  width: number | null;
+  height: number | null;
+  /**
+  Duration in seconds for videos/audio/voice.
+  */
+  duration: number | null;
+}
+
+/**
+Media kinds `POST /api/upload` accepts.
+*/
+export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
 
 export interface DialogDto {
   chat: ChatDto;

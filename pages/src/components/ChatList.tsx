@@ -1,5 +1,6 @@
-import { formatListStamp, initials, previewOf } from '../format';
+import { formatListStamp, previewOf } from '../format';
 import type { ChatDto, DialogDto, PeerId } from '../types';
+import { Avatar } from './Avatar';
 
 interface ChatListProps {
   dialogs: DialogDto[];
@@ -26,7 +27,7 @@ export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListP
               className={`chat${dialog.chat.id === activeChatId ? ' active' : ''}`}
               onClick={() => onSelect(dialog.chat)}
             >
-              <span className={`avatar kind-${dialog.chat.kind}`}>{initials(dialog.chat.title)}</span>
+              <Avatar chatId={dialog.chat.id} photo={dialog.chat.photo} title={dialog.chat.title} kind={dialog.chat.kind} />
               <span className="chat-body">
                 <span className="chat-top">
                   <span className="chat-title">{dialog.chat.title}</span>
@@ -35,7 +36,7 @@ export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListP
                 <span className="chat-bottom">
                   <span className="chat-preview">
                     {dialog.pinned ? '📌 ' : ''}
-                    {last ? previewOf(last.text, last.photo) : '—'}
+                    {last ? previewOf(last.text, last.media) : '—'}
                   </span>
                   {dialog.unread > 0 ? <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span> : null}
                 </span>

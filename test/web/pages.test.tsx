@@ -64,11 +64,11 @@ class FakeWebSocket {
   }
 }
 
-const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null };
+const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 
 const dialogs: DialogDto[] = [
   {
-    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob' },
+    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null },
     lastMessage: {
       id: 10,
       chatId: 2,
@@ -78,7 +78,7 @@ const dialogs: DialogDto[] = [
       date: 1_700_000_000_000,
       text: 'see you',
       service: false,
-      photo: false,
+      media: null,
     },
     unread: 1,
     pinned: false,
@@ -96,7 +96,7 @@ const history: MessageDto[] = [
     date: 1_699_999_900_000,
     text: 'oldest',
     service: false,
-    photo: false,
+    media: null,
   },
   {
     id: 10,
@@ -107,7 +107,7 @@ const history: MessageDto[] = [
     date: 1_700_000_000_000,
     text: 'see you',
     service: false,
-    photo: false,
+    media: null,
   },
 ];
 

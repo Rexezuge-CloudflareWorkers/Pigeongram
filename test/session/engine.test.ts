@@ -31,12 +31,18 @@ interface Harness {
 }
 
 /**
+ * The generated `CloudflareEnv` types vars as string literals; loosening just
+ * the one var this suite overrides keeps the rest of the shape checked.
+ */
+type TestEnv = Omit<Partial<CloudflareEnv>, 'UPLOAD_MAX_BYTES'> & { UPLOAD_MAX_BYTES?: string };
+
+/**
  * A `DurableObjectState` stand-in: SQLite from `node:sqlite`, an alarm spy, and
  * a socket list. The engine only ever touches these members, so the shape is
  * enough — `WebSocketPair` (the one global workerd owns) is only reached on the
  * `/api/updates` route, which these tests deliberately avoid.
  */
-function createHarness(env: Partial<CloudflareEnv> = {}): Harness {
+function createHarness(env: TestEnv = {}): Harness {
   const db = openNodeDatabase();
   const alarms: number[] = [];
   const sockets: FakeSocket[] = [];
@@ -76,7 +82,11 @@ function request(method: string, path: string, body?: unknown): Request {
   });
 }
 
-const FAKE_CREDENTIALS: Partial<CloudflareEnv> = {
+function uploadRequest(query: string, body: string, headers: Record<string, string> = {}): Request {
+  return new Request(`https://session-engine.internal/api/upload?${query}`, { method: 'POST', body, headers });
+}
+
+const FAKE_CREDENTIALS: TestEnv = {
   TELEGRAM_API_ID: '12345',
   TELEGRAM_API_HASH: '0123456789abcdef',
 };
@@ -193,9 +203,44 @@ describe('SessionEngine (request handling)', () => {
     });
   });
 
-  it('400s a file request without coordinates', async () => {
-    const { engine } = createHarness();
-    const response = await engine.fetch(request('GET', '/api/file'));
+  it('400s media requests with unusable coordinates', async () => {
+    // Missing messageId/chatId, and an avatar size the bridge does not serve.
+    const paths = ['/api/file', '/api/file?chatId=1', '/api/avatar', '/api/avatar?chatId=1&size=huge'];
+    for (const path of paths) {
+      const { engine } = createHarness();
+      const response = await engine.fetch(request('GET', path));
+      expect(response.status, path).toBe(400);
+    }
+  });
+
+  it('validates upload requests before touching the network', async () => {
+    // Every request below must fail validation; a valid one would need a
+    // Telegram connection (the upload path is covered by the smoke test).
+    const cases: Array<[string, string, number]> = [
+      ['kind=photo&size=4', 'abcd', 400], // no chatId
+      ['chatId=1&kind=sticker&size=4', 'abcd', 400], // unknown kind
+      ['chatId=1&kind=document', 'abcd', 400], // no size
+      ['chatId=1&kind=document&size=0', 'abcd', 400], // non-positive size
+    ];
+    for (const [query, body, status] of cases) {
+      const { engine } = createHarness(FAKE_CREDENTIALS);
+      const response = await engine.fetch(uploadRequest(query, body));
+      expect(response.status, query).toBe(status);
+    }
+  });
+
+  it('413s an upload above the configured cap', async () => {
+    const { engine } = createHarness({ ...FAKE_CREDENTIALS, UPLOAD_MAX_BYTES: '10' });
+    const response = await engine.fetch(uploadRequest('chatId=1&kind=document&size=11', '01234567890'));
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('limited') as string,
+    });
+  });
+
+  it('400s an upload whose content-length disagrees with its size', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS);
+    const response = await engine.fetch(uploadRequest('chatId=1&kind=document&size=5', '01234', { 'content-length': '4' }));
     expect(response.status).toBe(400);
   });
 });

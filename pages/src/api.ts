@@ -7,6 +7,7 @@ import type {
   RpcMethod,
   SearchMessagesResult,
   SendMessageResult,
+  UploadKind,
 } from './types';
 
 const TOKEN_KEY = 'telegram-web-client.token';
@@ -67,14 +68,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...init, headers });
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
-    throw new ApiError(
-      typeof record.error === 'string' ? record.error : `Request failed (${response.status})`,
-      response.status,
-      typeof record.code === 'string' ? record.code : undefined,
-    );
+    throw apiError(response.status, payload);
   }
   return payload as T;
+}
+
+/**
+Turns a bridge error payload (or a proxy/platform failure) into an `ApiError`.
+*/
+function apiError(status: number, payload: unknown): ApiError {
+  const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+  return new ApiError(
+    typeof record.error === 'string' ? record.error : `Request failed (${status})`,
+    status,
+    typeof record.code === 'string' ? record.code : undefined,
+  );
 }
 
 export const getState = (): Promise<EngineStateDto> => request<EngineStateDto>('/api/state');
@@ -122,10 +130,73 @@ export const readHistory = (chatId: PeerId): Promise<unknown> => rpc('readHistor
 export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
   rpc('searchMessages', { chatId, query, limit: 50 });
 
-export function fileUrl(chatId: PeerId, messageId: number): string {
+export interface UploadInput {
+  chatId: PeerId;
+  kind: UploadKind;
+  fileName: string;
+  mime: string;
+  size: number;
+  caption?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+/**
+Uploads a file's bytes as the raw body of `POST /api/upload`.
+
+XHR, unlike `fetch`, reports upload progress; the promise resolves once the
+engine has sent the message (after the Telegram-side upload), so the last
+stretch is only visible as an indeterminate state.
+*/
+export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fraction: number) => void): Promise<SendMessageResult> {
+  const params = new URLSearchParams({
+    chatId: String(input.chatId),
+    kind: input.kind,
+    fileName: input.fileName,
+    mime: input.mime,
+    size: String(input.size),
+  });
+  if (input.caption) params.set('caption', input.caption);
+  if (input.width !== undefined) params.set('width', String(input.width));
+  if (input.height !== undefined) params.set('height', String(input.height));
+  if (input.duration !== undefined) params.set('duration', String(input.duration));
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/upload?${params.toString()}`);
+    if (token) xhr.setRequestHeader('x-session-token', token);
+    xhr.responseType = 'json';
+    xhr.upload.addEventListener('progress', (event) => {
+      if (onProgress && event.lengthComputable && event.total > 0) {
+        onProgress(Math.min(1, event.loaded / event.total));
+      }
+    });
+    xhr.addEventListener('load', () => {
+      const payload = xhr.response as unknown;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload as SendMessageResult);
+        return;
+      }
+      reject(apiError(xhr.status, payload));
+    });
+    xhr.addEventListener('error', () => reject(new ApiError('Upload failed — network error', 0)));
+    xhr.addEventListener('abort', () => reject(new ApiError('Upload cancelled', 0)));
+    xhr.send(body);
+  });
+}
+
+export function fileUrl(chatId: PeerId, messageId: number, options: { thumb?: boolean } = {}): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });
+  if (options.thumb) params.set('thumb', '1');
   if (token) params.set('token', token);
   return `/api/file?${params.toString()}`;
+}
+
+export function avatarUrl(chatId: PeerId, version: string, size: 'small' | 'big' = 'small'): string {
+  const params = new URLSearchParams({ chatId: String(chatId), size, v: version });
+  if (token) params.set('token', token);
+  return `/api/avatar?${params.toString()}`;
 }
 
 export function updatesSocketUrl(): string {

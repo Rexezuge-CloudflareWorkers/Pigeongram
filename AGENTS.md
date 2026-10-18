@@ -86,6 +86,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
   There is no history backfill — session, update state and small caches only; history and media are fetched live through
   the bridge.
+- **Media routes are gated too.** `<img>`/`<video>`/`<audio>` cannot set headers, so `/api/file` and `/api/avatar`
+  accept the token as `?token=` (the SPA appends it). `POST /api/upload` takes the file as the raw request body,
+  streams it straight into mtcute's upload pool, and is capped by `UPLOAD_MAX_BYTES` (default 100 MB) — that var is
+  also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
+  parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
+  without consuming the body (cloudflare/workerd#918), so malformed and oversized uploads must never reach it.
 - **Sockets use the hibernation API**, so the DO can sleep while a tab is attached; the wire protocol lives in
   `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/api/updates` accept path has no
   unit test — it is covered by the local smoke test.
@@ -119,11 +125,12 @@ workflow files themselves.
 
 ## Where this is going / out of scope
 
-The session engine, the bridge (`POST /api/rpc`, `WS /api/updates`, `GET /api/file`) and the Pages proxy are in place;
-what remains needs the owner. In order: (1) **M1 acceptance** — real QR login against the account, one measured wake
-cycle — after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the
-**`telegram-tt` fork** behind the existing bridge contract, which also needs the domain + Cloudflare Access setup so the
-interim `SPIKE_TOKEN` gate can be removed. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
+The session engine, the bridge (`POST /api/rpc`, `WS /api/updates`, the media routes `GET /api/file`,
+`GET /api/avatar`, `POST /api/upload`) and the Pages proxy are in place; what remains needs the owner. In order:
+(1) **M1 acceptance** — real QR login against the account, one measured wake cycle — after `api_id`/`api_hash`
+exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the **`telegram-tt` fork** behind
+the existing bridge contract, which also needs the domain + Cloudflare Access setup so the interim `SPIKE_TOKEN`
+gate can be removed. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
 Secrets Store initialization, DO storage backups, coverage floors, integration tests, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.
 

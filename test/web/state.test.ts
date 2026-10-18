@@ -10,8 +10,9 @@ import {
   reactionKey,
   replaceMessage,
   toggleReaction,
+  updateThread,
 } from '../../pages/src/state';
-import type { DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 
@@ -40,9 +41,13 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
   };
 }
 
+function chat(id: number): ChatDto {
+  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null };
+}
+
 function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
   return {
-    chat: { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null },
+    chat: chat(id),
     lastMessage: null,
     unread: 0,
     pinned: false,
@@ -112,6 +117,21 @@ describe('thread state', () => {
     expect(replaced[1].text).toBe('new');
     expect(replaced.length).toBe(2);
     expect(replaceMessage(messages, message({ id: 3, chatId: 1 })).length).toBe(3);
+  });
+
+  it('applies thread updates only while the thread belongs to the chat', () => {
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })] };
+    const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
+    expect(foreign).toBe(thread);
+
+    const next = updateThread(thread, 1, (messages) => mergeMessages(messages, [message({ id: 2, chatId: 1 })]));
+    expect(next?.messages.map((entry) => entry.id)).toEqual([1, 2]);
+  });
+
+  it('keeps the thread value when nothing changes or no thread is open', () => {
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })] };
+    expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
+    expect(updateThread(null, 1, (messages) => messages)).toBeNull();
   });
 });
 

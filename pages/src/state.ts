@@ -1,4 +1,4 @@
-import type { DialogDto, MessageDto, MessageReactionDto, PeerId } from './types';
+import type { ChatDto, DialogDto, MessageDto, MessageReactionDto, PeerId } from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state. Kept in its own
@@ -58,6 +58,32 @@ export function replaceMessage(messages: MessageDto[], message: MessageDto): Mes
   const next = [...messages];
   next[index] = message;
   return next;
+}
+
+/**
+The open chat and its loaded messages, held as one value so the two can never
+disagree about which chat the thread belongs to.
+*/
+export interface ChatThread {
+  chat: ChatDto;
+  messages: MessageDto[];
+}
+
+/**
+Runs a transform against the open thread, but only while it still belongs to
+`chatId`. Every thread mutation goes through here, so a live update or a late
+response for a chat the user has left can never land in whichever thread is
+open — message ids are per-chat, so an unguarded merge would silently mix
+threads.
+*/
+export function updateThread(
+  thread: ChatThread | null,
+  chatId: PeerId,
+  update: (messages: MessageDto[]) => MessageDto[],
+): ChatThread | null {
+  if (!thread || thread.chat.id !== chatId) return thread;
+  const messages = update(thread.messages);
+  return messages === thread.messages ? thread : { ...thread, messages };
 }
 
 export function findChatTitle(dialogs: DialogDto[], chatId: PeerId): string | null {

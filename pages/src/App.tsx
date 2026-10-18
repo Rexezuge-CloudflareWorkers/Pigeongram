@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchDialogs, fetchHistory, fetchMe, logout, readHistory, sendMessage, sendReaction, uploadFile } from './api';
 import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
@@ -13,7 +13,9 @@ import {
   mergeMessages,
   replaceMessage,
   toggleReaction,
+  updateThread,
 } from './state';
+import type { ChatThread } from './state';
 import type { ChatDto, DialogDto, MeDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 
@@ -24,8 +26,7 @@ export function App() {
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
   const [dialogsLoading, setDialogsLoading] = useState(false);
 
-  const [selected, setSelected] = useState<ChatDto | null>(null);
-  const [messages, setMessages] = useState<MessageDto[]>([]);
+  const [thread, setThread] = useState<ChatThread | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [olderLoading, setOlderLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -35,13 +36,16 @@ export function App() {
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
 
   const selectedRef = useRef<PeerId | null>(null);
+  const selected = thread?.chat ?? null;
+  const messages = thread?.messages ?? [];
   const authorized = state?.authorized ?? false;
 
-  // The socket handler reads the open chat through a ref: it is created once
-  // (when the socket attaches) but must always see the latest selection.
-  useEffect(() => {
-    selectedRef.current = selected?.id ?? null;
-  }, [selected]);
+  // The socket handler is created once (when the socket attaches) but must
+  // always see the latest selection. A layout effect runs with the commit, so
+  // no socket event can observe the previous chat after a switch.
+  useLayoutEffect(() => {
+    selectedRef.current = thread?.chat.id ?? null;
+  }, [thread]);
 
   // ---- signed-in data: dialogs, live updates, thread ----------------------
 
@@ -80,8 +84,8 @@ export function App() {
     if (update.type === 'new_message') {
       const message = update.message;
       setDialogs((current) => applyNewMessage(current, message, selectedRef.current));
+      setThread((current) => updateThread(current, message.chatId, (messages) => mergeMessages(messages, [message])));
       if (message.chatId === selectedRef.current) {
-        setMessages((current) => mergeMessages(current, [message]));
         void readHistory(message.chatId).catch(() => {
           // Read receipts are best-effort; the next open retries.
         });
@@ -90,11 +94,15 @@ export function App() {
     }
     if (update.type === 'edit_message') {
       setDialogs((current) => applyEditedMessage(current, update.message));
-      setMessages((current) => replaceMessage(current, update.message));
+      setThread((current) => updateThread(current, update.message.chatId, (messages) => replaceMessage(messages, update.message)));
       return;
     }
     if (update.type === 'reactions') {
-      setMessages((current) => applyReactionUpdate(current, update.chatId, update.messageId, update.reactions));
+      setThread((current) =>
+        updateThread(current, update.chatId, (messages) =>
+          applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
+        ),
+      );
       return;
     }
     if (update.type === 'read') {
@@ -107,13 +115,12 @@ export function App() {
   });
 
   const openChat = useCallback(async (chat: ChatDto): Promise<void> => {
-    setSelected(chat);
-    setMessages([]);
+    setThread({ chat, messages: [] });
     setThreadError(null);
     setThreadLoading(true);
     try {
       const result = await fetchHistory(chat.id, { limit: 50 });
-      setMessages(mergeMessages([], result.messages));
+      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
       setDialogs((current) => applyReadUpdate(current, chat.id, 0));
       void readHistory(chat.id).catch(() => {
         // Best-effort.
@@ -126,8 +133,8 @@ export function App() {
   }, []);
 
   const loadOlder = useCallback(async (): Promise<void> => {
-    const chat = selected;
-    const oldest = messages[0];
+    const chat = thread?.chat;
+    const oldest = thread?.messages[0];
     if (!chat || !oldest) return;
     setOlderLoading(true);
     try {
@@ -136,23 +143,23 @@ export function App() {
         offsetId: oldest.id,
         offsetDate: oldest.date,
       });
-      setMessages((current) => mergeMessages(current, result.messages));
+      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
     } catch (failure) {
       setThreadError(failure instanceof Error ? failure.message : String(failure));
     } finally {
       setOlderLoading(false);
     }
-  }, [messages, selected]);
+  }, [thread]);
 
   const handleSend = useCallback(
     async (text: string): Promise<void> => {
-      const chat = selected;
+      const chat = thread?.chat;
       if (!chat) return;
       setSending(true);
       setThreadError(null);
       try {
         const result = await sendMessage(chat.id, text);
-        setMessages((current) => mergeMessages(current, [result.message]));
+        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
         setDialogs((current) => applyNewMessage(current, result.message, chat.id));
       } catch (failure) {
         setThreadError(failure instanceof Error ? failure.message : String(failure));
@@ -161,12 +168,12 @@ export function App() {
         setSending(false);
       }
     },
-    [selected],
+    [thread],
   );
 
   const handleAttach = useCallback(
     async (file: File, caption: string): Promise<void> => {
-      const chat = selected;
+      const chat = thread?.chat;
       if (!chat) return;
       setUploading(true);
       setUploadProgress(null);
@@ -188,7 +195,7 @@ export function App() {
           prepared.body,
           setUploadProgress,
         );
-        setMessages((current) => mergeMessages(current, [result.message]));
+        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
         setDialogs((current) => applyNewMessage(current, result.message, chat.id));
       } catch (failure) {
         setThreadError(failure instanceof Error ? failure.message : String(failure));
@@ -198,7 +205,7 @@ export function App() {
         setUploadProgress(null);
       }
     },
-    [selected],
+    [thread],
   );
 
   const handleReact = useCallback(
@@ -207,7 +214,9 @@ export function App() {
       if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
       const before = message.reactions;
       const after = toggleReaction(before, reaction);
-      setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, after));
+      setThread((current) =>
+        updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, after)),
+      );
       setReactingIds((current) => new Set(current).add(message.id));
       const target = reaction.chosen
         ? null
@@ -218,11 +227,17 @@ export function App() {
         .then((result) => {
           const updated = result.message;
           if (updated) {
-            setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, updated.reactions));
+            setThread((current) =>
+              updateThread(current, message.chatId, (messages) =>
+                applyReactionUpdate(messages, message.chatId, message.id, updated.reactions),
+              ),
+            );
           }
         })
         .catch((failure: unknown) => {
-          setMessages((current) => applyReactionUpdate(current, message.chatId, message.id, before));
+          setThread((current) =>
+            updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, before)),
+          );
           reportError(failure);
         })
         .finally(() => {
@@ -242,8 +257,7 @@ export function App() {
     } catch (failure) {
       reportError(failure);
     }
-    setSelected(null);
-    setMessages([]);
+    setThread(null);
     setDialogs([]);
     setMe(null);
     reset();
@@ -290,7 +304,7 @@ export function App() {
         uploadProgress={uploadProgress}
         error={threadError}
         reactingIds={reactingIds}
-        onBack={() => setSelected(null)}
+        onBack={() => setThread(null)}
         onLoadOlder={() => void loadOlder()}
         onSend={handleSend}
         onAttach={handleAttach}

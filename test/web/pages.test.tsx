@@ -673,7 +673,7 @@ describe('App', () => {
       const divider = threadSection().querySelector('[data-unread-divider]');
       expect(divider?.textContent).toBe('Unread messages');
       // The divider sits right above the first unread message.
-      expect(divider?.nextElementSibling?.dataset.messageId).toBe('9');
+      expect(divider?.nextElementSibling?.getAttribute('data-message-id')).toBe('9');
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     });
 
@@ -734,7 +734,7 @@ describe('App', () => {
       // The account's own read moves the badge and the divider on together.
       deliver({ type: 'read', chatId: 2, maxId: 11, unread: 1, inbox: true });
       expect(document.querySelector('.badge')?.textContent).toBe('1');
-      expect(threadSection().querySelector('[data-unread-divider]')?.nextElementSibling?.dataset.messageId).toBe('13');
+      expect(threadSection().querySelector('[data-unread-divider]')?.nextElementSibling?.getAttribute('data-message-id')).toBe('13');
 
       deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
       expect(document.querySelector('.badge')).toBeNull();

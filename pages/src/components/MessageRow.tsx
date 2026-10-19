@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import { fileUrl } from '../api';
 import { formatBytes, formatTime } from '../format';
 import { renderMessageText } from '../richtext';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageCommentsDto, MessageDto, MessageMediaDto, MessageReactionDto } from '../types';
+import { MessageMenu } from './MessageMenu';
 import { MessageReplyQuote } from './ReplyQuote';
 
 /**
@@ -10,7 +12,18 @@ One message bubble: reply quote, media, rich text, reaction chips, comments
 button and timestamp. Shared by the thread and the comments view; the optional
 handlers decide which affordances a given view offers (the comments view's post
 header, for example, is inert).
+
+The bubble's actions live in a context menu (right-click, or a long press on
+touch); a double-click stays as the quick reply path.
 */
+
+/**
+How long a touch must hold a bubble before the context menu opens, and how far
+it may drift first: the slop is what lets a long press that turns into a
+scroll keep scrolling instead of opening the menu.
+*/
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP_PX = 10;
 
 export interface MessageRowProps {
   message: MessageDto;
@@ -53,6 +66,34 @@ export function MessageRow({
   const own = message.outgoing;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   const comments = message.comments;
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  // A long press must not outlive the row (a live update can unmount it).
+  useEffect(
+    () => () => {
+      if (press.current !== null) clearTimeout(press.current.timer);
+    },
+    [],
+  );
+
+  const cancelPress = (): void => {
+    if (press.current === null) return;
+    clearTimeout(press.current.timer);
+    press.current = null;
+  };
+
+  /**
+  Opens the menu at viewport coordinates when the message has actions to
+  offer. Service messages, and messages with nothing to reply to or copy,
+  leave the native menu alone, so a right-click falls back to the browser's.
+  */
+  const openMenu = (x: number, y: number): boolean => {
+    if (message.service || (!onReply && message.text.length === 0)) return false;
+    setMenu({ x, y });
+    return true;
+  };
+
   return (
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
@@ -60,12 +101,39 @@ export function MessageRow({
       onDoubleClick={() => {
         if (!message.service && onReply) onReply(message);
       }}
+      onContextMenu={(event) => {
+        // Keyboard invocation (the Menu key, Shift+F10) reports no pointer
+        // coordinates; open from the bubble's center instead of the corner.
+        const rect = event.currentTarget.getBoundingClientRect();
+        const opened = openMenu(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
+        if (opened) event.preventDefault();
+      }}
+      onPointerDown={(event) => {
+        if (event.pointerType !== 'touch') return;
+        // Descendant controls (reaction chips, links, players) keep their own
+        // gestures; a press on them is not a message menu.
+        if ((event.target as Element).closest('button, a, audio, video, input, textarea')) return;
+        cancelPress();
+        const { clientX: x, clientY: y } = event;
+        press.current = {
+          x,
+          y,
+          timer: setTimeout(() => {
+            press.current = null;
+            openMenu(x, y);
+          }, LONG_PRESS_MS),
+        };
+      }}
+      onPointerMove={(event) => {
+        const current = press.current;
+        if (current === null) return;
+        if (Math.abs(event.clientX - current.x) > LONG_PRESS_SLOP_PX || Math.abs(event.clientY - current.y) > LONG_PRESS_SLOP_PX) {
+          cancelPress();
+        }
+      }}
+      onPointerUp={cancelPress}
+      onPointerCancel={cancelPress}
     >
-      {onReply && !message.service ? (
-        <button type="button" className="reply-button" aria-label="Reply" title="Reply" onClick={() => onReply(message)}>
-          ↩
-        </button>
-      ) : null}
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
       {message.media ? <MessageMedia message={message} media={message.media} /> : null}
@@ -108,6 +176,7 @@ export function MessageRow({
         </button>
       ) : null}
       <span className="meta">{formatTime(message.date)}</span>
+      {menu ? <MessageMenu message={message} x={menu.x} y={menu.y} onReply={onReply} onClose={() => setMenu(null)} /> : null}
     </div>
   );
 }

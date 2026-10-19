@@ -231,6 +231,24 @@ function threadSection(): HTMLElement {
 }
 
 /**
+Opens a loaded message's context menu the way a right-click does, and returns
+the menu so a test can inspect or click its items.
+*/
+function openMessageMenu(messageId: number): HTMLElement {
+  const row = threadSection().querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+  if (!row) throw new Error(`Message ${String(messageId)} is not rendered`);
+  fireEvent.contextMenu(row, { clientX: 40, clientY: 60 });
+  return screen.getByRole('menu', { name: 'Message actions' });
+}
+
+/**
+Clicks an open menu's item by label, e.g. `Reply`.
+*/
+function clickMenuItem(name: string): void {
+  fireEvent.click(within(screen.getByRole('menu', { name: 'Message actions' })).getByRole('menuitem', { name }));
+}
+
+/**
 Feeds one bridge update through the app's update socket.
 */
 function deliver(update: UpdateEvent): void {
@@ -450,12 +468,6 @@ describe('App', () => {
         },
       });
 
-    function replyButton(messageId: number): HTMLElement {
-      const button = threadSection().querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(messageId))}"] .reply-button`);
-      if (!button) throw new Error(`Message ${String(messageId)} has no reply button`);
-      return button;
-    }
-
     it('shows the loaded original in a same-chat quote and jumps to it on click', async () => {
       installSignedInFetch({ history: () => json({ messages: [...history, bobReply()] }) });
 
@@ -528,7 +540,7 @@ describe('App', () => {
       expect(quotes[1].textContent).toContain('Original message');
     });
 
-    it('prefills the composer from the reply button and sends replyTo', async () => {
+    it('prefills the composer from the context menu and sends replyTo', async () => {
       const sent: FetchCall[] = [];
       installSignedInFetch({
         history: () => json({ messages: [...history, bobReply()] }),
@@ -543,14 +555,16 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByText('oldest')).toBeDefined();
 
-      fireEvent.click(replyButton(10));
+      openMessageMenu(10);
+      clickMenuItem('Reply');
       expect(screen.getByText('Reply to Bob')).toBeDefined();
 
       // Escape clears the reply target without touching the draft.
       fireEvent.keyDown(screen.getByPlaceholderText('Message'), { key: 'Escape' });
       expect(screen.queryByText('Reply to Bob')).toBeNull();
 
-      fireEvent.click(replyButton(10));
+      openMessageMenu(10);
+      clickMenuItem('Reply');
       fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'sure' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -561,6 +575,110 @@ describe('App', () => {
       await waitFor(() => {
         expect(screen.queryByText('Reply to Bob')).toBeNull();
       });
+    });
+  });
+
+  describe('message context menu', () => {
+    let clipboard: { writeText: ReturnType<typeof vi.fn> };
+
+    beforeEach(() => {
+      clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+      Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true });
+    });
+
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'clipboard');
+      vi.useRealTimers();
+    });
+
+    it('opens on right-click and copies the message text', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const menu = openMessageMenu(10);
+      // jsdom has no layout, so the menu keeps the gesture's coordinates.
+      expect(menu.style.left).toBe('40px');
+      expect(menu.style.top).toBe('60px');
+      expect(within(menu).getByRole('menuitem', { name: 'Reply' })).toBeDefined();
+
+      clickMenuItem('Copy text');
+      expect(clipboard.writeText).toHaveBeenCalledWith('see you');
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('closes on Escape and on a press outside', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      openMessageMenu(10);
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+      expect(screen.queryByRole('menu')).toBeNull();
+
+      openMessageMenu(10);
+      fireEvent.pointerDown(document.body);
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('leaves the browser menu on service messages', async () => {
+      installSignedInFetch({
+        history: () => json({ messages: [history[0], message({ id: 14, chatId: 2, service: true, text: 'Bob joined Telegram' })] }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('Bob joined Telegram')).toBeDefined();
+
+      const row = threadSection().querySelector<HTMLElement>('[data-message-id="14"]');
+      if (!row) throw new Error('The service message is not rendered');
+      // Not cancelled, so the browser's own menu (e.g. copy) still opens.
+      expect(fireEvent.contextMenu(row)).toBe(true);
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('keeps the double-click reply shortcut', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const row = threadSection().querySelector<HTMLElement>('[data-message-id="10"]');
+      if (!row) throw new Error('Message 10 is not rendered');
+      fireEvent.doubleClick(row);
+      expect(screen.getByText('Reply to Bob')).toBeDefined();
+    });
+
+    it('opens on a long press and cancels when the finger drifts', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const row = threadSection().querySelector<HTMLElement>('[data-message-id="10"]');
+      if (!row) throw new Error('Message 10 is not rendered');
+
+      vi.useFakeTimers();
+      // A press that drifts is a scroll gesture; it must not mature.
+      fireEvent.pointerDown(row, { pointerType: 'touch', clientX: 40, clientY: 60 });
+      fireEvent.pointerMove(row, { pointerType: 'touch', clientX: 80, clientY: 60 });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.queryByRole('menu')).toBeNull();
+
+      // A steady press matures into the menu.
+      fireEvent.pointerDown(row, { pointerType: 'touch', clientX: 40, clientY: 60 });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByRole('menu', { name: 'Message actions' })).toBeDefined();
     });
   });
 
@@ -792,12 +910,6 @@ describe('App', () => {
       fireEvent.click(button);
     }
 
-    function commentReplyButton(messageId: number): HTMLElement {
-      const button = threadSection().querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(messageId))}"] .reply-button`);
-      if (!button) throw new Error(`Comment ${String(messageId)} has no reply button`);
-      return button;
-    }
-
     /**
     Routes the channel's history and the test-specific comments RPCs, keeping
     the signed-in base surface (state, dialogs, reads) intact.
@@ -877,12 +989,14 @@ describe('App', () => {
       expect(await within(threadSection()).findByText('shipping it')).toBeDefined();
 
       // Replying to a comment carries its id.
-      fireEvent.click(commentReplyButton(ROOT + 1));
+      openMessageMenu(ROOT + 1);
+      clickMenuItem('Reply');
       expect(screen.getByText('Reply to Dana')).toBeDefined();
       fireEvent.keyDown(screen.getByPlaceholderText('Comment'), { key: 'Escape' });
       expect(screen.queryByText('Reply to Dana')).toBeNull();
 
-      fireEvent.click(commentReplyButton(ROOT + 1));
+      openMessageMenu(ROOT + 1);
+      clickMenuItem('Reply');
       fireEvent.change(screen.getByPlaceholderText('Comment'), { target: { value: 'thanks' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
       await waitFor(() => {

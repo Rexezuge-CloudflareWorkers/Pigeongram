@@ -4,27 +4,6 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.message .reply-button {
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
-  padding: 2px 4px;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.message:hover .reply-button,
-.message .reply-button:focus-visible {
-  opacity: 1;
-}
-
-.message .reply-button:hover {
-  color: var(--text);
-}
-
 .message .reply-quote {
   display: flex;
   flex-direction: column;

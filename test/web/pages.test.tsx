@@ -100,6 +100,7 @@ const dialogs: DialogDto[] = [
       media: null,
       poll: null,
       reply: null,
+      forward: null,
       views: null,
       comments: null,
     },
@@ -126,6 +127,7 @@ const history: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    forward: null,
     views: null,
     comments: null,
   },
@@ -144,6 +146,7 @@ const history: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    forward: null,
     views: null,
     comments: null,
   },
@@ -169,6 +172,7 @@ const carolHistory: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    forward: null,
     views: null,
     comments: null,
   },
@@ -191,6 +195,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     media: null,
     poll: null,
     reply: null,
+    forward: null,
     views: null,
     comments: null,
     ...overrides,
@@ -397,6 +402,60 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bob'));
     expect(await screen.findByText('oldest')).toBeDefined();
     expect(screen.getAllByText('see you').length).toBeGreaterThan(0);
+  });
+
+  it('renders the forwarded-from header in a private chat', async () => {
+    const forwarded = message({
+      id: 11,
+      chatId: 2,
+      senderId: 2,
+      senderName: 'Bob',
+      text: 'fresh news',
+      forward: {
+        senderId: null,
+        senderName: 'News Channel',
+        date: 1_699_999_800_000,
+        fromChatId: null,
+        fromMessageId: null,
+        signature: null,
+      },
+    });
+    installSignedInFetch({ history: () => json({ messages: [forwarded] }) });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Bob'));
+
+    expect(await screen.findByText('↗ Forwarded from News Channel')).toBeDefined();
+  });
+
+  it('renders the forwarded-from header above the sender name in a group', async () => {
+    const team: ChatDto = { id: 4, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: true };
+    const forwarded = message({
+      id: 20,
+      chatId: 4,
+      senderId: 2,
+      senderName: 'Bob',
+      text: 'fresh news',
+      forward: {
+        senderId: null,
+        senderName: 'News Channel',
+        date: 1_699_999_800_000,
+        fromChatId: null,
+        fromMessageId: null,
+        signature: null,
+      },
+    });
+    installSignedInFetch({
+      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+      history: () => json({ messages: [forwarded] }),
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Team'));
+
+    const origin = await screen.findByText('↗ Forwarded from News Channel');
+    const sender = screen.getByText('Bob', { selector: '.message .sender' });
+    expect(origin.nextElementSibling).toBe(sender);
   });
 
   it('toggles a reaction optimistically and posts sendReaction', async () => {

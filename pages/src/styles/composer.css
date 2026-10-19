@@ -1,0 +1,47 @@
+/* Composer bar: attach, upload status and the send field. */
+.composer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.composer .attach-input {
+  display: none;
+}
+
+.composer .attach {
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  color: var(--muted);
+}
+
+.composer .attach:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.composer .attach:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.composer .upload-status {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.composer-notice {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  max-height: 140px;
+}

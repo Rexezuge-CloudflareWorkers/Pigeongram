@@ -154,6 +154,11 @@ export interface MessageReplyDto {
 export interface MessageDto {
   id: number;
   chatId: PeerId;
+  /**
+  Album membership: messages sharing a non-null `groupedId` are one album and
+  render as one bubble. Decimal string of Telegram's 64-bit group id.
+  */
+  groupedId: string | null;
   senderId: PeerId | null;
   senderName: string | null;
   outgoing: boolean;

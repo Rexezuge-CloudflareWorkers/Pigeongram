@@ -105,17 +105,17 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 
 ### RPC methods
 
-| Method           | Params                                                        | Returns                                                                                    |
-| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `getMe`          | —                                                             | `{me}`                                                                                     |
-| `getDialogs`     | `{limit?: 1..200}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                    |
-| `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}`            | `{messages: MessageDto[]}` (oldest first)                                                  |
-| `sendMessage`    | `{chatId, text, replyTo?}`                                    | `{message}`                                                                                |
-| `readHistory`    | `{chatId, maxId?}`                                            | `{}`                                                                                       |
-| `searchMessages` | `{chatId, query, limit?, offsetId?}`                          | `{messages, nextOffsetId?}`                                                                |
-| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                 | `{message: MessageDto \| null}`                                                            |
-| `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}` | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}` |
-| `sendComment`    | `{chatId, messageId, text, replyTo?}`                         | `{message}`                                                                                |
+| Method           | Params                                                        | Returns                                                                                     |
+| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `getMe`          | —                                                             | `{me}`                                                                                      |
+| `getDialogs`     | `{limit?: 1..200}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                     |
+| `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?}`            | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
+| `sendMessage`    | `{chatId, text, replyTo?}`                                    | `{message}`                                                                                 |
+| `readHistory`    | `{chatId, maxId?}`                                            | `{}`                                                                                        |
+| `searchMessages` | `{chatId, query, limit?, offsetId?}`                          | `{messages, nextOffsetId?}`                                                                 |
+| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                 | `{message: MessageDto \| null}`                                                             |
+| `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}` | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
+| `sendComment`    | `{chatId, messageId, text, replyTo?}`                         | `{message}`                                                                                 |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -129,6 +129,11 @@ scrolled (omitted, it reads the whole history — the comments screen's behavior
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
 a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
 `customEmojiId` for a custom emoji document), or removes it when both are null/omitted.
+
+`groupedId` marks album membership: Telegram delivers one album as several messages that share that id, and
+the SPA renders them as one bubble while every message stays addressable for reactions, replies and read
+receipts. Telegram stores album reactions on the first message, so the UI exposes that one; `getHistory`
+pulls in the older members of a window's oldest album so a page never splits one.
 
 A message that replies to another carries `reply`: where the original lives (`origin`), its `messageId`/`chatId`
 when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag. Same-chat

@@ -1,0 +1,54 @@
+/* Album bubbles: Telegram delivers grouped media as separate messages, so the
+   thread lays them out as one grid (photos/videos) or one stack (files). */
+.message .album {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.message .album.many {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.message .album .cell {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.message .album .cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message .album .cell .play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 22px;
+  pointer-events: none;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.75);
+}
+
+.message .album.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.message .album.stack .album-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { fileUrl } from '../api';
-import { formatBytes, formatTime } from '../format';
+import { formatTime } from '../format';
+import { albumCaption, isVisualAlbum } from '../groups';
 import { renderMessageText } from '../richtext';
 import { reactionKey } from '../state';
-import type { ChatDto, MessageCommentsDto, MessageDto, MessageMediaDto, MessageReactionDto } from '../types';
+import type { ChatDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
+import { MessageAlbum, MessageMedia } from './Media';
 import { MessageMenu } from './MessageMenu';
 import { MessageReplyQuote } from './ReplyQuote';
 
@@ -12,6 +13,11 @@ One message bubble: reply quote, media, rich text, reaction chips, comments
 button and timestamp. Shared by the thread and the comments view; the optional
 handlers decide which affordances a given view offers (the comments view's post
 header, for example, is inert).
+
+A bubble can also be an album: Telegram delivers grouped media as separate
+messages, and the thread renders them together. The first message anchors the
+bubble — sender, reply header, reactions and timestamp — matching Telegram,
+which stores album reactions on the first message and treats it as the main one.
 
 The bubble's actions live in a context menu (right-click, or a long press on
 touch); a double-click stays as the quick reply path.
@@ -26,7 +32,10 @@ const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
 
 export interface MessageRowProps {
-  message: MessageDto;
+  /**
+  One display group, oldest first: a standalone message, or an album's messages.
+  */
+  group: readonly MessageDto[];
   chat: ChatDto;
   /**
   The loaded message this one replies to, when it is still in the thread.
@@ -53,7 +62,7 @@ export interface MessageRowProps {
 }
 
 export function MessageRow({
-  message,
+  group,
   chat,
   original,
   showQuote = true,
@@ -63,9 +72,12 @@ export function MessageRow({
   onJump,
   onOpenComments,
 }: MessageRowProps) {
+  const message = group[0];
   const own = message.outgoing;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   const comments = message.comments;
+  const album = group.length > 1;
+  const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -98,6 +110,7 @@ export function MessageRow({
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
       data-message-id={message.id}
+      data-message-ids={group.map((entry) => entry.id).join(' ')}
       onDoubleClick={() => {
         if (!message.service && onReply) onReply(message);
       }}
@@ -136,8 +149,12 @@ export function MessageRow({
     >
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
-      {message.media ? <MessageMedia message={message} media={message.media} /> : null}
-      {message.text ? <div className="text">{renderMessageText(message.text, message.entities)}</div> : null}
+      {album ? <MessageAlbum messages={group} /> : message.media ? <MessageMedia message={message} media={message.media} /> : null}
+      {caption ? (
+        <div className="text">{renderMessageText(caption.text, caption.entities)}</div>
+      ) : !album && message.text ? (
+        <div className="text">{renderMessageText(message.text, message.entities)}</div>
+      ) : null}
       {message.reactions.length > 0 ? (
         <div className="reactions">
           {message.reactions.map((reaction) => {
@@ -184,59 +201,4 @@ export function MessageRow({
 function commentLabel(comments: MessageCommentsDto): string {
   if (comments.count === 0) return 'Leave a comment';
   return comments.count === 1 ? '1 comment' : `${comments.count} comments`;
-}
-
-function MessageMedia({ message, media }: { message: MessageDto; media: MessageMediaDto }) {
-  const src = fileUrl(message.chatId, message.id);
-  switch (media.kind) {
-    case 'photo': {
-      return <img className="photo" src={src} alt={media.fileName ?? 'Photo'} loading="lazy" />;
-    }
-    case 'video':
-    case 'animation': {
-      const animation = media.kind === 'animation';
-      return (
-        <video
-          className="video"
-          src={src}
-          poster={fileUrl(message.chatId, message.id, { thumb: true })}
-          controls={!animation}
-          autoPlay={animation}
-          loop={animation}
-          muted={animation}
-          playsInline
-          preload="metadata"
-        />
-      );
-    }
-    case 'audio':
-    case 'voice': {
-      return <audio className="audio" src={src} controls preload="metadata" />;
-    }
-    case 'sticker': {
-      if (media.mime === 'image/webp') {
-        return <img className="sticker" src={src} alt="Sticker" loading="lazy" />;
-      }
-      return <DocumentLink message={message} />;
-    }
-    default: {
-      return <DocumentLink message={message} />;
-    }
-  }
-}
-
-function DocumentLink({ message }: { message: MessageDto }) {
-  const media = message.media;
-  return (
-    <a
-      className="document"
-      href={fileUrl(message.chatId, message.id)}
-      download={media?.fileName ?? 'download'}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <span className="doc-name">{media?.fileName ?? 'File'}</span>
-      {media && media.size !== null ? <span className="doc-size">{formatBytes(media.size)}</span> : null}
-    </a>
-  );
 }

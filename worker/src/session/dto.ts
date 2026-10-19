@@ -149,6 +149,7 @@ export function toMessageDto(message: Message): MessageDto {
   return {
     id: message.id,
     chatId: message.chat.id,
+    groupedId: message.groupedId?.toString() ?? null,
     senderId: typeof sender?.id === 'number' ? sender.id : null,
     senderName: sender?.displayName ?? null,
     outgoing: message.isOutgoing,

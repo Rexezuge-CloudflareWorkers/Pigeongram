@@ -1,6 +1,63 @@
+import { Long, Message, PeersIndex } from '@mtcute/core';
+import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
 import { dispatchRpc } from '../../worker/src/session/rpc';
+
+const peers = PeersIndex.from({
+  users: [
+    {
+      _: 'user',
+      id: 1,
+      self: false,
+      contact: false,
+      mutualContact: false,
+      deleted: false,
+      bot: false,
+      botChatHistory: false,
+      botNochats: false,
+      verified: false,
+      restricted: false,
+      min: false,
+      firstName: 'Ada',
+    } as unknown as tl.RawUser,
+  ],
+  chats: [],
+});
+
+function message(id: number, groupedId?: number): Message {
+  return new Message(
+    {
+      _: 'message',
+      id,
+      peerId: { _: 'peerUser', userId: 1 },
+      fromId: { _: 'peerUser', userId: 1 },
+      date: 1_700_000_000,
+      message: `m${id}`,
+      out: false,
+      ...(groupedId !== undefined && { groupedId: Long.fromNumber(groupedId) }),
+    } as unknown as tl.RawMessage,
+    peers,
+  );
+}
+
+/**
+A fake client whose `getHistory` answers from a script of pages, so the
+oldest-edge completion can be observed call by call.
+*/
+function fakeHistoryClient(pages: readonly (readonly Message[])[]): {
+  client: TelegramClient;
+  calls: Array<{ chatId: number; params: unknown }>;
+} {
+  const calls: Array<{ chatId: number; params: unknown }> = [];
+  const client = {
+    getHistory: async (chatId: number, params?: unknown) => {
+      calls.push({ chatId, params });
+      return pages[calls.length - 1] ?? [];
+    },
+  } as unknown as TelegramClient;
+  return { client, calls };
+}
 
 /**
  * The read path against a fake `TelegramClient`: what the SPA depends on is
@@ -41,5 +98,43 @@ describe('readHistory dispatch', () => {
     const { client, reads } = fakeClient();
     await expect(dispatchRpc(client, 'readHistory', { chatId: 2, maxId: -1 })).rejects.toThrow('Expected a non-negative integer');
     expect(reads).toEqual([]);
+  });
+});
+
+describe('getHistory dispatch', () => {
+  it('returns the window oldest first', async () => {
+    const { client, calls } = fakeHistoryClient([[message(12), message(11)]]);
+    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1 })) as { messages: Array<{ id: number }> };
+    expect(result.messages.map((entry) => entry.id)).toEqual([11, 12]);
+    expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
+  });
+
+  it('completes the oldest album at the window edge', async () => {
+    const { client, calls } = fakeHistoryClient([
+      [message(13, 7), message(12, 7), message(11, 7)],
+      [message(10, 7), message(9, 7)],
+    ]);
+    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 3 })) as { messages: Array<{ id: number }> };
+    expect(result.messages.map((entry) => entry.id)).toEqual([9, 10, 11, 12, 13]);
+    expect(calls[1]).toEqual({
+      chatId: 1,
+      params: { limit: 9, offset: { id: 11, date: 1_700_000_000 } },
+    });
+  });
+
+  it('stops at the album boundary instead of swallowing older messages', async () => {
+    const { client, calls } = fakeHistoryClient([
+      [message(20, 9), message(19, 9)],
+      [message(18, 8), message(17, 8)],
+    ]);
+    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 })) as { messages: Array<{ id: number }> };
+    expect(result.messages.map((entry) => entry.id)).toEqual([19, 20]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('skips the extra fetch when the oldest message is not grouped', async () => {
+    const { client, calls } = fakeHistoryClient([[message(2), message(1)]]);
+    await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 });
+    expect(calls).toHaveLength(1);
   });
 });

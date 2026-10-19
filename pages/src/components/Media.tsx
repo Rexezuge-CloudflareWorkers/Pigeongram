@@ -7,13 +7,26 @@ import { MessageText } from './MessageText';
 /**
 One message's media, and the grid or stack an album shares. Split from
 `MessageRow` so the bubble chrome and the media layout each stay small.
+
+Media that loads lazily carries its `width`/`height` as attributes: the
+intrinsic box is reserved before the bytes arrive, so a load does not reflow
+the thread (and shift a reader's position) as the images settle in.
 */
 
 export function MessageMedia({ message, media }: { message: MessageDto; media: MessageMediaDto }) {
   const src = fileUrl(message.chatId, message.id);
   switch (media.kind) {
     case 'photo': {
-      return <img className="photo" src={src} alt={media.fileName ?? 'Photo'} loading="lazy" />;
+      return (
+        <img
+          className="photo"
+          src={src}
+          alt={media.fileName ?? 'Photo'}
+          width={media.width ?? undefined}
+          height={media.height ?? undefined}
+          loading="lazy"
+        />
+      );
     }
     case 'video':
     case 'animation': {
@@ -23,6 +36,8 @@ export function MessageMedia({ message, media }: { message: MessageDto; media: M
           className="video"
           src={src}
           poster={fileUrl(message.chatId, message.id, { thumb: true })}
+          width={media.width ?? undefined}
+          height={media.height ?? undefined}
           controls={!animation}
           autoPlay={animation}
           loop={animation}
@@ -38,7 +53,16 @@ export function MessageMedia({ message, media }: { message: MessageDto; media: M
     }
     case 'sticker': {
       if (media.mime === 'image/webp') {
-        return <img className="sticker" src={src} alt="Sticker" loading="lazy" />;
+        return (
+          <img
+            className="sticker"
+            src={src}
+            alt="Sticker"
+            width={media.width ?? undefined}
+            height={media.height ?? undefined}
+            loading="lazy"
+          />
+        );
       }
       return <DocumentLink message={message} />;
     }

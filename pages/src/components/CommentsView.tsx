@@ -60,6 +60,26 @@ export function CommentsView({
     element.scrollTop = element.scrollHeight;
   }, [lastId, thread.post.id, comments.length]);
 
+  // The thread's settling rule: media loads grow the list after the open
+  // scroll, and a pinned view follows the growth instead of losing the end.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const settle = (): void => {
+      if (!stickToBottom.current) return;
+      element.scrollTop = element.scrollHeight;
+    };
+    // Media events do not bubble; a capture listener still sees them.
+    element.addEventListener('load', settle, { capture: true });
+    element.addEventListener('error', settle, { capture: true });
+    element.addEventListener('loadedmetadata', settle, { capture: true });
+    return () => {
+      element.removeEventListener('load', settle, true);
+      element.removeEventListener('error', settle, true);
+      element.removeEventListener('loadedmetadata', settle, true);
+    };
+  }, []);
+
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;
   const commentById = new Map(comments.map((comment) => [comment.id, comment]));
   const groups = groupMessages(comments);

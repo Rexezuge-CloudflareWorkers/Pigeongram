@@ -596,6 +596,37 @@ describe('toMessageDto', () => {
     });
   });
 
+  it('maps a sticker document into the media DTO with its size', () => {
+    const sticker = message({
+      media: {
+        _: 'messageMediaDocument',
+        document: {
+          _: 'document',
+          id: Long.fromNumber(10),
+          accessHash: Long.fromNumber(100),
+          fileReference: new Uint8Array([4]),
+          date: 1_700_000_000,
+          mimeType: 'image/webp',
+          size: 2048,
+          dcId: 2,
+          attributes: [
+            { _: 'documentAttributeSticker', alt: '🙂', stickerset: { _: 'inputStickerSetEmpty' } },
+            { _: 'documentAttributeImageSize', w: 512, h: 512 },
+          ],
+        },
+      },
+    });
+    expect(toMessageDto(sticker).media).toEqual({
+      kind: 'sticker',
+      fileName: null,
+      mime: 'image/webp',
+      size: 2048,
+      width: 512,
+      height: 512,
+      duration: null,
+    });
+  });
+
   it('leaves non-file media out of the DTO', () => {
     const geo = message({
       media: {

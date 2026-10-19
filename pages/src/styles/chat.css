@@ -305,14 +305,19 @@
   font-size: 11px;
 }
 
+/* The intrinsic-size attributes on the media reserve their box before a lazy
+   load; `height: auto` keeps that box on the intrinsic ratio while max-width
+   caps it to the bubble. */
 .message .photo {
   max-width: 100%;
+  height: auto;
   border-radius: 8px;
   display: block;
 }
 
 .message .video {
   max-width: 100%;
+  height: auto;
   border-radius: 8px;
   display: block;
 }
@@ -323,6 +328,7 @@
 
 .message .sticker {
   max-width: 160px;
+  height: auto;
   border-radius: 8px;
 }
 

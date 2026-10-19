@@ -264,10 +264,22 @@ function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
         duration: media.duration,
       };
     }
-    case 'sticker':
+    case 'sticker': {
+      // A sticker's dimensions let the bubble reserve its box before the webp
+      // loads, the same way a photo's do (mtcute defaults to 512×512).
+      return {
+        kind: 'sticker',
+        fileName: media.fileName,
+        mime: media.mimeType,
+        size: media.raw.size,
+        width: media.width,
+        height: media.height,
+        duration: null,
+      };
+    }
     case 'document': {
       return {
-        kind: media.type,
+        kind: 'document',
         fileName: media.fileName,
         mime: media.mimeType,
         size: media.raw.size,

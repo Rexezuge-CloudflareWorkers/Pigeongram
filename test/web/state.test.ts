@@ -14,6 +14,7 @@ import {
   reactionKey,
   replaceMessage,
   toggleReaction,
+  updateCommentsPoll,
   updateThread,
   updateThreadPoll,
 } from '../../pages/src/state';
@@ -294,6 +295,32 @@ describe('poll state', () => {
     expect(updateThreadPoll(thread, { chatId: null, messageId: null, pollId: POLL.id }, fresh)?.messages[0].poll).toBe(fresh);
     expect(updateThreadPoll(thread, { chatId: null, messageId: null, pollId: 'other' }, fresh)).toBe(thread);
     expect(updateThreadPoll(null, { chatId: null, messageId: null, pollId: POLL.id }, fresh)).toBeNull();
+  });
+
+  it('folds a poll update into the pinned post or a loaded comment', () => {
+    const post = message({ id: 7, chatId: -100, poll: POLL });
+    const comment = message({ id: 8, chatId: -200, poll: { ...POLL, id: 'comment-poll' } });
+    const thread = {
+      chat: chat(-100),
+      post,
+      discussionChatId: -200,
+      discussionMessageId: 10,
+      comments: [comment],
+      count: 1,
+      nextOffset: null,
+    };
+    const fresh = { ...POLL, totalVoters: 9 };
+
+    const onPost = updateCommentsPoll(thread, { chatId: -100, messageId: 7, pollId: POLL.id }, fresh);
+    expect(onPost?.post.poll).toBe(fresh);
+    expect(onPost?.comments[0]).toBe(comment);
+
+    const onComment = updateCommentsPoll(thread, { chatId: null, messageId: null, pollId: 'comment-poll' }, fresh);
+    expect(onComment?.comments[0].poll).toBe(fresh);
+    expect(onComment?.post).toBe(post);
+
+    expect(updateCommentsPoll(thread, { chatId: null, messageId: null, pollId: 'other' }, fresh)).toBe(thread);
+    expect(updateCommentsPoll(null, { chatId: null, messageId: null, pollId: POLL.id }, fresh)).toBeNull();
   });
 });
 

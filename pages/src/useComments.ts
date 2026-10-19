@@ -13,6 +13,7 @@ import {
 import type { CommentsThread } from './state';
 import type { ChatDto, GetCommentsResult, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
+import { useCommentsPoll } from './useCommentsPoll';
 
 /**
 The comments screen's controller: the open channel-post thread with its loaded
@@ -61,12 +62,22 @@ export interface CommentsController {
   Comment ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;
+  /**
+  Comment (or pinned post) ids with a vote in flight; their poll's answers are
+  disabled.
+  */
+  votingIds: ReadonlySet<number>;
   open: (chat: ChatDto, message: MessageDto) => Promise<void>;
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   attach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Casts a vote in a poll on the pinned post or a comment, or retracts it with
+  `null`.
+  */
+  vote: (message: MessageDto, options: number[] | null) => void;
   /**
   Folds one socket update into the open thread. `App`'s update handler
   forwards every event; updates that are not comments pass through.
@@ -105,6 +116,8 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
   useLayoutEffect(() => {
     threadRef.current = thread;
   }, [thread]);
+
+  const { applyPoll, refreshPoll, votingIds, vote } = useCommentsPoll(threadRef, setThread, onError);
 
   /**
   Re-reads the newest window of the open thread and folds it in. An
@@ -320,36 +333,44 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
     [thread, reactingIds, onError],
   );
 
-  const applyUpdate = useCallback((update: UpdateEvent): void => {
-    if (update.type === 'new_message') {
-      const open = threadRef.current;
-      if (open && isThreadComment(open, update.message)) {
-        void readHistory(update.message.chatId).catch(() => {
-          // Read receipts are best-effort; the next open retries.
-        });
+  const applyUpdate = useCallback(
+    (update: UpdateEvent): void => {
+      if (update.type === 'new_message') {
+        const open = threadRef.current;
+        if (open && isThreadComment(open, update.message)) {
+          void readHistory(update.message.chatId).catch(() => {
+            // Read receipts are best-effort; the next open retries.
+          });
+        }
+        setThread((current) => applyCommentMessage(current, update.message));
+        return;
       }
-      setThread((current) => applyCommentMessage(current, update.message));
-      return;
-    }
-    if (update.type === 'edit_message') {
-      setThread((current) => applyCommentEdit(current, update.message));
-      return;
-    }
-    if (update.type === 'reactions') {
-      setThread((current) => applyCommentReactions(current, update.chatId, update.messageId, update.reactions));
-      return;
-    }
-    if (update.type === 'views') {
-      // The pinned post header is the screen's only message with views; the
-      // guard drops a view update that belongs to another post.
-      setThread((current) =>
-        updateCommentsThread(current, { chatId: update.chatId, messageId: update.messageId }, (open) => ({
-          ...open,
-          post: { ...open.post, views: update.views },
-        })),
-      );
-    }
-  }, []);
+      if (update.type === 'edit_message') {
+        setThread((current) => applyCommentEdit(current, update.message));
+        return;
+      }
+      if (update.type === 'reactions') {
+        setThread((current) => applyCommentReactions(current, update.chatId, update.messageId, update.reactions));
+        return;
+      }
+      if (update.type === 'views') {
+        // The pinned post header is the screen's only message with views; the
+        // guard drops a view update that belongs to another post.
+        setThread((current) =>
+          updateCommentsThread(current, { chatId: update.chatId, messageId: update.messageId }, (open) => ({
+            ...open,
+            post: { ...open.post, views: update.views },
+          })),
+        );
+        return;
+      }
+      if (update.type === 'poll') {
+        if (update.poll === null) refreshPoll(update);
+        else applyPoll(update, update.poll);
+      }
+    },
+    [applyPoll, refreshPoll],
+  );
 
   return {
     thread,
@@ -360,12 +381,14 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
     uploadProgress,
     error,
     reactingIds,
+    votingIds,
     open,
     close,
     loadOlder,
     send,
     attach,
     react,
+    vote,
     applyUpdate,
   };
 }

@@ -14,7 +14,7 @@ One message bubble: forward header, sender, reply quote, media, rich text,
 reaction chips, the view count and timestamp, and — for a channel post with a
 thread — the comments button in its footer. Shared by the thread and the
 comments view; the optional handlers decide which affordances a given view
-offers (the comments view's post header, for example, is inert).
+offers (the comments view's post header, for example, is not a reply target).
 
 A bubble can also be an album: Telegram delivers grouped media as separate
 messages, and the thread renders them together. The first message anchors the

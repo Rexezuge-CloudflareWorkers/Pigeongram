@@ -1532,6 +1532,31 @@ describe('App', () => {
       comment({ id: ROOT + 2, text: 'congrats', reply: replyHeader(ROOT + 1) }),
     ];
 
+    const poll: MessagePollDto = {
+      id: 'comment-poll',
+      question: 'Ship it?',
+      answers: [
+        { text: 'Yes', voters: 1, chosen: false, correct: null },
+        { text: 'No', voters: 1, chosen: false, correct: null },
+      ],
+      totalVoters: 2,
+      closed: false,
+      quiz: false,
+      multiple: false,
+      revotingDisabled: false,
+      hideResultsUntilClose: false,
+      solution: null,
+    };
+
+    const answeredPoll: MessagePollDto = {
+      ...poll,
+      totalVoters: 3,
+      answers: [
+        { text: 'Yes', voters: 2, chosen: true, correct: null },
+        { text: 'No', voters: 1, chosen: false, correct: null },
+      ],
+    };
+
     function openComments(): void {
       const button = screen.getByRole('button', { name: /2 comments/ });
       fireEvent.click(button);
@@ -1541,10 +1566,13 @@ describe('App', () => {
     Routes the channel's history and the test-specific comments RPCs, keeping
     the signed-in base surface (state, dialogs, reads) intact.
     */
-    function installCommentsFetch(rpc: (call: FetchCall) => Response | undefined): FetchCall[] {
+    function installCommentsFetch(
+      rpc: (call: FetchCall) => Response | undefined,
+      history: () => Response = () => json({ messages: [post] }),
+    ): FetchCall[] {
       return installSignedInFetch({
         dialogs: [channelDialog],
-        history: () => json({ messages: [post] }),
+        history,
         rpc,
       });
     }
@@ -1574,6 +1602,71 @@ describe('App', () => {
       expect(screen.getByPlaceholderText('Comment')).toBeDefined();
       expect(calls).toHaveLength(1);
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
+    });
+
+    it('votes in a poll comment and folds live results in', async () => {
+      const calls: unknown[] = [];
+      const pollComment = comment({ id: ROOT + 1, poll, reply: replyHeader(ROOT) });
+      installCommentsFetch((call) => {
+        if (call.body?.method === 'getComments') {
+          return json({ comments: [pollComment], count: 1, discussionChatId: GROUP, discussionMessageId: ROOT });
+        }
+        if (call.body?.method !== 'sendVote') {
+          return;
+        }
+
+        calls.push(call.body);
+        return json({ poll: answeredPoll });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Vote for Yes (50%)' }));
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+      });
+      expect(calls).toEqual([{ method: 'sendVote', params: { chatId: GROUP, messageId: ROOT + 1, options: [0] } }]);
+
+      deliver({ type: 'poll', chatId: GROUP, messageId: ROOT + 1, pollId: poll.id, poll: { ...poll, totalVoters: 6 } });
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('6 votes')).toBeDefined();
+      });
+    });
+
+    it('votes in a poll on the pinned post', async () => {
+      const calls: unknown[] = [];
+      const pollPost = { ...post, text: '', poll };
+      installCommentsFetch(
+        (call) => {
+          if (call.body?.method === 'getComments') {
+            return json({ comments: [], count: 0, discussionChatId: null, discussionMessageId: null });
+          }
+          if (call.body?.method !== 'sendVote') {
+            return;
+          }
+
+          calls.push(call.body);
+          return json({ poll: answeredPoll });
+        },
+        () => json({ messages: [pollPost] }),
+      );
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('Ship it?')).toBeDefined();
+      openComments();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Vote for Yes (50%)' }));
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+      });
+      expect(calls).toEqual([{ method: 'sendVote', params: { chatId: channel.id, messageId: 7, options: [0] } }]);
     });
 
     it('keeps the pinned comments screen at the bottom while comment media settles', async () => {

@@ -19,11 +19,20 @@ interface CommentsViewProps {
   Comment ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;
+  /**
+  Comment (or pinned post) ids with a vote in flight; their poll's answers are
+  disabled.
+  */
+  votingIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Casts a vote in a poll comment, or retracts it with `null`.
+  */
+  onVote: (message: MessageDto, options: number[] | null) => void;
 }
 
 /**
@@ -40,11 +49,13 @@ export function CommentsView({
   uploadProgress,
   error,
   reactingIds,
+  votingIds,
   onBack,
   onLoadOlder,
   onSend,
   onAttach,
   onReact,
+  onVote,
 }: CommentsViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -117,7 +128,14 @@ export function CommentsView({
         }}
       >
         <div className="comments-post">
-          <MessageRow group={[thread.post]} chat={thread.chat} original={null} showQuote={false} />
+          <MessageRow
+            group={[thread.post]}
+            chat={thread.chat}
+            original={null}
+            showQuote={false}
+            voting={votingIds.has(thread.post.id)}
+            onVote={onVote}
+          />
         </div>
         <div className="day">{commentCountLabel(thread.count)}</div>
         {comments.length > 0 && thread.nextOffset ? (
@@ -147,6 +165,8 @@ export function CommentsView({
                 showQuote={quoteVisible(anchor, thread, commentById)}
                 reacting={reactingIds.has(anchor.id)}
                 onReact={onReact}
+                voting={votingIds.has(anchor.id)}
+                onVote={onVote}
                 onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
                 onJump={jumpToComment}
               />

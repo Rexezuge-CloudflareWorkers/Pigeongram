@@ -5,10 +5,10 @@ A poll message: the question, its answers, and whatever Telegram shared of the
 results.
 
 The thread hands in a vote handler and the answers become buttons; a poll
-closed to changes (or a view without voting, such as the comments screen) shows
-the same rows inert. A vote always sends the whole selection, because that is
-how Telegram replaces one: single-choice taps swap the answer, multiple-choice
-taps add or remove it, and taking the last answer back retracts the vote.
+closed to changes (or a view that does not vote) shows the same rows inert. A
+vote always sends the whole selection, because that is how Telegram replaces
+one: single-choice taps swap the answer, multiple-choice taps add or remove it,
+and taking the last answer back retracts the vote.
 */
 
 interface MessagePollProps {

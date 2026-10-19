@@ -141,7 +141,8 @@ updates name it by. Per-answer `voters`/`correct` and `totalVoters` stay `null` 
 results with the poll — a quiz before this account answers, or one that hides them until it closes — and `null`
 keeps "unknown" apart from zero voters. `sendVote` therefore takes answer **indexes** against the live message
 (Telegram caps a poll at ten answers) rather than raw option bytes: the engine resolves them server-side, so a
-stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote.
+stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote. The comments screen
+votes through the same RPCs, including polls on the pinned channel post and on comments in the discussion group.
 
 `groupedId` marks album membership: Telegram delivers one album as several messages that share that id, and
 the SPA renders them as one bubble while every message stays addressable for reactions, replies and read

@@ -263,7 +263,7 @@ export function App() {
             error={threads.error}
             reactingIds={threads.reactingIds}
             votingIds={threads.votingIds}
-            readInboxMaxId={threads.thread?.readInboxMaxId ?? 0}
+            unreadDividerId={threads.thread?.unreadDividerId ?? null}
             focusMessageId={threads.thread?.focusMessageId ?? null}
             onBack={() => {
               closeThread();

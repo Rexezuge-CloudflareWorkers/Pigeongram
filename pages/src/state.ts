@@ -91,10 +91,18 @@ export interface ChatThread {
   messages: MessageDto[];
   /**
   Id of the last read incoming message, seeded from the dialog when the chat
-  opens and advanced as the user reads; the thread's first unread message is
-  the first incoming one after it.
+  opens and advanced as the user reads.
   */
   readInboxMaxId: number;
+  /**
+  The message the unread divider sits above: the first unread message of the
+  window the chat opened with. It marks where reading stopped when the chat
+  was opened, so advancing the watermark moves the badge and the receipts but
+  not the line, and messages arriving later in the same session do not create
+  one; reopening the chat seeds a fresh divider. Null when the opening window
+  was fully read.
+  */
+  unreadDividerId: number | null;
   /**
   The linked post a jump landed on, until the view scrolls to it; null when the
   chat was opened normally.

@@ -1193,6 +1193,63 @@ describe('App', () => {
       expect(reads).toHaveLength(3);
     });
 
+    it('keeps the divider at its opening position while reading advances the receipts', async () => {
+      const reads = installUnreadFetch();
+      stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+
+      const dividerMessageId = (): string | undefined =>
+        (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId;
+      expect(dividerMessageId()).toBe('9');
+
+      // Scrolling past the line advances the read watermark to 11 and then to
+      // the bottom; the line itself stays above the message it opened at.
+      scrollContainer().scrollTop = 100;
+      fireEvent.scroll(scrollContainer());
+      await waitFor(() => {
+        expect(reads.at(-1)?.body?.params).toEqual({ chatId: 2, maxId: 11 });
+      });
+      expect(dividerMessageId()).toBe('9');
+
+      scrollContainer().scrollTop = 200;
+      fireEvent.scroll(scrollContainer());
+      await waitFor(() => {
+        expect(reads.at(-1)?.body?.params).toEqual({ chatId: 2, maxId: 13 });
+      });
+      expect(dividerMessageId()).toBe('9');
+
+      // A message arriving while the thread is open does not move the line
+      // either; it stays above the message the chat opened at.
+      deliver({ type: 'new_message', message: message({ id: 14, chatId: 2, senderName: 'Bob', text: 'brand new' }) });
+      expect(await within(threadSection()).findByText('brand new')).toBeDefined();
+      expect(dividerMessageId()).toBe('9');
+    });
+
+    it('seeds a fresh divider when the chat is reopened', async () => {
+      installUnreadFetch();
+      stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+      expect(threadSection().querySelector('[data-unread-divider]')).not.toBeNull();
+
+      // Read everything, then leave and come back: the stretch was read, so the
+      // reopened thread has no line.
+      scrollContainer().scrollTop = 200;
+      fireEvent.scroll(scrollContainer());
+      await waitFor(() => {
+        expect(document.querySelector('.badge')).toBeNull();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      fireEvent.click(screen.getByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+      expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
+    });
+
     it('folds inbox reads into the badge and the divider, and ignores outbox reads', async () => {
       installUnreadFetch();
       // The viewport covers only the already-read row, so the test's own
@@ -1213,16 +1270,19 @@ describe('App', () => {
       expect(document.querySelector('.badge')?.textContent).toBe('3');
       expect(threadSection().querySelector('[data-unread-divider]')).not.toBeNull();
 
-      // The account's own read moves the badge and the divider on together.
+      // The account's own read moves the badge on, but not the line: the
+      // divider stays where the chat opened for as long as it is open.
       deliver({ type: 'read', chatId: 2, maxId: 11, unread: 1, inbox: true });
       expect(document.querySelector('.badge')?.textContent).toBe('1');
       expect(
         (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
-      ).toBe('13');
+      ).toBe('9');
 
       deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
       expect(document.querySelector('.badge')).toBeNull();
-      expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
+      expect(
+        (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
+      ).toBe('9');
     });
   });
 

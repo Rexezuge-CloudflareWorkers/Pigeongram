@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
-import { firstUnread, readWatermark } from '../reading';
+import { readWatermark } from '../reading';
 import type { ChatDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
@@ -37,10 +37,12 @@ interface ThreadViewProps {
   */
   votingIds: ReadonlySet<number>;
   /**
-  The chat's read watermark: the thread opens at the first unread message
-  after it, and reading advances it.
+  The message the unread divider sits above: the first unread message of the
+  window the chat opened with. Reading advances the watermark but not the
+  line, and the line stays for as long as the chat is open; reopening the
+  chat computes a fresh one. Null when the chat opened fully read.
   */
-  readInboxMaxId: number;
+  unreadDividerId: number | null;
   /**
   A linked post the chat was opened for: the first window lands on it (and
   flashes it) instead of on the first unread message; null when the chat was
@@ -82,7 +84,7 @@ export function ThreadView({
   onReact,
   onVote,
   onOpenComments,
-  readInboxMaxId,
+  unreadDividerId,
   focusMessageId,
   onReadThrough,
 }: ThreadViewProps) {
@@ -191,8 +193,15 @@ export function ThreadView({
 
   const lastId = messages.at(-1)?.id ?? 0;
   useLayoutEffect(() => {
+    if (!chat) {
+      // Closing the thread unmounts the list; the next open — even of the same
+      // chat — is a fresh session that must land at its own divider.
+      positionedChat.current = null;
+      positionedFocus.current = null;
+      return;
+    }
     const element = scrollRef.current;
-    if (!element || !chat) return;
+    if (!element) return;
     // A jump to a linked post repositions even inside the open chat: the
     // thread was just re-read around that post, so the view follows it.
     const focusChanged = focusMessageId !== null && positionedFocus.current !== focusMessageId;
@@ -208,14 +217,14 @@ export function ThreadView({
         focus.scrollIntoView({ block: 'center' });
         flashRow(focus);
       } else {
-        const anchor = firstUnread(messages, readInboxMaxId);
-        if (anchor) {
-          const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
-          const target = divider ?? element.querySelector<HTMLElement>(messageRowSelector(anchor.id));
-          target?.scrollIntoView({ block: 'start' });
-        } else {
-          element.scrollTop = element.scrollHeight;
-        }
+        // The divider is the opening position; without one the thread was
+        // fully read and lands at the bottom. A divider whose message sits
+        // outside the loaded window (a jump window) falls back to the row.
+        const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
+        const anchor =
+          divider ?? (unreadDividerId === null ? null : element.querySelector<HTMLElement>(messageRowSelector(unreadDividerId)));
+        if (anchor) anchor.scrollIntoView({ block: 'start' });
+        else element.scrollTop = element.scrollHeight;
       }
       stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
       reportVisible(element);
@@ -225,7 +234,7 @@ export function ThreadView({
     element.scrollTop = element.scrollHeight;
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
-  }, [chat, lastId, messages, loading, readInboxMaxId, focusMessageId, reportVisible]);
+  }, [chat, lastId, messages, loading, unreadDividerId, focusMessageId, reportVisible]);
 
   if (!chat) {
     return (
@@ -237,7 +246,6 @@ export function ThreadView({
 
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
   const messageById = new Map(messages.map((message) => [message.id, message]));
-  const unreadAnchorId = firstUnread(messages, readInboxMaxId)?.id ?? null;
   const groups = groupMessages(messages);
 
   /**
@@ -296,7 +304,7 @@ export function ThreadView({
               {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
                 <div className="day">{formatDay(anchor.date)}</div>
               ) : null}
-              {group.some((message) => message.id === unreadAnchorId) ? (
+              {group.some((message) => message.id === unreadDividerId) ? (
                 <div className="unread-divider" data-unread-divider>
                   Unread messages
                 </div>

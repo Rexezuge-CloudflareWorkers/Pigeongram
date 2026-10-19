@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
-import { renderMessageText } from '../richtext';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
+import { MessageText } from './MessageText';
 
 /**
 One message bubble: forward header, sender, reply quote, media, rich text,
@@ -170,9 +170,13 @@ export function MessageRow({
         <MessageMedia message={message} media={message.media} />
       ) : null}
       {caption ? (
-        <div className="text">{renderMessageText(caption.text, caption.entities)}</div>
+        <div className="text">
+          <MessageText text={caption.text} entities={caption.entities} />
+        </div>
       ) : !album && message.text ? (
-        <div className="text">{renderMessageText(message.text, message.entities)}</div>
+        <div className="text">
+          <MessageText text={message.text} entities={message.entities} />
+        </div>
       ) : null}
       {message.reactions.length > 0 ? (
         <div className="reactions">

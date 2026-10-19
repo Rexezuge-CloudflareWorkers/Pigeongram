@@ -1,8 +1,8 @@
 import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
 import { isVisualAlbum } from '../groups';
-import { renderMessageText } from '../richtext';
 import type { MessageDto, MessageMediaDto } from '../types';
+import { MessageText } from './MessageText';
 
 /**
 One message's media, and the grid or stack an album shares. Split from
@@ -60,7 +60,11 @@ export function MessageAlbum({ messages }: { messages: readonly MessageDto[] }) 
         {messages.map((message) => (
           <div key={message.id} className="album-row">
             {message.media ? <MessageMedia message={message} media={message.media} /> : null}
-            {message.text ? <div className="text">{renderMessageText(message.text, message.entities)}</div> : null}
+            {message.text ? (
+              <div className="text">
+                <MessageText text={message.text} entities={message.entities} />
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

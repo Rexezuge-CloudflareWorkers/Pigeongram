@@ -95,6 +95,11 @@ export interface ChatThread {
   the first incoming one after it.
   */
   readInboxMaxId: number;
+  /**
+  The linked post a jump landed on, until the view scrolls to it; null when the
+  chat was opened normally.
+  */
+  focusMessageId: number | null;
 }
 
 /**

@@ -41,6 +41,12 @@ interface ThreadViewProps {
   after it, and reading advances it.
   */
   readInboxMaxId: number;
+  /**
+  A linked post the chat was opened for: the first window lands on it (and
+  flashes it) instead of on the first unread message; null when the chat was
+  opened normally.
+  */
+  focusMessageId: number | null;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
@@ -77,12 +83,14 @@ export function ThreadView({
   onVote,
   onOpenComments,
   readInboxMaxId,
+  focusMessageId,
   onReadThrough,
 }: ThreadViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   // Position and read bookkeeping lives in refs so scrolling never re-renders.
   const positionedChat = useRef<number | null>(null);
+  const positionedFocus = useRef<number | null>(null);
   const readThrough = useRef(0);
   const readTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pendingRead = useRef<{ chatId: number; maxId: number } | null>(null);
@@ -162,19 +170,29 @@ export function ThreadView({
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element || !chat) return;
-    if (positionedChat.current !== chat.id) {
+    // A jump to a linked post repositions even inside the open chat: the
+    // thread was just re-read around that post, so the view follows it.
+    const focusChanged = focusMessageId !== null && positionedFocus.current !== focusMessageId;
+    if (positionedChat.current !== chat.id || focusChanged) {
       // Wait for the first window: deciding on an empty list would land the
       // position before the messages it belongs to exist.
       if (loading || messages.length === 0) return;
       positionedChat.current = chat.id;
+      positionedFocus.current = focusMessageId;
       readThrough.current = 0;
-      const anchor = firstUnread(messages, readInboxMaxId);
-      if (anchor) {
-        const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
-        const target = divider ?? element.querySelector<HTMLElement>(messageRowSelector(anchor.id));
-        target?.scrollIntoView({ block: 'start' });
+      const focus = focusMessageId === null ? null : element.querySelector<HTMLElement>(messageRowSelector(focusMessageId));
+      if (focus) {
+        focus.scrollIntoView({ block: 'center' });
+        flashRow(focus);
       } else {
-        element.scrollTop = element.scrollHeight;
+        const anchor = firstUnread(messages, readInboxMaxId);
+        if (anchor) {
+          const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
+          const target = divider ?? element.querySelector<HTMLElement>(messageRowSelector(anchor.id));
+          target?.scrollIntoView({ block: 'start' });
+        } else {
+          element.scrollTop = element.scrollHeight;
+        }
       }
       stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
       reportVisible(element);
@@ -184,7 +202,7 @@ export function ThreadView({
     element.scrollTop = element.scrollHeight;
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
-  }, [chat, lastId, messages, loading, readInboxMaxId, reportVisible]);
+  }, [chat, lastId, messages, loading, readInboxMaxId, focusMessageId, reportVisible]);
 
   if (!chat) {
     return (
@@ -207,8 +225,7 @@ export function ThreadView({
     const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
     if (!(target instanceof HTMLElement)) return;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    target.classList.add('reply-flash');
-    setTimeout(() => target.classList.remove('reply-flash'), 1200);
+    flashRow(target);
   };
 
   const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
@@ -295,6 +312,14 @@ export function ThreadView({
       )}
     </section>
   );
+}
+
+/**
+Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
+*/
+function flashRow(element: HTMLElement): void {
+  element.classList.add('reply-flash');
+  setTimeout(() => element.classList.remove('reply-flash'), 1200);
 }
 
 /**

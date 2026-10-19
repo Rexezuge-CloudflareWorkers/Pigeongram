@@ -45,10 +45,14 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const limit = clampInt(params.limit, 1, 100, 50);
       const offsetId = optionalInt(params.offsetId);
       const offsetDate = optionalInt(params.offsetDate);
-      const page = await client.getHistory(
-        chatId,
-        offsetId !== undefined && offsetDate !== undefined ? { limit, offset: { id: offsetId, date: offsetDate } } : { limit },
-      );
+      // Only the newer direction is meaningful: the bridge has no forward
+      // paging, so a positive skip would hide the messages next to a jump.
+      const addOffset = clampInt(params.addOffset, -50, 0, 0);
+      const page = await client.getHistory(chatId, {
+        limit,
+        ...(offsetId !== undefined && { offset: { id: offsetId, date: offsetDate ?? 0 } }),
+        ...(addOffset !== 0 && { addOffset }),
+      });
       const messages = await completeOldestAlbum(client, chatId, page);
       // mtcute answers newest-first; the bridge promises oldest-first.
       return { messages: messages.map(toMessageDto).toReversed() };

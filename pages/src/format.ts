@@ -91,3 +91,23 @@ export function formatBytes(bytes: number | null): string {
   }
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
+
+/**
+Compact counter for values like channel-post views: `999`, `1.2K`, `123K`,
+`1.2M`. Telegram's own notation, kept locale-independent so the display does
+not vary with the browser locale.
+*/
+export function formatCount(count: number): string {
+  if (count < 1000) return String(count);
+  if (count < 999_500) return `${compact(count / 1000)}K`;
+  if (count < 999_500_000) return `${compact(count / 1_000_000)}M`;
+  return `${compact(count / 1_000_000_000)}B`;
+}
+
+/**
+One decimal below 100 (dropped when it is zero), whole numbers above; the
+999,5xx thresholds in `formatCount` keep the round from escaping its unit.
+*/
+function compact(value: number): string {
+  return String(value < 100 ? Math.round(value * 10) / 10 : Math.round(value));
+}

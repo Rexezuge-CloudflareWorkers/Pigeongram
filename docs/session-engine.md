@@ -130,7 +130,9 @@ scrolled (omitted, it reads the whole history — the comments screen's behavior
 `MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
 a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
-`customEmojiId` for a custom emoji document), or removes it when both are null/omitted.
+`customEmojiId` for a custom emoji document), or removes it when both are null/omitted. Channel posts also
+carry `views` (`null` for every other message), so the thread renders the counter beside the timestamp and
+keeps it ticking from the live `views` update while the post is loaded.
 
 A poll message carries `poll` beside `media` — Telegram's `messageMediaPoll` has no file, so it never shows up in
 `media`. `MessagePollDto` holds the question, the answers in Telegram's order and the flags the UI needs (`quiz`,
@@ -175,8 +177,10 @@ someone else does not bump the button until the channel thread reloads.
 
 Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"poll"|"read", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read", …}}`.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
+The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
+`updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.
 The `poll` update carries `{chatId, messageId, pollId, poll}`: `pollId` is what identifies the poll both for the
 short `updateMessagePoll` (no body) and for `updateMessagePollVote`, which names the poll but neither its chat nor
 its message. A null `poll` means "recheck this one": the SPA calls `getPollResults` for the loaded message and folds

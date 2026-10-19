@@ -252,6 +252,11 @@ export interface MessageDto {
   */
   reply: MessageReplyDto | null;
   /**
+  Channel-post view count, or null when Telegram reports none: the message
+  does not live in a channel, or the post is too fresh to have been counted.
+  */
+  views: number | null;
+  /**
   Channel-post comments metadata, or null for messages without a thread.
   */
   comments: MessageCommentsDto | null;
@@ -313,6 +318,7 @@ export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
   | { type: 'reactions'; chatId: PeerId; messageId: number; reactions: MessageReactionDto[] }
+  | { type: 'views'; chatId: PeerId; messageId: number; views: number }
   | {
       type: 'poll';
       /**

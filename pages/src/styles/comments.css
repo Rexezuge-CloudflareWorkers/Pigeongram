@@ -1,11 +1,17 @@
 /* Channel-post comments: the button in the thread and the comments screen. */
 
+/* The comments button is the post's footer: it spans the bubble's width below
+   the meta line, and its top border is the separation line from the body. The
+   negative margins cancel the bubble's horizontal and bottom padding so the
+   border reaches the bubble's edges and the button fills its bottom. */
 .message .comments-button {
-  align-self: flex-start;
+  align-self: stretch;
   color: var(--accent);
   font-size: 13px;
   text-align: left;
-  padding: 2px 0;
+  margin: 2px -12px -6px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
 }
 
 .message .comments-button:hover {

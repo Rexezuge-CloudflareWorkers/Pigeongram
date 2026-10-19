@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
+import { formatBytes, formatCount, formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
 import {
   applyEditedMessage,
   applyNewMessage,
@@ -7,6 +7,7 @@ import {
   applyReactionUpdate,
   applyReadThrough,
   applyReadUpdate,
+  applyViewsUpdate,
   findChatTitle,
   findPollMessage,
   mergeMessages,
@@ -61,6 +62,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     media: null,
     poll: null,
     reply: null,
+    views: null,
     comments: null,
     ...overrides,
   };
@@ -226,6 +228,22 @@ describe('reaction state', () => {
   });
 });
 
+describe('view state', () => {
+  it('replaces the count of the matching loaded message only', () => {
+    const messages = [message({ id: 1, chatId: 1 }), message({ id: 2, chatId: 1 }), message({ id: 1, chatId: 2 })];
+    const next = applyViewsUpdate(messages, 1, 1, 1234);
+    expect(next[0].views).toBe(1234);
+    expect(next[1].views).toBeNull();
+    // The same id in another chat is a different message.
+    expect(next[2].views).toBeNull();
+  });
+
+  it('leaves the list alone when the message is not loaded', () => {
+    const messages = [message({ id: 1, chatId: 1 })];
+    expect(applyViewsUpdate(messages, 1, 999, 5)[0].views).toBeNull();
+  });
+});
+
 describe('poll state', () => {
   it('finds the loaded message by its named ids, then by poll id', () => {
     const messages = [message({ id: 4, chatId: 1 }), message({ id: 5, chatId: 1, poll: POLL })];
@@ -298,6 +316,19 @@ describe('formatting helpers', () => {
     expect(formatBytes(2048)).toBe('2.0 KB');
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
     expect(formatBytes(1024 * 1024 * 1024).length).toBeGreaterThan(0);
+  });
+
+  it('formats counts compactly for counters such as views', () => {
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(999)).toBe('999');
+    expect(formatCount(1000)).toBe('1K');
+    expect(formatCount(1234)).toBe('1.2K');
+    expect(formatCount(12_345)).toBe('12.3K');
+    expect(formatCount(123_456)).toBe('123K');
+    // Rounding up must promote the unit instead of yielding `1000K`.
+    expect(formatCount(999_499)).toBe('999K');
+    expect(formatCount(999_500)).toBe('1M');
+    expect(formatCount(1_234_567)).toBe('1.2M');
   });
 });
 

@@ -6,6 +6,7 @@ import type {
   MessageCommentsDto,
   MessageDto,
   MessageEntityDto,
+  MessageForwardDto,
   MessageMediaDto,
   MessagePollDto,
   MessageReactionDto,
@@ -168,6 +169,37 @@ function toMessageCommentsDto(message: Message): MessageCommentsDto | null {
   };
 }
 
+/**
+Maps mtcute's forward header onto the wire shape.
+
+The origin may be a user, the channel whose post was forwarded, or a hidden
+sender whose name rides in `fromName` instead of an id; saved-messages
+forwards additionally name the original chat and message.
+*/
+function toMessageForwardDto(message: Message): MessageForwardDto | null {
+  const forward = message.forward;
+  if (!forward) return null;
+  // `sender` is typed `PeerSender`, but the getter throws when a header
+  // carries neither `fromId` nor `fromName`; the date alone is still worth
+  // showing, so a malformed header keeps the forward without a name.
+  let sender: { id?: number; displayName?: string } | null = null;
+  try {
+    sender = forward.sender;
+  } catch {
+    // Fall through with a null sender.
+  }
+  return {
+    senderId: typeof sender?.id === 'number' ? sender.id : null,
+    senderName: sender?.displayName ?? null,
+    date: forward.date.getTime(),
+    fromChatId: forward.fromChat()?.id ?? null,
+    // mtcute's getter only reads `savedFromMsgId`; a direct channel forward
+    // carries the original id in `channelPost` instead.
+    fromMessageId: forward.raw.channelPost ?? forward.fromMessageId,
+    signature: forward.signature,
+  };
+}
+
 export function toMessageDto(message: Message): MessageDto {
   // `sender` is typed as `Peer`, but service messages from anonymous admins
   // carry a sender without an id; guard at runtime instead of trusting the
@@ -189,6 +221,7 @@ export function toMessageDto(message: Message): MessageDto {
     media: toMessageMediaDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     reply: toMessageReplyDto(message),
+    forward: toMessageForwardDto(message),
     views: message.views,
     comments: toMessageCommentsDto(message),
   };

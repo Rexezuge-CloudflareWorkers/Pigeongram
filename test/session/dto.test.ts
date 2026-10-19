@@ -268,6 +268,7 @@ describe('toMessageDto', () => {
       media: null,
       poll: null,
       reply: null,
+      forward: null,
       views: null,
       comments: null,
     });
@@ -403,6 +404,71 @@ describe('toMessageDto', () => {
       entities: [],
       mediaKind: null,
       quote: false,
+    });
+  });
+
+  it('maps a channel forward with its origin, original post and signature', () => {
+    const dto = toMessageDto(
+      message({
+        fwdFrom: {
+          _: 'messageFwdHeader',
+          date: 1_700_000_000,
+          fromId: { _: 'peerChannel', channelId: 20 },
+          channelPost: 4,
+          postAuthor: 'Ada',
+        },
+      }),
+    );
+    expect(dto.forward).toEqual({
+      senderId: getMarkedPeerId(20, 'channel'),
+      senderName: 'Announcements',
+      date: 1_700_000_000_000,
+      fromChatId: null,
+      fromMessageId: 4,
+      signature: 'Ada',
+    });
+  });
+
+  it('maps a hidden forward to the name the header carries', () => {
+    const dto = toMessageDto(message({ fwdFrom: { _: 'messageFwdHeader', date: 1_700_000_000, fromName: 'Anonymous' } }));
+    expect(dto.forward).toEqual({
+      senderId: null,
+      senderName: 'Anonymous',
+      date: 1_700_000_000_000,
+      fromChatId: null,
+      fromMessageId: null,
+      signature: null,
+    });
+  });
+
+  it('maps a saved-messages forward to the original chat and message', () => {
+    const dto = toMessageDto(
+      message({
+        fwdFrom: {
+          _: 'messageFwdHeader',
+          date: 1_700_000_000,
+          fromId: { _: 'peerUser', userId: 1 },
+          savedFromPeer: { _: 'peerChannel', channelId: 20 },
+          savedFromMsgId: 99,
+        },
+      }),
+    );
+    expect(dto.forward).toMatchObject({
+      senderName: 'Ada Lovelace',
+      fromChatId: getMarkedPeerId(20, 'channel'),
+      fromMessageId: 99,
+    });
+  });
+
+  it('keeps a forward whose header names neither sender', () => {
+    const dto = toMessageDto(message({ fwdFrom: { _: 'messageFwdHeader', date: 1_700_000_000 } }));
+    expect(dto.forward).toEqual({
+      senderId: null,
+      senderName: null,
+      date: 1_700_000_000_000,
+      fromChatId: null,
+      fromMessageId: null,
+      signature: null,
     });
   });
 

@@ -195,6 +195,14 @@
   white-space: nowrap;
 }
 
+.message .forward-origin {
+  color: var(--accent);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .message .text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -342,51 +350,4 @@
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
-}
-
-.composer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.composer .attach-input {
-  display: none;
-}
-
-.composer .attach {
-  font-size: 18px;
-  line-height: 1;
-  padding: 4px;
-  color: var(--muted);
-}
-
-.composer .attach:hover:not(:disabled) {
-  color: var(--text);
-}
-
-.composer .attach:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.composer .upload-status {
-  color: var(--muted);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.composer-notice {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.composer textarea {
-  flex: 1;
-  resize: none;
-  max-height: 140px;
 }

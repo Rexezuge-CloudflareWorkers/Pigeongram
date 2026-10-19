@@ -243,6 +243,44 @@ export interface MessageCommentsDto {
   discussionChatId: PeerId | null;
 }
 
+/**
+Where a forwarded message came from, mapped from Telegram's forward header.
+
+`senderId`/`senderName` are who Telegram credits as the origin: a user, a
+channel, or a hidden sender whose name the header carries instead of an id.
+`fromChatId`/`fromMessageId` point at the original message for saved-messages
+forwards and channel posts.
+*/
+export interface MessageForwardDto {
+  /**
+  Marked id of the original sender (a user or a channel); null when the header
+  hides it or names no id.
+  */
+  senderId: PeerId | null;
+  /**
+  The origin's display name for the "Forwarded from …" header; a hidden
+  forward's chosen name, when the header carries one.
+  */
+  senderName: string | null;
+  /**
+  Unix milliseconds of the original message's date.
+  */
+  date: number;
+  /**
+  Marked id of the chat the original message lived in (saved-messages
+  forwards only); null otherwise.
+  */
+  fromChatId: PeerId | null;
+  /**
+  Id of the original message in its source chat, when the header carries it.
+  */
+  fromMessageId: number | null;
+  /**
+  The original channel post's author signature, when set.
+  */
+  signature: string | null;
+}
+
 export interface MessageDto {
   id: number;
   chatId: PeerId;
@@ -281,6 +319,10 @@ export interface MessageDto {
   The message this one replies to, or null for a plain message.
   */
   reply: MessageReplyDto | null;
+  /**
+  Where this message was forwarded from, or null for an original message.
+  */
+  forward: MessageForwardDto | null;
   /**
   Channel-post view count, or null when Telegram reports none: the message
   does not live in a channel, or the post is too fresh to have been counted.

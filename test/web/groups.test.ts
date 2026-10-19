@@ -29,6 +29,7 @@ function message(overrides: Partial<MessageDto> & { id: number }): MessageDto {
     media: null,
     poll: null,
     reply: null,
+    forward: null,
     views: null,
     comments: null,
     ...overrides,

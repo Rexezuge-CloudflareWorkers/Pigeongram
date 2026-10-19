@@ -34,9 +34,35 @@ export function toChatDto(peer: Peer): ChatDto {
     photo: photoVersion(peer),
   };
   if (peer.type === 'user') {
-    return { ...base, kind: peer.isBot ? 'bot' : 'user' };
+    return { ...base, kind: peer.isBot ? 'bot' : 'user', canSendMessages: true };
   }
-  return { ...base, kind: chatKind(peer) };
+  return { ...base, kind: chatKind(peer), canSendMessages: canSendMessages(peer) };
+}
+
+/**
+Whether the account may post in a chat.
+
+Broadcast channels are admin-only, so the account can post only as the
+creator or with the `post_messages` right. Elsewhere a user-specific ban
+wins, then the group's default rights bind everyone but admins (a gigagroup
+is one whose defaults ban sending outright). An incomplete (`min`) peer
+carries none of these flags, so it stays writable rather than guessed at.
+*/
+function canSendMessages(chat: Chat): boolean {
+  if (chat.isMin) return true;
+  if (chat.permissions && !chat.permissions.canSendMessages) return false;
+  switch (chat.chatType) {
+    case 'channel': {
+      return chat.isCreator || chat.adminRights?.postMessages === true;
+    }
+    case 'monoforum': {
+      // The channel's direct-message space: any subscriber may write.
+      return true;
+    }
+    default: {
+      return chat.isAdmin || !chat.defaultPermissions || chat.defaultPermissions.canSendMessages;
+    }
+  }
 }
 
 /**

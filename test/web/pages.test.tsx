@@ -84,7 +84,7 @@ const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', pho
 
 const dialogs: DialogDto[] = [
   {
-    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null },
+    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true },
     lastMessage: {
       id: 10,
       chatId: 2,
@@ -143,7 +143,7 @@ const history: MessageDto[] = [
   },
 ];
 
-const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null };
+const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true };
 
 const carolDialog: DialogDto = { chat: carol, lastMessage: null, unread: 0, readInboxMaxId: 1, pinned: false, muted: false };
 
@@ -982,7 +982,14 @@ describe('App', () => {
     */
     const ROOT = 10;
 
-    const channel: ChatDto = { id: -1_000_000_000_020, kind: 'channel', title: 'Announcements', username: 'announce', photo: null };
+    const channel: ChatDto = {
+      id: -1_000_000_000_020,
+      kind: 'channel',
+      title: 'Announcements',
+      username: 'announce',
+      photo: null,
+      canSendMessages: false,
+    };
 
     const post = message({
       id: 7,
@@ -1231,6 +1238,62 @@ describe('App', () => {
         expect(reads).toBe(2);
       });
       expect(await within(threadSection()).findByText('first!')).toBeDefined();
+    });
+  });
+
+  describe('channel send permission', () => {
+    const READ_ONLY_CHANNEL = -1_000_000_000_020;
+
+    const post = message({ id: 7, chatId: READ_ONLY_CHANNEL, text: 'A new feature shipped' });
+
+    function channelDialog(canSendMessages: boolean): DialogDto {
+      const chat: ChatDto = {
+        id: READ_ONLY_CHANNEL,
+        kind: 'channel',
+        title: 'Announcements',
+        username: 'announce',
+        photo: null,
+        canSendMessages,
+      };
+      return { chat, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false };
+    }
+
+    it('replaces the composer with a notice in a read-only channel', async () => {
+      installSignedInFetch({ dialogs: [channelDialog(false)], history: () => json({ messages: [post] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+
+      expect(within(threadSection()).getByText('Only admins can post in this channel.')).toBeDefined();
+      expect(screen.queryByPlaceholderText('Message')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Attach a file' })).toBeNull();
+    });
+
+    it('keeps the composer for a channel the account can post in', async () => {
+      installSignedInFetch({ dialogs: [channelDialog(true)], history: () => json({ messages: [post] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+
+      expect(screen.getByPlaceholderText('Message')).toBeDefined();
+      expect(screen.queryByText('Only admins can post in this channel.')).toBeNull();
+    });
+
+    it('explains a revoked send permission in a group', async () => {
+      const group: ChatDto = { id: -30, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: false };
+      installSignedInFetch({
+        dialogs: [{ chat: group, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+        history: () => json({ messages: [message({ id: 1, chatId: -30, text: 'hello team' })] }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Team'));
+      expect(await screen.findByText('hello team')).toBeDefined();
+
+      expect(within(threadSection()).getByText('The admins of this chat have restricted your ability to send messages.')).toBeDefined();
     });
   });
 

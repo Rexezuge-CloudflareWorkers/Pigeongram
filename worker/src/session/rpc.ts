@@ -1,6 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
-import type { DialogDto, MessageDto } from '../types';
+import type { Message } from '@mtcute/core';
+import type { DialogDto } from '../types';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto } from './dto';
 import { EngineError } from './errors';
@@ -43,13 +44,13 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const limit = clampInt(params.limit, 1, 100, 50);
       const offsetId = optionalInt(params.offsetId);
       const offsetDate = optionalInt(params.offsetDate);
-      const messages: MessageDto[] = (
-        await client.getHistory(
-          chatId,
-          offsetId !== undefined && offsetDate !== undefined ? { limit, offset: { id: offsetId, date: offsetDate } } : { limit },
-        )
-      ).map(toMessageDto);
-      return { messages };
+      const page = await client.getHistory(
+        chatId,
+        offsetId !== undefined && offsetDate !== undefined ? { limit, offset: { id: offsetId, date: offsetDate } } : { limit },
+      );
+      const messages = await completeOldestAlbum(client, chatId, page);
+      // mtcute answers newest-first; the bridge promises oldest-first.
+      return { messages: messages.map(toMessageDto).toReversed() };
     }
 
     case 'sendMessage': {
@@ -144,4 +145,31 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       throw new EngineError(`Unknown RPC method: ${method}`, 404);
     }
   }
+}
+
+/**
+Completes the oldest album of a history window.
+
+mtcute answers a page newest-first, so its oldest message can sit in the middle
+of an album whose older members were not in the page. An album caps at ten
+messages, so one extra fetch of nine settles the window's top edge and the SPA
+never renders a partial grid there.
+*/
+async function completeOldestAlbum(client: TelegramClient, chatId: number, page: readonly Message[]): Promise<Message[]> {
+  const messages = [...page];
+  let oldest: Message | undefined;
+  for (const message of page) {
+    if (!oldest || message.id < oldest.id) oldest = message;
+  }
+  const groupedId = oldest?.groupedId?.toString();
+  if (!oldest || groupedId === undefined) return messages;
+  const older = await client.getHistory(chatId, {
+    limit: 9,
+    offset: { id: oldest.id, date: Math.floor(oldest.date.getTime() / 1000) },
+  });
+  for (const message of older) {
+    if (message.groupedId?.toString() !== groupedId) break;
+    messages.push(message);
+  }
+  return messages;
 }

@@ -30,6 +30,7 @@ const PHOTO: MessageMediaDto = {
 
 function message(overrides: Partial<MessageDto> & { id: number; chatId: number }): MessageDto {
   return {
+    groupedId: null,
     senderId: 1,
     senderName: 'Ada',
     outgoing: false,

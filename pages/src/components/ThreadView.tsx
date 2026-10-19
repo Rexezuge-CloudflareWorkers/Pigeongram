@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
+import { groupMessages, messageRowSelector } from '../groups';
 import { firstUnread, readWatermark } from '../reading';
 import type { ChatDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
@@ -130,9 +131,15 @@ export function ThreadView({
       const visible = new Set<number>();
       if (!atBottom) {
         const container = element.getBoundingClientRect();
-        for (const node of element.querySelectorAll<HTMLElement>('[data-message-id]')) {
+        for (const node of element.querySelectorAll<HTMLElement>('[data-message-ids]')) {
           const rect = node.getBoundingClientRect();
-          if (rect.top < container.bottom && rect.bottom > container.top) visible.add(Number(node.dataset.messageId));
+          if (rect.top < container.bottom && rect.bottom > container.top) {
+            // An album is one element for several messages: a visible bubble
+            // proves every member seen.
+            for (const id of (node.dataset.messageIds ?? '').split(' ')) {
+              if (id) visible.add(Number(id));
+            }
+          }
         }
       }
       const watermark = readWatermark(messages, visible, atBottom);
@@ -154,7 +161,7 @@ export function ThreadView({
       const anchor = firstUnread(messages, readInboxMaxId);
       if (anchor) {
         const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
-        const target = divider ?? element.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(String(anchor.id))}"]`);
+        const target = divider ?? element.querySelector<HTMLElement>(messageRowSelector(anchor.id));
         target?.scrollIntoView({ block: 'start' });
       } else {
         element.scrollTop = element.scrollHeight;
@@ -180,13 +187,14 @@ export function ThreadView({
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
   const messageById = new Map(messages.map((message) => [message.id, message]));
   const unreadAnchorId = firstUnread(messages, readInboxMaxId)?.id ?? null;
+  const groups = groupMessages(messages);
 
   /**
   Scrolls the thread to a loaded message and flashes it, so a quote click
   reads as a jump rather than a no-op. Unloaded originals stay inert.
   */
   const jumpToMessage = (messageId: number): void => {
-    const target = scrollRef.current?.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+    const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
     if (!(target instanceof HTMLElement)) return;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
     target.classList.add('reply-flash');
@@ -228,32 +236,35 @@ export function ThreadView({
         ) : null}
         {loading ? <p className="muted pad">Loading messages…</p> : null}
         {!loading && messages.length === 0 ? <p className="muted pad">No messages yet — say hello.</p> : null}
-        {messages.map((message, index) => (
-          <Fragment key={message.id}>
-            {index === 0 || !isSameDay(messages[index - 1].date, message.date) ? (
-              <div className="day">{formatDay(message.date)}</div>
-            ) : null}
-            {message.id === unreadAnchorId ? (
-              <div className="unread-divider" data-unread-divider>
-                Unread messages
-              </div>
-            ) : null}
-            <MessageRow
-              message={message}
-              chat={chat}
-              original={
-                message.reply?.origin === 'same_chat' && message.reply.messageId !== null
-                  ? (messageById.get(message.reply.messageId) ?? null)
-                  : null
-              }
-              reacting={reactingIds.has(message.id)}
-              onReact={onReact}
-              onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
-              onJump={jumpToMessage}
-              onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}
-            />
-          </Fragment>
-        ))}
+        {groups.map((group, index) => {
+          const anchor = group[0];
+          return (
+            <Fragment key={anchor.id}>
+              {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
+                <div className="day">{formatDay(anchor.date)}</div>
+              ) : null}
+              {group.some((message) => message.id === unreadAnchorId) ? (
+                <div className="unread-divider" data-unread-divider>
+                  Unread messages
+                </div>
+              ) : null}
+              <MessageRow
+                group={group}
+                chat={chat}
+                original={
+                  anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
+                    ? (messageById.get(anchor.reply.messageId) ?? null)
+                    : null
+                }
+                reacting={reactingIds.has(anchor.id)}
+                onReact={onReact}
+                onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+                onJump={jumpToMessage}
+                onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}
+              />
+            </Fragment>
+          );
+        })}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       <Composer

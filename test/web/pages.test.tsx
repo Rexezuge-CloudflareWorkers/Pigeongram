@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@telegram-web-client/pages';
-import type { ChatDto, DialogDto, MessageDto, UpdateEvent } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, UpdateEvent } from '../../pages/src/types';
 
 interface FetchCall {
   method: string;
@@ -88,6 +88,7 @@ const dialogs: DialogDto[] = [
     lastMessage: {
       id: 10,
       chatId: 2,
+      groupedId: null,
       senderId: 2,
       senderName: 'Bob',
       outgoing: false,
@@ -111,6 +112,7 @@ const history: MessageDto[] = [
   {
     id: 9,
     chatId: 2,
+    groupedId: null,
     senderId: 2,
     senderName: 'Bob',
     outgoing: false,
@@ -126,6 +128,7 @@ const history: MessageDto[] = [
   {
     id: 10,
     chatId: 2,
+    groupedId: null,
     senderId: 2,
     senderName: 'Bob',
     outgoing: false,
@@ -148,6 +151,7 @@ const carolHistory: MessageDto[] = [
   {
     id: 1,
     chatId: 3,
+    groupedId: null,
     senderId: 3,
     senderName: 'Carol',
     outgoing: false,
@@ -167,6 +171,7 @@ A message fixture for the live-update tests.
 */
 function message(overrides: Partial<MessageDto> & { id: number; chatId: number }): MessageDto {
   return {
+    groupedId: null,
     senderId: null,
     senderName: null,
     outgoing: false,
@@ -791,7 +796,7 @@ describe('App', () => {
       const divider = threadSection().querySelector('[data-unread-divider]');
       expect(divider?.textContent).toBe('Unread messages');
       // The divider sits right above the first unread message.
-      expect(divider?.nextElementSibling?.getAttribute('data-message-id')).toBe('9');
+      expect((divider?.nextElementSibling as HTMLElement | null)?.dataset.messageId).toBe('9');
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     });
 
@@ -852,11 +857,121 @@ describe('App', () => {
       // The account's own read moves the badge and the divider on together.
       deliver({ type: 'read', chatId: 2, maxId: 11, unread: 1, inbox: true });
       expect(document.querySelector('.badge')?.textContent).toBe('1');
-      expect(threadSection().querySelector('[data-unread-divider]')?.nextElementSibling?.getAttribute('data-message-id')).toBe('13');
+      expect(
+        (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
+      ).toBe('13');
 
       deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
       expect(document.querySelector('.badge')).toBeNull();
       expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
+    });
+  });
+
+  describe('albums', () => {
+    const photo: MessageMediaDto = {
+      kind: 'photo',
+      fileName: null,
+      mime: null,
+      size: 1000,
+      width: 320,
+      height: 240,
+      duration: null,
+    };
+
+    const album = (): MessageDto[] => [
+      message({ id: 20, chatId: 2, groupedId: '555', text: 'trip', media: photo }),
+      message({ id: 21, chatId: 2, groupedId: '555', text: '', media: photo }),
+      message({ id: 22, chatId: 2, groupedId: '555', text: '', media: { ...photo, kind: 'video' } }),
+    ];
+
+    it('renders grouped media as one bubble with one caption and timestamp', async () => {
+      installSignedInFetch({ history: () => json({ messages: album() }) });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('trip')).toBeDefined();
+
+      const bubble = threadSection().querySelector(':scope [data-message-ids="20 21 22"]');
+      expect(bubble).not.toBeNull();
+      expect(bubble?.querySelectorAll(':scope .album .cell')).toHaveLength(3);
+      expect(threadSection().querySelectorAll(':scope .message .meta')).toHaveLength(1);
+    });
+
+    it("reacts on the album's first message", async () => {
+      const calls: FetchCall[] = [];
+      installSignedInFetch({
+        history: () =>
+          json({
+            messages: [
+              message({
+                id: 20,
+                chatId: 2,
+                groupedId: '555',
+                media: photo,
+                reactions: [{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }],
+              }),
+              message({ id: 21, chatId: 2, groupedId: '555', media: photo }),
+            ],
+          }),
+        rpc: (call) => {
+          if (call.body?.method !== 'sendReaction') return;
+          calls.push(call);
+          return json({ message: null });
+        },
+      });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await within(threadSection()).findByRole('button', { name: /React 👍/ }));
+      await waitFor(() => {
+        expect(calls.map((call) => call.body?.params)).toEqual([{ chatId: 2, messageId: 20, emoji: '👍', customEmojiId: null }]);
+      });
+    });
+
+    it('groups album items that arrive live', async () => {
+      installSignedInFetch();
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('see you')).toBeDefined();
+
+      deliver({ type: 'new_message', message: message({ id: 30, chatId: 2, groupedId: 'g', text: '', media: photo }) });
+      deliver({ type: 'new_message', message: message({ id: 31, chatId: 2, groupedId: 'g', text: '', media: photo }) });
+
+      const bubble = threadSection().querySelector(':scope [data-message-ids="30 31"]');
+      expect(bubble?.querySelectorAll(':scope .album .cell')).toHaveLength(2);
+    });
+
+    it('jumps to the album bubble when replying to a member', async () => {
+      const scrollIntoView = stubScrollIntoView();
+      installSignedInFetch({
+        history: () =>
+          json({
+            messages: [
+              ...album(),
+              message({
+                id: 23,
+                chatId: 2,
+                text: 'which one?',
+                reply: {
+                  origin: 'same_chat',
+                  messageId: 21,
+                  chatId: null,
+                  senderName: null,
+                  date: null,
+                  text: '',
+                  entities: [],
+                  mediaKind: null,
+                  quote: false,
+                },
+              }),
+            ],
+          }),
+      });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+
+      fireEvent.click(await within(threadSection()).findByTitle('Go to the replied message'));
+      const bubble = threadSection().querySelector(':scope [data-message-ids="20 21 22"]');
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+      expect(bubble?.classList.contains('reply-flash')).toBe(true);
     });
   });
 

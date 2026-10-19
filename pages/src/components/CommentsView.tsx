@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
+import { groupMessages, messageRowSelector } from '../groups';
 import type { CommentsThread } from '../state';
 import type { MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
@@ -61,9 +62,10 @@ export function CommentsView({
 
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;
   const commentById = new Map(comments.map((comment) => [comment.id, comment]));
+  const groups = groupMessages(comments);
 
   const jumpToComment = (messageId: number): void => {
-    const target = scrollRef.current?.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+    const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
     if (!(target instanceof HTMLElement)) return;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
     target.classList.add('reply-flash');
@@ -95,7 +97,7 @@ export function CommentsView({
         }}
       >
         <div className="comments-post">
-          <MessageRow message={thread.post} chat={thread.chat} original={null} showQuote={false} />
+          <MessageRow group={[thread.post]} chat={thread.chat} original={null} showQuote={false} />
         </div>
         <div className="day">{commentCountLabel(thread.count)}</div>
         {comments.length > 0 && thread.nextOffset ? (
@@ -107,27 +109,30 @@ export function CommentsView({
         {!loading && comments.length === 0 ? (
           <p className="muted pad">{thread.count === 0 ? 'No comments yet — be the first.' : 'No comments loaded.'}</p>
         ) : null}
-        {comments.map((comment, index) => (
-          <Fragment key={comment.id}>
-            {index === 0 || !isSameDay(comments[index - 1].date, comment.date) ? (
-              <div className="day">{formatDay(comment.date)}</div>
-            ) : null}
-            <MessageRow
-              message={comment}
-              chat={thread.chat}
-              original={
-                comment.reply?.origin === 'same_chat' && comment.reply.messageId !== null
-                  ? (commentById.get(comment.reply.messageId) ?? null)
-                  : null
-              }
-              showQuote={quoteVisible(comment, thread, commentById)}
-              reacting={reactingIds.has(comment.id)}
-              onReact={onReact}
-              onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
-              onJump={jumpToComment}
-            />
-          </Fragment>
-        ))}
+        {groups.map((group, index) => {
+          const anchor = group[0];
+          return (
+            <Fragment key={anchor.id}>
+              {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
+                <div className="day">{formatDay(anchor.date)}</div>
+              ) : null}
+              <MessageRow
+                group={group}
+                chat={thread.chat}
+                original={
+                  anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
+                    ? (commentById.get(anchor.reply.messageId) ?? null)
+                    : null
+                }
+                showQuote={quoteVisible(anchor, thread, commentById)}
+                reacting={reactingIds.has(anchor.id)}
+                onReact={onReact}
+                onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
+                onJump={jumpToComment}
+              />
+            </Fragment>
+          );
+        })}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       <Composer

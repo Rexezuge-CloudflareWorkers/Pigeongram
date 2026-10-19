@@ -169,6 +169,7 @@ describe('toMessageDto', () => {
     expect(toMessageDto(message({}))).toEqual({
       id: 7,
       chatId: 1,
+      groupedId: null,
       senderId: 1,
       senderName: 'Ada Lovelace',
       outgoing: false,
@@ -181,6 +182,10 @@ describe('toMessageDto', () => {
       reply: null,
       comments: null,
     });
+  });
+
+  it('carries album membership as a decimal string', () => {
+    expect(toMessageDto(message({ groupedId: Long.fromString('1234567890123456789') })).groupedId).toBe('1234567890123456789');
   });
 
   it("maps a channel post's replies header into the comments DTO", () => {

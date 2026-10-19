@@ -301,6 +301,73 @@ afterEach(() => {
 });
 
 describe('App', () => {
+  // jsdom has no layout; the scroll tests share one painted layout. The
+  // mutable box `stubLayout` returns lets a test grow the list, which is how
+  // a late media load changes `scrollHeight` with no scroll event.
+  let scrollIntoView: ReturnType<typeof vi.fn>;
+  /**
+  Descriptors `stubLayout` replaced, restored after each test.
+  */
+  let layout: Array<[string, PropertyDescriptor | undefined]> | null;
+
+  beforeEach(() => {
+    scrollIntoView = stubScrollIntoView();
+    layout = null;
+  });
+
+  afterEach(() => {
+    for (const [key, descriptor] of layout ?? []) {
+      if (descriptor) Object.defineProperty(Element.prototype, key, descriptor);
+      else delete (Element.prototype as unknown as Record<string, unknown>)[key];
+    }
+  });
+
+  function rect(top: number, bottom: number): DOMRect {
+    return { top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+  }
+
+  /**
+  jsdom has no layout, so paint one: each message is a 50px row in document
+  order inside a `listHeight` list, and the `.messages` viewport is
+  `viewportHeight` tall at its current `scrollTop`. Only the rows
+  overlapping the viewport (or a bottom before the last row) are reported
+  read.
+  */
+  function stubLayout({ listHeight, viewportHeight }: { listHeight: number; viewportHeight: number }): { listHeight: number } {
+    let scroll = 0;
+    const box = { listHeight };
+    layout = [];
+    for (const key of ['scrollHeight', 'clientHeight', 'scrollTop', 'getBoundingClientRect'] as const) {
+      layout.push([key, Object.getOwnPropertyDescriptor(Element.prototype, key)]);
+    }
+    Object.defineProperties(Element.prototype, {
+      scrollHeight: { configurable: true, get: () => box.listHeight },
+      clientHeight: { configurable: true, get: () => viewportHeight },
+      scrollTop: {
+        configurable: true,
+        get: () => scroll,
+        set: (value: number) => {
+          scroll = value;
+        },
+      },
+    });
+    Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
+      if (this.classList.contains('messages')) return rect(0, viewportHeight);
+      const rows = this.parentElement?.querySelectorAll('[data-message-id]');
+      const index = rows ? Array.from(rows).indexOf(this) : -1;
+      if (index < 0) return rect(0, 0);
+      const top = index * 50 - scroll;
+      return rect(top, top + 50);
+    } as Element['getBoundingClientRect'];
+    return box;
+  }
+
+  function scrollContainer(): HTMLElement {
+    const element = threadSection().querySelector<HTMLElement>('.messages');
+    if (!element) throw new Error('The thread has no scroll container');
+    return element;
+  }
+
   it('asks for the access token when the bridge is gated', async () => {
     installFetch(() => json({ error: 'Missing or wrong session token', code: 'gate' }, 401));
     render(<App />);
@@ -1061,68 +1128,6 @@ describe('App', () => {
       unreadMessage(13, 'unread three'),
     ];
 
-    let scrollIntoView: ReturnType<typeof vi.fn>;
-    /**
-    Descriptors `stubLayout` replaced, restored after each test.
-    */
-    let layout: Array<[string, PropertyDescriptor | undefined]> | null;
-
-    beforeEach(() => {
-      scrollIntoView = stubScrollIntoView();
-      layout = null;
-    });
-
-    afterEach(() => {
-      for (const [key, descriptor] of layout ?? []) {
-        if (descriptor) Object.defineProperty(Element.prototype, key, descriptor);
-        else delete (Element.prototype as unknown as Record<string, unknown>)[key];
-      }
-    });
-
-    function rect(top: number, bottom: number): DOMRect {
-      return { top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
-    }
-
-    /**
-    jsdom has no layout, so paint one: each message is a 50px row in document
-    order inside a `listHeight` list, and the `.messages` viewport is
-    `viewportHeight` tall at its current `scrollTop`. Only the rows
-    overlapping the viewport (or a bottom before the last row) are reported
-    read.
-    */
-    function stubLayout({ listHeight, viewportHeight }: { listHeight: number; viewportHeight: number }): void {
-      let scroll = 0;
-      layout = [];
-      for (const key of ['scrollHeight', 'clientHeight', 'scrollTop', 'getBoundingClientRect'] as const) {
-        layout.push([key, Object.getOwnPropertyDescriptor(Element.prototype, key)]);
-      }
-      Object.defineProperties(Element.prototype, {
-        scrollHeight: { configurable: true, get: () => listHeight },
-        clientHeight: { configurable: true, get: () => viewportHeight },
-        scrollTop: {
-          configurable: true,
-          get: () => scroll,
-          set: (value: number) => {
-            scroll = value;
-          },
-        },
-      });
-      Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
-        if (this.classList.contains('messages')) return rect(0, viewportHeight);
-        const rows = this.parentElement?.querySelectorAll('[data-message-id]');
-        const index = rows ? Array.from(rows).indexOf(this) : -1;
-        if (index < 0) return rect(0, 0);
-        const top = index * 50 - scroll;
-        return rect(top, top + 50);
-      } as Element['getBoundingClientRect'];
-    }
-
-    function scrollContainer(): HTMLElement {
-      const element = threadSection().querySelector<HTMLElement>('.messages');
-      if (!element) throw new Error('The thread has no scroll container');
-      return element;
-    }
-
     function installUnreadFetch(): FetchCall[] {
       const reads: FetchCall[] = [];
       installSignedInFetch({
@@ -1218,6 +1223,91 @@ describe('App', () => {
       deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
       expect(document.querySelector('.badge')).toBeNull();
       expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
+    });
+  });
+
+  describe('media settling', () => {
+    const photo: MessageMediaDto = {
+      kind: 'photo',
+      fileName: null,
+      mime: null,
+      size: 1000,
+      width: 320,
+      height: 240,
+      duration: null,
+    };
+
+    /**
+    Bob's dialog, fully read: a plain open lands at the bottom.
+    */
+    const readDialog: DialogDto = { ...dialogs[0], unread: 0, readInboxMaxId: 10 };
+
+    it('reserves the media box from the DTO dimensions', async () => {
+      installSignedInFetch({
+        dialogs: [readDialog],
+        history: () => json({ messages: [message({ id: 10, chatId: 2, media: photo })] }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('message 10')).toBeDefined();
+
+      const img = threadSection().querySelector('img.photo');
+      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      expect(img.getAttribute('width')).toBe('320');
+      expect(img.getAttribute('height')).toBe('240');
+    });
+
+    it('keeps a fully read thread at the bottom while media grows the list', async () => {
+      installSignedInFetch({
+        dialogs: [readDialog],
+        history: () => json({ messages: [message({ id: 10, chatId: 2, media: photo })] }),
+      });
+      const box = stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('message 10')).toBeDefined();
+      // Opened at the bottom, before the image loaded.
+      expect(scrollContainer().scrollTop).toBe(300);
+
+      // The image settling grows the list; the pinned view follows it.
+      const img = threadSection().querySelector('img.photo');
+      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      box.listHeight = 600;
+      fireEvent.load(img);
+      expect(scrollContainer().scrollTop).toBe(600);
+
+      // A reader who scrolled away is not dragged back by a later load.
+      scrollContainer().scrollTop = 100;
+      fireEvent.scroll(scrollContainer());
+      box.listHeight = 900;
+      fireEvent.load(img);
+      expect(scrollContainer().scrollTop).toBe(100);
+    });
+
+    it('leaves a view opened at the unread divider alone when media settles', async () => {
+      installSignedInFetch({
+        dialogs: [{ ...dialogs[0], unread: 1, readInboxMaxId: 8 }],
+        history: () =>
+          json({
+            messages: [message({ id: 8, chatId: 2, text: 'read already' }), message({ id: 9, chatId: 2, media: photo })],
+          }),
+      });
+      const box = stubLayout({ listHeight: 300, viewportHeight: 50 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('Unread messages')).toBeDefined();
+      // The divider jump owns the position; the stubbed scrollIntoView left
+      // the list at the top.
+      expect(scrollContainer().scrollTop).toBe(0);
+
+      const img = threadSection().querySelector('img.photo');
+      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      box.listHeight = 600;
+      fireEvent.load(img);
+      expect(scrollContainer().scrollTop).toBe(0);
     });
   });
 
@@ -1424,6 +1514,39 @@ describe('App', () => {
       expect(screen.getByPlaceholderText('Comment')).toBeDefined();
       expect(calls).toHaveLength(1);
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
+    });
+
+    it('keeps the pinned comments screen at the bottom while comment media settles', async () => {
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        return json({
+          comments: [
+            comment({
+              id: ROOT + 1,
+              text: 'with a photo',
+              media: { kind: 'photo', fileName: null, mime: null, size: 1000, width: 320, height: 240, duration: null },
+            }),
+          ],
+          count: 1,
+          discussionChatId: GROUP,
+          discussionMessageId: ROOT,
+        });
+      });
+      const box = stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect(await within(threadSection()).findByText('with a photo')).toBeDefined();
+
+      // Opened at the bottom, before the image loaded.
+      expect(scrollContainer().scrollTop).toBe(300);
+      const img = threadSection().querySelector('img.photo');
+      if (!(img instanceof HTMLImageElement)) throw new Error('The comment photo is not rendered');
+      box.listHeight = 600;
+      fireEvent.load(img);
+      expect(scrollContainer().scrollTop).toBe(600);
     });
 
     it('leaves the comments button off non-channel chats', async () => {

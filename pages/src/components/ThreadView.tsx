@@ -138,6 +138,29 @@ export function ThreadView({
     [flushRead],
   );
 
+  // Media loads after the first paint and changes the list's height. While the
+  // view is pinned to the bottom, follow the growth: the positioning effect
+  // pinned before any bytes arrived, and without this a settling image would
+  // leave the viewer a few messages short of the end. Once the reader has
+  // scrolled away, settling is left alone.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || !chat) return;
+    const settle = (): void => {
+      if (!stickToBottom.current) return;
+      element.scrollTop = element.scrollHeight;
+    };
+    // Media events do not bubble; a capture listener still sees them.
+    element.addEventListener('load', settle, { capture: true });
+    element.addEventListener('error', settle, { capture: true });
+    element.addEventListener('loadedmetadata', settle, { capture: true });
+    return () => {
+      element.removeEventListener('load', settle, true);
+      element.removeEventListener('error', settle, true);
+      element.removeEventListener('loadedmetadata', settle, true);
+    };
+  }, [chat]);
+
   /**
   Reduces the scroll container's current position to a read watermark: every
   incoming message at least partially in view, or the newest one when pinned
@@ -224,6 +247,9 @@ export function ThreadView({
   const jumpToMessage = (messageId: number): void => {
     const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
     if (!(target instanceof HTMLElement)) return;
+    // An intentional jump unpins immediately; otherwise a settling image
+    // could drag the view back to the bottom while the smooth scroll runs.
+    stickToBottom.current = false;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
     flashRow(target);
   };

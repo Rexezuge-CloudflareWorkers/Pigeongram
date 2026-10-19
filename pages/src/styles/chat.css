@@ -142,7 +142,8 @@
   border-radius: 999px;
 }
 
-/* Where reading stopped: the thread jumps here instead of the bottom. */
+/* Where reading stopped when the chat opened: the thread jumps here instead
+   of the bottom, and the line stays put while the user reads past it. */
 .unread-divider {
   align-self: stretch;
   display: flex;

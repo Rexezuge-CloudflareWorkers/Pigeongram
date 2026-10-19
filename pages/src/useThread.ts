@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { fetchHistory, fetchPollResults, sendMessage, sendReaction, sendVote, uploadFile } from './api';
+import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
   applyReactionUpdate,
@@ -118,12 +119,20 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
 
   const open = useCallback(async (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions): Promise<MessageDto[]> => {
     const postId = options?.postId ?? null;
-    setThread({ chat, messages: [], readInboxMaxId, focusMessageId: postId });
+    // The divider is decided once, from the window the chat opens with: it
+    // marks where reading stopped on open, so reading past it (or a message
+    // arriving later) leaves it where it is.
+    const divider = (messages: MessageDto[]): number | null => firstUnread(messages, readInboxMaxId)?.id ?? null;
+    setThread({ chat, messages: [], readInboxMaxId, unreadDividerId: null, focusMessageId: postId });
     setError(null);
     setLoading(true);
     try {
       const page = await fetchOpenWindow(chat.id, postId);
-      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, page)));
+      setThread((current) =>
+        current && current.chat.id === chat.id
+          ? { ...current, messages: mergeMessages(current.messages, page), unreadDividerId: divider(page) }
+          : current,
+      );
       return page;
     } catch (failure) {
       setError(failureText(failure));

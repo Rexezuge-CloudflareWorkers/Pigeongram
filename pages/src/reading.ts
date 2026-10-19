@@ -9,7 +9,8 @@ import type { MessageDto } from './types';
 
 /**
 The thread's first unread message: the earliest incoming message after the
-dialog's read watermark. Null when everything loaded is read.
+watermark a chat opened at. Used for the unread divider, which marks where
+reading stopped when the chat was opened. Null when the window is all read.
 */
 export function firstUnread(messages: readonly MessageDto[], readInboxMaxId: number): MessageDto | null {
   return messages.find((message) => !message.outgoing && message.id > readInboxMaxId) ?? null;

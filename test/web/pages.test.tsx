@@ -100,6 +100,7 @@ const dialogs: DialogDto[] = [
       media: null,
       poll: null,
       reply: null,
+      views: null,
       comments: null,
     },
     unread: 1,
@@ -125,6 +126,7 @@ const history: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    views: null,
     comments: null,
   },
   {
@@ -142,6 +144,7 @@ const history: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    views: null,
     comments: null,
   },
 ];
@@ -166,6 +169,7 @@ const carolHistory: MessageDto[] = [
     media: null,
     poll: null,
     reply: null,
+    views: null,
     comments: null,
   },
 ];
@@ -187,6 +191,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     media: null,
     poll: null,
     reply: null,
+    views: null,
     comments: null,
     ...overrides,
   };
@@ -1202,6 +1207,7 @@ describe('App', () => {
       id: 7,
       chatId: channel.id,
       text: 'A new feature shipped',
+      views: 1234,
       comments: { hasComments: true, count: 2, discussionChatId: GROUP },
     });
 
@@ -1285,6 +1291,38 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByText('oldest')).toBeDefined();
       expect(within(threadSection()).queryByRole('button', { name: /comments/ })).toBeNull();
+      // Views belong to channel posts; a user chat never shows the counter.
+      expect(threadSection().querySelector('.views')).toBeNull();
+    });
+
+    it('shows the post views left of the time, with the comments button below', async () => {
+      installCommentsFetch(() => json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT }));
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+
+      const bubble = threadSection().querySelector<HTMLElement>('[data-message-ids="7"]');
+      expect(bubble).not.toBeNull();
+      const meta = bubble?.querySelector<HTMLElement>(':scope > .meta');
+      expect(meta?.textContent).toContain('👁 1.2K');
+      // The count leads the meta line — the time follows it.
+      expect(meta?.firstElementChild?.className).toBe('views');
+      // The comments button is the bubble's footer, below the meta line.
+      const children = Array.from(bubble?.children ?? []);
+      const button = within(bubble as HTMLElement).getByRole('button', { name: /2 comments/ });
+      expect(children.indexOf(meta as Element)).toBeLessThan(children.indexOf(button));
+    });
+
+    it('bumps the view count from a live view update', async () => {
+      installCommentsFetch(() => json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT }));
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+
+      deliver({ type: 'views', chatId: channel.id, messageId: 7, views: 3456 });
+      expect(await within(threadSection()).findByText('👁 3.5K')).toBeDefined();
     });
 
     it('sends a comment and replies to a comment through sendComment', async () => {

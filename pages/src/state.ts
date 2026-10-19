@@ -246,6 +246,15 @@ export function applyReactionUpdate(
 }
 
 /**
+Replaces one message's view count. View updates carry no full message either,
+so the message is found by `chatId`/`messageId` and left untouched when it is
+not loaded.
+*/
+export function applyViewsUpdate(messages: MessageDto[], chatId: PeerId, messageId: number, views: number): MessageDto[] {
+  return messages.map((message) => (message.chatId === chatId && message.id === messageId ? { ...message, views } : message));
+}
+
+/**
 Optimistic reaction toggle, applied before the RPC round trip: flips the tapped
 reaction on, clears the previously chosen one (Telegram allows one), and drops
 aggregates whose count reached zero.

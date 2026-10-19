@@ -268,6 +268,7 @@ describe('toMessageDto', () => {
       media: null,
       poll: null,
       reply: null,
+      views: null,
       comments: null,
     });
   });
@@ -303,6 +304,12 @@ describe('toMessageDto', () => {
   it('leaves posts without a replies header without comment metadata', () => {
     const dto = toMessageDto(message({ peerId: { _: 'peerChannel', channelId: 20 }, fromId: null }));
     expect(dto.comments).toBeNull();
+  });
+
+  it("carries a channel post's view count, and none for other messages", () => {
+    const post = toMessageDto(message({ peerId: { _: 'peerChannel', channelId: 20 }, fromId: null, views: 1234 }));
+    expect(post.views).toBe(1234);
+    expect(toMessageDto(message({})).views).toBeNull();
   });
 
   it('maps a same-chat reply header, which carries only the message id', () => {

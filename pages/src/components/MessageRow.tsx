@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatTime } from '../format';
+import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { renderMessageText } from '../richtext';
 import { reactionKey } from '../state';
@@ -10,8 +10,9 @@ import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
 
 /**
-One message bubble: reply quote, media, rich text, reaction chips, comments
-button and timestamp. Shared by the thread and the comments view; the optional
+One message bubble: reply quote, media, rich text, reaction chips, the view
+count and timestamp, and — for a channel post with a thread — the comments
+button in its footer. Shared by the thread and the comments view; the optional
 handlers decide which affordances a given view offers (the comments view's post
 header, for example, is inert).
 
@@ -204,12 +205,19 @@ export function MessageRow({
           })}
         </div>
       ) : null}
+      <span className="meta">
+        {message.views === null ? null : (
+          <span className="views" title={`${message.views.toLocaleString()} views`}>
+            👁 {formatCount(message.views)}
+          </span>
+        )}
+        {formatTime(message.date)}
+      </span>
       {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
         <button type="button" className="comments-button" onClick={() => onOpenComments(message)}>
           💬 {commentLabel(comments)}
         </button>
       ) : null}
-      <span className="meta">{formatTime(message.date)}</span>
       {menu ? <MessageMenu message={message} x={menu.x} y={menu.y} onReply={onReply} onClose={() => setMenu(null)} /> : null}
     </div>
   );

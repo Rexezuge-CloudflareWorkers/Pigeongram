@@ -290,6 +290,9 @@
 
 .message .meta {
   align-self: flex-end;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   color: rgba(233, 238, 243, 0.55);
   font-size: 11px;
 }

@@ -189,6 +189,7 @@ export function toMessageDto(message: Message): MessageDto {
     media: toMessageMediaDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     reply: toMessageReplyDto(message),
+    views: message.views,
     comments: toMessageCommentsDto(message),
   };
 }

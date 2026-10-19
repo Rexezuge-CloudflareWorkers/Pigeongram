@@ -117,6 +117,16 @@ describe('mapRawUpdate', () => {
     });
   });
 
+  it('maps a channel view update onto the marked chat id', () => {
+    const event = mapRawUpdate(info({ _: 'updateChannelMessageViews', channelId: 20, id: 7, views: 1234 }));
+    expect(event).toEqual({
+      type: 'views',
+      chatId: getMarkedPeerId(20, 'channel'),
+      messageId: 7,
+      views: 1234,
+    });
+  });
+
   it('maps a full poll update onto the poll DTO', () => {
     const event = mapRawUpdate(
       info({

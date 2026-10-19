@@ -31,6 +31,16 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         reactions: toMessageReactionDtos(reactions.reactions),
       };
     }
+    case 'updateChannelMessageViews': {
+      // Telegram pushes a fresh count to the post's viewers; only channel
+      // posts carry views, so the update itself names no peer.
+      return {
+        type: 'views',
+        chatId: getMarkedPeerId(update.channelId, 'channel'),
+        messageId: update.id,
+        views: update.views,
+      };
+    }
     case 'updateMessagePoll': {
       return {
         type: 'poll',

@@ -337,6 +337,17 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
     }
     if (update.type === 'reactions') {
       setThread((current) => applyCommentReactions(current, update.chatId, update.messageId, update.reactions));
+      return;
+    }
+    if (update.type === 'views') {
+      // The pinned post header is the screen's only message with views; the
+      // guard drops a view update that belongs to another post.
+      setThread((current) =>
+        updateCommentsThread(current, { chatId: update.chatId, messageId: update.messageId }, (open) => ({
+          ...open,
+          post: { ...open.post, views: update.views },
+        })),
+      );
     }
   }, []);
 

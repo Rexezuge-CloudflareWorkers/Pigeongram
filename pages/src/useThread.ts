@@ -3,6 +3,7 @@ import { fetchHistory, fetchPollResults, sendMessage, sendReaction, sendVote, up
 import {
   applyCommentCountDelta,
   applyReactionUpdate,
+  applyViewsUpdate,
   findPollMessage,
   mergeMessages,
   replaceMessage,
@@ -321,6 +322,12 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
         updateThread(current, update.chatId, (messages) =>
           applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
         ),
+      );
+      return;
+    }
+    if (update.type === 'views') {
+      setThread((current) =>
+        updateThread(current, update.chatId, (messages) => applyViewsUpdate(messages, update.chatId, update.messageId, update.views)),
       );
       return;
     }

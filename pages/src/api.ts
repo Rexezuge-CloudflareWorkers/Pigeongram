@@ -125,7 +125,7 @@ export const fetchMe = (): Promise<GetMeResult> => rpc('getMe');
 
 export const fetchHistory = (
   chatId: PeerId,
-  options: { limit?: number; offsetId?: number; offsetDate?: number } = {},
+  options: { limit?: number; offsetId?: number; offsetDate?: number; addOffset?: number } = {},
 ): Promise<GetHistoryResult> => rpc('getHistory', { chatId, ...options });
 
 export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Promise<SendMessageResult> =>

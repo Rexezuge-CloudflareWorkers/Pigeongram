@@ -36,11 +36,19 @@ export interface GetHistoryParams {
   chatId: PeerId;
   limit?: number;
   /**
-   * Pagination cursor: return messages older than this message. Both fields
-   * come from the oldest loaded message; the UI de-duplicates by id anyway.
+   * Pagination cursor: return messages older than this message. `offsetDate`
+   * comes along from the oldest loaded message; a link jump knows only the
+   * post's id, and an omitted date reads as 0. The UI de-duplicates by id
+   * anyway.
    */
   offsetId?: number;
   offsetDate?: number;
+  /**
+   * Skips `addOffset` messages from `offsetId` before reading (negative is
+   * towards newer messages), so a linked post can land mid-page: the SPA asks
+   * for a page around it instead of everything older than it.
+   */
+  addOffset?: number;
 }
 
 export interface SendMessageParams {

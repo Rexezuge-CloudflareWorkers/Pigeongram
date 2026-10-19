@@ -854,6 +854,89 @@ describe('App', () => {
     });
   });
 
+  describe('telegram links', () => {
+    it('opens a known chat from a message link instead of leaving the app', async () => {
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'open carol',
+        entities: [{ offset: 0, length: 10, kind: 'text_link', url: 'https://t.me/carol' }],
+      });
+      const calls = installSignedInFetch({
+        dialogs: [...dialogs, carolDialog],
+        history: (chatId) => json({ messages: chatId === 3 ? carolHistory : [source] }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      const link = await within(threadSection()).findByText('open carol');
+      // The click is swallowed — the chat opens here instead of in a new tab.
+      expect(fireEvent.click(link)).toBe(false);
+
+      expect(await within(threadSection()).findByText('carol says hi')).toBeDefined();
+      expect(within(threadSection()).getByText('Carol')).toBeDefined();
+      const opened = calls.some((call) => {
+        const params = call.body?.params as { chatId?: number } | undefined;
+        return call.body?.method === 'getHistory' && params?.chatId === 3;
+      });
+      expect(opened).toBe(true);
+    });
+
+    it('re-opens the chat around the linked post and lands on it', async () => {
+      const post = message({ id: 30, chatId: 2, senderId: 2, senderName: 'Bob', text: 'linked post' });
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 't.me/bob/30',
+        entities: [{ offset: 0, length: 11, kind: 'url' }],
+      });
+      const calls = installSignedInFetch({ history: () => json({ messages: [post, source] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      await within(threadSection()).findByText('linked post');
+
+      const link = within(threadSection()).getByText('t.me/bob/30');
+      expect(fireEvent.click(link)).toBe(false);
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-message-id="30"]')?.classList.contains('reply-flash')).toBe(true);
+      });
+      const jump = calls.find((call) => {
+        const params = call.body?.params as { offsetId?: number } | undefined;
+        return call.body?.method === 'getHistory' && params?.offsetId === 30;
+      });
+      expect(jump?.body?.params).toMatchObject({ offsetId: 30, addOffset: -25 });
+    });
+
+    it('hands an unknown Telegram link to the installed app', async () => {
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'open channel',
+        entities: [{ offset: 0, length: 12, kind: 'text_link', url: 'https://t.me/unknown_channel' }],
+      });
+      installSignedInFetch({ history: () => json({ messages: [source] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      const link = await within(threadSection()).findByText('open channel');
+      expect(fireEvent.click(link)).toBe(false);
+
+      const frame = document.querySelector('iframe');
+      expect(frame?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+      // The app takes the tab over: the fallback timer is cancelled with it.
+      globalThis.dispatchEvent(new Event('blur'));
+      expect(document.querySelector('iframe')).toBeNull();
+    });
+  });
+
   describe('message context menu', () => {
     let clipboard: { writeText: ReturnType<typeof vi.fn> };
 

@@ -173,7 +173,7 @@ describe('thread state', () => {
   });
 
   it('applies thread updates only while the thread belongs to the chat', () => {
-    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 5 };
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 5, focusMessageId: null };
     const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
     expect(foreign).toBe(thread);
 
@@ -184,7 +184,7 @@ describe('thread state', () => {
   });
 
   it('keeps the thread value when nothing changes or no thread is open', () => {
-    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 0 };
+    const thread = { chat: chat(1), messages: [message({ id: 1, chatId: 1 })], readInboxMaxId: 0, focusMessageId: null };
     expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
     expect(updateThread(null, 1, (messages) => messages)).toBeNull();
   });
@@ -265,7 +265,7 @@ describe('poll state', () => {
   });
 
   it('folds a poll update into the open thread only when it belongs there', () => {
-    const thread = { chat: chat(1), messages: [message({ id: 5, chatId: 1, poll: POLL })], readInboxMaxId: 2 };
+    const thread = { chat: chat(1), messages: [message({ id: 5, chatId: 1, poll: POLL })], readInboxMaxId: 2, focusMessageId: null };
     const fresh = { ...POLL, totalVoters: 9 };
     const named = updateThreadPoll(thread, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);
     expect(named?.messages[0].poll).toBe(fresh);

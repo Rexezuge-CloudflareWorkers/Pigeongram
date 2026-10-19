@@ -153,6 +153,18 @@ describe('getHistory dispatch', () => {
     await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 });
     expect(calls).toHaveLength(1);
   });
+
+  it('passes a link jump through: an id alone, skipped towards newer messages', async () => {
+    const { client, calls } = fakeHistoryClient([[message(30), message(29)]]);
+    await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 50, offsetId: 1234, addOffset: -25 });
+    expect(calls).toEqual([{ chatId: 1, params: { limit: 50, offset: { id: 1234, date: 0 }, addOffset: -25 } }]);
+  });
+
+  it('clamps a forward skip away, since the bridge has no forward paging', async () => {
+    const { client, calls } = fakeHistoryClient([[message(2), message(1)]]);
+    await dispatchRpc(client, 'getHistory', { chatId: 1, addOffset: 40 });
+    expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
+  });
 });
 
 /**

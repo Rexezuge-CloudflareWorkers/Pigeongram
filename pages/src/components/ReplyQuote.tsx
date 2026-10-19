@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { mediaPreview, pollPreview, previewOf } from '../format';
-import { renderMessageText } from '../richtext';
 import type { MessageDto, MessageReplyDto } from '../types';
+import { MessageText } from './MessageText';
 
 /**
 The quote block a reply renders above its message body, and the composer's
@@ -27,9 +27,9 @@ export function MessageReplyQuote({
   const name = original ? (original.outgoing ? 'You' : original.senderName) : reply.senderName;
   let body: ReactNode;
   if (reply.text) {
-    body = renderMessageText(reply.text, reply.entities);
+    body = <MessageText text={reply.text} entities={reply.entities} />;
   } else if (original?.text) {
-    body = renderMessageText(original.text, original.entities);
+    body = <MessageText text={original.text} entities={original.entities} />;
   } else if (original?.poll) {
     body = pollPreview(original.poll);
   } else if (original?.media) {

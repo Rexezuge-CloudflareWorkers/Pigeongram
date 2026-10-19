@@ -1,10 +1,11 @@
-import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMessageText } from '../../pages/src/richtext';
+import type { LinkClickHandler } from '../../pages/src/richtext';
 import type { MessageEntityDto } from '../../pages/src/types';
 
-function body(text: string, entities: MessageEntityDto[]): HTMLElement {
-  const { container } = render(<div data-testid="body">{renderMessageText(text, entities)}</div>);
+function body(text: string, entities: MessageEntityDto[], onLinkClick?: LinkClickHandler): HTMLElement {
+  const { container } = render(<div data-testid="body">{renderMessageText(text, entities, onLinkClick)}</div>);
   return container;
 }
 
@@ -49,6 +50,29 @@ describe('renderMessageText', () => {
     const container = body('click me', [{ offset: 0, length: 8, kind: 'text_link', url: 'javascript:alert(1)' }]);
     expect(container.querySelector('a')).toBeNull();
     expect(container.textContent).toBe('click me');
+  });
+
+  it('renders a tg:// deep link as an anchor, like the app expects', () => {
+    const container = body('open tg', [{ offset: 0, length: 7, kind: 'text_link', url: 'tg://resolve?domain=durov' }]);
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('tg://resolve?domain=durov');
+  });
+
+  it('lets the router swallow a link click', () => {
+    const handler = vi.fn(() => true);
+    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], handler);
+    const anchor = container.querySelector('a');
+    // `fireEvent.click` answers `false` when the event was canceled, i.e. the
+    // browser's new-tab navigation was prevented.
+    expect(fireEvent.click(anchor as Element)).toBe(false);
+    expect(anchor?.getAttribute('href')).toBe('https://example.com');
+    expect(handler).toHaveBeenCalledWith('https://example.com');
+  });
+
+  it('keeps the default navigation when the router declines the link', () => {
+    const handler = vi.fn(() => false);
+    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], handler);
+    expect(fireEvent.click(container.querySelector('a') as Element)).toBe(true);
+    expect(handler).toHaveBeenCalledWith('https://example.com');
   });
 
   it('nests entities inside one another', () => {

@@ -49,7 +49,11 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
   reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
-  — `reading.ts` the unread-position logic they share, `components/` the screens).
+  — `thread-window.ts` the first-window read (newest messages, or a window around a linked post), `reading.ts` the
+  unread-position logic they share, `components/` the screens). `links.ts` is the Telegram link grammar (t.me URLs and
+  `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the context that routes
+  link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread, everything else
+  Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` is a pass-through to `env.API_WORKER`; it must
   not import workspace packages (Pages bundles it separately).

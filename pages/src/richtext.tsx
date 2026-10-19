@@ -23,7 +23,7 @@ interface OpenSpan {
   children: ReactNode[];
 }
 
-const SAFE_SCHEME = /^(?:https?|mailto|tel):/i;
+const SAFE_SCHEME = /^(?:https?|mailto|tel|tg):/i;
 const HAS_SCHEME = /^[a-z][\d+.a-z-]*:/i;
 const EMAIL = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 const USERNAME = /^\w{3,}$/i;
@@ -44,8 +44,8 @@ const FORMAT_TAG: Partial<Record<MessageEntityDto['kind'], 'b' | 'i' | 'u' | 's'
 };
 
 /**
-Only `http(s)`, `mailto` and `tel` URLs become anchors — anything else
-(`javascript:`, `tg:` deep links) renders as plain text.
+Only `http(s)`, `mailto`, `tel` and `tg` URLs become anchors — anything else
+(`javascript:`, `data:`) renders as plain text.
 */
 function safeHref(url: string): string | null {
   const trimmed = url.trim();
@@ -87,12 +87,22 @@ function clampSpans(text: string, entities: MessageEntityDto[]): Span[] {
 /**
 Renders `text` as React nodes: entity spans become formatting elements or
 anchors, everything else stays a plain string (React escapes it).
+
+`onLinkClick` lets the caller route an anchor click: it receives the href and
+returns whether it handled it — a `true` cancels the browser's new-tab
+navigation, a `false` (or no handler) keeps it.
 */
-export function renderMessageText(text: string, entities: MessageEntityDto[]): ReactNode[] {
-  return entities.length === 0 ? [text] : renderSpans(text, clampSpans(text, entities));
+export function renderMessageText(text: string, entities: MessageEntityDto[], onLinkClick?: LinkClickHandler): ReactNode[] {
+  return entities.length === 0 ? [text] : renderSpans(text, clampSpans(text, entities), onLinkClick);
 }
 
-function renderSpans(text: string, spans: Span[]): ReactNode[] {
+/**
+Decision made by a link click's router: `true` means the click was handled and
+the anchor's default navigation must not happen.
+*/
+export type LinkClickHandler = (href: string) => boolean;
+
+function renderSpans(text: string, spans: Span[], onLinkClick?: LinkClickHandler): ReactNode[] {
   const nodes: ReactNode[] = [];
   const stack: OpenSpan[] = [];
   let key = 0;
@@ -112,7 +122,7 @@ function renderSpans(text: string, spans: Span[]): ReactNode[] {
       const tail = text.slice(pos, top.span.end);
       if (tail) top.children.push(tail);
       pos = Math.max(pos, top.span.end);
-      push(wrapSpan(top.span, text.slice(top.span.start, top.span.end), top.children, key));
+      push(wrapSpan(top.span, text.slice(top.span.start, top.span.end), top.children, key, onLinkClick));
       key += 1;
     }
   };
@@ -129,11 +139,21 @@ function renderSpans(text: string, spans: Span[]): ReactNode[] {
   return nodes;
 }
 
-function wrapSpan(span: Span, spanText: string, children: ReactNode[], key: number): ReactNode {
+function wrapSpan(span: Span, spanText: string, children: ReactNode[], key: number, onLinkClick?: LinkClickHandler): ReactNode {
   const { entity } = span;
   const href = linkHref(entity, spanText);
   if (href) {
-    return createElement('a', { href, key, target: '_blank', rel: 'noopener noreferrer' }, children);
+    const onClick =
+      onLinkClick === undefined
+        ? undefined
+        : (event: { preventDefault: () => void }): void => {
+            if (onLinkClick(href)) event.preventDefault();
+          };
+    return createElement(
+      'a',
+      { href, key, target: '_blank', rel: 'noopener noreferrer', ...(onClick !== undefined && { onClick }) },
+      children,
+    );
   }
   const tag = FORMAT_TAG[entity.kind];
   if (!tag) {

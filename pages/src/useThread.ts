@@ -12,6 +12,8 @@ import {
   updateThreadPoll,
 } from './state';
 import type { ChatThread, PollUpdateTarget } from './state';
+import { fetchOpenWindow } from './thread-window';
+import type { OpenThreadOptions } from './thread-window';
 import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 
@@ -45,10 +47,12 @@ export interface ThreadController {
   */
   votingIds: ReadonlySet<number>;
   /**
-  Opens a chat at the dialog's read watermark, reading the first window. The
-  watermark comes from the dialog list, which belongs to the caller.
+  Opens a chat at the dialog's read watermark, reading the first window (or a
+  window around a linked post, when one is given). The watermark comes from
+  the dialog list, which belongs to the caller. Answers with the window it
+  read, so a caller chasing that post (its comments) need not look it up.
   */
-  open: (chat: ChatDto, readInboxMaxId: number) => Promise<void>;
+  open: (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions) => Promise<MessageDto[]>;
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
@@ -112,15 +116,18 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     threadRef.current = thread;
   }, [thread]);
 
-  const open = useCallback(async (chat: ChatDto, readInboxMaxId: number): Promise<void> => {
-    setThread({ chat, messages: [], readInboxMaxId });
+  const open = useCallback(async (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions): Promise<MessageDto[]> => {
+    const postId = options?.postId ?? null;
+    setThread({ chat, messages: [], readInboxMaxId, focusMessageId: postId });
     setError(null);
     setLoading(true);
     try {
-      const result = await fetchHistory(chat.id, { limit: 50 });
-      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
+      const page = await fetchOpenWindow(chat.id, postId);
+      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, page)));
+      return page;
     } catch (failure) {
       setError(failureText(failure));
+      return [];
     } finally {
       setLoading(false);
     }

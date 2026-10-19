@@ -6,7 +6,9 @@ import { CommentsView } from './components/CommentsView';
 import { LoginScreen } from './components/LoginScreen';
 import { ThreadView } from './components/ThreadView';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
+import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import { applyEditedMessage, applyNewMessage, applyReadThrough, applyReadUpdate } from './state';
+import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useComments } from './useComments';
 import { useThread } from './useThread';
@@ -130,14 +132,43 @@ export function App() {
   });
 
   const openChat = useCallback(
-    async (chat: ChatDto): Promise<void> => {
+    async (chat: ChatDto, target?: { postId?: number; commentId?: number }): Promise<void> => {
       // The dialog's watermark is where reading stopped: the thread opens
       // there instead of the bottom and reports its own progress from then on.
       const boundary = dialogs.find((dialog) => dialog.chat.id === chat.id)?.readInboxMaxId ?? 0;
       closeComments();
-      await threads.open(chat, boundary);
+      const loaded = await threads.open(chat, boundary, target);
+      // A link into a post's comments only lands when the post itself came
+      // with the jump window; otherwise the thread simply opens.
+      const commentPost =
+        target?.postId === undefined || target.commentId === undefined ? undefined : loaded.find((message) => message.id === target.postId);
+      if (commentPost) void comments.open(chat, commentPost);
     },
-    [closeComments, dialogs, threads.open],
+    [closeComments, comments.open, dialogs, threads.open],
+  );
+
+  /**
+  Routes a click on a link inside a message: a chat this client already knows
+  opens in the thread (a linked post lands on that post), any other Telegram
+  link is handed to the installed app, and `false` leaves ordinary web links to
+  the browser.
+  */
+  const handleTelegramLink = useCallback(
+    (url: string): boolean => {
+      const link = parseTelegramLink(url);
+      if (link === null) return false;
+      const chat = link.chat === null ? null : findLinkedChat(dialogs, link.chat);
+      if (chat !== null) {
+        void openChat(chat, {
+          ...(link.postId !== null && { postId: link.postId }),
+          ...(link.commentId !== null && { commentId: link.commentId }),
+        });
+        return true;
+      }
+      launchTelegramApp(link.deepLink, link.webUrl);
+      return true;
+    },
+    [dialogs, openChat],
   );
 
   /**
@@ -203,50 +234,53 @@ export function App() {
         </header>
         <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={(chat) => void openChat(chat)} />
       </aside>
-      {comments.thread ? (
-        <CommentsView
-          thread={comments.thread}
-          loading={comments.loading}
-          loadingOlder={comments.loadingOlder}
-          sending={comments.sending}
-          uploading={comments.uploading}
-          uploadProgress={comments.uploadProgress}
-          error={comments.error}
-          reactingIds={comments.reactingIds}
-          onBack={comments.close}
-          onLoadOlder={() => void comments.loadOlder()}
-          onSend={comments.send}
-          onAttach={comments.attach}
-          onReact={comments.react}
-        />
-      ) : (
-        <ThreadView
-          chat={selected}
-          messages={threads.thread?.messages ?? []}
-          loading={threads.loading}
-          loadingOlder={threads.loadingOlder}
-          sending={threads.sending}
-          uploading={threads.uploading}
-          uploadProgress={threads.uploadProgress}
-          error={threads.error}
-          reactingIds={threads.reactingIds}
-          votingIds={threads.votingIds}
-          readInboxMaxId={threads.thread?.readInboxMaxId ?? 0}
-          onBack={() => {
-            closeThread();
-            closeComments();
-          }}
-          onLoadOlder={() => void threads.loadOlder()}
-          onSend={threads.send}
-          onAttach={threads.attach}
-          onReact={threads.react}
-          onVote={threads.vote}
-          onReadThrough={markRead}
-          onOpenComments={(message) => {
-            if (selected) void comments.open(selected, message);
-          }}
-        />
-      )}
+      <TelegramLinkProvider handler={handleTelegramLink}>
+        {comments.thread ? (
+          <CommentsView
+            thread={comments.thread}
+            loading={comments.loading}
+            loadingOlder={comments.loadingOlder}
+            sending={comments.sending}
+            uploading={comments.uploading}
+            uploadProgress={comments.uploadProgress}
+            error={comments.error}
+            reactingIds={comments.reactingIds}
+            onBack={comments.close}
+            onLoadOlder={() => void comments.loadOlder()}
+            onSend={comments.send}
+            onAttach={comments.attach}
+            onReact={comments.react}
+          />
+        ) : (
+          <ThreadView
+            chat={selected}
+            messages={threads.thread?.messages ?? []}
+            loading={threads.loading}
+            loadingOlder={threads.loadingOlder}
+            sending={threads.sending}
+            uploading={threads.uploading}
+            uploadProgress={threads.uploadProgress}
+            error={threads.error}
+            reactingIds={threads.reactingIds}
+            votingIds={threads.votingIds}
+            readInboxMaxId={threads.thread?.readInboxMaxId ?? 0}
+            focusMessageId={threads.thread?.focusMessageId ?? null}
+            onBack={() => {
+              closeThread();
+              closeComments();
+            }}
+            onLoadOlder={() => void threads.loadOlder()}
+            onSend={threads.send}
+            onAttach={threads.attach}
+            onReact={threads.react}
+            onVote={threads.vote}
+            onReadThrough={markRead}
+            onOpenComments={(message) => {
+              if (selected) void comments.open(selected, message);
+            }}
+          />
+        )}
+      </TelegramLinkProvider>
       {error ? (
         <p className="toast" role="alert">
           {error}

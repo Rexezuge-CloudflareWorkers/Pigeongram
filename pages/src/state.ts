@@ -337,3 +337,16 @@ export function updateThreadPoll(thread: ChatThread | null, target: PollUpdateTa
   if (!matched) return thread;
   return updateThread(thread, matched.chatId, (messages) => applyPollUpdate(messages, target, poll));
 }
+
+/**
+Folds a poll update into the open comments screen: the pinned post and the
+loaded comments both carry polls, and the target decides which one changed.
+*/
+export function updateCommentsPoll(thread: CommentsThread | null, target: PollUpdateTarget, poll: MessagePollDto): CommentsThread | null {
+  if (!thread) return thread;
+  if (findPollMessage([thread.post], target)) {
+    return { ...thread, post: { ...thread.post, poll } };
+  }
+  const comments = applyPollUpdate(thread.comments, target, poll);
+  return comments === thread.comments ? thread : { ...thread, comments };
+}

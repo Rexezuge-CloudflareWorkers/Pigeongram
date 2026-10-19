@@ -245,11 +245,13 @@ export function App() {
             uploadProgress={comments.uploadProgress}
             error={comments.error}
             reactingIds={comments.reactingIds}
+            votingIds={comments.votingIds}
             onBack={comments.close}
             onLoadOlder={() => void comments.loadOlder()}
             onSend={comments.send}
             onAttach={comments.attach}
             onReact={comments.react}
+            onVote={comments.vote}
           />
         ) : (
           <ThreadView

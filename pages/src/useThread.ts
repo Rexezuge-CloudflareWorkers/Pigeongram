@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchHistory, fetchPollResults, sendMessage, sendReaction, sendVote, uploadFile } from './api';
+import { fetchHistory, fetchPollResults, sendMessage, sendReaction, uploadFile } from './api';
 import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
@@ -17,6 +17,7 @@ import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
 import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
+import { usePollVoting } from './usePollVoting';
 
 /**
 The chat thread's controller: the open chat with its loaded window, the read
@@ -107,7 +108,6 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
-  const [votingIds, setVotingIds] = useState<ReadonlySet<number>>(new Set());
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -300,29 +300,7 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     [applyPoll],
   );
 
-  const vote = useCallback(
-    (message: MessageDto, options: number[] | null): void => {
-      const poll = message.poll;
-      if (!poll || votingIds.has(message.id)) return;
-      const target: PollUpdateTarget = { chatId: message.chatId, messageId: message.id, pollId: poll.id };
-      // No optimistic guess: only the server knows the new counts, and a wrong
-      // guess would flicker the bars.
-      setVotingIds((current) => new Set(current).add(message.id));
-      void sendVote(message.chatId, message.id, options)
-        .then((result) => {
-          applyPoll(target, result.poll);
-        })
-        .catch(onError)
-        .finally(() => {
-          setVotingIds((current) => {
-            const next = new Set(current);
-            next.delete(message.id);
-            return next;
-          });
-        });
-    },
-    [applyPoll, votingIds, onError],
-  );
+  const { votingIds, vote } = usePollVoting(applyPoll, onError);
 
   const applyUpdate = useCallback((update: UpdateEvent): void => {
     if (update.type === 'new_message') {

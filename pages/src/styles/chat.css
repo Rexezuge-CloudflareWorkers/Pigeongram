@@ -1,4 +1,4 @@
-/* Chat list, thread and the mobile layout. */
+/* Chat list and thread. */
 .chats {
   list-style: none;
   margin: 0;
@@ -95,7 +95,6 @@
 }
 
 .thread-head .back {
-  display: none;
   font-size: 20px;
   color: var(--muted);
   padding: 0 6px;
@@ -107,9 +106,19 @@
   min-width: 0;
 }
 
+/* Both lines stay single-line: long titles truncate rather than stretching
+   the grid. */
+.thread-title strong,
+.thread-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px clamp(8px, 4vw, 28px);
   display: flex;
   flex-direction: column;
@@ -181,6 +190,9 @@
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .message .text {
@@ -374,24 +386,4 @@
   flex: 1;
   resize: none;
   max-height: 140px;
-}
-
-/* ---- mobile ------------------------------------------------------------- */
-
-@media (max-width: 720px) {
-  .app {
-    grid-template-columns: 1fr;
-  }
-
-  .app.thread-open .sidebar {
-    display: none;
-  }
-
-  .app:not(.thread-open) .thread {
-    display: none;
-  }
-
-  .thread-head .back {
-    display: block;
-  }
 }

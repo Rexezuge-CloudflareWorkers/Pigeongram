@@ -173,6 +173,12 @@ button.ghost:hover {
   grid-template-columns: minmax(280px, 380px) 1fr;
 }
 
+/* A grid child must not stretch the track past the viewport: unbreakable
+   titles, names and previews truncate or clip instead. */
+.app > * {
+  min-width: 0;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -200,6 +206,22 @@ button.ghost:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- mobile shell -------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .app.thread-open .sidebar {
+    display: none;
+  }
+
+  .app:not(.thread-open) .thread {
+    display: none;
+  }
 }
 
 /* ---- avatars ------------------------------------------------------------ */

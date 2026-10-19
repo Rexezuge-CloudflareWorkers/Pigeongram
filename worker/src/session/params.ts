@@ -64,6 +64,30 @@ export function clampInt(value: unknown, min: number, max: number, fallback: num
   return Math.min(max, Math.max(min, Math.floor(value)));
 }
 
+/**
+The answers a vote selects: a list of non-negative indexes into the poll's
+answers, or `null`/`undefined` to retract the current vote. Telegram caps a
+poll at ten answers, so the list can never be longer than that.
+*/
+export function optionalAnswerIndexes(value: unknown): number[] | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value)) {
+    throw new EngineError('options must be an array of answer indexes, or null to retract', 400);
+  }
+  if (value.length === 0) {
+    throw new EngineError('options must hold at least one answer index, or be null to retract', 400);
+  }
+  if (value.length > 10) {
+    throw new EngineError('options must hold at most 10 answer indexes', 400);
+  }
+  for (const entry of value) {
+    if (typeof entry !== 'number' || !Number.isSafeInteger(entry) || entry < 0) {
+      throw new EngineError('options must hold non-negative integer indexes', 400);
+    }
+  }
+  return value as number[];
+}
+
 export function requireText(value: unknown, max = 4096): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new EngineError('text must be a non-empty string', 400);

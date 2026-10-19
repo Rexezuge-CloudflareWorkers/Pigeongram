@@ -6,6 +6,7 @@ import './styles/album.css';
 import './styles/chat.css';
 import './styles/comments.css';
 import './styles/menu.css';
+import './styles/poll.css';
 import './styles/replies.css';
 
 createRoot(document.querySelector('#root')!).render(

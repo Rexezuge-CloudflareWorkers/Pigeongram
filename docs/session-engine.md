@@ -114,6 +114,8 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `readHistory`    | `{chatId, maxId?}`                                            | `{}`                                                                                        |
 | `searchMessages` | `{chatId, query, limit?, offsetId?}`                          | `{messages, nextOffsetId?}`                                                                 |
 | `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                 | `{message: MessageDto \| null}`                                                             |
+| `sendVote`       | `{chatId, messageId, options: number[] \| null}`              | `{poll}`                                                                                    |
+| `getPollResults` | `{chatId, messageId}`                                         | `{poll}`                                                                                    |
 | `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}` | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
 | `sendComment`    | `{chatId, messageId, text, replyTo?}`                         | `{message}`                                                                                 |
 
@@ -129,6 +131,15 @@ scrolled (omitted, it reads the whole history — the comments screen's behavior
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
 a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
 `customEmojiId` for a custom emoji document), or removes it when both are null/omitted.
+
+A poll message carries `poll` beside `media` — Telegram's `messageMediaPoll` has no file, so it never shows up in
+`media`. `MessagePollDto` holds the question, the answers in Telegram's order and the flags the UI needs (`quiz`,
+`multiple`, `revotingDisabled`, `hideResultsUntilClose`, `closed`, `solution`); `id` is the decimal poll id the
+updates name it by. Per-answer `voters`/`correct` and `totalVoters` stay `null` when Telegram did not share the
+results with the poll — a quiz before this account answers, or one that hides them until it closes — and `null`
+keeps "unknown" apart from zero voters. `sendVote` therefore takes answer **indexes** against the live message
+(Telegram caps a poll at ten answers) rather than raw option bytes: the engine resolves them server-side, so a
+stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote.
 
 `groupedId` marks album membership: Telegram delivers one album as several messages that share that id, and
 the SPA renders them as one bubble while every message stays addressable for reactions, replies and read
@@ -164,8 +175,13 @@ someone else does not bump the button until the channel thread reloads.
 
 Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"read", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"poll"|"read", …}}`.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
+The `poll` update carries `{chatId, messageId, pollId, poll}`: `pollId` is what identifies the poll both for the
+short `updateMessagePoll` (no body) and for `updateMessagePollVote`, which names the poll but neither its chat nor
+its message. A null `poll` means "recheck this one": the SPA calls `getPollResults` for the loaded message and folds
+the answer in, so results stay live without the engine holding per-poll state. `sendVote` answers with the same DTO,
+so the caller's own vote renders without waiting for the socket.
 The `read` update carries `{chatId, maxId, unread, inbox}`: `inbox` distinguishes the account's own inbox
 from the peer reading the account's messages, and only inbox reads move `unread` and `readInboxMaxId`.
 

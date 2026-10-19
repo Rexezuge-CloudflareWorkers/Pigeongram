@@ -5,7 +5,7 @@
  * god-file cap; the SPA mirrors both in `pages/src/types.ts`.
  */
 
-import type { DialogDto, MeDto, MessageDto, PeerId } from './types';
+import type { DialogDto, MeDto, MessageDto, MessagePollDto, PeerId } from './types';
 
 export interface RpcRequestDto {
   method: string;
@@ -16,7 +16,17 @@ export interface RpcRequestDto {
 Methods exposed over `POST /api/rpc`.
 */
 export type RpcMethod =
-  'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction' | 'getComments' | 'sendComment';
+  | 'getMe'
+  | 'getDialogs'
+  | 'getHistory'
+  | 'sendMessage'
+  | 'readHistory'
+  | 'searchMessages'
+  | 'sendReaction'
+  | 'sendVote'
+  | 'getPollResults'
+  | 'getComments'
+  | 'sendComment';
 
 export interface GetDialogsParams {
   limit?: number;
@@ -68,6 +78,22 @@ export interface SendReactionParams {
    * Decimal document id of a custom emoji to set.
    */
   customEmojiId?: string | null;
+}
+
+export interface SendVoteParams {
+  chatId: PeerId;
+  messageId: number;
+  /**
+  Indexes of the selected answers, in the order the message carries them;
+  `null`/omitted retracts the current vote. Telegram caps a poll at ten
+  answers, which is also what the bridge accepts.
+  */
+  options?: number[] | null;
+}
+
+export interface GetPollResultsParams {
+  chatId: PeerId;
+  messageId: number;
 }
 
 export interface GetCommentsParams {
@@ -131,6 +157,18 @@ export interface SendReactionResult {
 export interface SearchMessagesResult {
   messages: MessageDto[];
   nextOffsetId?: number;
+}
+
+export interface SendVoteResult {
+  /**
+  The poll as Telegram answered the vote: the caller's selection plus the
+  counts that were visible to this account.
+  */
+  poll: MessagePollDto;
+}
+
+export interface GetPollResultsResult {
+  poll: MessagePollDto;
 }
 
 export interface GetCommentsResult {

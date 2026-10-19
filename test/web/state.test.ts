@@ -3,18 +3,21 @@ import { formatBytes, formatDay, formatListStamp, formatTime, initials, isSameDa
 import {
   applyEditedMessage,
   applyNewMessage,
+  applyPollUpdate,
   applyReactionUpdate,
   applyReadThrough,
   applyReadUpdate,
   findChatTitle,
+  findPollMessage,
   mergeMessages,
   reactionKey,
   replaceMessage,
   toggleReaction,
   updateThread,
+  updateThreadPoll,
 } from '../../pages/src/state';
 import { firstUnread, readWatermark } from '../../pages/src/reading';
-import type { ChatDto, DialogDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 
@@ -26,6 +29,22 @@ const PHOTO: MessageMediaDto = {
   width: 320,
   height: 240,
   duration: null,
+};
+
+const POLL: MessagePollDto = {
+  id: '1234567890',
+  question: 'Tea or coffee?',
+  answers: [
+    { text: 'Tea', voters: 1, chosen: false, correct: null },
+    { text: 'Coffee', voters: 2, chosen: false, correct: null },
+  ],
+  totalVoters: 3,
+  closed: false,
+  quiz: false,
+  multiple: false,
+  revotingDisabled: false,
+  hideResultsUntilClose: false,
+  solution: null,
 };
 
 function message(overrides: Partial<MessageDto> & { id: number; chatId: number }): MessageDto {
@@ -40,6 +59,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     reactions: [],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
     ...overrides,
@@ -206,6 +226,38 @@ describe('reaction state', () => {
   });
 });
 
+describe('poll state', () => {
+  it('finds the loaded message by its named ids, then by poll id', () => {
+    const messages = [message({ id: 4, chatId: 1 }), message({ id: 5, chatId: 1, poll: POLL })];
+    expect(findPollMessage(messages, { chatId: 1, messageId: 5, pollId: POLL.id })).toBe(messages[1]);
+    // An update naming an unloaded message falls back to the poll id, which is
+    // unique across chats; a poll that is nowhere loaded has no message.
+    expect(findPollMessage(messages, { chatId: 1, messageId: 999, pollId: POLL.id })).toBe(messages[1]);
+    expect(findPollMessage(messages, { chatId: null, messageId: null, pollId: 'other' })).toBeNull();
+  });
+
+  it('replaces one message poll and leaves the rest of the list alone', () => {
+    const messages = [message({ id: 5, chatId: 1, poll: POLL }), message({ id: 6, chatId: 1 })];
+    const fresh = { ...POLL, totalVoters: 9 };
+    const next = applyPollUpdate(messages, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);
+    expect(next[0].poll).toBe(fresh);
+    expect(next[1]).toBe(messages[1]);
+    expect(applyPollUpdate(messages, { chatId: null, messageId: null, pollId: 'other' }, fresh)).toBe(messages);
+  });
+
+  it('folds a poll update into the open thread only when it belongs there', () => {
+    const thread = { chat: chat(1), messages: [message({ id: 5, chatId: 1, poll: POLL })], readInboxMaxId: 2 };
+    const fresh = { ...POLL, totalVoters: 9 };
+    const named = updateThreadPoll(thread, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);
+    expect(named?.messages[0].poll).toBe(fresh);
+    // A short update — and one for a poll somewhere else — is decided by the
+    // poll id alone.
+    expect(updateThreadPoll(thread, { chatId: null, messageId: null, pollId: POLL.id }, fresh)?.messages[0].poll).toBe(fresh);
+    expect(updateThreadPoll(thread, { chatId: null, messageId: null, pollId: 'other' }, fresh)).toBe(thread);
+    expect(updateThreadPoll(null, { chatId: null, messageId: null, pollId: POLL.id }, fresh)).toBeNull();
+  });
+});
+
 describe('formatting helpers', () => {
   it('formats times of day', () => {
     expect(formatTime(NOW)).toMatch(/\d{1,2}:\d{2}/);
@@ -236,6 +288,7 @@ describe('formatting helpers', () => {
     expect(previewOf('caption', PHOTO)).toBe('caption');
     expect(previewOf('', PHOTO)).toBe('Photo');
     expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice message');
+    expect(previewOf('', null, POLL)).toBe('Poll: Tea or coffee?');
     expect(previewOf('', null)).toBe('—');
   });
 

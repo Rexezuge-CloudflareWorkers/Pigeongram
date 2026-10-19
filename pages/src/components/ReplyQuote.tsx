@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { mediaPreview, previewOf } from '../format';
+import { mediaPreview, pollPreview, previewOf } from '../format';
 import { renderMessageText } from '../richtext';
 import type { MessageDto, MessageReplyDto } from '../types';
 
@@ -30,6 +30,8 @@ export function MessageReplyQuote({
     body = renderMessageText(reply.text, reply.entities);
   } else if (original?.text) {
     body = renderMessageText(original.text, original.entities);
+  } else if (original?.poll) {
+    body = pollPreview(original.poll);
   } else if (original?.media) {
     body = mediaPreview(original.media.kind);
   } else if (reply.mediaKind) {
@@ -62,7 +64,7 @@ export function ComposerReply({ message, onCancel }: { message: MessageDto; onCa
     <div className="composer-reply">
       <div className="composer-reply-body">
         <span className="reply-name">Reply to {name}</span>
-        <span className="reply-text">{previewOf(message.text, message.media)}</span>
+        <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
       </div>
       <button type="button" className="reply-cancel" aria-label="Cancel reply" title="Cancel reply" onClick={onCancel}>
         ×

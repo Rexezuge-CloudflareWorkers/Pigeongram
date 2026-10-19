@@ -98,6 +98,43 @@ function message(overrides: Record<string, unknown>): Message {
   return new Message(raw, index());
 }
 
+const POLL_ID = Long.fromNumber(1_234_567_890);
+
+const POLL_ANSWERS = [
+  { _: 'pollAnswer', text: { _: 'textWithEntities', text: 'Tea', entities: [] }, option: new Uint8Array([1]) },
+  { _: 'pollAnswer', text: { _: 'textWithEntities', text: 'Coffee', entities: [] }, option: new Uint8Array([2]) },
+];
+
+const POLL_RESULTS = {
+  _: 'pollResults',
+  totalVoters: 3,
+  results: [
+    { _: 'pollAnswerVoters', option: new Uint8Array([1]), voters: 2, chosen: true },
+    { _: 'pollAnswerVoters', option: new Uint8Array([2]), voters: 1 },
+  ],
+};
+
+/**
+A poll message: `messageMediaPoll` over the two answers above, with the raw
+poll flags overridable and the results omittable (the shape a poll nobody has
+voted in, or one that hides them until it closes, arrives as).
+*/
+function pollMessage(poll: Record<string, unknown> = {}, results: Record<string, unknown> | null = POLL_RESULTS): Message {
+  return message({
+    media: {
+      _: 'messageMediaPoll',
+      poll: {
+        _: 'poll',
+        id: POLL_ID,
+        question: { _: 'textWithEntities', text: 'Tea or coffee?', entities: [] },
+        answers: POLL_ANSWERS,
+        ...poll,
+      },
+      ...(results !== null && { results }),
+    },
+  });
+}
+
 describe('toChatDto', () => {
   it('maps users, bots, groups, channels and supergroups', () => {
     expect(toChatDto(new User(rawUser))).toEqual({
@@ -229,6 +266,7 @@ describe('toMessageDto', () => {
       reactions: [],
       service: false,
       media: null,
+      poll: null,
       reply: null,
       comments: null,
     });
@@ -493,6 +531,65 @@ describe('toMessageDto', () => {
       },
     });
     expect(toMessageDto(geo).media).toBeNull();
+  });
+
+  it('maps a poll beside media, with the results Telegram shared', () => {
+    const dto = toMessageDto(pollMessage());
+    expect(dto.media).toBeNull();
+    expect(dto.poll).toEqual({
+      id: '1234567890',
+      question: 'Tea or coffee?',
+      answers: [
+        { text: 'Tea', voters: 2, chosen: true, correct: null },
+        { text: 'Coffee', voters: 1, chosen: false, correct: null },
+      ],
+      totalVoters: 3,
+      closed: false,
+      quiz: false,
+      multiple: false,
+      revotingDisabled: false,
+      hideResultsUntilClose: false,
+      solution: null,
+    });
+  });
+
+  it('keeps unknown poll results null rather than zero', () => {
+    const dto = toMessageDto(pollMessage({}, null));
+    expect(dto.poll?.answers.map((answer) => answer.voters)).toEqual([null, null]);
+    expect(dto.poll?.answers.map((answer) => answer.correct)).toEqual([null, null]);
+    expect(dto.poll?.answers.map((answer) => answer.chosen)).toEqual([false, false]);
+    expect(dto.poll?.totalVoters).toBeNull();
+  });
+
+  it('carries the poll flags', () => {
+    const dto = toMessageDto(
+      pollMessage({ closed: true, multipleChoice: true, revotingDisabled: true, hideResultsUntilClose: true, publicVoters: true }),
+    );
+    expect(dto.poll).toMatchObject({
+      closed: true,
+      multiple: true,
+      revotingDisabled: true,
+      hideResultsUntilClose: true,
+    });
+  });
+
+  it('maps a quiz answer and its solution once the results are known', () => {
+    const dto = toMessageDto(
+      pollMessage(
+        { quiz: true, revotingDisabled: true },
+        {
+          _: 'pollResults',
+          totalVoters: 3,
+          solution: 'Coffee, obviously.',
+          results: [
+            { _: 'pollAnswerVoters', option: new Uint8Array([1]), voters: 0 },
+            { _: 'pollAnswerVoters', option: new Uint8Array([2]), voters: 3, correct: true },
+          ],
+        },
+      ),
+    );
+    expect(dto.poll).toMatchObject({ quiz: true, revotingDisabled: true, solution: 'Coffee, obviously.' });
+    expect(dto.poll?.answers[1]).toEqual({ text: 'Coffee', voters: 3, chosen: false, correct: true });
   });
 
   it('maps a channel message to the marked channel id', () => {

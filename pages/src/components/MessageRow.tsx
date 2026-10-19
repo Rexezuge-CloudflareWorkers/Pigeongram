@@ -6,6 +6,7 @@ import { reactionKey } from '../state';
 import type { ChatDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageMenu } from './MessageMenu';
+import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
 
 /**
@@ -52,6 +53,14 @@ export interface MessageRowProps {
   */
   reacting?: boolean;
   onReact?: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Whether this message has a vote in flight; its poll's answers are disabled.
+  */
+  voting?: boolean;
+  /**
+  Sends a vote in this message's poll; absent for views that do not vote.
+  */
+  onVote?: (message: MessageDto, options: number[] | null) => void;
   onReply?: (message: MessageDto) => void;
   onJump?: (messageId: number) => void;
   /**
@@ -68,6 +77,8 @@ export function MessageRow({
   showQuote = true,
   reacting = false,
   onReact,
+  voting = false,
+  onVote,
   onReply,
   onJump,
   onOpenComments,
@@ -149,7 +160,13 @@ export function MessageRow({
     >
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
-      {album ? <MessageAlbum messages={group} /> : message.media ? <MessageMedia message={message} media={message.media} /> : null}
+      {album ? (
+        <MessageAlbum messages={group} />
+      ) : message.poll ? (
+        <MessagePoll message={message} poll={message.poll} onVote={onVote} voting={voting} />
+      ) : message.media ? (
+        <MessageMedia message={message} media={message.media} />
+      ) : null}
       {caption ? (
         <div className="text">{renderMessageText(caption.text, caption.entities)}</div>
       ) : !album && message.text ? (

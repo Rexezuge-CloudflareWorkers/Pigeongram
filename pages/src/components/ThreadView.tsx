@@ -33,6 +33,10 @@ interface ThreadViewProps {
   */
   reactingIds: ReadonlySet<number>;
   /**
+  Message ids with a vote in flight; their polls' answers are disabled.
+  */
+  votingIds: ReadonlySet<number>;
+  /**
   The chat's read watermark: the thread opens at the first unread message
   after it, and reading advances it.
   */
@@ -42,6 +46,10 @@ interface ThreadViewProps {
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Casts a vote in a poll message, or retracts it with `null`.
+  */
+  onVote: (message: MessageDto, options: number[] | null) => void;
   onOpenComments: (message: MessageDto) => void;
   /**
   Reports the highest message id the viewport proves read, for the chat the
@@ -60,11 +68,13 @@ export function ThreadView({
   uploadProgress,
   error,
   reactingIds,
+  votingIds,
   onBack,
   onLoadOlder,
   onSend,
   onAttach,
   onReact,
+  onVote,
   onOpenComments,
   readInboxMaxId,
   onReadThrough,
@@ -258,6 +268,8 @@ export function ThreadView({
                 }
                 reacting={reactingIds.has(anchor.id)}
                 onReact={onReact}
+                voting={votingIds.has(anchor.id)}
+                onVote={onVote}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}

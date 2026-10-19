@@ -1,4 +1,4 @@
-import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, ReactionCount, User } from '@mtcute/core';
+import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
 import type {
   ChatDto,
   DialogDto,
@@ -7,6 +7,7 @@ import type {
   MessageDto,
   MessageEntityDto,
   MessageMediaDto,
+  MessagePollDto,
   MessageReactionDto,
   MessageReplyDto,
 } from '../types';
@@ -172,6 +173,7 @@ export function toMessageDto(message: Message): MessageDto {
   // carry a sender without an id; guard at runtime instead of trusting the
   // nominal type.
   const sender = message.sender as { id?: number; displayName?: string } | null;
+  const media = message.media;
   return {
     id: message.id,
     chatId: message.chat.id,
@@ -184,7 +186,8 @@ export function toMessageDto(message: Message): MessageDto {
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
-    media: toMessageMediaDto(message.media),
+    media: toMessageMediaDto(media),
+    poll: media?.type === 'poll' ? toPollDto(media) : null,
     reply: toMessageReplyDto(message),
     comments: toMessageCommentsDto(message),
   };
@@ -240,10 +243,44 @@ function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
       };
     }
     default: {
-      // Polls, geo points and other non-file media stay text-only in the UI.
+      // Geo points, contacts, games and other non-file media stay text-only
+      // in the UI; polls ride beside `media` through `toPollDto`.
       return null;
     }
   }
+}
+
+/**
+Maps mtcute's poll media onto the wire shape.
+
+`voters`/`correct` are only carried when Telegram sent results with the poll:
+a quiz before this account answers, or a poll that hides its results until the
+close, arrives without them, and mtcute's getters would quietly answer zero
+and false for that case.
+*/
+export function toPollDto(poll: Poll): MessagePollDto {
+  const results = poll.results;
+  return {
+    id: poll.id.toString(),
+    question: poll.question,
+    answers: poll.answers.map((answer) => ({
+      text: answer.text,
+      voters: results ? answer.voters : null,
+      chosen: answer.chosen,
+      // The TL flag only means anything for quizzes; a plain poll would
+      // otherwise report every answer as not-correct.
+      correct: results && poll.isQuiz ? answer.correct : null,
+    })),
+    totalVoters: results?.totalVoters ?? null,
+    // The raw TL flags are optional and come through as `undefined`; the
+    // getters' boolean signatures hide that, and the DTO wants a real boolean.
+    closed: poll.raw.closed === true,
+    quiz: poll.raw.quiz === true,
+    multiple: poll.raw.multipleChoice === true,
+    revotingDisabled: poll.raw.revotingDisabled === true,
+    hideResultsUntilClose: poll.raw.hideResultsUntilClose === true,
+    solution: poll.solution,
+  };
 }
 
 export function toDialogDto(dialog: Dialog): DialogDto {

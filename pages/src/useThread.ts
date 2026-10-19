@@ -1,8 +1,17 @@
-import { useCallback, useState } from 'react';
-import { fetchHistory, sendMessage, sendReaction, uploadFile } from './api';
-import { applyCommentCountDelta, applyReactionUpdate, mergeMessages, replaceMessage, toggleReaction, updateThread } from './state';
-import type { ChatThread } from './state';
-import type { ChatDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { fetchHistory, fetchPollResults, sendMessage, sendReaction, sendVote, uploadFile } from './api';
+import {
+  applyCommentCountDelta,
+  applyReactionUpdate,
+  findPollMessage,
+  mergeMessages,
+  replaceMessage,
+  toggleReaction,
+  updateThread,
+  updateThreadPoll,
+} from './state';
+import type { ChatThread, PollUpdateTarget } from './state';
+import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 
 /**
@@ -31,6 +40,10 @@ export interface ThreadController {
   */
   reactingIds: ReadonlySet<number>;
   /**
+  Message ids with a vote in flight; their poll's answers are disabled.
+  */
+  votingIds: ReadonlySet<number>;
+  /**
   Opens a chat at the dialog's read watermark, reading the first window. The
   watermark comes from the dialog list, which belongs to the caller.
   */
@@ -40,6 +53,11 @@ export interface ThreadController {
   send: (text: string, replyTo?: number) => Promise<void>;
   attach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Casts a vote in a poll message: the indexes name the selected answers, or
+  `null` retracts the current vote.
+  */
+  vote: (message: MessageDto, options: number[] | null) => void;
   /**
   Advances the open thread's read watermark, for a read the view reported or
   the server confirmed.
@@ -83,6 +101,15 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
+  const [votingIds, setVotingIds] = useState<ReadonlySet<number>>(new Set());
+
+  // The socket handler is created once (when the socket attaches) but must
+  // always see the latest thread: a poll update names a loaded message, and a
+  // stale thread would miss it.
+  const threadRef = useRef<ChatThread | null>(null);
+  useLayoutEffect(() => {
+    threadRef.current = thread;
+  }, [thread]);
 
   const open = useCallback(async (chat: ChatDto, readInboxMaxId: number): Promise<void> => {
     setThread({ chat, messages: [], readInboxMaxId });
@@ -224,6 +251,62 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     [reactingIds, onError],
   );
 
+  /**
+  Folds a fresh poll into the open thread, wherever the update points: the
+  target's ids name the message when Telegram sent them, and the poll id
+  catches the short updates that name neither.
+  */
+  const applyPoll = useCallback((target: PollUpdateTarget, poll: MessagePollDto): void => {
+    setThread((current) => updateThreadPoll(current, target, poll));
+  }, []);
+
+  /**
+  A short poll update only asks for a recheck: reload the poll of the loaded
+  message it points at, if any, and fold that in. Failures stay silent — an
+  out-of-date count settles on the next load or vote, and a toast for it would
+  interrupt for nothing.
+  */
+  const refreshPoll = useCallback(
+    (target: PollUpdateTarget): void => {
+      const open = threadRef.current;
+      if (!open) return;
+      const match = findPollMessage(open.messages, target);
+      if (!match) return;
+      void fetchPollResults(match.chatId, match.id)
+        .then((result) => {
+          applyPoll({ chatId: match.chatId, messageId: match.id, pollId: result.poll.id }, result.poll);
+        })
+        .catch(() => {
+          // Nothing to surface.
+        });
+    },
+    [applyPoll],
+  );
+
+  const vote = useCallback(
+    (message: MessageDto, options: number[] | null): void => {
+      const poll = message.poll;
+      if (!poll || votingIds.has(message.id)) return;
+      const target: PollUpdateTarget = { chatId: message.chatId, messageId: message.id, pollId: poll.id };
+      // No optimistic guess: only the server knows the new counts, and a wrong
+      // guess would flicker the bars.
+      setVotingIds((current) => new Set(current).add(message.id));
+      void sendVote(message.chatId, message.id, options)
+        .then((result) => {
+          applyPoll(target, result.poll);
+        })
+        .catch(onError)
+        .finally(() => {
+          setVotingIds((current) => {
+            const next = new Set(current);
+            next.delete(message.id);
+            return next;
+          });
+        });
+    },
+    [applyPoll, votingIds, onError],
+  );
+
   const applyUpdate = useCallback((update: UpdateEvent): void => {
     if (update.type === 'new_message') {
       setThread((current) => updateThread(current, update.message.chatId, (messages) => mergeMessages(messages, [update.message])));
@@ -239,6 +322,11 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
           applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
         ),
       );
+      return;
+    }
+    if (update.type === 'poll') {
+      if (update.poll === null) refreshPoll(update);
+      else applyPoll(update, update.poll);
       return;
     }
     if (update.type === 'read' && update.inbox) {
@@ -262,12 +350,14 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     uploadProgress,
     error,
     reactingIds,
+    votingIds,
     open,
     close,
     loadOlder,
     send,
     attach,
     react,
+    vote,
     setReadWatermark,
     bumpCommentCount,
     applyUpdate,

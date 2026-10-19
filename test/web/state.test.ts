@@ -47,7 +47,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
 }
 
 function chat(id: number): ChatDto {
-  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null };
+  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null, canSendMessages: true };
 }
 
 function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {

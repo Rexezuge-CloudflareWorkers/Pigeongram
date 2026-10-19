@@ -365,6 +365,11 @@
   white-space: nowrap;
 }
 
+.composer-notice {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .composer textarea {
   flex: 1;
   resize: none;

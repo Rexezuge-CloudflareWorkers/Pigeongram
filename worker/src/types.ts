@@ -37,6 +37,12 @@ export interface ChatDto {
   Opaque token identifying the current profile photo, or null.
   */
   photo: string | null;
+  /**
+  Whether the account may post in this chat: broadcast channels are
+  admin-only, and a member whose send permission was revoked counts as
+  blocked too.
+  */
+  canSendMessages: boolean;
 }
 
 /**

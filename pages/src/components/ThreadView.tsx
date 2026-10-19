@@ -267,16 +267,30 @@ export function ThreadView({
         })}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      <Composer
-        placeholder="Message"
-        sending={sending}
-        uploading={uploading}
-        uploadProgress={uploadProgress}
-        replyTarget={replyTarget}
-        onCancelReply={() => setReplyingTo(null)}
-        onSend={send}
-        onAttach={attach}
-      />
+      {chat.canSendMessages ? (
+        <Composer
+          placeholder="Message"
+          sending={sending}
+          uploading={uploading}
+          uploadProgress={uploadProgress}
+          replyTarget={replyTarget}
+          onCancelReply={() => setReplyingTo(null)}
+          onSend={send}
+          onAttach={attach}
+        />
+      ) : (
+        <p className="composer composer-notice">{sendBlockedNotice(chat)}</p>
+      )}
     </section>
   );
+}
+
+/**
+The read-only notice shown in place of the composer: a broadcast channel
+explains itself, everything else was restricted by the chat's admins.
+*/
+function sendBlockedNotice(chat: ChatDto): string {
+  return chat.kind === 'channel'
+    ? 'Only admins can post in this channel.'
+    : 'The admins of this chat have restricted your ability to send messages.';
 }

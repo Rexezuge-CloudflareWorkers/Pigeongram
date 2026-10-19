@@ -106,6 +106,7 @@ describe('toChatDto', () => {
       title: 'Ada Lovelace',
       username: 'ada',
       photo: null,
+      canSendMessages: true,
     });
     expect(toChatDto(new User(rawBot))).toEqual({
       id: 5,
@@ -113,6 +114,7 @@ describe('toChatDto', () => {
       title: 'Helper',
       username: 'helper_bot',
       photo: null,
+      canSendMessages: true,
     });
     expect(toChatDto(new Chat(rawGroup))).toEqual({
       id: -10,
@@ -120,6 +122,7 @@ describe('toChatDto', () => {
       title: 'Old Group',
       username: null,
       photo: null,
+      canSendMessages: true,
     });
     expect(toChatDto(new Chat(rawChannel))).toEqual({
       id: getMarkedPeerId(20, 'channel'),
@@ -127,6 +130,7 @@ describe('toChatDto', () => {
       title: 'Announcements',
       username: 'announce',
       photo: null,
+      canSendMessages: false,
     });
     expect(toChatDto(new Chat(rawSupergroup))).toEqual({
       id: getMarkedPeerId(30, 'channel'),
@@ -134,7 +138,51 @@ describe('toChatDto', () => {
       title: 'Team',
       username: null,
       photo: null,
+      canSendMessages: true,
     });
+  });
+
+  it('marks broadcast channels writable only for the creator or a poster admin', () => {
+    const admin = { ...rawChannel, adminRights: { _: 'chatAdminRights', postMessages: true } } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(admin)).canSendMessages).toBe(true);
+
+    const adminWithoutPost = { ...rawChannel, adminRights: { _: 'chatAdminRights', pinMessages: true } } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(adminWithoutPost)).canSendMessages).toBe(false);
+
+    const creator = { ...rawChannel, creator: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(creator)).canSendMessages).toBe(true);
+  });
+
+  it('blocks sending when the account was restricted or the defaults ban it', () => {
+    const banned = {
+      ...rawSupergroup,
+      bannedRights: { _: 'chatBannedRights', sendMessages: true, untilDate: 0 },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(banned)).canSendMessages).toBe(false);
+
+    const defaultBanned = {
+      ...rawSupergroup,
+      defaultBannedRights: { _: 'chatBannedRights', sendMessages: true, untilDate: 0 },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(defaultBanned)).canSendMessages).toBe(false);
+
+    // An admin is exempt from the default rights.
+    const admin = {
+      ...rawSupergroup,
+      adminRights: { _: 'chatAdminRights', changeInfo: true },
+      defaultBannedRights: { _: 'chatBannedRights', sendMessages: true, untilDate: 0 },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(admin)).canSendMessages).toBe(true);
+  });
+
+  it('keeps an incomplete (min) peer writable rather than guessing', () => {
+    const min = { ...rawChannel, min: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(min)).canSendMessages).toBe(true);
+  });
+
+  it('lets a monoforum subscriber write to the channel admins', () => {
+    const monoforum = { ...rawChannel, monoforum: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(monoforum)).canSendMessages).toBe(true);
   });
 
   it('carries the small photo as an opaque cache-busting token', () => {
@@ -146,6 +194,7 @@ describe('toChatDto', () => {
       title: 'Grace Hopper',
       username: 'grace',
       photo: 'AQADRgAI',
+      canSendMessages: true,
     });
     expect(toChatDto(new Chat(rawGroupWithPhoto))).toEqual({
       id: -11,
@@ -153,6 +202,7 @@ describe('toChatDto', () => {
       title: 'Photo Group',
       username: null,
       photo: 'AQADRwAI',
+      canSendMessages: true,
     });
   });
 
@@ -470,7 +520,7 @@ describe('toDialogDto', () => {
     } as unknown as tl.RawDialog;
     const dto = toDialogDto(new Dialog(raw, index(), new Map()));
     expect(dto).toEqual({
-      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null },
+      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null, canSendMessages: true },
       lastMessage: null,
       unread: 3,
       readInboxMaxId: 12,

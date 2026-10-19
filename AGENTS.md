@@ -110,6 +110,10 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   names; keep them stable.
 - **`pnpm run lint` uses `--fix`.** Run it locally and commit its fixes; CI's `--quiet` discards warnings, which is why the
   separate `format:check` job exists.
+- **The god-file allowlist holds exactly the two contract modules.** `scripts/god-files.allowlist.json` exempts
+  `worker/src/types.ts` and `pages/src/types.ts` from the hard cap: each is one mirrored contract (the SPA copy must stay
+  in sync by hand), so splitting one is a mirror-wide refactor rather than a per-file fix. The `rpc-types.ts` split from
+  `types.ts` was the last such split; anything else over 400 is split before it lands.
 - **No `backup-d1.yml`.** The family's database backup exports D1, which this repo does not have; the DO's SQLite is
   covered by Cloudflare's point-in-time recovery, and it holds only the mtcute session, update state and small caches.
   The README's CI section says so where a reader would look for the workflow.

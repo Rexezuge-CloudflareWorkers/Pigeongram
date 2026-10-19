@@ -1,4 +1,4 @@
-import { Long, Message, PeersIndex } from '@mtcute/core';
+import { Long, Message, PeersIndex, Poll } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
@@ -75,6 +75,22 @@ function fakeClient(): { client: TelegramClient; reads: Array<{ chatId: number; 
   return { client, reads };
 }
 
+/**
+A poll fixture: one answer, with results only when Telegram shared them.
+*/
+function poll(results?: tl.RawPollResults): Poll {
+  return new Poll(
+    {
+      _: 'poll',
+      id: Long.fromNumber(1_234_567_890),
+      question: { _: 'textWithEntities', text: 'Tea or coffee?', entities: [] },
+      answers: [{ _: 'pollAnswer', text: { _: 'textWithEntities', text: 'Tea', entities: [] }, option: new Uint8Array([1]) }],
+    } as unknown as tl.TypePoll,
+    peers,
+    results,
+  );
+}
+
 describe('readHistory dispatch', () => {
   it('reads up to the given watermark', async () => {
     const { client, reads } = fakeClient();
@@ -136,5 +152,70 @@ describe('getHistory dispatch', () => {
     const { client, calls } = fakeHistoryClient([[message(2), message(1)]]);
     await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 });
     expect(calls).toHaveLength(1);
+  });
+});
+
+/**
+ * Voting: the bridge takes answer indexes, resolves them against the live
+ * message so a stale list can never send another answer's bytes, and answers
+ * with the poll Telegram returned.
+ */
+describe('sendVote dispatch', () => {
+  function fakeVoteClient(): { client: TelegramClient; votes: Array<{ chatId: number; message: number; options: number[] | null }> } {
+    const votes: Array<{ chatId: number; message: number; options: number[] | null }> = [];
+    const client = {
+      sendVote: async (params: { chatId: number; message: number; options: number[] | null }) => {
+        votes.push(params);
+        return poll({
+          _: 'pollResults',
+          totalVoters: 1,
+          results: [{ _: 'pollAnswerVoters', option: new Uint8Array([1]), voters: 1, chosen: true }],
+        });
+      },
+    } as unknown as TelegramClient;
+    return { client, votes };
+  }
+
+  it('passes the selected answer indexes through and returns the new poll', async () => {
+    const { client, votes } = fakeVoteClient();
+    const result = (await dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7, options: [0] })) as {
+      poll: { id: string; totalVoters: number | null; answers: unknown[] };
+    };
+    expect(votes).toEqual([{ chatId: 1, message: 7, options: [0] }]);
+    expect(result.poll.id).toBe('1234567890');
+    expect(result.poll.totalVoters).toBe(1);
+    expect(result.poll.answers).toEqual([{ text: 'Tea', voters: 1, chosen: true, correct: null }]);
+  });
+
+  it('reads a missing selection as a retraction', async () => {
+    const { client, votes } = fakeVoteClient();
+    await dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7 });
+    expect(votes).toEqual([{ chatId: 1, message: 7, options: null }]);
+  });
+
+  it('rejects malformed selections before Telegram is touched', async () => {
+    const { client, votes } = fakeVoteClient();
+    for (const options of [[], 'Tea', [1.5], [-1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]) {
+      await expect(dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7, options })).rejects.toThrow('options');
+    }
+    expect(votes).toEqual([]);
+  });
+});
+
+describe('getPollResults dispatch', () => {
+  it('returns the poll as the DTO the SPA folds in', async () => {
+    const calls: Array<{ chatId: number; message: number }> = [];
+    const client = {
+      getPollResults: async (params: { chatId: number; message: number }) => {
+        calls.push(params);
+        return poll();
+      },
+    } as unknown as TelegramClient;
+    const result = (await dispatchRpc(client, 'getPollResults', { chatId: 1, messageId: 7 })) as {
+      poll: { question: string; totalVoters: number | null };
+    };
+    expect(calls).toEqual([{ chatId: 1, message: 7 }]);
+    expect(result.poll.question).toBe('Tea or coffee?');
+    expect(result.poll.totalVoters).toBeNull();
   });
 });

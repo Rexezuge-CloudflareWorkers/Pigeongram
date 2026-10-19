@@ -1,4 +1,4 @@
-import type { MessageMediaDto } from './types';
+import type { MessageMediaDto, MessagePollDto } from './types';
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
@@ -43,10 +43,19 @@ export function initials(title: string): string {
 /**
 Preview line for the chat list.
 */
-export function previewOf(text: string, media: MessageMediaDto | null): string {
+export function previewOf(text: string, media: MessageMediaDto | null, poll: MessagePollDto | null = null): string {
   if (text) return text;
+  if (poll) return pollPreview(poll);
   if (media) return mediaPreview(media.kind);
   return '—';
+}
+
+/**
+Label for a poll, when only the poll is known — its question is the closest
+thing it has to a message body.
+*/
+export function pollPreview(poll: MessagePollDto): string {
+  return `Poll: ${poll.question}`;
 }
 
 /**

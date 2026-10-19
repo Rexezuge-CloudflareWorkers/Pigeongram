@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@telegram-web-client/pages';
-import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, UpdateEvent } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, MessagePollDto, UpdateEvent } from '../../pages/src/types';
 
 interface FetchCall {
   method: string;
@@ -98,6 +98,7 @@ const dialogs: DialogDto[] = [
       reactions: [],
       service: false,
       media: null,
+      poll: null,
       reply: null,
       comments: null,
     },
@@ -122,6 +123,7 @@ const history: MessageDto[] = [
     reactions: [],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
   },
@@ -138,6 +140,7 @@ const history: MessageDto[] = [
     reactions: [{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
   },
@@ -161,6 +164,7 @@ const carolHistory: MessageDto[] = [
     reactions: [],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
   },
@@ -181,6 +185,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     reactions: [],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
     ...overrides,
@@ -442,6 +447,208 @@ describe('App', () => {
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '👍', customEmojiId: null } },
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: null, customEmojiId: null } },
     ]);
+  });
+
+  describe('polls', () => {
+    const poll: MessagePollDto = {
+      id: '1234567890',
+      question: 'Tea or coffee?',
+      answers: [
+        { text: 'Tea', voters: 1, chosen: false, correct: null },
+        { text: 'Coffee', voters: 2, chosen: false, correct: null },
+      ],
+      totalVoters: 3,
+      closed: false,
+      quiz: false,
+      multiple: false,
+      revotingDisabled: false,
+      hideResultsUntilClose: false,
+      solution: null,
+    };
+
+    const pollMessage = (overrides: Partial<MessageDto> = {}): MessageDto =>
+      message({ id: 20, chatId: 2, senderName: 'Bob', text: '', poll, ...overrides });
+
+    /**
+    Serves the thread with `initial` and answers the poll RPCs from a script, so
+    a test can watch the SPA fold each answer in and record what it sent.
+    */
+    function installPollFetch(initial: MessagePollDto, answers: readonly MessagePollDto[], calls: unknown[]): void {
+      let index = 0;
+      installSignedInFetch({
+        history: () => json({ messages: [pollMessage({ poll: initial })] }),
+        rpc: (call) => {
+          if (call.body?.method !== 'sendVote' && call.body?.method !== 'getPollResults') return;
+          calls.push(call.body);
+          const answer = answers[Math.min(index, answers.length - 1)];
+          index += 1;
+          return json({ poll: answer });
+        },
+      });
+    }
+
+    it('previews the question in the chat list', async () => {
+      const pollDialog: DialogDto = {
+        chat: carol,
+        lastMessage: pollMessage({ id: 30, chatId: 3 }),
+        unread: 0,
+        readInboxMaxId: 1,
+        pinned: false,
+        muted: false,
+      };
+      installSignedInFetch({ dialogs: [pollDialog] });
+
+      render(<App />);
+      expect(await screen.findByText('Poll: Tea or coffee?')).toBeDefined();
+    });
+
+    it('votes for the tapped answer and folds the fresh results in', async () => {
+      const calls: unknown[] = [];
+      installPollFetch(
+        poll,
+        [
+          {
+            ...poll,
+            totalVoters: 4,
+            answers: [
+              { text: 'Tea', voters: 3, chosen: true, correct: null },
+              { text: 'Coffee', voters: 1, chosen: false, correct: null },
+            ],
+          },
+        ],
+        calls,
+      );
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('Tea or coffee?')).toBeDefined();
+      expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Vote for Coffee (67%)' }));
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('4 votes')).toBeDefined();
+      });
+      expect(calls).toEqual([{ method: 'sendVote', params: { chatId: 2, messageId: 20, options: [1] } }]);
+      expect(screen.getByRole('button', { name: 'Retract vote' })).toBeDefined();
+    });
+
+    it('retracts the vote through the sendVote call', async () => {
+      const calls: unknown[] = [];
+      const chosen: MessagePollDto = {
+        ...poll,
+        answers: [
+          { text: 'Tea', voters: 2, chosen: true, correct: null },
+          { text: 'Coffee', voters: 1, chosen: false, correct: null },
+        ],
+      };
+      installPollFetch(chosen, [{ ...poll, totalVoters: 2 }], calls);
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Retract vote' }));
+
+      await waitFor(() => {
+        expect(calls).toEqual([{ method: 'sendVote', params: { chatId: 2, messageId: 20, options: null } }]);
+      });
+    });
+
+    it('accumulates a multiple-choice selection across taps', async () => {
+      const multiple: MessagePollDto = { ...poll, multiple: true };
+      const calls: unknown[] = [];
+      installPollFetch(
+        multiple,
+        [
+          {
+            ...multiple,
+            totalVoters: 4,
+            answers: [
+              { text: 'Tea', voters: 2, chosen: true, correct: null },
+              { text: 'Coffee', voters: 2, chosen: false, correct: null },
+            ],
+          },
+          {
+            ...multiple,
+            totalVoters: 5,
+            answers: [
+              { text: 'Tea', voters: 3, chosen: true, correct: null },
+              { text: 'Coffee', voters: 2, chosen: true, correct: null },
+            ],
+          },
+        ],
+        calls,
+      );
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Vote for Tea (33%)' }));
+
+      const coffee = await screen.findByRole('button', { name: 'Vote for Coffee (50%)' });
+      fireEvent.click(coffee);
+
+      await waitFor(() => {
+        expect(calls).toHaveLength(2);
+      });
+      expect(calls).toEqual([
+        { method: 'sendVote', params: { chatId: 2, messageId: 20, options: [0] } },
+        { method: 'sendVote', params: { chatId: 2, messageId: 20, options: [0, 1] } },
+      ]);
+    });
+
+    it('folds a full poll update without asking again', async () => {
+      const calls: unknown[] = [];
+      installPollFetch(poll, [poll], calls);
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      await screen.findByText('Tea or coffee?');
+
+      deliver({ type: 'poll', chatId: 2, messageId: 20, pollId: poll.id, poll: { ...poll, totalVoters: 7 } });
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('7 votes')).toBeDefined();
+      });
+      expect(calls).toEqual([]);
+    });
+
+    it('refetches a short poll update for the loaded message', async () => {
+      const calls: unknown[] = [];
+      installPollFetch(poll, [{ ...poll, totalVoters: 9 }], calls);
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      await screen.findByText('Tea or coffee?');
+
+      // A short update names neither the chat nor the message.
+      deliver({ type: 'poll', chatId: null, messageId: null, pollId: poll.id, poll: null });
+
+      await waitFor(() => {
+        expect(within(threadSection()).getByText('9 votes')).toBeDefined();
+      });
+      expect(calls).toEqual([{ method: 'getPollResults', params: { chatId: 2, messageId: 20 } }]);
+    });
+
+    it('keeps a vote that may no longer change inert', async () => {
+      const quiz: MessagePollDto = {
+        ...poll,
+        quiz: true,
+        revotingDisabled: true,
+        answers: [
+          { text: 'Tea', voters: 1, chosen: true, correct: false },
+          { text: 'Coffee', voters: 2, chosen: false, correct: true },
+        ],
+      };
+      installPollFetch(quiz, [quiz], []);
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+
+      expect(await screen.findByText('Quiz')).toBeDefined();
+      expect(within(threadSection()).getByText('✓')).toBeDefined();
+      expect(within(threadSection()).getByText('✗')).toBeDefined();
+      expect(screen.queryByRole('button', { name: /^Vote for/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Retract vote' })).toBeNull();
+    });
   });
 
   describe('replies', () => {

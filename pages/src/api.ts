@@ -4,12 +4,14 @@ import type {
   GetDialogsResult,
   GetHistoryResult,
   GetMeResult,
+  GetPollResultsResult,
   PeerId,
   RpcMethod,
   SearchMessagesResult,
   SendCommentResult,
   SendMessageResult,
   SendReactionResult,
+  SendVoteResult,
   UploadKind,
 } from './types';
 
@@ -226,6 +228,21 @@ export const sendReaction = (
     emoji: reaction && 'emoji' in reaction ? reaction.emoji : null,
     customEmojiId: reaction && 'customEmojiId' in reaction ? reaction.customEmojiId : null,
   });
+
+/**
+Casts (or, with `null`, retracts) a vote in a poll: the indexes name answers in
+the order the message carries them. The engine resolves the indexes against
+the live poll, so a stale message can never send a wrong option's bytes.
+*/
+export const sendVote = (chatId: PeerId, messageId: number, options: number[] | null): Promise<SendVoteResult> =>
+  rpc('sendVote', { chatId, messageId, options });
+
+/**
+Re-reads a poll the bridge could only announce (a short update): the answer is
+the same DTO `sendVote` returns, so the caller folds it in the same way.
+*/
+export const fetchPollResults = (chatId: PeerId, messageId: number): Promise<GetPollResultsResult> =>
+  rpc('getPollResults', { chatId, messageId });
 
 export function fileUrl(chatId: PeerId, messageId: number, options: { thumb?: boolean } = {}): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });

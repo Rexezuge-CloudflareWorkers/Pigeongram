@@ -1,0 +1,114 @@
+/* Poll messages: the question, the answer rows with their result bars, and the
+   meta line (tally, retraction, quiz solution). */
+
+.message .poll {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.message .poll-kind {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.message .poll-question {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  padding-bottom: 2px;
+}
+
+.message .poll-answer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(14, 22, 33, 0.45);
+  text-align: left;
+  overflow: hidden;
+}
+
+.message .poll-answer:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.message .poll-answer:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.message .poll-answer.static {
+  cursor: default;
+}
+
+.message .poll-answer.chosen {
+  border-color: var(--accent);
+  background: rgba(94, 181, 247, 0.14);
+}
+
+/* The result bar sits behind the answer's own text. */
+.message .poll-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(94, 181, 247, 0.18);
+  pointer-events: none;
+}
+
+.message .poll-answer-text {
+  position: relative;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.message .poll-percent {
+  position: relative;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.message .poll-mark {
+  position: relative;
+  font-size: 12px;
+}
+
+.message .poll-mark.correct {
+  color: #6fcf97;
+}
+
+.message .poll-mark.wrong {
+  color: var(--danger);
+}
+
+.message .poll-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  min-height: 16px;
+}
+
+.message .poll-retract {
+  color: var(--accent);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.message .poll-retract:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.message .poll-solution {
+  border-left: 3px solid var(--accent);
+  color: rgba(233, 238, 243, 0.85);
+  font-size: 13px;
+  padding: 2px 0 2px 8px;
+}

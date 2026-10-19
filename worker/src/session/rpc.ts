@@ -3,10 +3,11 @@ import { Long } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
 import type { DialogDto } from '../types';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
-import { toDialogDto, toMeDto, toMessageDto } from './dto';
+import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
 import {
   clampInt,
+  optionalAnswerIndexes,
   optionalInt,
   optionalMessageId,
   optionalText,
@@ -102,6 +103,21 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       }
       const message = await client.sendReaction({ chatId, message: messageId, emoji: reaction });
       return { message: message ? toMessageDto(message) : null };
+    }
+
+    case 'sendVote': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const options = optionalAnswerIndexes(params.options);
+      const poll = await client.sendVote({ chatId, message: messageId, options });
+      return { poll: toPollDto(poll) };
+    }
+
+    case 'getPollResults': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const poll = await client.getPollResults({ chatId, message: messageId });
+      return { poll: toPollDto(poll) };
     }
 
     case 'getComments': {

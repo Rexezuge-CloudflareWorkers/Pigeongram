@@ -27,6 +27,7 @@ function message(overrides: Partial<MessageDto> & { id: number }): MessageDto {
     reactions: [],
     service: false,
     media: null,
+    poll: null,
     reply: null,
     comments: null,
     ...overrides,

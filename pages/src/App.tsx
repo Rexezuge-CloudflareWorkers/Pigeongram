@@ -230,6 +230,7 @@ export function App() {
           uploadProgress={threads.uploadProgress}
           error={threads.error}
           reactingIds={threads.reactingIds}
+          votingIds={threads.votingIds}
           readInboxMaxId={threads.thread?.readInboxMaxId ?? 0}
           onBack={() => {
             closeThread();
@@ -239,6 +240,7 @@ export function App() {
           onSend={threads.send}
           onAttach={threads.attach}
           onReact={threads.react}
+          onVote={threads.vote}
           onReadThrough={markRead}
           onOpenComments={(message) => {
             if (selected) void comments.open(selected, message);

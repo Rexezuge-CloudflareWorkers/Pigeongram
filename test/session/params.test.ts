@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EngineError } from '../../worker/src/session/errors';
 import {
   clampInt,
+  optionalAnswerIndexes,
   optionalInt,
   optionalMessageId,
   optionalText,
@@ -73,5 +74,15 @@ describe('bridge parameter validation', () => {
     expect(requireQuery('find me')).toBe('find me');
     expect(() => requireQuery('')).toThrow(EngineError);
     expect(() => requireQuery('x'.repeat(257))).toThrow(EngineError);
+  });
+
+  it('reads absent vote answers as a retraction and bounds the rest', () => {
+    expect(optionalAnswerIndexes(undefined)).toBeNull();
+    expect(optionalAnswerIndexes(null)).toBeNull();
+    expect(optionalAnswerIndexes([0])).toEqual([0]);
+    expect(optionalAnswerIndexes([0, 9])).toEqual([0, 9]);
+    for (const bad of [[], '0', [1.5], [-1], [NaN], [null], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]) {
+      expect(() => optionalAnswerIndexes(bad)).toThrow(EngineError);
+    }
   });
 });

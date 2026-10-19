@@ -110,6 +110,62 @@ export interface MessageReactionDto {
 }
 
 /**
+One answer of a poll message.
+
+`voters` and `correct` are only known once Telegram has shared the poll's
+results with this account (after answering a quiz, or when the poll does not
+hide them); `null` means "not available yet", which is not the same as zero
+voters.
+*/
+export interface MessagePollAnswerDto {
+  text: string;
+  voters: number | null;
+  chosen: boolean;
+  /**
+  Quizzes only: whether this is the correct answer; null while unknown.
+  */
+  correct: boolean | null;
+}
+
+/**
+A poll message.
+
+Polls are media in MTProto, but they carry no file, so they ride beside
+`media` instead of inside it. `id` is the decimal poll id Telegram uses to
+recognise the poll across updates.
+*/
+export interface MessagePollDto {
+  /**
+  Decimal string of Telegram's 64-bit poll id.
+  */
+  id: string;
+  question: string;
+  answers: MessagePollAnswerDto[];
+  /**
+  Total number of voters, when the results are known.
+  */
+  totalVoters: number | null;
+  closed: boolean;
+  quiz: boolean;
+  /**
+  Whether the poll accepts several answers at once.
+  */
+  multiple: boolean;
+  /**
+  Whether retracting (or changing) a vote is disabled.
+  */
+  revotingDisabled: boolean;
+  /**
+  Whether the results stay hidden until the poll closes.
+  */
+  hideResultsUntilClose: boolean;
+  /**
+  Quiz only: the explanation shown after answering, when Telegram sent one.
+  */
+  solution: string | null;
+}
+
+/**
 The message a message replies to, mapped from Telegram's reply header.
 
 Same-chat headers carry only the message id, so the SPA resolves the sender
@@ -183,9 +239,14 @@ export interface MessageDto {
   reactions: MessageReactionDto[];
   service: boolean;
   /**
-  The message's downloadable media, or null for text/service messages.
+  The message's downloadable media, or null for text/service messages and
+  non-file media such as polls.
   */
   media: MessageMediaDto | null;
+  /**
+  The message's poll, or null when it is not a poll message.
+  */
+  poll: MessagePollDto | null;
   /**
   The message this one replies to, or null for a plain message.
   */
@@ -253,6 +314,27 @@ export type UpdateEvent =
   | { type: 'edit_message'; message: MessageDto }
   | { type: 'reactions'; chatId: PeerId; messageId: number; reactions: MessageReactionDto[] }
   | {
+      type: 'poll';
+      /**
+      Marked id of the chat holding the poll, when the update names one.
+      */
+      chatId: PeerId | null;
+      /**
+      Id of the message holding the poll, when the update names one.
+      */
+      messageId: number | null;
+      /**
+      Decimal string of the poll id: a short update names neither the chat nor
+      the message, so this is what identifies the poll in the SPA.
+      */
+      pollId: string;
+      /**
+      The updated poll, or null for a short update that only says "recheck
+      this poll" — the SPA refetches it with `getPollResults` then.
+      */
+      poll: MessagePollDto | null;
+    }
+  | {
       type: 'read';
       chatId: PeerId;
       maxId: number;
@@ -297,7 +379,17 @@ export interface EngineStateDto {
 }
 
 export type RpcMethod =
-  'getMe' | 'getDialogs' | 'getHistory' | 'sendMessage' | 'readHistory' | 'searchMessages' | 'sendReaction' | 'getComments' | 'sendComment';
+  | 'getMe'
+  | 'getDialogs'
+  | 'getHistory'
+  | 'sendMessage'
+  | 'readHistory'
+  | 'searchMessages'
+  | 'sendReaction'
+  | 'sendVote'
+  | 'getPollResults'
+  | 'getComments'
+  | 'sendComment';
 
 export interface GetMeResult {
   me: MeDto;
@@ -325,6 +417,18 @@ export interface SendReactionResult {
 export interface SearchMessagesResult {
   messages: MessageDto[];
   nextOffsetId?: number;
+}
+
+export interface SendVoteResult {
+  /**
+  The poll as Telegram answered the vote: the caller's selection plus the
+  counts that were visible to this account.
+  */
+  poll: MessagePollDto;
+}
+
+export interface GetPollResultsResult {
+  poll: MessagePollDto;
 }
 
 export interface GetCommentsResult {

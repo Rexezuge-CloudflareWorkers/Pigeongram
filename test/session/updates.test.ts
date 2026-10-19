@@ -117,6 +117,67 @@ describe('mapRawUpdate', () => {
     });
   });
 
+  it('maps a full poll update onto the poll DTO', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updateMessagePoll',
+        peer: { _: 'peerUser', userId: 1 },
+        msgId: 7,
+        pollId: Long.fromNumber(1_234_567_890),
+        poll: {
+          _: 'poll',
+          id: Long.fromNumber(1_234_567_890),
+          question: { _: 'textWithEntities', text: 'Tea or coffee?', entities: [] },
+          answers: [{ _: 'pollAnswer', text: { _: 'textWithEntities', text: 'Tea', entities: [] }, option: new Uint8Array([1]) }],
+        },
+        results: {
+          _: 'pollResults',
+          totalVoters: 1,
+          results: [{ _: 'pollAnswerVoters', option: new Uint8Array([1]), voters: 1, chosen: true }],
+        },
+        pts: 9,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toMatchObject({
+      type: 'poll',
+      chatId: 1,
+      messageId: 7,
+      pollId: '1234567890',
+      poll: {
+        id: '1234567890',
+        question: 'Tea or coffee?',
+        totalVoters: 1,
+        answers: [{ text: 'Tea', voters: 1, chosen: true, correct: null }],
+      },
+    });
+  });
+
+  it('passes a short poll update on as "recheck this poll"', () => {
+    const event = mapRawUpdate(info({ _: 'updateMessagePoll', pollId: Long.fromNumber(1_234_567_890), pts: 10, ptsCount: 1 }));
+    expect(event).toEqual({ type: 'poll', chatId: null, messageId: null, pollId: '1234567890', poll: null });
+  });
+
+  it('maps a public poll vote onto its poll id', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updateMessagePollVote',
+        pollId: Long.fromNumber(1_234_567_890),
+        peer: { _: 'peerChannel', channelId: 20 },
+        options: [new Uint8Array([1])],
+        pts: 11,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toEqual({
+      type: 'poll',
+      chatId: getMarkedPeerId(20, 'channel'),
+      messageId: null,
+      pollId: '1234567890',
+      poll: null,
+    });
+  });
+
   it('maps inbox reads with the remaining unread count', () => {
     const event = mapRawUpdate(
       info({

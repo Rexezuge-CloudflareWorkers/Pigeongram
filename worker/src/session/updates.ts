@@ -1,7 +1,7 @@
-import { getMarkedPeerId, Message, MessageReactions } from '@mtcute/core';
+import { getMarkedPeerId, Message, MessageReactions, Poll } from '@mtcute/core';
 import type { RawUpdateInfo } from '@mtcute/core';
 import type { UpdateEvent } from '../types';
-import { toMessageDto, toMessageReactionDtos } from './dto';
+import { toMessageDto, toMessageReactionDtos, toPollDto } from './dto';
 
 /**
  * Maps the raw updates the engine cares about onto bridge events.
@@ -29,6 +29,28 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         chatId,
         messageId: update.msgId,
         reactions: toMessageReactionDtos(reactions.reactions),
+      };
+    }
+    case 'updateMessagePoll': {
+      return {
+        type: 'poll',
+        chatId: update.peer ? getMarkedPeerId(update.peer) : null,
+        messageId: update.msgId ?? null,
+        pollId: update.pollId.toString(),
+        // A short update omits the poll body, and mtcute's stand-in for it
+        // carries an empty question and no answers; the SPA refetches instead.
+        poll: update.poll ? toPollDto(new Poll(update.poll, info.peers, update.results)) : null,
+      };
+    }
+    case 'updateMessagePollVote': {
+      // A public poll the account created got a new vote. Telegram names the
+      // chat but not the message, so the SPA matches on the poll id.
+      return {
+        type: 'poll',
+        chatId: getMarkedPeerId(update.peer),
+        messageId: null,
+        pollId: update.pollId.toString(),
+        poll: null,
       };
     }
     case 'updateReadHistoryInbox': {

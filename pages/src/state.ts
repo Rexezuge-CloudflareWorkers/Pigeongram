@@ -1,4 +1,4 @@
-import type { ChatDto, DialogDto, MessageDto, MessageReactionDto, PeerId } from './types';
+import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId } from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state. Kept in its own
@@ -268,4 +268,50 @@ export function toggleReaction(reactions: MessageReactionDto[], reaction: Messag
     });
   }
   return next.filter((candidate) => candidate.count > 0);
+}
+
+/**
+The poll a `poll` update points at: the chat and message when Telegram named
+them, plus the poll id, which is what a short update leaves to match on.
+*/
+export interface PollUpdateTarget {
+  chatId: PeerId | null;
+  messageId: number | null;
+  pollId: string;
+}
+
+/**
+The loaded message a poll update belongs to, or null when the poll is not on
+screen. The named ids win (they are authoritative when present); the poll id
+catches the short updates that name neither.
+*/
+export function findPollMessage(messages: readonly MessageDto[], target: PollUpdateTarget): MessageDto | null {
+  if (target.chatId !== null && target.messageId !== null) {
+    const named = messages.find((message) => message.chatId === target.chatId && message.id === target.messageId);
+    if (named?.poll) return named;
+  }
+  return messages.find((message) => message.poll?.id === target.pollId) ?? null;
+}
+
+/**
+Replaces one loaded message's poll. Poll updates carry no full message (they
+are how Telegram reports a vote or a close), so the message is found by the
+update's target and left untouched when it is not loaded.
+*/
+export function applyPollUpdate(messages: MessageDto[], target: PollUpdateTarget, poll: MessagePollDto): MessageDto[] {
+  const matched = findPollMessage(messages, target);
+  if (!matched) return messages;
+  return messages.map((message) => (message === matched ? { ...message, poll } : message));
+}
+
+/**
+Folds a poll update into the open thread. A poll update names a chat only
+sometimes, so the poll itself decides which loaded message it belongs to; the
+message then decides whether that is the thread on screen.
+*/
+export function updateThreadPoll(thread: ChatThread | null, target: PollUpdateTarget, poll: MessagePollDto): ChatThread | null {
+  if (!thread) return thread;
+  const matched = findPollMessage(thread.messages, target);
+  if (!matched) return thread;
+  return updateThread(thread, matched.chatId, (messages) => applyPollUpdate(messages, target, poll));
 }

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { reactionKey } from '../state';
-import type { ChatDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
+import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { MessageAlbum, MessageMedia } from './Media';
+import { MessageButtons } from './MessageButtons';
 import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
@@ -62,6 +63,15 @@ export interface MessageRowProps {
   Sends a vote in this message's poll; absent for views that do not vote.
   */
   onVote?: (message: MessageDto, options: number[] | null) => void;
+  /**
+  Whether a callback button on this message is in flight; its callback
+  buttons are disabled.
+  */
+  pressingButton?: boolean;
+  /**
+  Presses a callback or copy button; absent for views that do not press.
+  */
+  onPressButton?: (message: MessageDto, button: MessageButtonDto) => void;
   onReply?: (message: MessageDto) => void;
   onJump?: (messageId: number) => void;
   /**
@@ -85,6 +95,8 @@ export function MessageRow({
   onReact,
   voting = false,
   onVote,
+  pressingButton = false,
+  onPressButton,
   onReply,
   onJump,
   onOpenComments,
@@ -96,6 +108,9 @@ export function MessageRow({
   const comments = message.comments;
   const album = group.length > 1;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
+  // Telegram attaches an album's keyboard to one of its members, not
+  // necessarily the first; that member is also the callback's target.
+  const buttonMessage = group.find((entry) => entry.markup !== null) ?? null;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -183,6 +198,9 @@ export function MessageRow({
         <div className="text">
           <MessageText text={message.text} entities={message.entities} />
         </div>
+      ) : null}
+      {buttonMessage?.markup ? (
+        <MessageButtons message={buttonMessage} markup={buttonMessage.markup} pressing={pressingButton} onPress={onPressButton} />
       ) : null}
       {message.reactions.length > 0 ? (
         <div className="reactions">

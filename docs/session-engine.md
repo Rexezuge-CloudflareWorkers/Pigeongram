@@ -109,20 +109,21 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 
 ### RPC methods
 
-| Method           | Params                                                                 | Returns                                                                                     |
-| ---------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getMe`          | —                                                                      | `{me}`                                                                                      |
-| `getDialogs`     | `{limit?: 1..200}`                                                     | `{dialogs: DialogDto[]}` (pinned first)                                                     |
-| `getHistory`     | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
-| `sendMessage`    | `{chatId, text, replyTo?}`                                             | `{message}`                                                                                 |
-| `readHistory`    | `{chatId, maxId?}`                                                     | `{}`                                                                                        |
-| `searchMessages` | `{chatId, query, limit?, offsetId?}`                                   | `{messages, nextOffsetId?}`                                                                 |
-| `sendReaction`   | `{chatId, messageId, emoji?\|customEmojiId?}`                          | `{message: MessageDto \| null}`                                                             |
-| `sendVote`       | `{chatId, messageId, options: number[] \| null}`                       | `{poll}`                                                                                    |
-| `getPollResults` | `{chatId, messageId}`                                                  | `{poll}`                                                                                    |
-| `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`          | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
-| `sendComment`    | `{chatId, messageId, text, replyTo?}`                                  | `{message}`                                                                                 |
-| `getBotCommands` | `{chatId}`                                                             | `{commands: BotCommandDto[]}`                                                               |
+| Method                | Params                                                                 | Returns                                                                                     |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `getMe`               | —                                                                      | `{me}`                                                                                      |
+| `getDialogs`          | `{limit?: 1..200}`                                                     | `{dialogs: DialogDto[]}` (pinned first)                                                     |
+| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
+| `sendMessage`         | `{chatId, text, replyTo?}`                                             | `{message}`                                                                                 |
+| `readHistory`         | `{chatId, maxId?}`                                                     | `{}`                                                                                        |
+| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                   | `{messages, nextOffsetId?}`                                                                 |
+| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                          | `{message: MessageDto \| null}`                                                             |
+| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                       | `{poll}`                                                                                    |
+| `pressCallbackButton` | `{chatId, messageId, data}`                                            | `{text: string \| null, alert: boolean, url: string \| null}`                               |
+| `getPollResults`      | `{chatId, messageId}`                                                  | `{poll}`                                                                                    |
+| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`          | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
+| `sendComment`         | `{chatId, messageId, text, replyTo?}`                                  | `{message}`                                                                                 |
+| `getBotCommands`      | `{chatId}`                                                             | `{commands: BotCommandDto[]}`                                                               |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -159,6 +160,16 @@ keeps "unknown" apart from zero voters. `sendVote` therefore takes answer **inde
 (Telegram caps a poll at ten answers) rather than raw option bytes: the engine resolves them server-side, so a
 stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote. The comments screen
 votes through the same RPCs, including polls on the pinned channel post and on comments in the discussion group.
+
+A message's inline keyboard arrives as `markup`: Telegram's rows of `MessageButtonDto`, each with its `text`, optional
+`style` and a discriminated `kind`. Callback buttons carry their opaque payload as base64 `data` (JSON has no byte
+string), URL/web-view buttons carry what they open, and copy buttons carry the text they place on the clipboard. The
+remaining kinds (games, payments, URL authorization, inline-mode switches, user profiles, password-protected
+callbacks, buttons Telegram already disabled) are carried so the SPA can show them visibly disabled instead of
+dropping them. `pressCallbackButton` decodes `data` (at most Telegram's 64 bytes) and forwards the press through
+`messages.getBotCallbackAnswer`; its result tells the SPA what the bot answered (`text`), whether it asked for an alert
+rather than a toast, and whether it asked to open a `url`. Bots can remove or replace a keyboard with `edit_message`,
+which already replaces the whole message DTO, so no extra update type is needed.
 
 `groupedId` marks album membership: Telegram delivers one album as several messages that share that id, and
 the SPA renders them as one bubble while every message stays addressable for reactions, replies and read

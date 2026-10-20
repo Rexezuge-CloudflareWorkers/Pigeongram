@@ -267,11 +267,87 @@ describe('toMessageDto', () => {
       service: false,
       media: null,
       poll: null,
+      markup: null,
       reply: null,
       forward: null,
       views: null,
       comments: null,
     });
+  });
+
+  it('maps an inline keyboard into rows of button actions', () => {
+    const dto = toMessageDto(
+      message({
+        replyMarkup: {
+          _: 'replyInlineMarkup',
+          rows: [
+            {
+              _: 'keyboardInlineButtonRow',
+              buttons: [
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Create',
+                  style: { _: 'keyboardButtonStyle', bgPrimary: true },
+                  type: { _: 'inlineButtonTypeCallback', data: new Uint8Array([1, 2, 3]) },
+                },
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Docs',
+                  type: { _: 'inlineButtonTypeUrl', url: 'https://example.com/docs' },
+                },
+              ],
+            },
+            {
+              _: 'keyboardInlineButtonRow',
+              buttons: [
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Copy token',
+                  type: { _: 'inlineButtonTypeCopy', copyText: 'token-123' },
+                },
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Locked',
+                  type: { _: 'inlineButtonTypeCallback', data: new Uint8Array([4]), requiresPassword: true },
+                },
+                { _: 'keyboardInlineButton', text: 'Play', type: { _: 'inlineButtonTypeGame' } },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(dto.markup).toEqual({
+      rows: [
+        [
+          { text: 'Create', style: 'primary', kind: 'callback', data: 'AQID', requiresPassword: false },
+          { text: 'Docs', style: null, kind: 'url', url: 'https://example.com/docs' },
+        ],
+        [
+          { text: 'Copy token', style: null, kind: 'copy', copyText: 'token-123' },
+          { text: 'Locked', style: null, kind: 'callback', data: 'BA==', requiresPassword: true },
+          { text: 'Play', style: null, kind: 'game' },
+        ],
+      ],
+    });
+  });
+
+  it('leaves reply keyboards to the composer', () => {
+    const dto = toMessageDto(
+      message({
+        replyMarkup: {
+          _: 'replyKeyboardMarkup',
+          rows: [
+            {
+              _: 'keyboardButtonRow',
+              buttons: [{ _: 'keyboardButton', text: 'Yes', type: { _: 'buttonTypeDefault' } }],
+            },
+          ],
+        },
+      }),
+    );
+    expect(dto.markup).toBeNull();
   });
 
   it('carries album membership as a decimal string', () => {

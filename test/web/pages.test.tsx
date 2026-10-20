@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@telegram-web-client/pages';
-import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, MessagePollDto, UpdateEvent } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, MessageMarkupDto, MessageMediaDto, MessagePollDto, UpdateEvent } from '../../pages/src/types';
 
 interface FetchCall {
   method: string;
@@ -99,6 +99,7 @@ const dialogs: DialogDto[] = [
       service: false,
       media: null,
       poll: null,
+      markup: null,
       reply: null,
       forward: null,
       views: null,
@@ -126,6 +127,7 @@ const history: MessageDto[] = [
     service: false,
     media: null,
     poll: null,
+    markup: null,
     reply: null,
     forward: null,
     views: null,
@@ -145,6 +147,7 @@ const history: MessageDto[] = [
     service: false,
     media: null,
     poll: null,
+    markup: null,
     reply: null,
     forward: null,
     views: null,
@@ -171,6 +174,7 @@ const carolHistory: MessageDto[] = [
     service: false,
     media: null,
     poll: null,
+    markup: null,
     reply: null,
     forward: null,
     views: null,
@@ -194,6 +198,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     service: false,
     media: null,
     poll: null,
+    markup: null,
     reply: null,
     forward: null,
     views: null,
@@ -729,6 +734,85 @@ describe('App', () => {
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '👍', customEmojiId: null } },
       { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: null, customEmojiId: null } },
     ]);
+  });
+
+  describe('inline keyboard buttons', () => {
+    const markup: MessageMarkupDto = {
+      rows: [
+        [
+          { text: 'Create', style: 'primary', kind: 'callback', data: 'AQID', requiresPassword: false },
+          { text: 'Docs', style: null, kind: 'url', url: 'https://example.com/docs' },
+        ],
+        [
+          { text: 'Copy token', style: null, kind: 'copy', copyText: 'token-123' },
+          { text: 'Locked', style: null, kind: 'callback', data: 'BA==', requiresPassword: true },
+          { text: 'Play', style: null, kind: 'game' },
+        ],
+      ],
+    };
+
+    const buttonMessage = message({ id: 10, chatId: 2, senderName: 'Bob', text: 'Tap the button below.', markup });
+
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    function installButtonFetch(calls: FetchCall[]): void {
+      installSignedInFetch({
+        history: () => json({ messages: [buttonMessage] }),
+        rpc: (call) => {
+          if (call.body?.method !== 'pressCallbackButton') {
+            return;
+          }
+
+          calls.push(call);
+          return json({ text: 'Button pressed', alert: false, url: null });
+        },
+      });
+    }
+
+    it('renders the keyboard, presses callbacks and copies text', async () => {
+      const writeText = vi.fn(async () => {});
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+      const calls: FetchCall[] = [];
+      installButtonFetch(calls);
+      render(<App />);
+
+      fireEvent.click(await screen.findByText('Bob'));
+      const create = await screen.findByRole('button', { name: 'Create' });
+      expect(create.className).toContain('primary');
+      expect(threadSection().querySelector('a[href="https://example.com/docs"]')).not.toBeNull();
+      expect((screen.getByRole('button', { name: 'Locked' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Play' }) as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.click(create);
+      expect(await screen.findByText('Button pressed')).toBeDefined();
+      expect(calls.map((call) => call.body?.params)).toEqual([{ chatId: 2, messageId: 10, data: 'AQID' }]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy token' }));
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith('token-123');
+      });
+      expect(await screen.findByText('Copied to clipboard')).toBeDefined();
+    });
+
+    it('removes the keyboard when an edit no longer carries one', async () => {
+      const calls: FetchCall[] = [];
+      installButtonFetch(calls);
+      render(<App />);
+
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByRole('button', { name: 'Create' })).toBeDefined();
+
+      deliver({
+        type: 'edit_message',
+        message: { ...buttonMessage, text: 'The keyboard is gone.', markup: null },
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Create' })).toBeNull();
+      });
+      expect(within(threadSection()).getByText('The keyboard is gone.')).toBeDefined();
+    });
   });
 
   describe('polls', () => {

@@ -15,8 +15,9 @@ import {
 import type { ChatThread, PollUpdateTarget } from './state';
 import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { ChatDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
+import { useMessageButtons } from './useMessageButtons';
 import { usePollVoting } from './usePollVoting';
 
 /**
@@ -49,6 +50,11 @@ export interface ThreadController {
   */
   votingIds: ReadonlySet<number>;
   /**
+  Message ids with a callback button press in flight; their callback buttons
+  are disabled.
+  */
+  pressingButtonIds: ReadonlySet<number>;
+  /**
   Opens a chat at the dialog's read watermark, reading the first window (or a
   window around a linked post, when one is given). The watermark comes from
   the dialog list, which belongs to the caller. Answers with the window it
@@ -65,6 +71,10 @@ export interface ThreadController {
   `null` retracts the current vote.
   */
   vote: (message: MessageDto, options: number[] | null) => void;
+  /**
+  Presses an inline callback or copy button on a message.
+  */
+  pressButton: (message: MessageDto, button: MessageButtonDto) => void;
   /**
   Advances the open thread's read watermark, for a read the view reported or
   the server confirmed.
@@ -93,13 +103,18 @@ interface UseThreadOptions {
   global toast.
   */
   onError: (error: unknown) => void;
+  /**
+  Shows an informational message (a bot's callback answer, a clipboard
+  confirmation) in the global notice toast.
+  */
+  onNotice: (text: string) => void;
 }
 
 function failureText(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
-export function useThread({ onSent, onError }: UseThreadOptions): ThreadController {
+export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -301,6 +316,7 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
   );
 
   const { votingIds, vote } = usePollVoting(applyPoll, onError);
+  const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
 
   const applyUpdate = useCallback((update: UpdateEvent): void => {
     if (update.type === 'new_message') {
@@ -352,6 +368,7 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     error,
     reactingIds,
     votingIds,
+    pressingButtonIds,
     open,
     close,
     loadOlder,
@@ -359,6 +376,7 @@ export function useThread({ onSent, onError }: UseThreadOptions): ThreadControll
     attach,
     react,
     vote,
+    pressButton,
     setReadWatermark,
     bumpCommentCount,
     applyUpdate,

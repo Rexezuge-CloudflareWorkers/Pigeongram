@@ -25,6 +25,26 @@ export function requireMessageId(value: unknown): number {
 }
 
 /**
+Decodes a callback button's base64 payload. Telegram caps callback data at 64
+bytes; rejecting larger payloads keeps a malformed bridge call out of mtcute.
+*/
+export function requireCallbackData(value: unknown): Uint8Array {
+  if (typeof value !== 'string' || value.length % 4 !== 0 || !/^[A-Z0-9+/]*={0,2}$/i.test(value)) {
+    throw new EngineError('data must be base64 of the button callback payload', 400);
+  }
+  let binary: string;
+  try {
+    binary = atob(value);
+  } catch {
+    throw new EngineError('data must be base64 of the button callback payload', 400);
+  }
+  if (binary.length > 64) {
+    throw new EngineError('data must decode to at most 64 bytes', 400);
+  }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+/**
 Like `requireMessageId`, but `null`/`undefined` mean "not provided" instead of
 an error — used where omission carries meaning (e.g. a plain reply).
 */

@@ -6,6 +6,7 @@ import {
   optionalInt,
   optionalMessageId,
   optionalText,
+  requireCallbackData,
   requireMessageId,
   requirePeerId,
   requireQuery,
@@ -83,6 +84,14 @@ describe('bridge parameter validation', () => {
     expect(optionalAnswerIndexes([0, 9])).toEqual([0, 9]);
     for (const bad of [[], '0', [1.5], [-1], [NaN], [null], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]) {
       expect(() => optionalAnswerIndexes(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('decodes callback data and rejects malformed or oversized payloads', () => {
+    expect(Array.from(requireCallbackData('AQID'))).toEqual([1, 2, 3]);
+    expect(requireCallbackData('')).toEqual(new Uint8Array());
+    for (const bad of [undefined, null, 'AQI', '***', 'A===', 'A'.repeat(88)]) {
+      expect(() => requireCallbackData(bad)).toThrow(EngineError);
     }
   });
 });

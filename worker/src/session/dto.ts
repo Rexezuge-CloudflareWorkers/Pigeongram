@@ -1,5 +1,6 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
 import { serviceText } from './service-text';
+import { toMessageMarkupDto } from './markup';
 import type {
   ChatDto,
   DialogDto,
@@ -222,6 +223,7 @@ export function toMessageDto(message: Message): MessageDto {
     service: message.isService,
     media: toMessageMediaDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
+    markup: toMessageMarkupDto(message),
     reply: toMessageReplyDto(message),
     forward: toMessageForwardDto(message),
     views: message.views,

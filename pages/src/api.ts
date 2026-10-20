@@ -7,6 +7,7 @@ import type {
   GetMeResult,
   GetPollResultsResult,
   PeerId,
+  PressCallbackButtonResult,
   RpcMethod,
   SearchMessagesResult,
   SendCommentResult,
@@ -243,6 +244,13 @@ the live poll, so a stale message can never send a wrong option's bytes.
 */
 export const sendVote = (chatId: PeerId, messageId: number, options: number[] | null): Promise<SendVoteResult> =>
   rpc('sendVote', { chatId, messageId, options });
+
+/**
+Presses an inline callback button. The payload is the base64 string the
+message's button carried; the bridge decodes it and forwards it unchanged.
+*/
+export const pressCallbackButton = (chatId: PeerId, messageId: number, data: string): Promise<PressCallbackButtonResult> =>
+  rpc('pressCallbackButton', { chatId, messageId, data });
 
 /**
 Re-reads a poll the bridge could only announce (a short update): the answer is

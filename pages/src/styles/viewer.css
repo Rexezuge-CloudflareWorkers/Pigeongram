@@ -56,6 +56,43 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* The photo zoom controls: a quiet toolbar between the title and the close
+   button. The percentage is also the reset control, so the three buttons read
+   as one control surface rather than a set of unrelated actions. */
+.media-viewer-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.media-viewer-tool {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.media-viewer-tool.percent {
+  min-width: 56px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.media-viewer-tool:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.media-viewer-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .media-viewer-stage {
   position: relative;
   min-height: 0;
@@ -64,6 +101,13 @@
   justify-content: center;
   overflow: hidden;
   padding: 4px clamp(44px, 6vw, 84px);
+}
+
+/* The photo stage owns pinch gestures, including touches that land in the
+   side padding reserved for the gallery arrows. Video keeps its browser
+   gestures so its native controls continue to work. */
+.media-viewer-stage.is-photo {
+  touch-action: none;
 }
 
 .media-viewer-media {
@@ -75,10 +119,34 @@
   object-fit: contain;
 }
 
+/* Zoom is a photo-only layer over the existing contain fit. `touch-action:
+   none` hands pinch gestures to the pointer handlers instead of the browser's
+   page zoom; the transform origin stays centered so the pan clamp can treat
+   the image's layout box as the viewport. */
+.media-viewer-photo {
+  cursor: zoom-in;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  transform-origin: center center;
+  will-change: auto;
+}
+
+.media-viewer-photo.is-zoomed {
+  cursor: grab;
+  will-change: transform;
+}
+
+.media-viewer-photo.is-panning {
+  cursor: grabbing;
+}
+
 .media-viewer-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 1;
   width: 44px;
   height: 64px;
   display: grid;
@@ -191,6 +259,7 @@
 }
 
 .media-viewer-close:focus-visible,
+.media-viewer-tool:focus-visible,
 .media-viewer-nav:focus-visible,
 .media-viewer-fallback:focus-visible {
   outline: 2px solid var(--accent);

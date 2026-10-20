@@ -4,6 +4,7 @@ import { albumCaption, isVisualAlbum } from '../groups';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { MessageAlbum, MessageMedia } from './Media';
+import { MediaViewer } from './MediaViewer';
 import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
@@ -91,6 +92,7 @@ export function MessageRow({
   const album = group.length > 1;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [viewerMessageId, setViewerMessageId] = useState<number | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
 
   // A long press must not outlive the row (a live update can unmount it).
@@ -163,11 +165,11 @@ export function MessageRow({
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
       {album ? (
-        <MessageAlbum messages={group} />
+        <MessageAlbum messages={group} onOpenMedia={(target) => setViewerMessageId(target.id)} />
       ) : message.poll ? (
         <MessagePoll message={message} poll={message.poll} onVote={onVote} voting={voting} />
       ) : message.media ? (
-        <MessageMedia message={message} media={message.media} />
+        <MessageMedia message={message} media={message.media} onOpen={() => setViewerMessageId(message.id)} />
       ) : null}
       {caption ? (
         <div className="text">
@@ -224,6 +226,9 @@ export function MessageRow({
         </button>
       ) : null}
       {menu ? <MessageMenu message={message} x={menu.x} y={menu.y} onReply={onReply} onClose={() => setMenu(null)} /> : null}
+      {viewerMessageId === null ? null : (
+        <MediaViewer messages={group} initialMessageId={viewerMessageId} onClose={() => setViewerMessageId(null)} />
+      )}
     </div>
   );
 }

@@ -1479,7 +1479,17 @@ describe('App', () => {
     });
   });
 
-  describe('media playback', () => {
+  describe('media viewer', () => {
+    const photo: MessageMediaDto = {
+      kind: 'photo',
+      fileName: null,
+      mime: null,
+      size: 1000,
+      width: 320,
+      height: 240,
+      duration: null,
+    };
+
     const video: MessageMediaDto = {
       kind: 'video',
       fileName: 'clip.mp4',
@@ -1490,20 +1500,74 @@ describe('App', () => {
       duration: 12,
     };
 
-    it('falls back to the download link when the browser cannot play the video', async () => {
-      installSignedInFetch({ history: () => json({ messages: [message({ id: 30, chatId: 2, text: '', media: video })] }) });
+    const album = (): MessageDto[] => [
+      message({ id: 20, chatId: 2, groupedId: '555', text: 'trip', media: photo }),
+      message({ id: 21, chatId: 2, groupedId: '555', text: '', media: photo }),
+      message({ id: 22, chatId: 2, groupedId: '555', text: '', media: video }),
+    ];
+
+    it('opens a photo full-page and closes it with Escape', async () => {
+      installSignedInFetch({
+        history: () => json({ messages: [message({ id: 10, chatId: 2, text: '', media: photo })] }),
+      });
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
 
-      const element = await waitFor(() => {
-        const videoElement = threadSection().querySelector('video');
-        if (!videoElement) throw new Error('The video is not rendered');
-        return videoElement;
+      fireEvent.click(await within(threadSection()).findByRole('button', { name: 'Open photo' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Media viewer' });
+      const image = dialog.querySelector<HTMLImageElement>('img.media-viewer-media');
+      if (!image) throw new Error('The viewer has no image');
+
+      // The viewer asks for the original, not the album thumbnail.
+      expect(image.getAttribute('src')).toContain('/api/file?chatId=2&messageId=10');
+      expect(image.getAttribute('src')).not.toContain('thumb=1');
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it('opens an album at the clicked item and navigates it', async () => {
+      installSignedInFetch({ history: () => json({ messages: album() }) });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('trip')).toBeDefined();
+
+      const cells = threadSection().querySelectorAll(':scope .album .cell');
+      fireEvent.click(cells[1]!);
+
+      const dialog = await screen.findByRole('dialog', { name: 'Media viewer' });
+      expect(within(dialog).getByText('2 / 3')).toBeDefined();
+      expect(dialog.querySelector('img.media-viewer-media')?.getAttribute('src')).toContain('messageId=21');
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Next media' }));
+      expect(within(dialog).getByText('3 / 3')).toBeDefined();
+      expect(dialog.querySelector('video.media-viewer-media')?.getAttribute('src')).toContain('messageId=22');
+      expect((within(dialog).getByRole('button', { name: 'Next media' }) as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.keyDown(document, { key: 'ArrowLeft' });
+      expect(within(dialog).getByText('2 / 3')).toBeDefined();
+      expect(dialog.querySelector('img.media-viewer-media')?.getAttribute('src')).toContain('messageId=21');
+    });
+
+    it('uses a poster tile for a video and keeps the download fallback when playback fails', async () => {
+      installSignedInFetch({
+        history: () => json({ messages: [message({ id: 30, chatId: 2, text: '', media: video })] }),
       });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
 
-      fireEvent.error(element);
+      // The bubble loads only the thumbnail; the original is the viewer's.
+      expect(threadSection().querySelector('video')).toBeNull();
+      fireEvent.click(await within(threadSection()).findByRole('button', { name: 'Play clip.mp4' }));
 
-      const link = await within(threadSection()).findByRole('link', { name: /clip\.mp4/ });
+      const dialog = await screen.findByRole('dialog', { name: 'Media viewer' });
+      const player = dialog.querySelector<HTMLVideoElement>('video.media-viewer-media');
+      if (!player) throw new Error('The viewer has no video');
+      expect(player.getAttribute('src')).toContain('/api/file?chatId=2&messageId=30');
+      expect(player.getAttribute('poster')).toContain('thumb=1');
+
+      fireEvent.error(player);
+      const link = await within(dialog).findByRole('link', { name: /clip\.mp4/ });
       expect(link.getAttribute('href')).toContain('/api/file?chatId=2&messageId=30');
     });
   });

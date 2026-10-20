@@ -502,6 +502,7 @@ export type RpcMethod =
   | 'getDialogs'
   | 'getHistory'
   | 'sendMessage'
+  | 'forwardMessages'
   | 'readHistory'
   | 'searchMessages'
   | 'sendReaction'
@@ -526,6 +527,13 @@ export interface GetHistoryResult {
 
 export interface SendMessageResult {
   message: MessageDto;
+}
+
+export interface ForwardMessagesResult {
+  /**
+  The forwarded copies, as Telegram returned them in the destination chat.
+  */
+  messages: MessageDto[];
 }
 
 export interface SendReactionResult {

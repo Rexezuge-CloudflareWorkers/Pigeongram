@@ -79,6 +79,10 @@ export interface MessageRowProps {
   */
   onPressButton?: (message: MessageDto, button: MessageButtonDto) => void;
   onReply?: (message: MessageDto) => void;
+  /**
+  Starts forwarding this display group; an album forwards every member.
+  */
+  onForward?: (messages: readonly MessageDto[]) => void;
   onJump?: (messageId: number) => void;
   /**
   Opens the message's comments thread; only rendered when the caller decides
@@ -105,6 +109,7 @@ export function MessageRow({
   onPressButton,
   readOutboxMaxId = 0,
   onReply,
+  onForward,
   onJump,
   onOpenComments,
   onOpenMedia,
@@ -141,11 +146,12 @@ export function MessageRow({
 
   /**
   Opens the menu at viewport coordinates when the message has actions to
-  offer. Service messages, and messages with nothing to reply to or copy,
-  leave the native menu alone, so a right-click falls back to the browser's.
+  offer. Service messages, and messages with nothing to reply to, forward or
+  copy, leave the native menu alone, so a right-click falls back to the
+  browser's.
   */
   const openMenu = (x: number, y: number): boolean => {
-    if (message.service || (!onReply && message.text.length === 0)) return false;
+    if (message.service || (!onReply && !onForward && message.text.length === 0)) return false;
     setMenu({ x, y });
     return true;
   };
@@ -263,7 +269,9 @@ export function MessageRow({
           💬 {commentLabel(comments)}
         </button>
       ) : null}
-      {menu ? <MessageMenu message={message} x={menu.x} y={menu.y} onReply={onReply} onClose={() => setMenu(null)} /> : null}
+      {menu ? (
+        <MessageMenu messages={group} x={menu.x} y={menu.y} onReply={onReply} onForward={onForward} onClose={() => setMenu(null)} />
+      ) : null}
     </div>
   );
 }

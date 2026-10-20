@@ -25,6 +25,30 @@ export function requireMessageId(value: unknown): number {
 }
 
 /**
+The ids of the messages a forward moves, in order: an album forwards its
+members as one batch. Telegram caps a forward at 100 messages, and a repeated
+id would forward the same message twice.
+*/
+export function requireMessageIds(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new EngineError('messageIds must be a non-empty array of message ids', 400);
+  }
+  if (value.length > 100) {
+    throw new EngineError('messageIds must hold at most 100 message ids', 400);
+  }
+  const ids = value.map((entry) => {
+    if (typeof entry !== 'number' || !Number.isSafeInteger(entry) || entry <= 0) {
+      throw new EngineError('messageIds must hold positive Telegram message ids', 400);
+    }
+    return entry;
+  });
+  if (new Set(ids).size !== ids.length) {
+    throw new EngineError('messageIds must not repeat a message id', 400);
+  }
+  return ids;
+}
+
+/**
 Decodes a callback button's base64 payload. Telegram caps callback data at 64
 bytes; rejecting larger payloads keeps a malformed bridge call out of mtcute.
 */

@@ -8,6 +8,7 @@ import {
   optionalText,
   requireCallbackData,
   requireMessageId,
+  requireMessageIds,
   requirePeerId,
   requireQuery,
   requireText,
@@ -26,6 +27,15 @@ describe('bridge parameter validation', () => {
     expect(requireMessageId(7)).toBe(7);
     for (const bad of [undefined, null, '7', 0, -1, 1.5, NaN, Infinity]) {
       expect(() => requireMessageId(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('requires a bounded, distinct list of message ids', () => {
+    expect(requireMessageIds([7])).toEqual([7]);
+    expect(requireMessageIds([7, 8, 9])).toEqual([7, 8, 9]);
+    const tooMany = Array.from({ length: 101 }, (_, index) => index + 1);
+    for (const bad of [undefined, null, [], '7', [0], [1.5], [1, 1], tooMany]) {
+      expect(() => requireMessageIds(bad)).toThrow(EngineError);
     }
   });
 

@@ -167,6 +167,43 @@ describe('getHistory dispatch', () => {
   });
 });
 
+describe('forwardMessages dispatch', () => {
+  function fakeForwardClient(): {
+    client: TelegramClient;
+    calls: Array<{ fromChatId: number; toChatId: number; messages: number[] }>;
+  } {
+    const calls: Array<{ fromChatId: number; toChatId: number; messages: number[] }> = [];
+    const client = {
+      forwardMessagesById: async (params: { fromChatId: number; toChatId: number; messages: number[] }) => {
+        calls.push(params);
+        return [message(31), message(32)];
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('forwards the batch and returns the copies in the destination', async () => {
+    const { client, calls } = fakeForwardClient();
+    const result = (await dispatchRpc(client, 'forwardMessages', {
+      chatId: 1,
+      toChatId: 5,
+      messageIds: [12, 13],
+    })) as { messages: Array<{ id: number; text: string }> };
+
+    expect(calls).toEqual([{ fromChatId: 1, toChatId: 5, messages: [12, 13] }]);
+    expect(result.messages.map((entry) => entry.id)).toEqual([31, 32]);
+  });
+
+  it('rejects malformed message lists before Telegram is touched', async () => {
+    const { client, calls } = fakeForwardClient();
+    for (const messageIds of [[], [0], [1, 1], [1.5], Array.from({ length: 101 }, (_, index) => index + 1)]) {
+      await expect(dispatchRpc(client, 'forwardMessages', { chatId: 1, toChatId: 5, messageIds })).rejects.toThrow('messageIds');
+    }
+    await expect(dispatchRpc(client, 'forwardMessages', { chatId: 1, messageIds: [1] })).rejects.toThrow('chatId');
+    expect(calls).toEqual([]);
+  });
+});
+
 /**
  * Voting: the bridge takes answer indexes, resolves them against the live
  * message so a stale list can never send another answer's bytes, and answers

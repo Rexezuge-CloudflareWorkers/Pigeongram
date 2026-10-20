@@ -13,6 +13,7 @@ import {
   optionalMessageId,
   optionalText,
   requireMessageId,
+  requireMessageIds,
   requireCallbackData,
   requirePeerId,
   requireQuery,
@@ -65,6 +66,18 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const text = requireText(params.text);
       const replyTo = optionalMessageId(params.replyTo);
       return { message: toMessageDto(await client.sendText(chatId, text, { ...(replyTo !== undefined && { replyTo }) })) };
+    }
+
+    case 'forwardMessages': {
+      const chatId = requirePeerId(params.chatId);
+      const toChatId = requirePeerId(params.toChatId);
+      const messageIds = requireMessageIds(params.messageIds);
+      const forwarded = await client.forwardMessagesById({
+        fromChatId: chatId,
+        toChatId,
+        messages: messageIds,
+      });
+      return { messages: forwarded.map(toMessageDto) };
     }
 
     case 'readHistory': {

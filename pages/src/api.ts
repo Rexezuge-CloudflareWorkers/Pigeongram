@@ -1,5 +1,6 @@
 import type {
   EngineStateDto,
+  ForwardMessagesResult,
   GetBotCommandsResult,
   GetCommentsResult,
   GetDialogsResult,
@@ -139,6 +140,13 @@ export const fetchHistory = (
 
 export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Promise<SendMessageResult> =>
   rpc('sendMessage', { chatId, text, ...(replyTo !== undefined && { replyTo }) });
+
+/**
+Forwards messages from their source chat into another chat. An album sends
+its members as one batch; the engine returns the copies in the destination.
+*/
+export const forwardMessages = (chatId: PeerId, messageIds: number[], toChatId: PeerId): Promise<ForwardMessagesResult> =>
+  rpc('forwardMessages', { chatId, messageIds, toChatId });
 
 export const readHistory = (chatId: PeerId, maxId?: number): Promise<unknown> =>
   rpc('readHistory', { chatId, ...(maxId !== undefined && { maxId }) });

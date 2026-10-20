@@ -35,6 +35,10 @@ interface CommentsViewProps {
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
+  Starts forwarding a display group; an album forwards every member.
+  */
+  onForward: (messages: readonly MessageDto[]) => void;
+  /**
   Casts a vote in a poll comment, or retracts it with `null`.
   */
   onVote: (message: MessageDto, options: number[] | null) => void;
@@ -70,6 +74,7 @@ export function CommentsView({
   onSend,
   onAttach,
   onReact,
+  onForward,
   onVote,
   onPressButton,
   onOpenMedia,
@@ -154,6 +159,7 @@ export function CommentsView({
             onVote={onVote}
             pressingButton={pressingButtonIds.has(thread.post.id)}
             onPressButton={onPressButton}
+            onForward={onForward}
             onOpenMedia={onOpenMedia}
           />
         </div>
@@ -190,6 +196,7 @@ export function CommentsView({
                 pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
                 onPressButton={onPressButton}
                 onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
+                onForward={onForward}
                 onJump={jumpToComment}
                 onOpenMedia={onOpenMedia}
               />

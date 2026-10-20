@@ -4,6 +4,7 @@ import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { CheckingAccess } from './components/CheckingAccess';
 import { CommentsView } from './components/CommentsView';
+import { ForwardPicker } from './components/ForwardPicker';
 import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { MediaViewer } from './components/MediaViewer';
@@ -16,6 +17,7 @@ import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useChatNavigation } from './useChatNavigation';
 import { useComments } from './useComments';
+import { useForwarding } from './useForwarding';
 import { useMediaViewer } from './useMediaViewer';
 import { useRouter } from './useRouter';
 import { useThread } from './useThread';
@@ -58,6 +60,7 @@ export function App() {
   }, []);
 
   const threads = useThread({ onSent: handleSent, onError: reportError, onNotice: notify });
+  const forwarding = useForwarding(handleSent, threads.applyUpdate, notify);
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;
   const closeThread = threads.close;
@@ -267,12 +270,13 @@ export function App() {
     closeThread();
     closeComments();
     closeViewer();
+    forwarding.close();
     router.reset();
     setDialogs([]);
     setDialogsLoading(true);
     setMe(null);
     reset();
-  }, [closeComments, closeThread, closeViewer, reportError, reset, router]);
+  }, [closeComments, closeThread, closeViewer, forwarding.close, reportError, reset, router]);
 
   // The home page has three faces: a public intro until Access admits the
   // browser, the QR login once Access is through but Telegram is not linked,
@@ -323,6 +327,7 @@ export function App() {
             onSend={comments.send}
             onAttach={comments.attach}
             onReact={comments.react}
+            onForward={forwarding.open}
             onVote={comments.vote}
             onPressButton={comments.pressButton}
             onOpenMedia={(messageId) => openViewer('comments', messageId)}
@@ -349,6 +354,7 @@ export function App() {
             onSend={threads.send}
             onAttach={threads.attach}
             onReact={threads.react}
+            onForward={forwarding.open}
             onVote={threads.vote}
             onPressButton={threads.pressButton}
             onReadThrough={markRead}
@@ -361,6 +367,9 @@ export function App() {
       </TelegramLinkProvider>
       {viewer.viewer ? (
         <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
+      ) : null}
+      {forwarding.target ? (
+        <ForwardPicker messages={forwarding.target} dialogs={dialogs} onForward={forwarding.forward} onClose={forwarding.close} />
       ) : null}
       {error || notice ? (
         <div className="toasts">

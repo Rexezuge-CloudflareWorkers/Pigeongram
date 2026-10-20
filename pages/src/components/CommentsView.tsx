@@ -33,6 +33,11 @@ interface CommentsViewProps {
   Casts a vote in a poll comment, or retracts it with `null`.
   */
   onVote: (message: MessageDto, options: number[] | null) => void;
+  /**
+  Opens the full-page viewer at a message's media (an album opens at the
+  clicked member).
+  */
+  onOpenMedia: (messageId: number) => void;
 }
 
 /**
@@ -56,6 +61,7 @@ export function CommentsView({
   onAttach,
   onReact,
   onVote,
+  onOpenMedia,
 }: CommentsViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -135,6 +141,7 @@ export function CommentsView({
             showQuote={false}
             voting={votingIds.has(thread.post.id)}
             onVote={onVote}
+            onOpenMedia={onOpenMedia}
           />
         </div>
         <div className="day">{commentCountLabel(thread.count)}</div>
@@ -169,6 +176,7 @@ export function CommentsView({
                 onVote={onVote}
                 onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
                 onJump={jumpToComment}
+                onOpenMedia={onOpenMedia}
               />
             </Fragment>
           );

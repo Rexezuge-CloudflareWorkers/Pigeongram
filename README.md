@@ -6,8 +6,8 @@ An always-online Telegram web client hosted on Cloudflare:
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
-- **`pages/`** — the frontend. A Vite + React SPA (login by QR, chat list, threads, live updates) that talks to the
-  worker through the bridge. It will grow into a fork of
+- **`pages/`** — the frontend. A Vite + React SPA (login by QR, chat list, threads, live updates, pathname deep links)
+  that talks to the worker through the bridge. It will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
 - **`functions/`** — the Pages Function proxying `/api/*` to the worker over the `API_WORKER` service binding, so the
   worker itself never has to be reachable from the internet.

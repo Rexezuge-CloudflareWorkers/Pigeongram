@@ -293,6 +293,7 @@ beforeEach(() => {
   FakeWebSocket.instances.length = 0;
   vi.stubGlobal('WebSocket', FakeWebSocket);
   stubScrollIntoView();
+  globalThis.history.replaceState(null, '', '/');
 });
 
 afterEach(() => {
@@ -435,6 +436,137 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit code' }));
 
     expect(await screen.findByText('Bob')).toBeDefined();
+  });
+
+  describe('browser history', () => {
+    const APP = 'telegram-web-client';
+
+    function entry(depth: number, layer?: 'viewer'): Record<string, unknown> {
+      return layer === undefined ? { app: APP, depth } : { app: APP, depth, layer };
+    }
+
+    /**
+    Replaces the current entry, as a browser traversal would land on it, then
+    fires the event the app listens to.
+    */
+    function arrive(path: string, state: unknown): void {
+      act(() => {
+        globalThis.history.replaceState(state, '', path);
+        dispatchEvent(new PopStateEvent('popstate'));
+      });
+    }
+
+    it('records the open chat in the URL and returns to the list on popstate', async () => {
+      installSignedInFetch();
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+
+      expect(await screen.findByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/2');
+      expect(globalThis.history.state).toMatchObject({ app: APP, depth: 1 });
+
+      arrive('/', entry(0));
+
+      await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
+      expect(location.pathname).toBe('/');
+    });
+
+    it('boots a shared chat link into the thread with the list behind it', async () => {
+      globalThis.history.replaceState(null, '', '/chat/2');
+      installSignedInFetch();
+      render(<App />);
+
+      expect(await screen.findByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/2');
+      expect(globalThis.history.state).toMatchObject({ app: APP, depth: 1 });
+    });
+
+    it('normalizes a linked post the window cannot produce to its chat', async () => {
+      globalThis.history.replaceState(null, '', '/chat/2/post/999');
+      installSignedInFetch({ history: () => json({ messages: [] }) });
+      render(<App />);
+
+      await waitFor(() => expect(globalThis.location.pathname).toBe('/chat/2'));
+      expect(globalThis.history.state).toMatchObject({ app: APP, depth: 1 });
+      expect(within(threadSection()).getByText('No messages yet — say hello.')).toBeDefined();
+    });
+
+    it('delegates the thread back button to browser history', async () => {
+      installSignedInFetch();
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const back = vi.spyOn(globalThis.history, 'back').mockImplementation(() => {});
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+
+      expect(back).toHaveBeenCalledTimes(1);
+      back.mockRestore();
+    });
+
+    it('leaves only the comments screen when back returns to the thread', async () => {
+      const channel: ChatDto = {
+        id: -1_000_000_000_020,
+        kind: 'channel',
+        title: 'Announcements',
+        username: 'announce',
+        photo: null,
+        canSendMessages: false,
+      };
+      const post = message({
+        id: 7,
+        chatId: channel.id,
+        text: 'A new feature shipped',
+        comments: { hasComments: true, count: 2, discussionChatId: -1_000_000_000_030 },
+      });
+      installSignedInFetch({
+        dialogs: [{ chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false }],
+        history: () => json({ messages: [post] }),
+        rpc: (call) =>
+          call.body?.method === 'getComments'
+            ? json({ comments: [], count: 2, discussionChatId: -1_000_000_000_030, discussionMessageId: 10 })
+            : undefined,
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: /2 comments/ }));
+
+      expect(await screen.findByText('Comments')).toBeDefined();
+      expect(location.pathname).toBe(`/chat/${String(channel.id)}/post/7/comments`);
+
+      arrive(`/chat/${String(channel.id)}/post/7`, entry(1));
+
+      await waitFor(() => expect(screen.queryByText('Comments')).toBeNull());
+      expect(within(threadSection()).getByText('A new feature shipped')).toBeDefined();
+    });
+
+    it('closes the media viewer on back and reopens it on forward', async () => {
+      const photo: MessageMediaDto = {
+        kind: 'photo',
+        fileName: null,
+        mime: null,
+        size: 1000,
+        width: 320,
+        height: 240,
+        duration: null,
+      };
+      installSignedInFetch({ history: () => json({ messages: [message({ id: 10, chatId: 2, text: '', media: photo })] }) });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await within(threadSection()).findByRole('button', { name: 'Open photo' }));
+
+      expect(await screen.findByRole('dialog', { name: 'Media viewer' })).toBeDefined();
+      expect(globalThis.history.state).toMatchObject({ app: APP, depth: 2, layer: 'viewer' });
+
+      arrive('/chat/2', entry(1));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(within(threadSection()).getByRole('button', { name: 'Open photo' })).toBeDefined();
+
+      arrive('/chat/2', entry(2, 'viewer'));
+      expect(await screen.findByRole('dialog', { name: 'Media viewer' })).toBeDefined();
+    });
   });
 
   it('renders the chat list and opens a thread once authorized', async () => {
@@ -1245,6 +1377,7 @@ describe('App', () => {
         expect(document.querySelector('.badge')).toBeNull();
       });
       fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
       fireEvent.click(screen.getByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
       expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();

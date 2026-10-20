@@ -60,6 +60,11 @@ interface ThreadViewProps {
   onVote: (message: MessageDto, options: number[] | null) => void;
   onOpenComments: (message: MessageDto) => void;
   /**
+  Opens the full-page viewer at a message's media (an album opens at the
+  clicked member).
+  */
+  onOpenMedia: (messageId: number) => void;
+  /**
   Reports the highest message id the viewport proves read, for the chat the
   watermark was measured in (a pending report can outlive a switch).
   */
@@ -84,6 +89,7 @@ export function ThreadView({
   onReact,
   onVote,
   onOpenComments,
+  onOpenMedia,
   unreadDividerId,
   focusMessageId,
   onReadThrough,
@@ -324,6 +330,7 @@ export function ThreadView({
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}
+                onOpenMedia={onOpenMedia}
               />
             </Fragment>
           );

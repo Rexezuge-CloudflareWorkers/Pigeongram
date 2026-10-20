@@ -4,13 +4,18 @@ import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { CommentsView } from './components/CommentsView';
 import { LoginScreen } from './components/LoginScreen';
+import { MediaViewer } from './components/MediaViewer';
 import { ThreadView } from './components/ThreadView';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
+import type { Route } from './routes';
 import { applyEditedMessage, applyNewMessage, applyReadThrough, applyReadUpdate } from './state';
 import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
+import { useChatNavigation } from './useChatNavigation';
 import { useComments } from './useComments';
+import { useMediaViewer } from './useMediaViewer';
+import { useRouter } from './useRouter';
 import { useThread } from './useThread';
 
 export function App() {
@@ -60,6 +65,26 @@ export function App() {
   const selected = threads.thread?.chat ?? null;
   const authorized = state?.authorized ?? false;
 
+  // `canOpen` and the boot apply run outside render (history events and the
+  // signed-in boot), so they read the newest dialogs through this ref.
+  const dialogsRef = useRef<readonly DialogDto[]>([]);
+  useLayoutEffect(() => {
+    dialogsRef.current = dialogs;
+  }, [dialogs]);
+
+  const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
+  const applyRoute = useChatNavigation({ dialogs: dialogsRef, threads, comments });
+  const canOpen = useCallback(
+    (route: Route): boolean => route.view === 'list' || dialogsRef.current.some((dialog) => dialog.chat.id === route.chatId),
+    [],
+  );
+  const router = useRouter({
+    onRoute: applyRoute,
+    canOpen,
+    onViewerEnter: viewer.reopen,
+    onViewerLeave: viewer.close,
+  });
+
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest selection. A layout effect runs with the commit, so
   // no socket event can observe the previous chat after a switch.
@@ -73,6 +98,9 @@ export function App() {
     setDialogsLoading(true);
     try {
       const result = await fetchDialogs();
+      // Set the ref first: boot applies the URL route immediately after this
+      // returns, before React has committed the new dialogs.
+      dialogsRef.current = result.dialogs;
       setDialogs(result.dialogs);
     } catch (failure) {
       reportError(failure);
@@ -97,8 +125,9 @@ export function App() {
         reportError(failure);
       }
       await loadDialogs();
+      router.boot();
     })();
-  }, [authorized, state?.me, reportError, loadDialogs]);
+  }, [authorized, state?.me, reportError, loadDialogs, router.boot]);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
@@ -131,20 +160,31 @@ export function App() {
     void loadDialogs();
   });
 
-  const openChat = useCallback(
-    async (chat: ChatDto, target?: { postId?: number; commentId?: number }): Promise<void> => {
-      // The dialog's watermark is where reading stopped: the thread opens
-      // there instead of the bottom and reports its own progress from then on.
-      const boundary = dialogs.find((dialog) => dialog.chat.id === chat.id)?.readInboxMaxId ?? 0;
-      closeComments();
-      const loaded = await threads.open(chat, boundary, target);
-      // A link into a post's comments only lands when the post itself came
-      // with the jump window; otherwise the thread simply opens.
-      const commentPost =
-        target?.postId === undefined || target.commentId === undefined ? undefined : loaded.find((message) => message.id === target.postId);
-      if (commentPost) void comments.open(chat, commentPost);
+  const openViewer = useCallback(
+    (source: 'thread' | 'comments', messageId: number): void => {
+      viewer.open(source, messageId);
+      router.openViewer();
     },
-    [closeComments, comments.open, dialogs, threads.open],
+    [router, viewer],
+  );
+
+  const closeViewer = useCallback((): void => {
+    viewer.close();
+    router.closeViewer();
+  }, [router, viewer]);
+
+  const openChat = useCallback(
+    (chat: ChatDto, target?: { postId?: number; commentId?: number }): void => {
+      const postId = target?.postId ?? null;
+      const route: Route =
+        postId === null
+          ? { view: 'chat', chatId: chat.id, postId: null }
+          : target?.commentId === undefined
+            ? { view: 'chat', chatId: chat.id, postId }
+            : { view: 'comments', chatId: chat.id, postId };
+      router.navigateTo(route, postId === null ? undefined : { force: true });
+    },
+    [router],
   );
 
   /**
@@ -159,7 +199,7 @@ export function App() {
       if (link === null) return false;
       const chat = link.chat === null ? null : findLinkedChat(dialogs, link.chat);
       if (chat !== null) {
-        void openChat(chat, {
+        openChat(chat, {
           ...(link.postId !== null && { postId: link.postId }),
           ...(link.commentId !== null && { commentId: link.commentId }),
         });
@@ -198,10 +238,12 @@ export function App() {
     }
     closeThread();
     closeComments();
+    closeViewer();
+    router.reset();
     setDialogs([]);
     setMe(null);
     reset();
-  }, [closeComments, closeThread, reportError, reset]);
+  }, [closeComments, closeThread, closeViewer, reportError, reset, router]);
 
   if (gate || !authorized) {
     return (
@@ -232,7 +274,7 @@ export function App() {
             Sign out
           </button>
         </header>
-        <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={(chat) => void openChat(chat)} />
+        <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={openChat} />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink}>
         {comments.thread ? (
@@ -246,12 +288,13 @@ export function App() {
             error={comments.error}
             reactingIds={comments.reactingIds}
             votingIds={comments.votingIds}
-            onBack={comments.close}
+            onBack={router.back}
             onLoadOlder={() => void comments.loadOlder()}
             onSend={comments.send}
             onAttach={comments.attach}
             onReact={comments.react}
             onVote={comments.vote}
+            onOpenMedia={(messageId) => openViewer('comments', messageId)}
           />
         ) : (
           <ThreadView
@@ -267,22 +310,23 @@ export function App() {
             votingIds={threads.votingIds}
             unreadDividerId={threads.thread?.unreadDividerId ?? null}
             focusMessageId={threads.thread?.focusMessageId ?? null}
-            onBack={() => {
-              closeThread();
-              closeComments();
-            }}
+            onBack={router.back}
             onLoadOlder={() => void threads.loadOlder()}
             onSend={threads.send}
             onAttach={threads.attach}
             onReact={threads.react}
             onVote={threads.vote}
             onReadThrough={markRead}
+            onOpenMedia={(messageId) => openViewer('thread', messageId)}
             onOpenComments={(message) => {
-              if (selected) void comments.open(selected, message);
+              if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
             }}
           />
         )}
       </TelegramLinkProvider>
+      {viewer.viewer ? (
+        <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
+      ) : null}
       {error ? (
         <p className="toast" role="alert">
           {error}

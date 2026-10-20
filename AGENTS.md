@@ -50,10 +50,13 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
   reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
   — `thread-window.ts` the first-window read (newest messages, or a window around a linked post), `reading.ts` the
-  unread-position logic they share, `components/` the screens). `links.ts` is the Telegram link grammar (t.me URLs and
-  `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the context that routes
-  link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread, everything else
-  Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer.
+  unread-position logic they share, `components/` the screens). Navigation is pathname-based: `routes.ts` is the pure
+  route grammar (`/`, `/chat/:id`, `/chat/:id/post/:id`, `/chat/:id/post/:id/comments`), `useRouter.ts` owns
+  `location`/`history`/`popstate`, `useChatNavigation.ts` applies routes to the thread and comments controllers, and
+  `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
+  (t.me URLs and `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the
+  context that routes link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread,
+  everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` is a pass-through to `env.API_WORKER`; it must
   not import workspace packages (Pages bundles it separately).
@@ -84,6 +87,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   tests exist.
 - **The worker is API-only.** No `assets`, no `spa-shell` embedding, no open-next workarounds, and no D1 — the session
   engine's storage is the Durable Object's SQLite. The UI lives on Pages.
+- **The SPA relies on the Pages default fallback for pathname routes.** There is deliberately no top-level `404.html`:
+  Cloudflare Pages then serves `index.html` for `/chat/...` on refresh and direct links, and Vite's dev server does the
+  same. Do not add a `404.html` or a catch-all that would turn a deep-linked thread into a 404. A first visit seeds the
+  list (and, for comments, the matching chat) behind the URL entry so browser back stays in the app; every entry carries
+  `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
+  closes it before leaving the thread.
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Function
   (`API_WORKER` service binding). Until Cloudflare Access guards the Pages domain, every `/api/*` route is gated by the
   `SPIKE_TOKEN` secret (`x-session-token` header, or `?token=` for socket upgrades); the SPA asks for it on a 401

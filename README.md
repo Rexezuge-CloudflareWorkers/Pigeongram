@@ -12,22 +12,22 @@ An always-online Telegram web client hosted on Cloudflare:
 - **`functions/`** — the Pages Function proxying `/api/*` to the worker over the `API_WORKER` service binding, so the
   worker itself never has to be reachable from the internet.
 
-**Status: milestone 1 code complete, acceptance pending.** The session engine, the bridge, the SPA, and the Pages
-proxy are implemented and tested; the QR-login against a real account, the first deploy, the CPU measurement, and the
-72 h soak need the owner's `api_id`/`api_hash` and domain/Access setup (see
-[Pending owner actions](#pending-owner-actions)).
+**Status: milestone 1 code complete, acceptance pending.** The session engine, the bridge, the SPA, the Pages
+proxy, and the worker's Cloudflare Access JWT verification are implemented and tested; the QR-login against a real
+account, the first deploy, the CPU measurement, and the 72 h soak need the owner's `api_id`/`api_hash` and the
+deployment's Access configuration (see [Pending owner actions](#pending-owner-actions)).
 
 ## Layout
 
-| Path         | What                                                                                                                |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `worker/`    | Worker package: `src/index.ts` (Hono entry, token gate, exports the DO) and `src/session/**` (the `SessionEngine`)  |
-| `pages/`     | Pages package: Vite + React SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding           |
-| `functions/` | Pages Functions: `api/[[path]].ts` forwards `/api/*` to the worker through `API_WORKER` (must sit at the repo root) |
-| `test/`      | Vitest suite as a workspace package; `test/web/**` is the SPA half, everything else is the worker half              |
-| `scripts/`   | `check-god-files.ts` and `prepare-wrangler-config.ts`, copied from `@rexezuge/tooling` (see `AGENTS.md`)            |
-| `docs/`      | [`session-engine.md`](docs/session-engine.md): engine architecture, bridge API, dev, spike + 72 h soak runbook      |
-| `.github/`   | CI, CD, mirror/backup, version-stamp, upstream-sync workflows and the two composite actions                         |
+| Path         | What                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `worker/`    | Worker package: `src/index.ts` (Hono entry, Access JWT gate, exports the DO) and `src/session/**` (the `SessionEngine`) |
+| `pages/`     | Pages package: Vite + React SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding               |
+| `functions/` | Pages Functions: `api/[[path]].ts` forwards `/api/*` to the worker through `API_WORKER` (must sit at the repo root)     |
+| `test/`      | Vitest suite as a workspace package; `test/web/**` is the SPA half, everything else is the worker half                  |
+| `scripts/`   | `check-god-files.ts` and `prepare-wrangler-config.ts`, copied from `@rexezuge/tooling` (see `AGENTS.md`)                |
+| `docs/`      | [`session-engine.md`](docs/session-engine.md): engine architecture, bridge API, dev, spike + 72 h soak runbook          |
+| `.github/`   | CI, CD, mirror/backup, version-stamp, upstream-sync workflows and the two composite actions                             |
 
 `wrangler.jsonc` is **materialized to the repo root** by `scripts/prepare-wrangler-config.ts` before dev/deploy — the
 templates live in `worker/` and `pages/` and every path inside them is root-relative. `wrangler.jsonc` and the generated
@@ -51,7 +51,7 @@ pnpm run build        # builds every package (the SPA)
 ### Local development
 
 ```bash
-cp .dev.vars.example .dev.vars        # fill in TELEGRAM_API_ID / TELEGRAM_API_HASH and a SPIKE_TOKEN
+cp .dev.vars.example .dev.vars        # fill in TELEGRAM_API_ID / TELEGRAM_API_HASH
 
 # Worker on http://localhost:8787 (materializes wrangler.jsonc first):
 pnpm exec tsx scripts/prepare-wrangler-config.ts
@@ -61,7 +61,11 @@ pnpm exec wrangler dev
 pnpm --filter @telegram-web-client/pages dev
 ```
 
-`docs/session-engine.md` documents the engine's two modes (wake and live), the bridge API, the token gate, and the
+Local development does not pass through Cloudflare Access: the example `.dev.vars` sets
+`ACCESS_DEV_BYPASS="true"` (with `ENVIRONMENT="development"`), which the worker honors only outside production. Never
+set the bypass on a deployment.
+
+`docs/session-engine.md` documents the engine's two modes (wake and live), the bridge API, the Access JWT gate, and the
 milestone acceptance checklists.
 
 ## CI and deployment
@@ -94,6 +98,18 @@ re-login, not history.
 | Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                          | Overrides the default `telegram-web-client-web`          |
 | Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`    | Per-environment wrangler overrides                       |
 
+The worker's `/api/*` routes verify Cloudflare Access, so a real deployment must supply both halves of the verifier
+through `WRANGLER_VARS_PATCH_JSON` (or the dashboard's vars):
+
+```json
+{ "TEAM_DOMAIN": "https://<team>.cloudflareaccess.com", "POLICY_AUD": "<application-aud-tag>" }
+```
+
+`TEAM_DOMAIN` is the Zero Trust team domain (**Zero Trust → Settings**), and `POLICY_AUD` is the application's
+**Application Audience (AUD) Tag** (**Zero Trust → Access controls → Applications →** the Pages application **→
+Additional settings**). The values are public configuration, not secrets. When they are missing, `/api/*` answers
+`503 {"code":"access_config"}` rather than serving the session unauthenticated.
+
 Also: enable **Allow auto-merge** (the Dependabot job depends on it), and after the first CI run set branch protection
 on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Build Web App**.
 
@@ -104,9 +120,10 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
    `CLOUDFLARE_*` secrets from the table above). The worker is deployed with `workers_dev: false` — it deliberately
    has no public URL; the Pages Function is its only caller.
 3. Set the runtime secrets once per environment:
-   `pnpm exec wrangler secret put TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `SPIKE_TOKEN`.
-4. Open the Pages URL: the SPA asks for the session token (the same `SPIKE_TOKEN`), then shows the QR login. Point
-   `telegram-web-client.<account>.workers.dev`-style DNS at the project only after Access is configured (below).
+   `pnpm exec wrangler secret put TELEGRAM_API_ID`, `TELEGRAM_API_HASH`. Set the Access verifier vars
+   (`TEAM_DOMAIN`, `POLICY_AUD`) before the worker deploy, per the repository-settings note above.
+4. Open the Pages URL: Cloudflare Access authenticates the owner first, then the SPA shows the QR login. The worker
+   verifies the Access assertion on every `/api/*` request.
 5. `pnpm exec wrangler tail` (or the dashboard's live logs) shows a wake every `WAKE_INTERVAL_SECONDS` once the alarm
    is armed.
 
@@ -114,9 +131,10 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
 
 1. **Telegram credentials** — `api_id`/`api_hash` from <https://my.telegram.org> → "API development tools".
 2. **Domain + Access** — attach the production domain to the **Pages** project, issue its certificate, then create a
-   Cloudflare Access application in front of it with an allow policy for the owner.
-3. **Remove the interim gate** — once Access is live, `pnpm exec wrangler secret delete SPIKE_TOKEN`.
-4. **M1 acceptance + 72 h soak** — follow `docs/session-engine.md`; the runbook lists the exact checks and what to
+   Cloudflare Access application in front of it with an allow policy for the owner. It must be a self-hosted
+   application on the public hostname, not an Access application targeting the worker: Worker-destination Access
+   rejects WebSocket upgrades. Note its AUD tag and the team domain, then set `TEAM_DOMAIN`/`POLICY_AUD` as above.
+3. **M1 acceptance + 72 h soak** — follow `docs/session-engine.md`; the runbook lists the exact checks and what to
    watch during the soak.
 
 ## Where this is going

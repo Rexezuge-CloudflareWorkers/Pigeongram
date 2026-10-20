@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { requireAccess } from './access';
 import { ENGINE_OBJECT_NAME } from './session/engine';
 import { errorResponse } from './session/http';
 import { parseUploadSpec } from './session/media-routes';
@@ -11,21 +12,18 @@ const app = new Hono<{ Bindings: CloudflareEnv }>();
 app.get('/health', (c) => c.json({ status: 'ok', service: 'telegram-web-client' }));
 
 /**
- * Shared-secret gate for `/api/*`.
+ * Cloudflare Access gate for `/api/*`.
  *
- * Active whenever `SPIKE_TOKEN` is set. It is the only thing standing between
- * the internet and the bridge until the Pages project sits behind Cloudflare
- * Access (and the worker is reached only through that project). Delete the
- * secret once Access is in place.
+ * Access authenticates the browser at the Pages edge and forwards a signed
+ * `Cf-Access-Jwt-Assertion` header; this verifies that token before anything
+ * reaches the session engine. The check lives in the worker, not the Pages
+ * Function, because the worker is the last reachable point before the Durable
+ * Object — a misconfigured proxy must not expose the account's session.
+ * `/health` stays public because it exposes no account data.
  */
 app.use('/api/*', async (c, next) => {
-  const required = (c.env.SPIKE_TOKEN ?? '').trim();
-  if (required.length > 0) {
-    const provided = c.req.header('x-session-token') ?? new URL(c.req.url).searchParams.get('token') ?? '';
-    if (provided !== required) {
-      return c.json({ error: 'Missing or wrong session token', code: 'gate' }, 401);
-    }
-  }
+  const rejection = await requireAccess(c.req.raw, c.env);
+  if (rejection) return rejection;
   await next();
 });
 

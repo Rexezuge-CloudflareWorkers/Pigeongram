@@ -3,8 +3,11 @@
 # `github/workflows/continuous-deployment.yml` and the sibling repos' copies; the
 # removed steps are the ones this repo has no machinery for:
 #   * Initialize Cloudflare Secrets — no Secrets Store bindings; the runtime
-#     secrets (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `SPIKE_TOKEN`) are set once
-#     per environment with `wrangler secret put`, per README.md.
+#     secrets (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`) are set once per
+#     environment with `wrangler secret put`, per README.md. The Access
+#     verifier vars (`TEAM_DOMAIN`, `POLICY_AUD`) come from
+#     `WRANGLER_VARS_PATCH_JSON`; without them the worker's `/api/*` answers
+#     503 `access_config`.
 #   * Apply Database Migration — no D1; the DO's SQLite is migrated by the
 #     `durable_objects` migrations in worker/wrangler.template.jsonc.
 #   * Build Web App (in deploy-worker) — this worker is API-only and serves no

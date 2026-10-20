@@ -13,23 +13,23 @@ const QR_REFRESH_WINDOW_MS = 3000;
 interface LoginScreenProps {
   state: EngineStateDto | null;
   /**
-  True when the bridge rejected the request for a missing token.
+  True when the bridge rejected the request because the Cloudflare Access
+  session is missing or expired.
   */
-  gate: boolean;
+  authRequired: boolean;
   error: string | null;
-  onToken: (token: string) => void;
   onPhone: (phone: string) => Promise<void>;
   onCode: (code: string) => Promise<void>;
   onPassword: (password: string) => Promise<void>;
   onRetry: () => void;
 }
 
-export function LoginScreen({ state, gate, error, onToken, onPhone, onCode, onPassword, onRetry }: LoginScreenProps) {
+export function LoginScreen({ state, authRequired, error, onPhone, onCode, onPassword, onRetry }: LoginScreenProps) {
   // Which of the two sign-in paths the operator picked; the engine's phase
   // overrides it whenever a code is already in flight (e.g. after a reload).
   const [usePhone, setUsePhone] = useState(false);
-  if (gate) {
-    return <TokenGate onToken={onToken} />;
+  if (authRequired) {
+    return <AccessRequired />;
   }
   const phase = state?.phase ?? 'unauthorized';
   const awaitingCode = phase === 'code';
@@ -64,34 +64,18 @@ export function LoginScreen({ state, gate, error, onToken, onPhone, onCode, onPa
   );
 }
 
-function TokenGate({ onToken }: { onToken: (token: string) => void }) {
-  const [draft, setDraft] = useState('');
+function AccessRequired() {
   return (
     <main className="login">
       <section className="card">
-        <h1>Access token required</h1>
+        <h1>Sign-in required</h1>
         <p className="muted">
-          Until Cloudflare Access is in front of this deployment, the session engine is gated by a shared secret. Paste it below; it is kept
-          in this browser only.
+          Cloudflare Access did not accept this request. Reload the page to sign in again; the session engine is only reachable through
+          Access.
         </p>
-        <form
-          className="row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onToken(draft);
-          }}
-        >
-          <input
-            type="password"
-            value={draft}
-            placeholder="Access token"
-            autoComplete="off"
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <button type="submit" disabled={draft.trim().length === 0}>
-            Save
-          </button>
-        </form>
+        <button type="button" onClick={() => location.reload()}>
+          Reload
+        </button>
       </section>
     </main>
   );

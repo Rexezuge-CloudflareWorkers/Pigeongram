@@ -5,8 +5,8 @@
  *
  * Why a proxy at all: the worker has `workers_dev: false` and is reachable
  * only through this project, which is where Cloudflare Access lives. The
- * function adds nothing else — authentication is the worker's token gate until
- * Access exists, business logic is the session engine's.
+ * function adds nothing else — Access forwards its signed assertion with the
+ * request and the worker verifies it, business logic is the session engine's.
  *
  * The request is passed through untouched, which is what makes the
  * `/api/updates` WebSocket upgrade work: the runtime forwards the upgrade and

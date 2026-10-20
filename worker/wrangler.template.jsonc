@@ -23,6 +23,12 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionEngine"] }],
   "vars": {
     "ENVIRONMENT": "production",
+    // Cloudflare Access JWT verification reads TEAM_DOMAIN and POLICY_AUD,
+    // which are deployment-specific and therefore declared in
+    // `worker/src/env.d.ts` rather than here. Set both per deployment (for
+    // example through `WRANGLER_VARS_PATCH_JSON` in CD); when they are absent
+    // `/api/*` fails closed instead of running unauthenticated.
+    //
     // Cadence of the session engine's wake alarm, in seconds. The Free-tier
     // budget assumes 300 (12 wakes/hour); raise it to trade presence for cost.
     "WAKE_INTERVAL_SECONDS": "300",

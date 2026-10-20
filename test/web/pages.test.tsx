@@ -377,10 +377,11 @@ describe('App', () => {
     return element;
   }
 
-  it('asks for the access token when the bridge is gated', async () => {
-    installFetch(() => json({ error: 'Missing or wrong session token', code: 'gate' }, 401));
+  it('asks the operator to reload when Cloudflare Access rejects the request', async () => {
+    installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Access token required' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Sign-in required' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeDefined();
   });
 
   it('shows the login screen and starts a QR flow when unauthorized', async () => {

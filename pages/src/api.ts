@@ -17,8 +17,6 @@ import type {
   UploadKind,
 } from './types';
 
-const TOKEN_KEY = 'telegram-web-client.token';
-
 /**
 An HTTP failure from the bridge, carrying the engine's error payload.
 */
@@ -33,43 +31,19 @@ export class ApiError extends Error {
   }
 }
 
-let token = readStoredToken();
-
-export function getToken(): string {
-  return token;
-}
-
-export function setToken(value: string): void {
-  token = value.trim();
-  try {
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-    }
-  } catch {
-    // Private-mode browsers can refuse storage; the in-memory token still works.
-  }
-}
-
-function readStoredToken(): string {
-  try {
-    return localStorage.getItem(TOKEN_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
 /**
-True when the failure is the token gate rejecting the session.
+True when the front door rejected the caller's Cloudflare Access session.
+
+Access normally handles this at the edge and shows its login page; a 401 here
+means the worker did not receive a valid assertion, so the page needs a reload
+to run the Access flow again.
 */
-export function isGateError(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 401 || error.code === 'gate');
+export function isAuthError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
-  if (token) headers['x-session-token'] = token;
   if (init.body) headers['content-type'] = 'application/json';
 
   const response = await fetch(path, { ...init, headers });
@@ -200,7 +174,6 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/upload?${params.toString()}`);
-    if (token) xhr.setRequestHeader('x-session-token', token);
     xhr.responseType = 'json';
     xhr.upload.addEventListener('progress', (event) => {
       if (onProgress && event.lengthComputable && event.total > 0) {
@@ -262,20 +235,17 @@ export const fetchPollResults = (chatId: PeerId, messageId: number): Promise<Get
 export function fileUrl(chatId: PeerId, messageId: number, options: { thumb?: boolean } = {}): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });
   if (options.thumb) params.set('thumb', '1');
-  if (token) params.set('token', token);
   return `/api/file?${params.toString()}`;
 }
 
 export function avatarUrl(chatId: PeerId, version: string, size: 'small' | 'big' = 'small'): string {
   const params = new URLSearchParams({ chatId: String(chatId), size, v: version });
-  if (token) params.set('token', token);
   return `/api/avatar?${params.toString()}`;
 }
 
 export function updatesSocketUrl(): string {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const suffix = token ? `?token=${encodeURIComponent(token)}` : '';
-  return `${protocol}//${location.host}/api/updates${suffix}`;
+  return `${protocol}//${location.host}/api/updates`;
 }
 
 /**

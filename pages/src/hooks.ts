@@ -1,34 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  cancelLogin,
-  getState,
-  getToken,
-  isGateError,
-  setToken as persistToken,
-  startPhoneLogin,
-  startQr,
-  submitLoginCode,
-  submitPassword,
-  updatesSocketUrl,
-} from './api';
+import { cancelLogin, getState, isAuthError, startPhoneLogin, startQr, submitLoginCode, submitPassword, updatesSocketUrl } from './api';
 import type { EngineStateDto, ServerSocketMessage, UpdateEvent } from './types';
 
 const POLL_INTERVAL_MS = 2500;
 
 /**
  * The sign-in side of the bridge: polls the engine while the account is not
- * linked, auto-starts the QR login, and feeds the operator's token, login code
- * and cloud password back into the flow.
+ * linked, auto-starts the QR login, and feeds the operator's login code and
+ * cloud password back into the flow.
  *
  * `reportError` is exposed because the authenticated half of the app reports
- * its failures — including the token gate — through the same two slots.
+ * its failures — including an expired Cloudflare Access session — through the
+ * same two slots.
  */
 export interface LoginFlowState {
   state: EngineStateDto | null;
-  gate: boolean;
+  authRequired: boolean;
   error: string | null;
   reportError: (failure: unknown) => void;
-  onToken: (token: string) => void;
   onPhone: (phone: string) => Promise<void>;
   onCode: (code: string) => Promise<void>;
   onPassword: (password: string) => Promise<void>;
@@ -41,13 +30,12 @@ export interface LoginFlowState {
 
 export function useLoginFlow(): LoginFlowState {
   const [state, setState] = useState<EngineStateDto | null>(null);
-  const [gate, setGate] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(getToken());
 
   const reportError = useCallback((failure: unknown): void => {
-    if (isGateError(failure)) {
-      setGate(true);
+    if (isAuthError(failure)) {
+      setAuthRequired(true);
       return;
     }
     setError(failure instanceof Error ? failure.message : String(failure));
@@ -58,13 +46,12 @@ export function useLoginFlow(): LoginFlowState {
       let next = await getState();
       if (!next.authorized && next.phase === 'unauthorized') next = await startQr();
       setState(next);
-      setGate(false);
+      setAuthRequired(false);
       setError(null);
     } catch (failure) {
       reportError(failure);
     }
-    // `token` is a dependency: saving a new token restarts the poll.
-  }, [reportError, token]);
+  }, [reportError]);
 
   const authorized = state?.authorized ?? false;
 
@@ -103,13 +90,6 @@ export function useLoginFlow(): LoginFlowState {
     [reportError],
   );
 
-  const onToken = useCallback((value: string): void => {
-    persistToken(value);
-    setToken(value);
-    setGate(false);
-    setError(null);
-  }, []);
-
   const onRetry = useCallback((): void => {
     setError(null);
     void cancelLogin().catch(reportError);
@@ -122,10 +102,9 @@ export function useLoginFlow(): LoginFlowState {
 
   return {
     state,
-    gate,
+    authRequired,
     error,
     reportError,
-    onToken,
     onPhone: useCallback((phone: string) => applyLogin(() => startPhoneLogin(phone)), [applyLogin]),
     onCode: useCallback((code: string) => applyLogin(() => submitLoginCode(code)), [applyLogin]),
     onPassword: useCallback((password: string) => applyLogin(() => submitPassword(password)), [applyLogin]),

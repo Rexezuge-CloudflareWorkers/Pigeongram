@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { fetchComments, readHistory, sendComment, sendReaction, uploadFile } from './api';
+import type { CommentsController } from './comments-controller';
 import {
   applyCommentEdit,
   applyCommentMessage,
@@ -14,6 +15,7 @@ import type { CommentsThread } from './state';
 import type { ChatDto, GetCommentsResult, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 import { useCommentsPoll } from './useCommentsPoll';
+import { useMessageButtons } from './useMessageButtons';
 
 /**
 The comments screen's controller: the open channel-post thread with its loaded
@@ -44,47 +46,6 @@ A channel post addressed the way the comments bridge does.
 */
 type PostKey = { chatId: PeerId; messageId: number };
 
-export interface CommentsController {
-  /**
-  The open thread, or null while the comments screen is closed.
-  */
-  thread: CommentsThread | null;
-  loading: boolean;
-  loadingOlder: boolean;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
-  /**
-  The last failure of an open, page, send or upload, as shown by the screen.
-  */
-  error: string | null;
-  /**
-  Comment ids with a reaction request in flight; their chips are disabled.
-  */
-  reactingIds: ReadonlySet<number>;
-  /**
-  Comment (or pinned post) ids with a vote in flight; their poll's answers are
-  disabled.
-  */
-  votingIds: ReadonlySet<number>;
-  open: (chat: ChatDto, message: MessageDto) => Promise<void>;
-  close: () => void;
-  loadOlder: () => Promise<void>;
-  send: (text: string, replyTo?: number) => Promise<void>;
-  attach: (file: File, caption: string, replyTo?: number) => Promise<void>;
-  react: (message: MessageDto, reaction: MessageReactionDto) => void;
-  /**
-  Casts a vote in a poll on the pinned post or a comment, or retracts it with
-  `null`.
-  */
-  vote: (message: MessageDto, options: number[] | null) => void;
-  /**
-  Folds one socket update into the open thread. `App`'s update handler
-  forwards every event; updates that are not comments pass through.
-  */
-  applyUpdate: (update: UpdateEvent) => void;
-}
-
 interface UseCommentsOptions {
   /**
   A comment the caller sent was accepted: bump the channel post's count in the
@@ -97,9 +58,14 @@ interface UseCommentsOptions {
   global toast.
   */
   onError: (error: unknown) => void;
+  /**
+  Shows an informational message (a bot's callback answer, a clipboard
+  confirmation) in the global notice toast.
+  */
+  onNotice: (text: string) => void;
 }
 
-export function useComments({ onCommentSent, onError }: UseCommentsOptions): CommentsController {
+export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOptions): CommentsController {
   const [thread, setThread] = useState<CommentsThread | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -118,6 +84,7 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
   }, [thread]);
 
   const { applyPoll, refreshPoll, votingIds, vote } = useCommentsPoll(threadRef, setThread, onError);
+  const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
 
   /**
   Re-reads the newest window of the open thread and folds it in. An
@@ -382,6 +349,7 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
     error,
     reactingIds,
     votingIds,
+    pressingButtonIds,
     open,
     close,
     loadOlder,
@@ -389,6 +357,7 @@ export function useComments({ onCommentSent, onError }: UseCommentsOptions): Com
     attach,
     react,
     vote,
+    pressButton,
     applyUpdate,
   };
 }

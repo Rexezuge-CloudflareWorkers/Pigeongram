@@ -24,6 +24,28 @@ export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
   const [dialogsLoading, setDialogsLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+  Shows a short informational toast (a bot's callback answer, a clipboard
+  confirmation) and refreshes its dismissal timer.
+  */
+  const notify = useCallback((text: string): void => {
+    setNotice(text);
+    if (noticeTimer.current !== null) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => {
+      setNotice(null);
+      noticeTimer.current = null;
+    }, 4000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (noticeTimer.current !== null) clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
 
   /**
   A message the caller sent (or uploaded) was accepted: fold it into the
@@ -33,7 +55,7 @@ export function App() {
     setDialogs((current) => applyNewMessage(current, message, message.chatId));
   }, []);
 
-  const threads = useThread({ onSent: handleSent, onError: reportError });
+  const threads = useThread({ onSent: handleSent, onError: reportError, onNotice: notify });
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;
   const closeThread = threads.close;
@@ -57,7 +79,7 @@ export function App() {
     [bumpCommentCount],
   );
 
-  const comments = useComments({ onCommentSent: handleCommentSent, onError: reportError });
+  const comments = useComments({ onCommentSent: handleCommentSent, onError: reportError, onNotice: notify });
   const closeComments = comments.close;
   const applyCommentUpdate = comments.applyUpdate;
 
@@ -288,12 +310,14 @@ export function App() {
             error={comments.error}
             reactingIds={comments.reactingIds}
             votingIds={comments.votingIds}
+            pressingButtonIds={comments.pressingButtonIds}
             onBack={router.back}
             onLoadOlder={() => void comments.loadOlder()}
             onSend={comments.send}
             onAttach={comments.attach}
             onReact={comments.react}
             onVote={comments.vote}
+            onPressButton={comments.pressButton}
             onOpenMedia={(messageId) => openViewer('comments', messageId)}
           />
         ) : (
@@ -308,6 +332,7 @@ export function App() {
             error={threads.error}
             reactingIds={threads.reactingIds}
             votingIds={threads.votingIds}
+            pressingButtonIds={threads.pressingButtonIds}
             unreadDividerId={threads.thread?.unreadDividerId ?? null}
             focusMessageId={threads.thread?.focusMessageId ?? null}
             onBack={router.back}
@@ -316,6 +341,7 @@ export function App() {
             onAttach={threads.attach}
             onReact={threads.react}
             onVote={threads.vote}
+            onPressButton={threads.pressButton}
             onReadThrough={markRead}
             onOpenMedia={(messageId) => openViewer('thread', messageId)}
             onOpenComments={(message) => {
@@ -327,10 +353,19 @@ export function App() {
       {viewer.viewer ? (
         <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
       ) : null}
-      {error ? (
-        <p className="toast" role="alert">
-          {error}
-        </p>
+      {error || notice ? (
+        <div className="toasts">
+          {error ? (
+            <p className="toast" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {notice ? (
+            <p className="toast notice" role="status">
+              {notice}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

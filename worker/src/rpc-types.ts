@@ -24,6 +24,7 @@ export type RpcMethod =
   | 'searchMessages'
   | 'sendReaction'
   | 'sendVote'
+  | 'pressCallbackButton'
   | 'getPollResults'
   | 'getComments'
   | 'sendComment'
@@ -98,6 +99,16 @@ export interface SendVoteParams {
   answers, which is also what the bridge accepts.
   */
   options?: number[] | null;
+}
+
+export interface PressCallbackButtonParams {
+  chatId: PeerId;
+  messageId: number;
+  /**
+  Base64 of the button's callback payload, exactly as `MessageButtonDto.data`
+  carried it.
+  */
+  data: string;
 }
 
 export interface GetPollResultsParams {
@@ -178,6 +189,22 @@ export interface SendVoteResult {
   counts that were visible to this account.
   */
   poll: MessagePollDto;
+}
+
+export interface PressCallbackButtonResult {
+  /**
+  The text the bot answered with, for a toast or alarm; null when it answered
+  silently.
+  */
+  text: string | null;
+  /**
+  Whether Telegram asked for a blocking alert instead of a toast.
+  */
+  alert: boolean;
+  /**
+  A URL the bot asked the client to open, or null.
+  */
+  url: string | null;
 }
 
 export interface GetPollResultsResult {

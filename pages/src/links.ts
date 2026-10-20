@@ -82,6 +82,57 @@ export function parseTelegramLink(raw: string): TelegramLink | null {
 }
 
 /**
+ * Converts a Telegram Mini App web link (`t.me/<bot>?startapp…` or
+ * `t.me/<bot>/<short_name>…`) into the `tg://resolve` deep link the installed
+ * app understands. Returns null for every other URL, including a plain bot
+ * chat link without `startapp`.
+ *
+ * Inline web-view buttons cannot work in this browser client: a Mini App needs
+ * Telegram's signed `initData`, which only Telegram itself can inject. Handing
+ * the link to the installed app is the one path that keeps the app functional.
+ */
+export function miniAppDeepLink(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if (!TELEGRAM_HOSTS.has(url.hostname.toLowerCase().replace(/^www\./, ''))) return null;
+
+  const segments = url.pathname
+    .split('/')
+    .filter((segment) => segment.length > 0)
+    .map((segment) => decode(segment));
+  const [first, second, third] = segments;
+  if (first === undefined) return null;
+  const username = usernameOf(first);
+  if (username === null || RESERVED.has(first.toLowerCase())) return null;
+
+  const params: string[] = [`domain=${encodeURIComponent(username)}`];
+  if (second !== undefined) {
+    // A direct Mini App link names the app in the path; a numeric segment is a
+    // post rather than an app.
+    if (third !== undefined || /^\d+$/.test(second)) return null;
+    if (!/^\w{1,64}$/i.test(second)) return null;
+    params.push(`appname=${encodeURIComponent(second)}`);
+  } else if (!url.searchParams.has('startapp')) {
+    // Without `startapp`, `t.me/<bot>` is an ordinary chat link, not a Main
+    // Mini App link.
+    return null;
+  }
+
+  if (url.searchParams.has('startapp')) {
+    const startapp = url.searchParams.get('startapp') ?? '';
+    params.push(startapp === '' ? 'startapp' : `startapp=${encodeURIComponent(startapp)}`);
+  }
+  const mode = url.searchParams.get('mode');
+  if (mode === 'compact' || mode === 'fullscreen') params.push(`mode=${mode}`);
+  return `tg://resolve?${params.join('&')}`;
+}
+
+/**
  * The dialog a link names, when the account already has it: usernames are
  * matched case-insensitively, private-channel ids through their marked form.
  */

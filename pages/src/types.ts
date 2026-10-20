@@ -175,6 +175,54 @@ export interface MessagePollDto {
 }
 
 /**
+Telegram's requested emphasis for an inline-keyboard button.
+*/
+export type MessageButtonStyle = 'primary' | 'danger' | 'success';
+
+/**
+One button of a message's inline keyboard.
+
+The `kind` says what a press does. Callback buttons carry their opaque payload
+as base64 (JSON has no byte string); URL, web view and copy buttons carry what
+they open or place on the clipboard. The remaining kinds are carried so the UI
+can show them as disabled instead of silently dropping them.
+*/
+export type MessageButtonDto = {
+  text: string;
+  style: MessageButtonStyle | null;
+} & (
+  | {
+      kind: 'callback';
+      /**
+      Base64 of the button's callback payload, exactly as Telegram sent it.
+      */
+      data: string;
+      /**
+      Whether Telegram asks for the account's 2FA password before forwarding
+      the press.
+      */
+      requiresPassword: boolean;
+    }
+  | { kind: 'url'; url: string }
+  | { kind: 'webview'; url: string }
+  | { kind: 'copy'; copyText: string }
+  | { kind: 'switch_inline'; query: string; samePeer: boolean }
+  | { kind: 'url_auth'; url: string }
+  | { kind: 'user_profile'; userId: PeerId }
+  | { kind: 'game' }
+  | { kind: 'pay' }
+  | { kind: 'disabled' }
+);
+
+/**
+A message's inline keyboard: button rows in Telegram's order. Reply keyboards
+(and force-reply/hide markups) are not carried yet.
+*/
+export interface MessageMarkupDto {
+  rows: MessageButtonDto[][];
+}
+
+/**
 The message a message replies to, mapped from Telegram's reply header.
 
 Same-chat headers carry only the message id, so the SPA resolves the sender
@@ -299,6 +347,10 @@ export interface MessageDto {
   The message's poll, or null when it is not a poll message.
   */
   poll: MessagePollDto | null;
+  /**
+  The message's inline keyboard, or null when it has none.
+  */
+  markup: MessageMarkupDto | null;
   /**
   The message this one replies to, or null for a plain message.
   */
@@ -449,6 +501,7 @@ export type RpcMethod =
   | 'searchMessages'
   | 'sendReaction'
   | 'sendVote'
+  | 'pressCallbackButton'
   | 'getPollResults'
   | 'getComments'
   | 'sendComment'
@@ -488,6 +541,22 @@ export interface SendVoteResult {
   counts that were visible to this account.
   */
   poll: MessagePollDto;
+}
+
+export interface PressCallbackButtonResult {
+  /**
+  The text the bot answered with, for a toast or alarm; null when it answered
+  silently.
+  */
+  text: string | null;
+  /**
+  Whether Telegram asked for a blocking alert instead of a toast.
+  */
+  alert: boolean;
+  /**
+  A URL the bot asked the client to open, or null.
+  */
+  url: string | null;
 }
 
 export interface GetPollResultsResult {

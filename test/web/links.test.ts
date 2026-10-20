@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { APP_LAUNCH_TIMEOUT_MS, findLinkedChat, launchTelegramApp, markedChatId, parseTelegramLink } from '../../pages/src/links';
+import {
+  APP_LAUNCH_TIMEOUT_MS,
+  findLinkedChat,
+  launchTelegramApp,
+  markedChatId,
+  miniAppDeepLink,
+  parseTelegramLink,
+} from '../../pages/src/links';
 import type { ChatDto, DialogDto } from '../../pages/src/types';
 
 function chat(id: number, username: string | null): ChatDto {
@@ -99,6 +106,28 @@ describe('parseTelegramLink', () => {
     ]) {
       expect(parseTelegramLink(url), url).toBeNull();
     }
+  });
+});
+
+describe('miniAppDeepLink', () => {
+  it('turns a Main Mini App link into the resolve deep link', () => {
+    expect(miniAppDeepLink('https://t.me/BotFather?startapp=abc&mode=compact')).toBe(
+      'tg://resolve?domain=botfather&startapp=abc&mode=compact',
+    );
+    expect(miniAppDeepLink('https://t.me/BotFather?startapp')).toBe('tg://resolve?domain=botfather&startapp');
+  });
+
+  it('turns a direct Mini App link into the resolve deep link', () => {
+    expect(miniAppDeepLink('https://t.me/BotFather/create')).toBe('tg://resolve?domain=botfather&appname=create');
+    expect(miniAppDeepLink('https://t.me/BotFather/create?startapp=abc')).toBe('tg://resolve?domain=botfather&appname=create&startapp=abc');
+  });
+
+  it('leaves ordinary chat, post and non-Telegram links alone', () => {
+    expect(miniAppDeepLink('https://t.me/durov')).toBeNull();
+    expect(miniAppDeepLink('https://t.me/BotFather/123')).toBeNull();
+    expect(miniAppDeepLink('https://t.me/share/url?url=https%3A%2F%2Fexample.com')).toBeNull();
+    expect(miniAppDeepLink('https://example.com/BotFather?startapp=abc')).toBeNull();
+    expect(miniAppDeepLink('not a link')).toBeNull();
   });
 });
 

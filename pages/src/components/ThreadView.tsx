@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
-import type { ChatDto, MessageDto, MessageReactionDto, PeerId } from '../types';
+import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
@@ -38,6 +38,10 @@ interface ThreadViewProps {
   */
   votingIds: ReadonlySet<number>;
   /**
+  Message ids with a callback button press in flight.
+  */
+  pressingButtonIds: ReadonlySet<number>;
+  /**
   The message the unread divider sits above: the first unread message of the
   window the chat opened with. Reading advances the watermark but not the
   line, and the line stays for as long as the chat is open; reopening the
@@ -59,6 +63,10 @@ interface ThreadViewProps {
   Casts a vote in a poll message, or retracts it with `null`.
   */
   onVote: (message: MessageDto, options: number[] | null) => void;
+  /**
+  Presses an inline callback or copy button on a message.
+  */
+  onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   onOpenComments: (message: MessageDto) => void;
   /**
   Opens the full-page viewer at a message's media (an album opens at the
@@ -83,12 +91,14 @@ export function ThreadView({
   error,
   reactingIds,
   votingIds,
+  pressingButtonIds,
   onBack,
   onLoadOlder,
   onSend,
   onAttach,
   onReact,
   onVote,
+  onPressButton,
   onOpenComments,
   onOpenMedia,
   unreadDividerId,
@@ -329,6 +339,8 @@ export function ThreadView({
                 onReact={onReact}
                 voting={votingIds.has(anchor.id)}
                 onVote={onVote}
+                pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
+                onPressButton={onPressButton}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}

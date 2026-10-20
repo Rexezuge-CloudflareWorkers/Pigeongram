@@ -266,15 +266,30 @@ button.ghost:hover {
 
 /* ---- toast -------------------------------------------------------------- */
 
-.toast {
+.toasts {
   position: fixed;
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, 90vw);
+}
+
+.toast {
+  max-width: 100%;
+  margin: 0;
   background: #5b1f1f;
   border: 1px solid var(--danger);
   color: var(--text);
   padding: 10px 16px;
   border-radius: 10px;
-  max-width: min(560px, 90vw);
+}
+
+.toast.notice {
+  background: #1c3a2a;
+  border-color: #3f7d5a;
 }

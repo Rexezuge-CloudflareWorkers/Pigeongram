@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import type { CommentsThread } from '../state';
-import type { MessageDto, MessageReactionDto } from '../types';
+import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
@@ -24,6 +24,10 @@ interface CommentsViewProps {
   disabled.
   */
   votingIds: ReadonlySet<number>;
+  /**
+  Comment (or pinned post) ids with a callback button press in flight.
+  */
+  pressingButtonIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
@@ -33,6 +37,10 @@ interface CommentsViewProps {
   Casts a vote in a poll comment, or retracts it with `null`.
   */
   onVote: (message: MessageDto, options: number[] | null) => void;
+  /**
+  Presses an inline callback or copy button on the post or a comment.
+  */
+  onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   /**
   Opens the full-page viewer at a message's media (an album opens at the
   clicked member).
@@ -55,12 +63,14 @@ export function CommentsView({
   error,
   reactingIds,
   votingIds,
+  pressingButtonIds,
   onBack,
   onLoadOlder,
   onSend,
   onAttach,
   onReact,
   onVote,
+  onPressButton,
   onOpenMedia,
 }: CommentsViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -141,6 +151,8 @@ export function CommentsView({
             showQuote={false}
             voting={votingIds.has(thread.post.id)}
             onVote={onVote}
+            pressingButton={pressingButtonIds.has(thread.post.id)}
+            onPressButton={onPressButton}
             onOpenMedia={onOpenMedia}
           />
         </div>
@@ -174,6 +186,8 @@ export function CommentsView({
                 onReact={onReact}
                 voting={votingIds.has(anchor.id)}
                 onVote={onVote}
+                pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
+                onPressButton={onPressButton}
                 onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
                 onJump={jumpToComment}
                 onOpenMedia={onOpenMedia}

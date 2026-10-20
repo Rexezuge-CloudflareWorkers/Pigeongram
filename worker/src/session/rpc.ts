@@ -13,6 +13,7 @@ import {
   optionalMessageId,
   optionalText,
   requireMessageId,
+  requireCallbackData,
   requirePeerId,
   requireQuery,
   requireRecord,
@@ -116,6 +117,18 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const options = optionalAnswerIndexes(params.options);
       const poll = await client.sendVote({ chatId, message: messageId, options });
       return { poll: toPollDto(poll) };
+    }
+
+    case 'pressCallbackButton': {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const data = requireCallbackData(params.data);
+      const answer = await client.getCallbackAnswer({ chatId, message: messageId, data });
+      return {
+        text: answer.message ?? null,
+        alert: answer.alert === true,
+        url: answer.url ?? null,
+      };
     }
 
     case 'getPollResults': {

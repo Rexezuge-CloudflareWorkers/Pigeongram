@@ -261,3 +261,46 @@ describe('getBotCommands dispatch', () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe('pressCallbackButton dispatch', () => {
+  function fakeCallbackClient(answer: Record<string, unknown>): {
+    client: TelegramClient;
+    calls: Array<{ chatId: number; message: number; data: Uint8Array }>;
+  } {
+    const calls: Array<{ chatId: number; message: number; data: Uint8Array }> = [];
+    const client = {
+      getCallbackAnswer: async (params: { chatId: number; message: number; data: Uint8Array }) => {
+        calls.push(params);
+        return { _: 'messages.botCallbackAnswer', cacheTime: 0, ...answer };
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('decodes the payload and returns the bot answer', async () => {
+    const { client, calls } = fakeCallbackClient({ message: 'Done', alert: true, url: 'https://example.com/next' });
+    await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
+      text: 'Done',
+      alert: true,
+      url: 'https://example.com/next',
+    });
+    expect(calls).toEqual([{ chatId: 1, message: 7, data: new Uint8Array([1, 2, 3]) }]);
+  });
+
+  it('maps a silent answer onto nulls and false', async () => {
+    const { client } = fakeCallbackClient({});
+    await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
+      text: null,
+      alert: false,
+      url: null,
+    });
+  });
+
+  it('rejects malformed payloads before Telegram is touched', async () => {
+    const { client, calls } = fakeCallbackClient({});
+    for (const data of [undefined, '***', 'A'.repeat(88)]) {
+      await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data })).rejects.toThrow('data');
+    }
+    expect(calls).toEqual([]);
+  });
+});

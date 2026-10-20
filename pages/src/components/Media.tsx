@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
 import { isVisualAlbum } from '../groups';
@@ -11,10 +12,19 @@ One message's media, and the grid or stack an album shares. Split from
 Media that loads lazily carries its `width`/`height` as attributes: the
 intrinsic box is reserved before the bytes arrive, so a load does not reflow
 the thread (and shift a reader's position) as the images settle in.
+
+A video or audio element that fails — a container or codec the browser cannot
+decode, which Telegram does not transcode for — falls back to the document
+link, so the file stays reachable instead of leaving a dead player.
 */
 
 export function MessageMedia({ message, media }: { message: MessageDto; media: MessageMediaDto }) {
   const src = fileUrl(message.chatId, message.id);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return <DocumentLink message={message} />;
+  const onError = (): void => {
+    setFailedSrc(src);
+  };
   switch (media.kind) {
     case 'photo': {
       return (
@@ -44,12 +54,13 @@ export function MessageMedia({ message, media }: { message: MessageDto; media: M
           muted={animation}
           playsInline
           preload="metadata"
+          onError={onError}
         />
       );
     }
     case 'audio':
     case 'voice': {
-      return <audio className="audio" src={src} controls preload="metadata" />;
+      return <audio className="audio" src={src} controls preload="metadata" onError={onError} />;
     }
     case 'sticker': {
       if (media.mime === 'image/webp') {

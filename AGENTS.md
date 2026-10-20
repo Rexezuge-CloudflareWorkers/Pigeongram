@@ -51,8 +51,9 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `src/env.d.ts`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
-  reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
-  — `thread-window.ts` the first-window read (newest messages, or a window around a linked post), `reading.ts` the
+  reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
+  send/attach/react and forward with a writable-destination picker — `thread-window.ts` the first-window read
+  (newest messages, or a window around a linked post), `reading.ts` the
   unread-position logic they share, `components/` the screens). The home page has three states: `LandingPage.tsx` is
   the public intro, `LoginScreen.tsx` the Telegram QR login, and `CheckingAccess.tsx` the Access probe's first paint —
   `App.tsx` picks among them from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated'`. A successful

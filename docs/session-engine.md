@@ -126,6 +126,7 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `getDialogs`          | `{limit?: 1..200}`                                                     | `{dialogs: DialogDto[]}` (pinned first)                                                     |
 | `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
 | `sendMessage`         | `{chatId, text, replyTo?}`                                             | `{message}`                                                                                 |
+| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                             | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
 | `readHistory`         | `{chatId, maxId?}`                                                     | `{}`                                                                                        |
 | `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                   | `{messages, nextOffsetId?}`                                                                 |
 | `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                          | `{message: MessageDto \| null}`                                                             |
@@ -188,6 +189,11 @@ which already replaces the whole message DTO, so no extra update type is needed.
 the SPA renders them as one bubble while every message stays addressable for reactions, replies and read
 receipts. Telegram stores album reactions on the first message, so the UI exposes that one; `getHistory`
 pulls in the older members of a window's oldest album so a page never splits one.
+
+`forwardMessages` moves one message or an album (`messageIds`, 1–100 distinct source-chat ids) into
+`toChatId` and answers with the copies Telegram created there, so the SPA can fold them into the destination
+dialog without waiting for the socket. The destination picker offers only dialogs whose `canSendMessages` is
+true; protected content can still be rejected by Telegram, in which case the error stays in the picker.
 
 `getHistory`'s `addOffset` skips that many messages from `offsetId` (negative is towards newer), which is how a
 `t.me` post link opens a window _around_ the linked post instead of the newest messages; `offsetId` alone is

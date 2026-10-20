@@ -5,17 +5,21 @@ import type { MessageDto } from '../types';
 /**
 The bubble's context menu, opened by a right-click or (on touch) a long press
 at the gesture's coordinates. Reply hands the message back to the view that
-owns the composer target; Copy text puts the message's plain text on the
-clipboard. A portal with `position: fixed` keeps the menu out of the scroll
-container's clipping, which is also why it closes on any scroll: a menu
-anchored to a moving message would drift.
+owns the composer target; Forward hands the whole display group (an album
+forwards every member) to the destination picker; Copy text puts the
+message's plain text on the clipboard. A portal with `position: fixed` keeps
+the menu out of the scroll container's clipping, which is also why it closes
+on any scroll: a menu anchored to a moving message would drift.
 
 The parent owns the open/closed state, and every path here closes through
 `onClose`, so a menu cannot outlive its message's layout.
 */
 
 interface MessageMenuProps {
-  message: MessageDto;
+  /**
+  One display group, oldest first: a standalone message, or an album.
+  */
+  messages: readonly MessageDto[];
   /**
   Viewport coordinates of the opening gesture.
   */
@@ -26,13 +30,19 @@ interface MessageMenuProps {
   comments view's post header).
   */
   onReply?: (message: MessageDto) => void;
+  /**
+  Starts forwarding this display group; absent for views that do not forward.
+  */
+  onForward?: (messages: readonly MessageDto[]) => void;
   onClose: () => void;
 }
 
-export function MessageMenu({ message, x, y, onReply, onClose }: MessageMenuProps) {
+export function MessageMenu({ messages, x, y, onReply, onForward, onClose }: MessageMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
+  const message = messages[0];
   const canReply = onReply !== undefined && !message.service;
+  const canForward = onForward !== undefined && !message.service;
   const canCopy = message.text.length > 0;
 
   // Clamp the menu into the viewport once its real size is known (the first
@@ -74,10 +84,11 @@ export function MessageMenu({ message, x, y, onReply, onClose }: MessageMenuProp
     };
   }, [onClose]);
 
-  if (!canReply && !canCopy) return null;
+  if (!canReply && !canForward && !canCopy) return null;
 
   const items: Array<{ label: string; run: () => void }> = [];
   if (canReply) items.push({ label: 'Reply', run: () => onReply?.(message) });
+  if (canForward) items.push({ label: 'Forward', run: () => onForward?.(messages) });
   if (canCopy) items.push({ label: 'Copy text', run: () => void copyText(message.text) });
 
   return createPortal(

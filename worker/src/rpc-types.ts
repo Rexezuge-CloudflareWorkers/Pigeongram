@@ -20,6 +20,7 @@ export type RpcMethod =
   | 'getDialogs'
   | 'getHistory'
   | 'sendMessage'
+  | 'forwardMessages'
   | 'readHistory'
   | 'searchMessages'
   | 'sendReaction'
@@ -60,6 +61,22 @@ export interface SendMessageParams {
    * Id of the message to reply to, in the same chat.
    */
   replyTo?: number;
+}
+
+export interface ForwardMessagesParams {
+  /**
+   * The source chat the messages belong to.
+   */
+  chatId: PeerId;
+  /**
+   * The destination chat; the account must be allowed to post there.
+   */
+  toChatId: PeerId;
+  /**
+   * Ids of the messages to forward, in the source chat. An album forwards as
+   * its members; Telegram caps a forward at 100 messages.
+   */
+  messageIds: number[];
 }
 
 export interface ReadHistoryParams {
@@ -169,6 +186,13 @@ export interface GetHistoryResult {
 
 export interface SendMessageResult {
   message: MessageDto;
+}
+
+export interface ForwardMessagesResult {
+  /**
+   * The forwarded copies, as Telegram returned them in the destination chat.
+   */
+  messages: MessageDto[];
 }
 
 export interface SendReactionResult {

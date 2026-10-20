@@ -67,6 +67,10 @@ interface ThreadViewProps {
   onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
+  Starts forwarding a display group; an album forwards every member.
+  */
+  onForward: (messages: readonly MessageDto[]) => void;
+  /**
   Casts a vote in a poll message, or retracts it with `null`.
   */
   onVote: (message: MessageDto, options: number[] | null) => void;
@@ -105,6 +109,7 @@ export function ThreadView({
   onSend,
   onAttach,
   onReact,
+  onForward,
   onVote,
   onPressButton,
   onOpenComments,
@@ -351,6 +356,7 @@ export function ThreadView({
                 onPressButton={onPressButton}
                 readOutboxMaxId={readOutboxMaxId}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+                onForward={onForward}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? openComments : undefined}
                 onOpenMedia={onOpenMedia}

@@ -1396,6 +1396,132 @@ describe('App', () => {
       });
       expect(screen.getByRole('menu', { name: 'Message actions' })).toBeDefined();
     });
+
+    it('forwards a message to the picked writable destination', async () => {
+      const dave: DialogDto = {
+        ...carolDialog,
+        chat: { ...carol, id: 4, title: 'Dave', username: 'dave', canSendMessages: false },
+      };
+      const calls = installSignedInFetch({
+        dialogs: [dialogs[0], carolDialog, dave],
+        rpc: (call) => {
+          if (call.body?.method !== 'forwardMessages') return;
+          return json({
+            messages: [
+              message({
+                id: 21,
+                chatId: 3,
+                senderId: 1,
+                senderName: 'Ada',
+                outgoing: true,
+                text: 'see you',
+              }),
+            ],
+          });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      openMessageMenu(10);
+      clickMenuItem('Forward');
+
+      const picker = await screen.findByRole('dialog', { name: 'Forward message' });
+      // A chat the account cannot post in is not a destination at all.
+      expect(within(picker).queryByText('Dave')).toBeNull();
+      fireEvent.change(within(picker).getByRole('searchbox', { name: 'Search chats' }), { target: { value: 'car' } });
+      expect(within(picker).queryByText('Bob')).toBeNull();
+      expect(within(picker).getByText('Carol')).toBeDefined();
+
+      fireEvent.click(within(picker).getByRole('button', { name: /Carol/ }));
+
+      await waitFor(() => {
+        expect(calls.filter((call) => call.body?.method === 'forwardMessages').map((call) => call.body)).toEqual([
+          { method: 'forwardMessages', params: { chatId: 2, messageIds: [10], toChatId: 3 } },
+        ]);
+      });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Forward message' })).toBeNull();
+      });
+      expect(screen.getByText('Forwarded to Carol')).toBeDefined();
+    });
+
+    it('forwards every member of an album as one batch', async () => {
+      const photo: MessageMediaDto = {
+        kind: 'photo',
+        fileName: null,
+        mime: null,
+        size: 1000,
+        width: 320,
+        height: 240,
+        duration: null,
+      };
+      const calls = installSignedInFetch({
+        dialogs: [dialogs[0], carolDialog],
+        history: () =>
+          json({
+            messages: [
+              message({ id: 20, chatId: 2, groupedId: '555', media: photo, text: '' }),
+              message({ id: 21, chatId: 2, groupedId: '555', media: photo, text: '' }),
+            ],
+          }),
+        rpc: (call) => {
+          if (call.body?.method !== 'forwardMessages') return;
+          return json({ messages: [] });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      await waitFor(() => {
+        expect(threadSection().querySelector('[data-message-ids="20 21"]')).not.toBeNull();
+      });
+
+      // Media-only messages have no text to copy, but forwarding is still an
+      // action on the bubble.
+      openMessageMenu(20);
+      clickMenuItem('Forward');
+      const picker = await screen.findByRole('dialog', { name: 'Forward 2 messages' });
+      expect(within(picker).getByText('2 messages')).toBeDefined();
+      fireEvent.click(within(picker).getByRole('button', { name: /Carol/ }));
+
+      await waitFor(() => {
+        expect(calls.filter((call) => call.body?.method === 'forwardMessages').map((call) => call.body?.params)).toEqual([
+          { chatId: 2, messageIds: [20, 21], toChatId: 3 },
+        ]);
+      });
+    });
+
+    it('keeps the picker open with an inline error, then closes on Escape', async () => {
+      installSignedInFetch({
+        dialogs: [dialogs[0], carolDialog],
+        rpc: (call) => {
+          if (call.body?.method !== 'forwardMessages') return;
+          return json({ error: 'CHAT_WRITE_FORBIDDEN' }, 403);
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      openMessageMenu(10);
+      clickMenuItem('Forward');
+      const picker = await screen.findByRole('dialog', { name: 'Forward message' });
+      fireEvent.click(within(picker).getByRole('button', { name: /Carol/ }));
+
+      await waitFor(() => {
+        expect(within(picker).getByRole('alert').textContent).toBe('CHAT_WRITE_FORBIDDEN');
+      });
+      expect(screen.getByRole('dialog', { name: 'Forward message' })).toBeDefined();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Forward message' })).toBeNull();
+      });
+    });
   });
 
   describe('unread position', () => {

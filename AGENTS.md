@@ -64,7 +64,10 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
   (t.me URLs and `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the
   context that routes link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread,
-  everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer.
+  everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer. Styling is
+  Tailwind v4 through `@tailwindcss/vite`: `src/styles/tailwind.css` imports full Tailwind (preflight included) and
+  layers the existing stylesheets under `components`, so legacy rules sit above preflight but below utilities. New UI
+  should use utilities; extend a legacy sheet only for a genuinely shared rule.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` and `user/[[path]].ts` are pass-throughs to
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).

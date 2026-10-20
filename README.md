@@ -6,7 +6,7 @@ An always-online Telegram web client hosted on Cloudflare:
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
-- **`pages/`** — the frontend. A Vite + React SPA with a three-state home: a public intro page, the Telegram QR login
+- **`pages/`** — the frontend. A Vite + React + Tailwind SPA with a three-state home: a public intro page, the Telegram QR login
   once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, pathname
   deep links). It talks to the worker through the bridge and will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
@@ -23,7 +23,7 @@ deployment's Access configuration (see [Pending owner actions](#pending-owner-ac
 | Path         | What                                                                                                                                                                                         |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `worker/`    | Worker package: `src/index.ts` (Hono entry, Access JWT gate, exports the DO) and `src/session/**` (the `SessionEngine`)                                                                      |
-| `pages/`     | Pages package: Vite + React SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding                                                                                    |
+| `pages/`     | Pages package: Vite + React + Tailwind SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding                                                                         |
 | `functions/` | Pages Functions: `api/[[path]].ts` forwards the public `/api/*` plane and `user/[[path]].ts` the Access-gated `/user/*` plane to the worker through `API_WORKER` (must sit at the repo root) |
 | `test/`      | Vitest suite as a workspace package; `test/web/**` is the SPA half, everything else is the worker half                                                                                       |
 | `scripts/`   | `check-god-files.ts` and `prepare-wrangler-config.ts`, copied from `@rexezuge/tooling` (see `AGENTS.md`)                                                                                     |

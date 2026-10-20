@@ -1,3 +1,5 @@
+import { Spinner } from './Spinner';
+
 interface CheckingAccessProps {
   error: string | null;
   onRetry: () => void;
@@ -14,7 +16,7 @@ export function CheckingAccess({ error, onRetry }: CheckingAccessProps) {
     <main className="login">
       <section className="card">
         <h1>Checking access</h1>
-        <p className="status">{error ?? 'Connecting to the session engine…'}</p>
+        {error ? <p className="status">{error}</p> : <Spinner size={36} label="Connecting to the session engine…" padding="4px 0" />}
         {error ? (
           <button type="button" className="ghost" onClick={onRetry}>
             Try again

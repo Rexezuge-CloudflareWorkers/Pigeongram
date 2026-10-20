@@ -60,6 +60,10 @@ textarea:focus {
 }
 
 button[type='submit'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--accent);
   color: #08121c;
   border-radius: 8px;
@@ -125,6 +129,7 @@ button.ghost:hover {
 .card h1 {
   margin: 0;
   font-size: 22px;
+  font-weight: 700;
 }
 
 .qr {

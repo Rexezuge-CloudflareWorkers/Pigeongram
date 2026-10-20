@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { BotCommandDto, MessageDto } from '../types';
 import { ComposerReply } from './ReplyQuote';
+import { Spinner } from './Spinner';
 
 /**
 The message box shared by the thread and the comments view: draft, attach,
@@ -265,9 +266,15 @@ export function Composer({
           submit();
         }}
       />
-      {uploading ? <span className="upload-status">{uploadStatus(uploadProgress)}</span> : null}
-      <button type="submit" disabled={busy || draft.trim().length === 0}>
-        {sending ? '…' : 'Send'}
+      {uploading ? (
+        <span className="upload-status">
+          <Spinner inline size={14} />
+          {uploadStatus(uploadProgress)}
+        </span>
+      ) : null}
+      <button type="submit" disabled={busy || draft.trim().length === 0} aria-busy={sending}>
+        {sending ? <Spinner inline size={14} color="currentColor" /> : null}
+        Send
       </button>
     </form>
   );

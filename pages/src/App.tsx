@@ -25,7 +25,7 @@ export function App() {
 
   const [me, setMe] = useState<MeDto | null>(null);
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
-  const [dialogsLoading, setDialogsLoading] = useState(false);
+  const [dialogsLoading, setDialogsLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -265,6 +265,7 @@ export function App() {
     closeViewer();
     router.reset();
     setDialogs([]);
+    setDialogsLoading(true);
     setMe(null);
     reset();
   }, [closeComments, closeThread, closeViewer, reportError, reset, router]);

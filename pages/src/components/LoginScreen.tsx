@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { loginPhaseMessage } from '../api';
 import type { EngineStateDto } from '../types';
+import { Spinner } from './Spinner';
 
 /**
  * The last few seconds of a code's life are not shown at all: Telegram's login
@@ -27,12 +28,14 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
   const awaitingCode = phase === 'code';
   const phoneForm = usePhone && !awaitingCode && phase !== 'password';
   const qrVisible = !awaitingCode && !phoneForm && phase !== 'password';
+  const statusBusy = !phoneForm && (state === null || phase === 'unauthorized' || phase === 'scanned');
+  const statusText = phoneForm ? 'Enter your phone number — Telegram will send a login code.' : loginPhaseMessage(state);
   return (
     <main className="login">
       <section className="card">
         <h1>Sign in to Telegram</h1>
         {qrVisible ? <QrPanel state={state} /> : null}
-        <p className="status">{phoneForm ? 'Enter your phone number — Telegram will send a login code.' : loginPhaseMessage(state)}</p>
+        <p className="status">{statusBusy ? <Spinner inline size={14} label={statusText} /> : statusText}</p>
         {phoneForm ? <PhoneForm onSubmit={onPhone} onBack={() => setUsePhone(false)} /> : null}
         {awaitingCode ? <CodeForm state={state} onSubmit={onCode} onRetry={onRetry} /> : null}
         {phase === 'password' ? <PasswordForm invalid={state?.passwordInvalid === true} onSubmit={onPassword} /> : null}
@@ -99,7 +102,9 @@ function QrPanel({ state }: { state: EngineStateDto | null }) {
       {dataUrl ? (
         <img className="qr" src={dataUrl} alt="Telegram login QR code" width={256} height={256} />
       ) : (
-        <div className="qr placeholder" aria-hidden="true" />
+        <div className="qr placeholder grid place-items-center" aria-hidden="true">
+          <Spinner size={32} />
+        </div>
       )}
       <p className="muted small">
         {dataUrl && expiresIn !== null
@@ -131,8 +136,14 @@ function PhoneForm({ onSubmit, onBack }: { onSubmit: (phone: string) => Promise<
         autoFocus
         onChange={(event) => setPhone(event.target.value)}
       />
-      <button type="submit" disabled={submitting || phone.trim().length < 5}>
-        {submitting ? 'Sending…' : 'Send code'}
+      <button type="submit" disabled={submitting || phone.trim().length < 5} aria-busy={submitting}>
+        {submitting ? (
+          <>
+            <Spinner inline size={14} color="currentColor" /> Sending…
+          </>
+        ) : (
+          'Send code'
+        )}
       </button>
       <button type="button" className="ghost" onClick={onBack} disabled={submitting}>
         Use a QR code instead
@@ -174,8 +185,14 @@ function CodeForm({
         onChange={(event) => setCode(event.target.value)}
       />
       {state?.codeInvalid ? <p className="error">That code was rejected — check the latest message and try again.</p> : null}
-      <button type="submit" disabled={submitting || code.trim().length === 0}>
-        {submitting ? 'Checking…' : 'Submit code'}
+      <button type="submit" disabled={submitting || code.trim().length === 0} aria-busy={submitting}>
+        {submitting ? (
+          <>
+            <Spinner inline size={14} color="currentColor" /> Checking…
+          </>
+        ) : (
+          'Submit code'
+        )}
       </button>
       <button type="button" className="ghost" onClick={onRetry}>
         Start over
@@ -208,8 +225,14 @@ function PasswordForm({ invalid, onSubmit }: { invalid: boolean; onSubmit: (pass
         onChange={(event) => setPassword(event.target.value)}
       />
       {invalid ? <p className="error">That password was rejected — try again.</p> : null}
-      <button type="submit" disabled={submitting || password.length === 0}>
-        {submitting ? 'Checking…' : 'Submit'}
+      <button type="submit" disabled={submitting || password.length === 0} aria-busy={submitting}>
+        {submitting ? (
+          <>
+            <Spinner inline size={14} color="currentColor" /> Checking…
+          </>
+        ) : (
+          'Submit'
+        )}
       </button>
     </form>
   );

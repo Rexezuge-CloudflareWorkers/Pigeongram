@@ -1,6 +1,7 @@
 import { formatListStamp, previewOf } from '../format';
 import type { ChatDto, DialogDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
+import { Spinner } from './Spinner';
 
 interface ChatListProps {
   dialogs: DialogDto[];
@@ -11,7 +12,7 @@ interface ChatListProps {
 
 export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListProps) {
   if (loading && dialogs.length === 0) {
-    return <p className="muted pad">Loading chats…</p>;
+    return <Spinner size={32} label="Loading chats…" padding="32px 0" />;
   }
   if (dialogs.length === 0) {
     return <p className="muted pad">No chats yet.</p>;

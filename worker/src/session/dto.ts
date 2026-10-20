@@ -1,4 +1,5 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
+import { serviceText } from './service-text';
 import type {
   ChatDto,
   DialogDto,
@@ -205,16 +206,17 @@ export function toMessageDto(message: Message): MessageDto {
   // carry a sender without an id; guard at runtime instead of trusting the
   // nominal type.
   const sender = message.sender as { id?: number; displayName?: string } | null;
+  const senderName = sender?.displayName ?? null;
   const media = message.media;
   return {
     id: message.id,
     chatId: message.chat.id,
     groupedId: message.groupedId?.toString() ?? null,
     senderId: typeof sender?.id === 'number' ? sender.id : null,
-    senderName: sender?.displayName ?? null,
+    senderName,
     outgoing: message.isOutgoing,
     date: message.date.getTime(),
-    text: message.text,
+    text: message.isService ? serviceText(message, senderName) : message.text,
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,

@@ -538,6 +538,21 @@ describe('toMessageDto', () => {
     expect(serviceDto.id).toBe(8);
   });
 
+  it('fills the auto-delete service message text', () => {
+    const service = new Message(
+      {
+        _: 'messageService',
+        id: 9,
+        peerId: { _: 'peerUser', userId: 1 },
+        date: 1_700_000_100,
+        action: { _: 'messageActionSetMessagesTTL', period: 2_678_400 },
+        out: true,
+      } as unknown as tl.RawMessageService,
+      index(),
+    );
+    expect(toMessageDto(service).text).toBe('You set messages to auto-delete in 1 month');
+  });
+
   it('maps a photo message into the media DTO', () => {
     const photo = message({
       media: {

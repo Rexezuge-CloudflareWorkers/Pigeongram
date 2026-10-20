@@ -146,6 +146,10 @@ a `chosen` flag for the current user). `sendReaction` sets the caller's reaction
 carry `views` (`null` for every other message), so the thread renders the counter beside the timestamp and
 keeps it ticking from the live `views` update while the post is loaded.
 
+Service messages carry no text of their own (`mtcute` deliberately returns an empty string), so the bridge
+fills `text` with the English label the UI renders — currently the auto-delete timer change, including the
+disabled and channel variants. Other actions keep their empty text until they get a label of their own.
+
 A poll message carries `poll` beside `media` — Telegram's `messageMediaPoll` has no file, so it never shows up in
 `media`. `MessagePollDto` holds the question, the answers in Telegram's order and the flags the UI needs (`quiz`,
 `multiple`, `revotingDisabled`, `hideResultsUntilClose`, `closed`, `solution`); `id` is the decimal poll id the

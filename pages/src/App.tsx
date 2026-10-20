@@ -11,7 +11,7 @@ import { ThreadView } from './components/ThreadView';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import type { Route } from './routes';
-import { applyEditedMessage, applyNewMessage, applyReadThrough, applyReadUpdate } from './state';
+import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate } from './state';
 import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useChatNavigation } from './useChatNavigation';
@@ -170,11 +170,15 @@ export function App() {
         setDialogs((current) => applyEditedMessage(current, update.message));
         return;
       }
-      // The peer reading the account's own messages says nothing about the
-      // account's unread incoming ones, so only inbox reads move the badge.
-      // The thread's watermark is folded by the controller above.
-      if (update.type === 'read' && update.inbox) {
-        setDialogs((current) => applyReadUpdate(current, update.chatId, update.unread, update.maxId));
+      // The two read directions mean different things: inbox reads move the
+      // badge and open position; outbox reads move the double checks on the
+      // account's own messages. The thread folds both in the controller above.
+      if (update.type === 'read') {
+        setDialogs((current) =>
+          update.inbox
+            ? applyReadUpdate(current, update.chatId, update.unread, update.maxId)
+            : applyOutboxReadUpdate(current, update.chatId, update.maxId),
+        );
       }
     },
     [applyCommentUpdate, applyThreadUpdate],
@@ -336,6 +340,7 @@ export function App() {
             reactingIds={threads.reactingIds}
             votingIds={threads.votingIds}
             pressingButtonIds={threads.pressingButtonIds}
+            readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
             unreadDividerId={threads.thread?.unreadDividerId ?? null}
             focusMessageId={threads.thread?.focusMessageId ?? null}
             positions={threads.positions}

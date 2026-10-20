@@ -1,4 +1,4 @@
-import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId } from './types';
+import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state. Kept in its own
@@ -44,6 +44,30 @@ export function applyReadUpdate(dialogs: DialogDto[], chatId: PeerId, unread: nu
   return dialogs.map((dialog) =>
     dialog.chat.id === chatId ? { ...dialog, unread, readInboxMaxId: Math.max(dialog.readInboxMaxId, readInboxMaxId) } : dialog,
   );
+}
+
+/**
+Folds the peer reading the account's own messages into the dialogs: outgoing
+messages up to this watermark render a double check. Only ever moves forward,
+so a replayed or out-of-order update cannot rewind it.
+*/
+export function applyOutboxReadUpdate(dialogs: DialogDto[], chatId: PeerId, readOutboxMaxId: number): DialogDto[] {
+  return dialogs.map((dialog) =>
+    dialog.chat.id === chatId && readOutboxMaxId > dialog.readOutboxMaxId ? { ...dialog, readOutboxMaxId } : dialog,
+  );
+}
+
+/**
+Folds a read update into the open thread. The two directions move different
+watermarks: the account reading incoming messages advances the position the
+unread divider uses, while the peer reading the account's own messages turns
+their checks double.
+*/
+export function applyThreadReadUpdate(thread: ChatThread | null, update: Extract<UpdateEvent, { type: 'read' }>): ChatThread | null {
+  if (!thread || thread.chat.id !== update.chatId) return thread;
+  return update.inbox
+    ? { ...thread, readInboxMaxId: Math.max(thread.readInboxMaxId, update.maxId) }
+    : { ...thread, readOutboxMaxId: Math.max(thread.readOutboxMaxId, update.maxId) };
 }
 
 /**
@@ -94,6 +118,12 @@ export interface ChatThread {
   opens and advanced as the user reads.
   */
   readInboxMaxId: number;
+  /**
+  Id of the last outgoing message the peer has read, seeded from the dialog
+  and advanced by outbox read updates. Own messages up to it show a double
+  check; later ones a single sent check.
+  */
+  readOutboxMaxId: number;
   /**
   The message the unread divider sits above: the first unread message of the
   window the chat opened with. It marks where reading stopped when the chat

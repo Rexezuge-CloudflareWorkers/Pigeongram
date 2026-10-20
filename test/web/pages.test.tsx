@@ -107,6 +107,7 @@ const dialogs: DialogDto[] = [
     },
     unread: 1,
     readInboxMaxId: 9,
+    readOutboxMaxId: 0,
     pinned: false,
     muted: false,
   },
@@ -157,7 +158,15 @@ const history: MessageDto[] = [
 
 const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true };
 
-const carolDialog: DialogDto = { chat: carol, lastMessage: null, unread: 0, readInboxMaxId: 1, pinned: false, muted: false };
+const carolDialog: DialogDto = {
+  chat: carol,
+  lastMessage: null,
+  unread: 0,
+  readInboxMaxId: 1,
+  readOutboxMaxId: 0,
+  pinned: false,
+  muted: false,
+};
 
 const carolHistory: MessageDto[] = [
   {
@@ -573,7 +582,7 @@ describe('App', () => {
         comments: { hasComments: true, count: 2, discussionChatId: -1_000_000_000_030 },
       });
       installSignedInFetch({
-        dialogs: [{ chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false }],
+        dialogs: [{ chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false }],
         history: () => json({ messages: [post] }),
         rpc: (call) =>
           call.body?.method === 'getComments'
@@ -659,7 +668,7 @@ describe('App', () => {
   it('loads the slash-command menu for an open bot chat', async () => {
     const helper: ChatDto = { id: 7, kind: 'bot', title: 'Helper', username: 'helper_bot', photo: null, canSendMessages: true };
     installSignedInFetch({
-      dialogs: [{ chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+      dialogs: [{ chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
       history: () => json({ messages: [] }),
       rpc: (call) =>
         call.body?.method === 'getBotCommands' ? json({ commands: [{ command: 'start', description: 'Start the bot' }] }) : undefined,
@@ -714,7 +723,7 @@ describe('App', () => {
       },
     });
     installSignedInFetch({
-      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
       history: () => json({ messages: [forwarded] }),
     });
 
@@ -904,6 +913,7 @@ describe('App', () => {
         lastMessage: pollMessage({ id: 30, chatId: 3 }),
         unread: 0,
         readInboxMaxId: 1,
+        readOutboxMaxId: 0,
         pinned: false,
         muted: false,
       };
@@ -1393,7 +1403,7 @@ describe('App', () => {
     Bob's dialog with reading stopped at message 8: 9, 11 and 13 are unread
     (10 and 12 are the account's own messages).
     */
-    const unreadDialog: DialogDto = { ...dialogs[0], unread: 3, readInboxMaxId: 8 };
+    const unreadDialog: DialogDto = { ...dialogs[0], unread: 3, readInboxMaxId: 8, readOutboxMaxId: 10 };
 
     function unreadMessage(id: number, text: string, outgoing = false): MessageDto {
       return message({ id, chatId: 2, senderId: outgoing ? 1 : 2, senderName: outgoing ? 'Ada' : 'Bob', outgoing, text });
@@ -1531,7 +1541,7 @@ describe('App', () => {
       expect(threadSection().querySelector('[data-unread-divider]')).toBeNull();
     });
 
-    it('folds inbox reads into the badge and the divider, and ignores outbox reads', async () => {
+    it('folds inbox reads into the badge and the divider, and keeps outbox reads off both', async () => {
       installUnreadFetch();
       // The viewport covers only the already-read row, so the test's own
       // read updates are the only ones moving anything.
@@ -1564,6 +1574,34 @@ describe('App', () => {
       expect(
         (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
       ).toBe('9');
+    });
+
+    it('seeds sent checks from the dialog and doubles them when the peer reads', async () => {
+      installUnreadFetch();
+      stubLayout({ listHeight: 300, viewportHeight: 50 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+
+      const ticks = (messageId: number): string | undefined =>
+        threadSection().querySelector(`:scope [data-message-id="${CSS.escape(String(messageId))}"] .ticks`)?.textContent ?? undefined;
+      // The dialog's outbox watermark covers the first own message only.
+      expect(ticks(10)).toBe('✓✓');
+      expect(ticks(12)).toBe('✓');
+      // Incoming messages and service rows carry no status.
+      expect(threadSection().querySelector(':scope [data-message-id="9"] .ticks')).toBeNull();
+
+      deliver({ type: 'read', chatId: 2, maxId: 12, unread: 0, inbox: false });
+      await waitFor(() => expect(ticks(12)).toBe('✓✓'));
+      expect(ticks(10)).toBe('✓✓');
+
+      // The dialog list folded the same update, so reopening keeps it.
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
+      fireEvent.click(screen.getByText('Bob'));
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+      expect(ticks(12)).toBe('✓✓');
     });
   });
 
@@ -1877,7 +1915,15 @@ describe('App', () => {
       comments: { hasComments: true, count: 2, discussionChatId: GROUP },
     });
 
-    const channelDialog: DialogDto = { chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false };
+    const channelDialog: DialogDto = {
+      chat: channel,
+      lastMessage: post,
+      unread: 0,
+      readInboxMaxId: 7,
+      readOutboxMaxId: 0,
+      pinned: false,
+      muted: false,
+    };
 
     function comment(overrides: Partial<MessageDto> & { id: number }): MessageDto {
       return message({ chatId: GROUP, senderName: 'Dana', ...overrides });
@@ -2326,7 +2372,7 @@ describe('App', () => {
         photo: null,
         canSendMessages,
       };
-      return { chat, lastMessage: post, unread: 0, readInboxMaxId: 7, pinned: false, muted: false };
+      return { chat, lastMessage: post, unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false };
     }
 
     it('replaces the composer with a notice in a read-only channel', async () => {
@@ -2356,7 +2402,7 @@ describe('App', () => {
     it('explains a revoked send permission in a group', async () => {
       const group: ChatDto = { id: -30, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: false };
       installSignedInFetch({
-        dialogs: [{ chat: group, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+        dialogs: [{ chat: group, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
         history: () => json({ messages: [message({ id: 1, chatId: -30, text: 'hello team' })] }),
       });
 

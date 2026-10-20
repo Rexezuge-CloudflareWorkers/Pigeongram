@@ -418,6 +418,11 @@ export interface DialogDto {
   unread ones. The thread opens at this watermark instead of the bottom.
   */
   readInboxMaxId: number;
+  /**
+  Id of the last outgoing message the peer has read. Own messages up to this
+  watermark render a double check; later ones a single sent check.
+  */
+  readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
 }

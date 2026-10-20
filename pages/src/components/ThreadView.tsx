@@ -39,6 +39,11 @@ interface ThreadViewProps {
   */
   pressingButtonIds: ReadonlySet<number>;
   /**
+  Id of the last outgoing message the peer has read. Own messages up to it
+  render a double check; later ones a single sent check.
+  */
+  readOutboxMaxId: number;
+  /**
   The message the unread divider sits above: the first unread message of the
   window the chat opened with. Reading advances the watermark but not the
   line, and the line stays for as long as the chat is open; reopening the
@@ -94,6 +99,7 @@ export function ThreadView({
   reactingIds,
   votingIds,
   pressingButtonIds,
+  readOutboxMaxId,
   onBack,
   onLoadOlder,
   onSend,
@@ -343,6 +349,7 @@ export function ThreadView({
                 onVote={onVote}
                 pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
                 onPressButton={onPressButton}
+                readOutboxMaxId={readOutboxMaxId}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? openComments : undefined}

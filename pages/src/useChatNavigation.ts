@@ -60,7 +60,7 @@ export function useChatNavigation({
       let page = reuse && open ? open.messages : null;
       if (!reuse) {
         comments.close();
-        page = await threads.open(dialog.chat, dialog.readInboxMaxId, route.postId === null ? undefined : { postId: route.postId });
+        page = await threads.open(dialog, route.postId === null ? undefined : { postId: route.postId });
         if (ticket !== sequence.current) return;
       }
 

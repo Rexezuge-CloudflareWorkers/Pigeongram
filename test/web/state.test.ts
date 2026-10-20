@@ -3,6 +3,7 @@ import { formatBytes, formatCount, formatDay, formatListStamp, formatTime, initi
 import {
   applyEditedMessage,
   applyNewMessage,
+  applyOutboxReadUpdate,
   applyPollUpdate,
   applyReactionUpdate,
   applyReadThrough,
@@ -81,6 +82,7 @@ function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
     lastMessage: null,
     unread: 0,
     readInboxMaxId: 0,
+    readOutboxMaxId: 0,
     pinned: false,
     muted: false,
     ...overrides,
@@ -127,6 +129,15 @@ describe('chat-list state', () => {
     const edited = applyEditedMessage(withLast, message({ id: 9, chatId: 1, text: 'edited' }));
     expect(edited[0].lastMessage?.text).toBe('edited');
     expect(edited[1].lastMessage).toBeNull();
+  });
+
+  it('advances the outbox watermark from the peer reading, never rewinding it', () => {
+    const dialogs = [dialog(1), dialog(2)];
+    const read = applyOutboxReadUpdate(dialogs, 1, 7);
+    expect(read[0].readOutboxMaxId).toBe(7);
+    expect(read[1]).toBe(dialogs[1]);
+    // A stale update leaves the watermark where it was.
+    expect(applyOutboxReadUpdate(read, 1, 3)[0]).toBe(read[0]);
   });
 
   it('advances the watermark through what the viewport read, incoming only', () => {
@@ -179,6 +190,7 @@ describe('thread state', () => {
       chat: chat(1),
       messages: [message({ id: 1, chatId: 1 })],
       readInboxMaxId: 5,
+      readOutboxMaxId: 3,
       unreadDividerId: 2,
       focusMessageId: null,
     };
@@ -198,6 +210,7 @@ describe('thread state', () => {
       chat: chat(1),
       messages: [message({ id: 1, chatId: 1 })],
       readInboxMaxId: 0,
+      readOutboxMaxId: 0,
       unreadDividerId: null,
       focusMessageId: null,
     };
@@ -285,6 +298,7 @@ describe('poll state', () => {
       chat: chat(1),
       messages: [message({ id: 5, chatId: 1, poll: POLL })],
       readInboxMaxId: 2,
+      readOutboxMaxId: 0,
       unreadDividerId: null,
       focusMessageId: null,
     };

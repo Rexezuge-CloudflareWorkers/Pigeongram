@@ -146,10 +146,12 @@ dialog peer, so the engine looks at the full info instead: a user (`users.getFul
 `{command, description}` in Telegram's order; an empty list is a normal answer, not an error. The SPA asks for
 this when a bot, group or supergroup thread opens and offers the menu from the composer.
 
-`DialogDto` carries the chat, its `lastMessage`, `unread` and `readInboxMaxId` (the read watermark: the
-last read incoming message), plus `pinned`/`muted`. The SPA opens a chat at the first incoming message after
-the watermark instead of the bottom, and `readHistory`'s optional `maxId` reports how far the user actually
-scrolled (omitted, it reads the whole history — the comments screen's behavior).
+`DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
+last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus
+`pinned`/`muted`. The SPA opens a chat at the first incoming message after the inbox watermark instead of
+the bottom, and renders a single check for sent own messages and a double check up to the outbox watermark.
+`readHistory`'s optional `maxId` reports how far the user actually scrolled (omitted, it reads the whole
+history — the comments screen's behavior).
 
 `MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
@@ -235,7 +237,8 @@ its message. A null `poll` means "recheck this one": the SPA calls `getPollResul
 the answer in, so results stay live without the engine holding per-poll state. `sendVote` answers with the same DTO,
 so the caller's own vote renders without waiting for the socket.
 The `read` update carries `{chatId, maxId, unread, inbox}`: `inbox` distinguishes the account's own inbox
-from the peer reading the account's messages, and only inbox reads move `unread` and `readInboxMaxId`.
+from the peer reading the account's messages. Only inbox reads move `unread` and `readInboxMaxId`; outbox
+reads move `readOutboxMaxId`, which is what turns the account's own double checks on.
 
 ## Local development
 

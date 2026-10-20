@@ -807,6 +807,7 @@ describe('toDialogDto', () => {
       peer: { _: 'peerUser', userId: 1 },
       unreadCount: 3,
       readInboxMaxId: 12,
+      readOutboxMaxId: 7,
       pinned: false,
       notifySettings: { _: 'peerNotifySettings', silent: false },
     } as unknown as tl.RawDialog;
@@ -816,6 +817,7 @@ describe('toDialogDto', () => {
       lastMessage: null,
       unread: 3,
       readInboxMaxId: 12,
+      readOutboxMaxId: 7,
       pinned: false,
       muted: false,
     });
@@ -827,6 +829,8 @@ describe('toDialogDto', () => {
       peer: { _: 'peerUser', userId: 1 },
       notifySettings: { _: 'peerNotifySettings', silent: false },
     } as unknown as tl.RawDialog;
-    expect(toDialogDto(new Dialog(raw, index(), new Map())).readInboxMaxId).toBe(0);
+    const dto = toDialogDto(new Dialog(raw, index(), new Map()));
+    expect(dto.readInboxMaxId).toBe(0);
+    expect(dto.readOutboxMaxId).toBe(0);
   });
 });

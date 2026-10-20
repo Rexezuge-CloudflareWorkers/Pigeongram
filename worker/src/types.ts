@@ -21,7 +21,7 @@ export interface MeDto {
   phone: string | null;
   /**
   Opaque token identifying the current profile photo, or null. It changes
-  when the photo changes and only exists to bust the `/api/avatar` cache.
+  when the photo changes and only exists to bust the `/user/avatar` cache.
   */
   photo: string | null;
 }
@@ -429,7 +429,7 @@ export interface MessageMediaDto {
 }
 
 /**
-Media kinds `POST /api/upload` accepts. The SPA maps the file's MIME onto one
+Media kinds `POST /user/upload` accepts. The SPA maps the file's MIME onto one
 of these; the engine never guesses from bytes.
 */
 export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
@@ -448,7 +448,7 @@ export interface DialogDto {
 }
 
 /**
-Updates pushed over the `/api/updates` WebSocket.
+Updates pushed over the `/user/updates` WebSocket.
 */
 export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }

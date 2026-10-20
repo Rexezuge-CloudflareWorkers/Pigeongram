@@ -159,7 +159,7 @@ function rangedDownload(
 
 /**
  * The message-media union members that are file locations (everything a
- * `/api/file` request can stream).
+ * `/user/file` request can stream).
  */
 type DownloadableMedia = Photo | Video | Audio | Voice | Sticker | Document;
 

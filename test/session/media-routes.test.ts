@@ -5,7 +5,7 @@ import type { MediaDownload } from '../../worker/src/session/media';
 import { avatarResponse, fileResponse } from '../../worker/src/session/media-routes';
 
 /**
- * The HTTP half of `/api/file` and `/api/avatar`: which `Range` forms reach the
+ * The HTTP half of `/user/file` and `/user/avatar`: which `Range` forms reach the
  * download, and which headers make a `<video>` seek. The engine test suite
  * covers the malformed-coordinate 400s; these cases lock the 200/206 contract.
  */
@@ -40,7 +40,7 @@ function target(path: string, headers: Record<string, string> = {}): { request: 
 describe('fileResponse', () => {
   it('serves a whole file with range support advertised', async () => {
     const { driver, streamMessageMedia } = stubDriver(download());
-    const { request, url } = target('/api/file?chatId=1&messageId=2');
+    const { request, url } = target('/user/file?chatId=1&messageId=2');
 
     const response = await fileResponse(driver, request, url);
 
@@ -56,7 +56,7 @@ describe('fileResponse', () => {
   it('forwards a bounded range and its 206 metadata', async () => {
     const media = download({ status: 206, length: 100, contentRange: 'bytes 100-199/1000' });
     const { driver, streamMessageMedia } = stubDriver(media);
-    const { request, url } = target('/api/file?chatId=1&messageId=2', { range: 'bytes=100-199' });
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=100-199' });
 
     const response = await fileResponse(driver, request, url);
 
@@ -67,7 +67,7 @@ describe('fileResponse', () => {
 
   it('forwards an open-ended range, the form a seeking player sends', async () => {
     const { driver, streamMessageMedia } = stubDriver(download({ status: 206, length: 600, contentRange: 'bytes 400-999/1000' }));
-    const { request, url } = target('/api/file?chatId=1&messageId=2', { range: 'bytes=400-' });
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=400-' });
 
     await fileResponse(driver, request, url);
 
@@ -78,7 +78,7 @@ describe('fileResponse', () => {
     const ranges = ['bytes=abc', 'bytes=0-1,5-9', 'items=0-1', 'bytes=10-5'];
     for (const range of ranges) {
       const { driver, streamMessageMedia } = stubDriver(download());
-      const { request, url } = target('/api/file?chatId=1&messageId=2', { range });
+      const { request, url } = target('/user/file?chatId=1&messageId=2', { range });
       const response = await fileResponse(driver, request, url);
       expect(response.status, range).toBe(200);
       expect(streamMessageMedia, range).toHaveBeenCalledWith(1, 2, {});
@@ -87,7 +87,7 @@ describe('fileResponse', () => {
 
   it('answers a poster request from the thumbnail', async () => {
     const { driver, streamMessageMedia } = stubDriver(download({ mime: 'image/jpeg', length: null }));
-    const { request, url } = target('/api/file?chatId=1&messageId=2&thumb=1');
+    const { request, url } = target('/user/file?chatId=1&messageId=2&thumb=1');
 
     const response = await fileResponse(driver, request, url);
 
@@ -101,7 +101,7 @@ describe('fileResponse', () => {
       throw new EngineError('Requested range is outside the file', 416);
     });
     const driver = { streamMessageMedia } as unknown as TelegramDriver;
-    const { request, url } = target('/api/file?chatId=1&messageId=2', { range: 'bytes=5000-' });
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=5000-' });
 
     await expect(fileResponse(driver, request, url)).rejects.toMatchObject({ status: 416 });
   });
@@ -111,7 +111,7 @@ describe('avatarResponse', () => {
   it('resolves the requested size and caches for a day', async () => {
     const streamAvatar = vi.fn(async () => download({ mime: 'image/jpeg', size: null, length: null }));
     const driver = { streamAvatar } as unknown as TelegramDriver;
-    const { url } = target('/api/avatar?chatId=7&size=big');
+    const { url } = target('/user/avatar?chatId=7&size=big');
 
     const response = await avatarResponse(driver, url);
 

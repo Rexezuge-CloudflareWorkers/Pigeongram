@@ -219,10 +219,10 @@ function installSignedInFetch(
   } = {},
 ): FetchCall[] {
   return installFetch((call) => {
-    if (call.path === '/api/state') {
+    if (call.path === '/user/state') {
       return json({ phase: 'authorized', authorized: true, me });
     }
-    if (call.path !== '/api/rpc') {
+    if (call.path !== '/user/rpc') {
       return;
     }
     const params = (call.body?.params ?? {}) as Record<string, unknown>;
@@ -386,10 +386,10 @@ describe('App', () => {
 
   it('shows the login screen and starts a QR flow when unauthorized', async () => {
     const calls = installFetch((call) => {
-      if (call.path === '/api/state') {
+      if (call.path === '/user/state') {
         return json({ phase: 'unauthorized', authorized: false, me: null });
       }
-      if (call.path === '/api/login/qr') {
+      if (call.path === '/user/login/qr') {
         return json({ phase: 'qr', authorized: false, me: null, qrUrl: 'tg://login?token=abc' });
       }
     });
@@ -398,28 +398,28 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Sign in to Telegram' })).toBeDefined();
     expect(await screen.findByText(/Scan this QR code/)).toBeDefined();
-    expect(calls.some((call) => call.path === '/api/login/qr')).toBe(true);
+    expect(calls.some((call) => call.path === '/user/login/qr')).toBe(true);
   });
 
   it('signs in through the phone flow when the QR path is not usable', async () => {
     let phase = 'unauthorized';
     installFetch((call) => {
-      if (call.path === '/api/state') {
+      if (call.path === '/user/state') {
         return json({ phase, authorized: phase === 'authorized', me: phase === 'authorized' ? me : null });
       }
-      if (call.path === '/api/login/qr') {
+      if (call.path === '/user/login/qr') {
         phase = 'qr';
         return json({ phase: 'qr', authorized: false, me: null, qrUrl: 'tg://login?token=abc' });
       }
-      if (call.path === '/api/login/phone') {
+      if (call.path === '/user/login/phone') {
         phase = 'code';
         return json({ phase: 'code', authorized: false, me: null, phone: '+15551234567', codeType: 'app' });
       }
-      if (call.path === '/api/login/code') {
+      if (call.path === '/user/login/code') {
         phase = 'authorized';
         return json({ phase: 'authorized', authorized: true, me });
       }
-      if (call.path === '/api/rpc') {
+      if (call.path === '/user/rpc') {
         switch (call.body?.method) {
           case 'getMe': {
             return json({ me });
@@ -580,10 +580,10 @@ describe('App', () => {
 
   it('renders the chat list and opens a thread once authorized', async () => {
     installFetch((call) => {
-      if (call.path === '/api/state') {
+      if (call.path === '/user/state') {
         return json({ phase: 'authorized', authorized: true, me });
       }
-      if (call.path === '/api/rpc') {
+      if (call.path === '/user/rpc') {
         switch (call.body?.method) {
           case 'getMe': {
             return json({ me });
@@ -685,10 +685,10 @@ describe('App', () => {
   it('toggles a reaction optimistically and posts sendReaction', async () => {
     const sent: unknown[] = [];
     installFetch((call) => {
-      if (call.path === '/api/state') {
+      if (call.path === '/user/state') {
         return json({ phase: 'authorized', authorized: true, me });
       }
-      if (call.path === '/api/rpc') {
+      if (call.path === '/user/rpc') {
         switch (call.body?.method) {
           case 'getMe': {
             return json({ me });
@@ -1756,7 +1756,7 @@ describe('App', () => {
       if (!image) throw new Error('The viewer has no image');
 
       // The viewer asks for the original, not the album thumbnail.
-      expect(image.getAttribute('src')).toContain('/api/file?chatId=2&messageId=10');
+      expect(image.getAttribute('src')).toContain('/user/file?chatId=2&messageId=10');
       expect(image.getAttribute('src')).not.toContain('thumb=1');
 
       fireEvent.keyDown(document, { key: 'Escape' });
@@ -1800,12 +1800,12 @@ describe('App', () => {
       const dialog = await screen.findByRole('dialog', { name: 'Media viewer' });
       const player = dialog.querySelector<HTMLVideoElement>('video.media-viewer-media');
       if (!player) throw new Error('The viewer has no video');
-      expect(player.getAttribute('src')).toContain('/api/file?chatId=2&messageId=30');
+      expect(player.getAttribute('src')).toContain('/user/file?chatId=2&messageId=30');
       expect(player.getAttribute('poster')).toContain('thumb=1');
 
       fireEvent.error(player);
       const link = await within(dialog).findByRole('link', { name: /clip\.mp4/ });
-      expect(link.getAttribute('href')).toContain('/api/file?chatId=2&messageId=30');
+      expect(link.getAttribute('href')).toContain('/user/file?chatId=2&messageId=30');
     });
   });
 

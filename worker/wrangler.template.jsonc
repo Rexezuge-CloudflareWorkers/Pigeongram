@@ -8,8 +8,10 @@
   "compatibility_date": "2025-12-31",
   "placement": { "mode": "off" },
   // The worker is API-only and is reached exclusively through the Pages
-  // project's `/api/*` proxy (declared by the `API_WORKER` service binding in
-  // pages/wrangler.template.jsonc) — never from the public internet directly.
+  // project's `/api/*` and `/user/*` proxies (declared by the `API_WORKER`
+  // service binding in pages/wrangler.template.jsonc) — never from the public
+  // internet directly. `/api/*` is ungated; `/user/*` requires Cloudflare
+  // Access.
   "workers_dev": false,
   // Workers Logs: per-invocation CPU time is what the session-engine spike is
   // measured against, so the engine (and its Durable Object) must be logged.
@@ -27,12 +29,13 @@
     // which are deployment-specific and therefore declared in
     // `worker/src/env.d.ts` rather than here. Set both per deployment (for
     // example through `WRANGLER_VARS_PATCH_JSON` in CD); when they are absent
-    // `/api/*` fails closed instead of running unauthenticated.
+    // `/user/*` fails closed instead of running unauthenticated. `/api/health`
+    // stays public and carries no account data.
     //
     // Cadence of the session engine's wake alarm, in seconds. The Free-tier
     // budget assumes 300 (12 wakes/hour); raise it to trade presence for cost.
     "WAKE_INTERVAL_SECONDS": "300",
-    // Maximum accepted body of the raw-body `POST /api/upload` route, in
+    // Maximum accepted body of the raw-body `POST /user/upload` route, in
     // bytes. Cloudflare's own request-body cap is 100 MB on Free/Pro, so this
     // only exists to fail early and to lower the ceiling when the account's
     // CPU budget cannot afford large encrypted uploads.

@@ -3,7 +3,7 @@ import type { SqlStorageLike } from './mtproto/sqlite';
 const RETENTION_MS = 8 * 24 * 60 * 60 * 1000;
 
 /**
-The `GET /api/stats` payloads. Only the worker serves this route, so the
+The `GET /user/stats` payloads. Only the worker serves this route, so the
 shapes live with their producer rather than in the shared bridge contract.
 */
 export interface WakeCountersDto {

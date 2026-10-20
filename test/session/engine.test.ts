@@ -40,7 +40,7 @@ type TestEnv = Omit<Partial<CloudflareEnv>, 'UPLOAD_MAX_BYTES'> & { UPLOAD_MAX_B
  * A `DurableObjectState` stand-in: SQLite from `node:sqlite`, an alarm spy, and
  * a socket list. The engine only ever touches these members, so the shape is
  * enough — `WebSocketPair` (the one global workerd owns) is only reached on the
- * `/api/updates` route, which these tests deliberately avoid.
+ * `/user/updates` route, which these tests deliberately avoid.
  */
 function createHarness(env: TestEnv = {}): Harness {
   const db = openNodeDatabase();
@@ -83,7 +83,7 @@ function request(method: string, path: string, body?: unknown): Request {
 }
 
 function uploadRequest(query: string, body: string, headers: Record<string, string> = {}): Request {
-  return new Request(`https://session-engine.internal/api/upload?${query}`, { method: 'POST', body, headers });
+  return new Request(`https://session-engine.internal/user/upload?${query}`, { method: 'POST', body, headers });
 }
 
 const FAKE_CREDENTIALS: TestEnv = {
@@ -92,9 +92,9 @@ const FAKE_CREDENTIALS: TestEnv = {
 };
 
 describe('SessionEngine (no credentials configured)', () => {
-  it('reports the configuration error on /api/state instead of throwing', async () => {
+  it('reports the configuration error on /user/state instead of throwing', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('GET', '/api/state'));
+    const response = await engine.fetch(request('GET', '/user/state'));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       phase: 'error',
@@ -104,9 +104,9 @@ describe('SessionEngine (no credentials configured)', () => {
     });
   });
 
-  it('answers /api/stats with an empty wake log', async () => {
+  it('answers /user/stats with an empty wake log', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('GET', '/api/stats'));
+    const response = await engine.fetch(request('GET', '/user/stats'));
     await expect(response.json()).resolves.toEqual({
       counters: { totalWakes: 0, failedWakes: 0, avgWakeMs: 0, updatesSeen: 0, lastWakeAt: null },
       days: [],
@@ -114,9 +114,9 @@ describe('SessionEngine (no credentials configured)', () => {
     });
   });
 
-  it('records a failed wake and re-arms when POST /api/wake cannot connect', async () => {
+  it('records a failed wake and re-arms when POST /user/wake cannot connect', async () => {
     const { engine, alarms } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/wake'));
+    const response = await engine.fetch(request('POST', '/user/wake'));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ totalWakes: 1, failedWakes: 1 });
     expect(alarms.length).toBeGreaterThan(0);
@@ -126,7 +126,7 @@ describe('SessionEngine (no credentials configured)', () => {
     const { engine, alarms } = createHarness();
     await engine.alarm();
     expect(alarms.length).toBeGreaterThan(0);
-    const stats = (await (await engine.fetch(request('GET', '/api/stats'))).json()) as {
+    const stats = (await (await engine.fetch(request('GET', '/user/stats'))).json()) as {
       counters: { totalWakes: number; failedWakes: number };
     };
     expect(stats.counters).toMatchObject({ totalWakes: 1, failedWakes: 1 });
@@ -134,7 +134,7 @@ describe('SessionEngine (no credentials configured)', () => {
 
   it('puts the login flow into the error phase when QR sign-in cannot start', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/login/qr'));
+    const response = await engine.fetch(request('POST', '/user/login/qr'));
     await expect(response.json()).resolves.toMatchObject({
       phase: 'error',
       authorized: false,
@@ -144,7 +144,7 @@ describe('SessionEngine (no credentials configured)', () => {
 
   it('puts the login flow into the error phase when the phone login cannot start', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/login/phone', { phone: '+15551234567' }));
+    const response = await engine.fetch(request('POST', '/user/login/phone', { phone: '+15551234567' }));
     await expect(response.json()).resolves.toMatchObject({
       phase: 'error',
       authorized: false,
@@ -154,10 +154,10 @@ describe('SessionEngine (no credentials configured)', () => {
 
   it('preserves the login-flow reset when a cancel arrives', async () => {
     const { engine } = createHarness();
-    // With no credentials the /api/state snapshot reports the config error, but
+    // With no credentials the /user/state snapshot reports the config error, but
     // the cancel itself must still reset the flow (see login-flow.test.ts for
     // the state machine assertions).
-    const response = await engine.fetch(request('POST', '/api/login/cancel'));
+    const response = await engine.fetch(request('POST', '/user/login/cancel'));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ authorized: false });
   });
@@ -166,7 +166,7 @@ describe('SessionEngine (no credentials configured)', () => {
 describe('SessionEngine (request handling)', () => {
   it('404s unknown routes', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('GET', '/api/nope'));
+    const response = await engine.fetch(request('GET', '/user/nope'));
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Not found' });
   });
@@ -174,7 +174,7 @@ describe('SessionEngine (request handling)', () => {
   it('400s a non-JSON body', async () => {
     const { engine } = createHarness();
     const response = await engine.fetch(
-      new Request('https://session-engine.internal/api/login/password', {
+      new Request('https://session-engine.internal/user/login/password', {
         method: 'POST',
         body: 'not json',
       }),
@@ -184,19 +184,19 @@ describe('SessionEngine (request handling)', () => {
 
   it('409s a 2FA password with no pending login', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/login/password', { password: 'hunter2' }));
+    const response = await engine.fetch(request('POST', '/user/login/password', { password: 'hunter2' }));
     expect(response.status).toBe(409);
   });
 
   it('409s a login code with no pending phone login', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/login/code', { code: '12345' }));
+    const response = await engine.fetch(request('POST', '/user/login/code', { code: '12345' }));
     expect(response.status).toBe(409);
   });
 
   it('400s a phone login with an unusable number', async () => {
     const { engine } = createHarness();
-    const response = await engine.fetch(request('POST', '/api/login/phone', { phone: 'call me maybe' }));
+    const response = await engine.fetch(request('POST', '/user/login/phone', { phone: 'call me maybe' }));
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: expect.stringContaining('international') as string,
@@ -205,7 +205,7 @@ describe('SessionEngine (request handling)', () => {
 
   it('400s media requests with unusable coordinates', async () => {
     // Missing messageId/chatId, and an avatar size the bridge does not serve.
-    const paths = ['/api/file', '/api/file?chatId=1', '/api/avatar', '/api/avatar?chatId=1&size=huge'];
+    const paths = ['/user/file', '/user/file?chatId=1', '/user/avatar', '/user/avatar?chatId=1&size=huge'];
     for (const path of paths) {
       const { engine } = createHarness();
       const response = await engine.fetch(request('GET', path));
@@ -250,7 +250,7 @@ describe('SessionEngine (request handling)', () => {
 describe('SessionEngine (configured client)', () => {
   it('404s unknown RPC methods', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
-    const response = await engine.fetch(request('POST', '/api/rpc', { method: 'doesNotExist' }));
+    const response = await engine.fetch(request('POST', '/user/rpc', { method: 'doesNotExist' }));
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
       error: expect.stringContaining('doesNotExist') as string,
@@ -259,27 +259,27 @@ describe('SessionEngine (configured client)', () => {
 
   it('400s invalid RPC params before any network call', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
-    const response = await engine.fetch(request('POST', '/api/rpc', { method: 'getHistory', params: {} }));
+    const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getHistory', params: {} }));
     expect(response.status).toBe(400);
   });
 
   it('400s a sendMessage with a malformed reply target before any network call', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(
-      request('POST', '/api/rpc', { method: 'sendMessage', params: { chatId: 1, text: 'hi', replyTo: 0 } }),
+      request('POST', '/user/rpc', { method: 'sendMessage', params: { chatId: 1, text: 'hi', replyTo: 0 } }),
     );
     expect(response.status).toBe(400);
   });
 
   it('400s an RPC without a method name', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
-    const response = await engine.fetch(request('POST', '/api/rpc', { params: {} }));
+    const response = await engine.fetch(request('POST', '/user/rpc', { params: {} }));
     expect(response.status).toBe(400);
   });
 
   it('skips the network on a wake until the account is linked', async () => {
     const { engine, alarms } = createHarness(FAKE_CREDENTIALS);
-    const response = await engine.fetch(request('POST', '/api/wake'));
+    const response = await engine.fetch(request('POST', '/user/wake'));
     expect(response.status).toBe(200);
     // Configured but unsigned-in: the wake is a no-op success, not a failure,
     // because there is nothing to replay before the QR login completes.

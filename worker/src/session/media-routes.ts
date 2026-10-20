@@ -6,8 +6,8 @@ import { requirePeerId } from './params';
 import type { UploadSpec } from './upload';
 
 /**
- * HTTP shaping for the bridge's media routes (`/api/file`, `/api/avatar`,
- * `/api/upload`). Kept out of the engine class so it stays about the session,
+ * HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
+ * `/user/upload`). Kept out of the engine class so it stays about the session,
  * not about query strings and headers.
  */
 

@@ -6,7 +6,7 @@ import { requireCommentPost, requireDiscussion } from './comments';
 import { toMessageDto } from './dto';
 
 /**
- * Outgoing media: `POST /api/upload` streams the browser's request body
+ * Outgoing media: `POST /user/upload` streams the browser's request body
  * straight into mtcute, which chunks it into MTProto upload parts on the
  * `upload` connection pool — the same transport the session already uses.
  */
@@ -33,7 +33,7 @@ export interface UploadSpec {
 }
 
 /**
- * Sends a file uploaded through `POST /api/upload` and maps the sent message
+ * Sends a file uploaded through `POST /user/upload` and maps the sent message
  * back into the bridge DTO.
  *
  * The kind is explicit because mtcute's `InputMedia.auto` sends newly

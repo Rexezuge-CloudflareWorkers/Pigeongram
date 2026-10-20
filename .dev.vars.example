@@ -14,7 +14,8 @@ TELEGRAM_API_ID="1234567"
 TELEGRAM_API_HASH="0123456789abcdef0123456789abcdef"
 
 # Local development does not pass through Cloudflare Access, so the worker's
-# JWT check would reject every request. The bypass is honored only while
-# ENVIRONMENT is not "production"; in a real deployment it fails closed.
+# JWT check on `/user/*` would reject every request. The bypass is honored only
+# while ENVIRONMENT is not "production"; in a real deployment it fails closed.
+# `GET /api/health` is public either way.
 ENVIRONMENT="development"
 ACCESS_DEV_BYPASS="true"

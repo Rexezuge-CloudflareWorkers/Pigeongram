@@ -21,7 +21,7 @@ import {
 } from './params';
 
 /**
- * The curated method surface of `POST /api/rpc`.
+ * The curated method surface of `POST /user/rpc`.
  *
  * Deliberately a whitelist — the bridge never forwards raw MTProto from the
  * browser. Every method resolves peers server-side (marked ids in, DTOs out).

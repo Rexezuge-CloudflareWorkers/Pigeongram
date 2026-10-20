@@ -9,19 +9,22 @@ export { SessionEngine } from './session/engine';
 
 const app = new Hono<{ Bindings: CloudflareEnv }>();
 
-app.get('/health', (c) => c.json({ status: 'ok', service: 'telegram-web-client' }));
+/**
+ * Public liveness. The `/api/*` plane carries no Cloudflare Access gate and no
+ * account data; health is its only route today.
+ */
+app.get('/api/health', (c) => c.json({ status: 'ok', service: 'telegram-web-client' }));
 
 /**
- * Cloudflare Access gate for `/api/*`.
+ * Cloudflare Access gate for `/user/*`.
  *
  * Access authenticates the browser at the Pages edge and forwards a signed
  * `Cf-Access-Jwt-Assertion` header; this verifies that token before anything
  * reaches the session engine. The check lives in the worker, not the Pages
  * Function, because the worker is the last reachable point before the Durable
  * Object — a misconfigured proxy must not expose the account's session.
- * `/health` stays public because it exposes no account data.
  */
-app.use('/api/*', async (c, next) => {
+app.use('/user/*', async (c, next) => {
   const rejection = await requireAccess(c.req.raw, c.env);
   if (rejection) return rejection;
   await next();
@@ -37,7 +40,7 @@ app.use('/api/*', async (c, next) => {
  * are rejected at the edge, and only uploads the engine will actually stream
  * into mtcute ever cross the service binding.
  */
-app.post('/api/upload', async (c, next) => {
+app.post('/user/upload', async (c, next) => {
   try {
     parseUploadSpec(new URL(c.req.url), c.req.raw, c.env);
   } catch (error) {
@@ -47,9 +50,9 @@ app.post('/api/upload', async (c, next) => {
 });
 
 /**
-Everything else in `/api/*` lives in the session engine Durable Object.
+Everything else in `/user/*` lives in the session engine Durable Object.
 */
-app.all('/api/*', async (c) => {
+app.all('/user/*', async (c) => {
   try {
     const id = c.env.SESSION_ENGINE.idFromName(ENGINE_OBJECT_NAME);
     const stub = c.env.SESSION_ENGINE.get(id);

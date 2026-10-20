@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 /**
- * Cloudflare Access verification for the bridge.
+ * Cloudflare Access verification for the `/user/*` surface.
  *
  * Access authenticates the browser at the Pages edge and forwards a signed
  * application token as `Cf-Access-Jwt-Assertion`; the Pages Function passes the

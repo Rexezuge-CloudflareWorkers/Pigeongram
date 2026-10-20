@@ -99,50 +99,50 @@ export class SessionEngine {
 
   private async route(request: Request, url: URL): Promise<Response> {
     switch (`${request.method} ${url.pathname}`) {
-      case 'GET /api/updates': {
+      case 'GET /user/updates': {
         return this.hub.accept();
       }
-      case 'GET /api/state': {
+      case 'GET /user/state': {
         return Response.json(await this.stateSnapshot());
       }
-      case 'POST /api/login/qr': {
+      case 'POST /user/login/qr': {
         return Response.json(await this.loginApi.startQr());
       }
-      case 'POST /api/login/phone': {
+      case 'POST /user/login/phone': {
         return Response.json(await this.loginApi.startPhone(request));
       }
-      case 'POST /api/login/code': {
+      case 'POST /user/login/code': {
         return Response.json(await this.loginApi.submitCode(request));
       }
-      case 'POST /api/login/password': {
+      case 'POST /user/login/password': {
         return Response.json(await this.loginApi.submitPassword(request));
       }
-      case 'POST /api/login/cancel': {
+      case 'POST /user/login/cancel': {
         return Response.json(await this.loginApi.cancel());
       }
-      case 'POST /api/logout': {
+      case 'POST /user/logout': {
         return Response.json(await this.logout());
       }
-      case 'POST /api/rpc': {
+      case 'POST /user/rpc': {
         return Response.json(await this.rpc(request));
       }
-      case 'POST /api/upload': {
+      case 'POST /user/upload': {
         const response = await uploadResponse(this.driver, request, url, this.env);
         this.afterActivity();
         return response;
       }
-      case 'POST /api/wake': {
+      case 'POST /user/wake': {
         return Response.json(await this.runWake('manual'));
       }
-      case 'GET /api/stats': {
+      case 'GET /user/stats': {
         return Response.json(this.stats(url));
       }
-      case 'GET /api/file': {
+      case 'GET /user/file': {
         const response = await fileResponse(this.driver, request, url);
         this.afterActivity();
         return response;
       }
-      case 'GET /api/avatar': {
+      case 'GET /user/avatar': {
         const response = await avatarResponse(this.driver, url);
         this.afterActivity();
         return response;

@@ -32,14 +32,33 @@ export class ApiError extends Error {
 }
 
 /**
+The Cloudflare Access entry point.
+
+A top-level navigation here makes Access run its login flow, after which the
+worker redirects back into the SPA. Keeping it in one place also keeps the
+Pages Function prefix (`/user/*`) and the worker route in step.
+*/
+export const ACCESS_LOGIN_PATH = '/user/login';
+
+/**
+Builds the Access entry URL for a same-origin return path.
+
+`/` stays a bare link; every other path rides through the Access round-trip as
+`next`, so a bookmarked chat link survives the login.
+*/
+export function accessLoginUrl(returnTo: string): string {
+  return returnTo === '/' ? ACCESS_LOGIN_PATH : `${ACCESS_LOGIN_PATH}?next=${encodeURIComponent(returnTo)}`;
+}
+
+/**
 True when the front door rejected the caller's Cloudflare Access session.
 
-Access normally handles this at the edge and shows its login page; a 401 here
-means the worker did not receive a valid assertion, so the page needs a reload
-to run the Access flow again.
+Access normally handles this at the edge and shows its login page; a 401/403
+here means the worker did not receive a valid assertion, so the page falls
+back to the public intro.
 */
 export function isAuthError(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 401;
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -66,7 +85,21 @@ function apiError(status: number, payload: unknown): ApiError {
   );
 }
 
-export const getState = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/state');
+/**
+Reads the engine snapshot, which doubles as the Access probe.
+
+An Access login page can answer `200` with HTML when its redirect is followed
+same-origin; the JSON parser yields `null`, which is not engine state. Throw a
+non-`ApiError` so `useLoginFlow` treats it exactly like the cross-origin
+redirect it stands in for.
+*/
+export async function getState(): Promise<EngineStateDto> {
+  const state = await request<EngineStateDto | null>('/user/state', { cache: 'no-store' });
+  if (state === null || typeof state.authorized !== 'boolean') {
+    throw new TypeError('The /user/state response is not an engine snapshot');
+  }
+  return state;
+}
 
 export const startQr = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/login/qr', { method: 'POST' });
 

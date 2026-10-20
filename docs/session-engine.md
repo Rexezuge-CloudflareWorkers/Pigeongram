@@ -64,9 +64,15 @@ forwarding to the `SessionEngine`. The Access application's policy is the allowl
 token's email. Unless noted, responses are JSON, errors are `{"error": string}` with a 4xx/5xx status, and a
 misconfigured deployment answers `503` with the engine's configuration message.
 
+The public intro page cannot know whether an Access session exists until it probes `/user/state`. Its sign-in button
+navigates to `GET /user/login`, which sits behind the same Access gate; after the login round-trip the worker redirects
+the browser back into the SPA. The optional `next` query must be a same-origin absolute path (protocol-relative URLs,
+backslashes, and CR/LF are rejected) and defaults to `/`.
+
 | Route                       | Body / query                            | Returns                                                    |
 | --------------------------- | --------------------------------------- | ---------------------------------------------------------- |
 | `GET /api/health`           | —                                       | `{"status":"ok","service":"telegram-web-client"}`; public  |
+| `GET /user/login`           | `?next=/path` (optional)                | `302` into the SPA; the Access entry point                 |
 | `GET /user/state`           | —                                       | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …) |
 | `POST /user/login/qr`       | —                                       | `EngineStateDto`; starts (or joins) the QR login           |
 | `POST /user/login/phone`    | `{"phone": string}`                     | `EngineStateDto`; sends a login code (phone-number path)   |
@@ -243,7 +249,8 @@ pnpm --filter @telegram-web-client/pages dev   # SPA on :5173, /api and /user pr
 Local development does not pass through Cloudflare Access. The example `.dev.vars` sets
 `ENVIRONMENT="development"` and `ACCESS_DEV_BYPASS="true"`; the worker skips JWT verification only outside
 production and fails closed if the bypass is ever present with `ENVIRONMENT="production"`. Never set the bypass on a
-deployment.
+deployment. Because the bypass makes the `/user/state` probe succeed, local development goes straight to the QR login;
+the public intro is what an anonymous browser sees when Access is actually in front of `/user*`.
 
 Smoke checks (no Telegram credentials needed for the first two):
 
@@ -267,6 +274,8 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
 2. Deploy (`wrangler deploy` + secrets + the Access vars), then `GET /api/health` without a credential and
    `GET /user/state` through Cloudflare Access. A service token is the clean way to script the user API:
    `curl -H "CF-Access-Client-Id: …" -H "CF-Access-Client-Secret: …" https://<pages-host>/user/state`.
+   In a browser, the same round-trip is: intro → **Sign in with Cloudflare Access** → `/user/login` → back to `/`
+   (or the `next` path) → QR login.
 3. `POST /user/wake` answers with `totalWakes: 1, failedWakes: 0` and the DO returns to sleep; verify with
    `GET /user/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.
 4. QR login completes end-to-end: `phase` walks `qr → scanned → (password) → authorized`, and `me` is populated.
@@ -311,27 +320,27 @@ Pending owner actions (one-time):
 1. `api_id` / `api_hash` from my.telegram.org (the QR login needs them).
 2. Attach the production domain to the **Pages** project, issue the certificate, then put a self-hosted Cloudflare
    Access application (with an allow policy for the owner) in front of the public hostname. Do not use an Access
-   application targeting the worker: Worker-destination Access rejects WebSocket upgrades. Exempt `/api/*` from
-   Access (a Bypass policy) or scope the application path to `/user`, so `GET /api/health` stays reachable without a
-   login while the user API is gated. Copy its AUD tag and the team domain into the verifier vars above.
+   application targeting the worker: Worker-destination Access rejects WebSocket upgrades. Scope the application path
+   to `/user*`, so `/`, the SPA assets, and `GET /api/health` stay reachable without a login while the user API and the
+   `/user/login` entry point are gated. Copy its AUD tag and the team domain into the verifier vars above.
 3. Optionally create an Access **service token** for scripted checks (`/user/stats` during the soak), and add a
    Service Auth policy to the application.
 
 ## Troubleshooting
 
-| Symptom                                                          | Cause                                                                                                                                                                                                            |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/health` → login redirect or `401`                          | The Access application still covers `/api/*` at the edge; exempt it with a Bypass policy or scope the application to `/user`                                                                                     |
-| `/health` → `404`                                                | Expected: the health route moved to `/api/health`                                                                                                                                                                |
-| `/api/state` → `404`                                             | Expected: account routes moved to `/user/*`; use `/user/state`                                                                                                                                                   |
-| `/user/*` → `401 {"code":"access"}`                              | The request reached the worker without a valid `Cf-Access-Jwt-Assertion`: the hostname is not behind Access, the Access session expired, or a service-binding call skipped it. Reload through the Pages hostname |
-| `/user/*` → `503 {"code":"access_config"}`                       | `TEAM_DOMAIN`/`POLICY_AUD` are missing or malformed, or `ACCESS_DEV_BYPASS` is set with `ENVIRONMENT="production"`                                                                                               |
-| `/user/*` → `503` "TELEGRAM_API_ID…"                             | Secrets are missing on the deployment (the engine reports the configuration error)                                                                                                                               |
-| `/user/*` → `503` "Session engine unreachable"                   | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                                                                            |
-| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /user/login/cancel` then retry                                                                                                                          |
-| Scanning the QR fails with a generic client-side error           | The code was older than its ~30 s life (the SPA hides dying codes and counts down); prefer the phone-number path if the camera lag keeps losing the race                                                         |
-| `phase: "error"` on the phone path                               | The number or code was rejected; the phase message names it (`PHONE_NUMBER_INVALID`, `PHONE_CODE_EXPIRED`, `FLOOD_WAIT_…`)                                                                                       |
-| Updates never arrive while a tab is open                         | The socket failed live connect: look for a `{"type":"error"}` frame and `wrangler tail`                                                                                                                          |
-| `getHistory` answers "chatId must be a marked Telegram peer id"  | The client sent a raw/unmarked id; channel ids must be `-100…`                                                                                                                                                   |
-| Logs repeat "Not connected to any DC" in a tight loop            | The updates loop was started on an unsigned-in or disconnected client; the engine guards against both, so this means a stale build — redeploy and re-login                                                       |
-| One `[mtcute:updates] … Session is reset` warning per disconnect | The update loop's in-flight `getDifference` lands on the teardown every wake performs; expected, and the wake itself still reports `ok`                                                                          |
+| Symptom                                                          | Cause                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/health` → login redirect or `401`                          | The Access application still covers `/api/*` at the edge; scope its path to `/user*` (a host-wide app must keep `/` and `/api/*` public)                                                                                                            |
+| `/health` → `404`                                                | Expected: the health route moved to `/api/health`                                                                                                                                                                                                   |
+| `/api/state` → `404`                                             | Expected: account routes moved to `/user/*`; use `/user/state`                                                                                                                                                                                      |
+| `/user/*` → `401 {"code":"access"}`                              | The request reached the worker without a valid `Cf-Access-Jwt-Assertion`: the hostname is not behind Access, the Access session expired, or a service-binding call skipped it. The SPA falls back to the intro; sign in again through `/user/login` |
+| `/user/*` → `503 {"code":"access_config"}`                       | `TEAM_DOMAIN`/`POLICY_AUD` are missing or malformed, or `ACCESS_DEV_BYPASS` is set with `ENVIRONMENT="production"`                                                                                                                                  |
+| `/user/*` → `503` "TELEGRAM_API_ID…"                             | Secrets are missing on the deployment (the engine reports the configuration error)                                                                                                                                                                  |
+| `/user/*` → `503` "Session engine unreachable"                   | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                                                                                                               |
+| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /user/login/cancel` then retry                                                                                                                                                             |
+| Scanning the QR fails with a generic client-side error           | The code was older than its ~30 s life (the SPA hides dying codes and counts down); prefer the phone-number path if the camera lag keeps losing the race                                                                                            |
+| `phase: "error"` on the phone path                               | The number or code was rejected; the phase message names it (`PHONE_NUMBER_INVALID`, `PHONE_CODE_EXPIRED`, `FLOOD_WAIT_…`)                                                                                                                          |
+| Updates never arrive while a tab is open                         | The socket failed live connect: look for a `{"type":"error"}` frame and `wrangler tail`                                                                                                                                                             |
+| `getHistory` answers "chatId must be a marked Telegram peer id"  | The client sent a raw/unmarked id; channel ids must be `-100…`                                                                                                                                                                                      |
+| Logs repeat "Not connected to any DC" in a tight loop            | The updates loop was started on an unsigned-in or disconnected client; the engine guards against both, so this means a stale build — redeploy and re-login                                                                                          |
+| One `[mtcute:updates] … Session is reset` warning per disconnect | The update loop's in-flight `getDifference` lands on the teardown every wake performs; expected, and the wake itself still reports `ok`                                                                                                             |

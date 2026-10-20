@@ -12,11 +12,6 @@ const QR_REFRESH_WINDOW_MS = 3000;
 
 interface LoginScreenProps {
   state: EngineStateDto | null;
-  /**
-  True when the bridge rejected the request because the Cloudflare Access
-  session is missing or expired.
-  */
-  authRequired: boolean;
   error: string | null;
   onPhone: (phone: string) => Promise<void>;
   onCode: (code: string) => Promise<void>;
@@ -24,13 +19,10 @@ interface LoginScreenProps {
   onRetry: () => void;
 }
 
-export function LoginScreen({ state, authRequired, error, onPhone, onCode, onPassword, onRetry }: LoginScreenProps) {
+export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry }: LoginScreenProps) {
   // Which of the two sign-in paths the operator picked; the engine's phase
   // overrides it whenever a code is already in flight (e.g. after a reload).
   const [usePhone, setUsePhone] = useState(false);
-  if (authRequired) {
-    return <AccessRequired />;
-  }
   const phase = state?.phase ?? 'unauthorized';
   const awaitingCode = phase === 'code';
   const phoneForm = usePhone && !awaitingCode && phase !== 'password';
@@ -59,23 +51,6 @@ export function LoginScreen({ state, authRequired, error, onPhone, onCode, onPas
           Session engine: Cloudflare Durable Object, MTProto over WSS. The client only holds your session; messages are fetched live from
           Telegram.
         </p>
-      </section>
-    </main>
-  );
-}
-
-function AccessRequired() {
-  return (
-    <main className="login">
-      <section className="card">
-        <h1>Sign-in required</h1>
-        <p className="muted">
-          Cloudflare Access did not accept this request. Reload the page to sign in again; the session engine is only reachable through
-          Access.
-        </p>
-        <button type="button" onClick={() => location.reload()}>
-          Reload
-        </button>
       </section>
     </main>
   );

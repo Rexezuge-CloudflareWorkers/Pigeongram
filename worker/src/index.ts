@@ -31,6 +31,42 @@ app.use('/user/*', async (c, next) => {
 });
 
 /**
+ * Cloudflare Access entry point.
+ *
+ * The public intro page cannot know whether an Access session exists until it
+ * probes `/user/state`, so its sign-in button navigates here. Access runs its
+ * login flow and redirects back to this URL; the route then returns the
+ * browser to the SPA, preserving the path the visitor arrived on.
+ */
+app.get('/user/login', (c) => c.redirect(safeReturnPath(c.req.raw)));
+
+/**
+ * Reads the `next` parameter of the Access entry point.
+ *
+ * Only a same-origin absolute path is allowed: a protocol-relative URL, a
+ * backslash (which browsers normalize to a slash) or a scheme would turn the
+ * login endpoint into an open redirect.
+ */
+function safeReturnPath(request: Request): string {
+  const next = new URL(request.url).searchParams.get('next');
+  if (next === null || !next.startsWith('/') || next.startsWith('//') || next.includes('\\') || /[\r\n]/.test(next)) {
+    return '/';
+  }
+  const origin = new URL(request.url).origin;
+  let target: URL;
+  try {
+    target = new URL(next, origin);
+  } catch {
+    return '/';
+  }
+  if (target.origin !== origin) return '/';
+  // Returning to the entry point itself would make the browser follow an
+  // endless redirect loop.
+  if (target.pathname === '/user/login' || target.pathname.startsWith('/user/login/')) return '/';
+  return `${target.pathname}${target.search}${target.hash}`;
+}
+
+/**
  * Upload pre-flight.
  *
  * workerd reads a request body after the response it belongs to has been sent

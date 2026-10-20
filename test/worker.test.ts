@@ -36,6 +36,20 @@ async function call(path: string, env: Partial<CloudflareEnv> = {}, init?: Reque
   return worker.fetch(new Request(`https://example.com${path}`, init), env as CloudflareEnv, context);
 }
 
+/**
+Calls the Access entry point with a valid assertion and returns its redirect
+target.
+*/
+async function loginRedirect(next: string | null): Promise<string | null> {
+  const token = await accessToken();
+  const query = next === null ? '' : `?next=${encodeURIComponent(next)}`;
+  const response = await call(`/user/login${query}`, configured(), {
+    headers: { 'cf-access-jwt-assertion': token },
+  });
+  expect(response.status).toBe(302);
+  return response.headers.get('location');
+}
+
 beforeAll(async () => {
   const pair = await generateKeyPair('RS256');
   signingKey = pair.privateKey;
@@ -84,6 +98,27 @@ describe('worker entry', () => {
     const response = await call('/user/state', configured());
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ code: 'access', error: expect.any(String) as string });
+  });
+
+  it('gates the Access entry point like the rest of /user/*', async () => {
+    const response = await call('/user/login', configured());
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ code: 'access' });
+  });
+
+  it('sends the Access entry point back into the SPA', async () => {
+    await expect(loginRedirect(null)).resolves.toBe('/');
+  });
+
+  it('preserves a same-origin path through the Access login', async () => {
+    await expect(loginRedirect('/chat/2')).resolves.toBe('/chat/2');
+  });
+
+  it('never redirects off-origin or back into the entry point', async () => {
+    const rejected = ['https://evil.example', '//evil.example', String.raw`/\evil.example`, '/\r\nX-Test: 1', '/user/login'];
+    for (const next of rejected) {
+      await expect(loginRedirect(next)).resolves.toBe('/');
+    }
   });
 
   it('503s /user/* when Access is not configured', async () => {

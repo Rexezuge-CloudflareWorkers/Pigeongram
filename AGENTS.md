@@ -9,7 +9,7 @@ file records the architecture, the load-bearing invariants, and the house conven
 a Hono API and a Durable Object (`SessionEngine`) that owns one Telegram account's MTProto session: a 5-minute alarm
 wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect (the always-reachable baseline), and
 while a browser socket is attached it holds the session live and pushes updates. The Pages app (`pages/`) is the Vite +
-React front end (QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
+React front end (public intro, QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
 and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
 One account, single user, Free-tier-first: the 10 ms CPU per invocation limit is the constraint the session engine is
 measured against. `docs/session-engine.md` is the engine's runbook.
@@ -53,7 +53,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
   reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
   — `thread-window.ts` the first-window read (newest messages, or a window around a linked post), `reading.ts` the
-  unread-position logic they share, `components/` the screens). Navigation is pathname-based: `routes.ts` is the pure
+  unread-position logic they share, `components/` the screens). The home page has three states: `LandingPage.tsx` is
+  the public intro, `LoginScreen.tsx` the Telegram QR login, and `CheckingAccess.tsx` the Access probe's first paint —
+  `App.tsx` picks among them from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated'`. A successful
+  `/user/state` probe means Access is through, and `state.authorized` then picks QR vs chat list. The intro's sign-in
+  link is `/user/login`; the worker redirects it back into the SPA, carrying a validated same-origin `next` so a
+  bookmarked chat link survives the Access round-trip. Navigation is pathname-based: `routes.ts` is the pure
   route grammar (`/`, `/chat/:id`, `/chat/:id/post/:id`, `/chat/:id/post/:id/comments`), `useRouter.ts` owns
   `location`/`history`/`popstate`, `useChatNavigation.ts` applies routes to the thread and comments controllers, and
   `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
@@ -103,9 +108,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and expiry — before forwarding to the DO. The Access
   application's policy is the allowlist; the worker deliberately does not check the email. `/api/health` is public and
   carries no account data. When `TEAM_DOMAIN`/`POLICY_AUD` are absent or malformed, `/user/*` answers
-  `503 {"code":"access_config"}` — never an unauthenticated fallback. At the edge, the Access application must exempt
-  `/api/*` (Bypass policy) or be path-scoped to `/user`, otherwise the public health route is intercepted before
-  Pages. The Access app must be a **self-hosted** app on the Pages hostname, not a Worker-destination app: the latter
+  `503 {"code":"access_config"}` — never an unauthenticated fallback. At the edge, the Access application must be
+  **path-scoped to `/user*`**: `/`, the SPA assets, and `/api/health` stay public, while the account API and the
+  `/user/login` entry point are gated. A host-wide application with only `/api/*` bypassed would also gate the public
+  intro. `GET /user/login` redirects to a validated same-origin `next` path (default `/`), so Access's return trip
+  lands back in the SPA instead of on the engine. The Access app must be a **self-hosted** app on the Pages hostname,
+  not a Worker-destination app: the latter
   rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips verification only while `ENVIRONMENT !== "production"` and
   belongs in `.dev.vars` only. Do not add an `/api/*` catch-all that forwards to the DO: the public plane must never
   reach the account API.

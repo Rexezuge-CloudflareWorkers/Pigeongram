@@ -44,4 +44,11 @@ describe('Pages Functions', () => {
     expect(new URL(forwarded[0].url).pathname).toBe('/user/state');
     expect(forwarded[0].headers.get('cf-access-jwt-assertion')).toBe('signed-token');
   });
+
+  it('forwards the Access entry point and its return path', async () => {
+    const { forwarded } = await forward(userProxy, '/user/login?next=%2Fchat%2F2');
+    expect(forwarded).toHaveLength(1);
+    expect(new URL(forwarded[0].url).pathname).toBe('/user/login');
+    expect(new URL(forwarded[0].url).search).toBe('?next=%2Fchat%2F2');
+  });
 });

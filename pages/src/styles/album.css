@@ -16,8 +16,18 @@
   position: relative;
   display: block;
   aspect-ratio: 1;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.message .album .cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .message .album .cell img {
@@ -27,7 +37,8 @@
   object-fit: cover;
 }
 
-.message .album .cell .play {
+.message .album .cell .play,
+.message .video-tile .play {
   position: absolute;
   inset: 0;
   display: flex;

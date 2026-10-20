@@ -1,0 +1,100 @@
+/* Message media: photos, animations and video poster tiles open the full-page
+   viewer, while audio, stickers and documents keep their inline controls.
+   The intrinsic-size attributes reserve each box before a lazy load; `height:
+   auto` keeps the intrinsic ratio while max-width caps it to the bubble. */
+.message .media-open {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.message .media-open:focus-visible,
+.message .video-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.message .photo {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+.message .video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+/* A video bubble is a poster tile: the original is fetched only when the
+   viewer opens, so the thread stays light and the click has one meaning. */
+.message .video-tile {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.message .video-tile img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.message .video-tile .duration {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.message .audio {
+  width: min(320px, 100%);
+}
+
+.message .sticker {
+  max-width: 160px;
+  height: auto;
+  border-radius: 8px;
+}
+
+.message .document {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.message .document:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.message .doc-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.message .doc-size {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}

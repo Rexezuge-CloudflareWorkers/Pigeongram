@@ -1153,7 +1153,7 @@ describe('App', () => {
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
 
       const divider = threadSection().querySelector('[data-unread-divider]');
-      expect(divider?.textContent).toBe('Unread messages');
+      expect(divider?.textContent).toBe('Unread Messages');
       // The divider sits right above the first unread message.
       expect((divider?.nextElementSibling as HTMLElement | null)?.dataset.messageId).toBe('9');
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
@@ -1358,7 +1358,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await within(threadSection()).findByText('Unread messages')).toBeDefined();
+      expect(await within(threadSection()).findByText('Unread Messages')).toBeDefined();
       // The divider jump owns the position; the stubbed scrollIntoView left
       // the list at the top.
       expect(scrollContainer().scrollTop).toBe(0);

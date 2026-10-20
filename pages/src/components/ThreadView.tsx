@@ -306,7 +306,7 @@ export function ThreadView({
               ) : null}
               {group.some((message) => message.id === unreadDividerId) ? (
                 <div className="unread-divider" data-unread-divider>
-                  Unread messages
+                  Unread Messages
                 </div>
               ) : null}
               <MessageRow

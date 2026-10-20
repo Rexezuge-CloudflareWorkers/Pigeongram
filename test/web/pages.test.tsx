@@ -1479,6 +1479,35 @@ describe('App', () => {
     });
   });
 
+  describe('media playback', () => {
+    const video: MessageMediaDto = {
+      kind: 'video',
+      fileName: 'clip.mp4',
+      mime: 'video/x-matroska',
+      size: 2048,
+      width: 640,
+      height: 360,
+      duration: 12,
+    };
+
+    it('falls back to the download link when the browser cannot play the video', async () => {
+      installSignedInFetch({ history: () => json({ messages: [message({ id: 30, chatId: 2, text: '', media: video })] }) });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+
+      const element = await waitFor(() => {
+        const videoElement = threadSection().querySelector('video');
+        if (!videoElement) throw new Error('The video is not rendered');
+        return videoElement;
+      });
+
+      fireEvent.error(element);
+
+      const link = await within(threadSection()).findByRole('link', { name: /clip\.mp4/ });
+      expect(link.getAttribute('href')).toContain('/api/file?chatId=2&messageId=30');
+    });
+  });
+
   describe('channel comments', () => {
     const GROUP = -1_000_000_000_030;
     /**

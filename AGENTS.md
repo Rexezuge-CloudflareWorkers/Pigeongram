@@ -98,6 +98,11 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
   parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
   without consuming the body (cloudflare/workerd#918), so malformed and oversized uploads must never reach it.
+- **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
+  window over `downloadAsIterable` — 4 KB-aligned offset, dropped prefix, local tail cut, and `throttle` backpressure
+  so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB divisor) and
+  rejects browser ranges with `MtArgumentError` on the first pull, i.e. after the `206` headers are already sent. That
+  is what broke `<video>` after its first buffered seconds and Safari's `bytes=0-1` probe outright.
 - **Sockets use the hibernation API**, so the DO can sleep while a tab is attached; the wire protocol lives in
   `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/api/updates` accept path has no
   unit test — it is covered by the local smoke test.

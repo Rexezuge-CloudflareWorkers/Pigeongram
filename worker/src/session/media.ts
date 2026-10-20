@@ -1,6 +1,7 @@
 import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { EngineError } from './errors';
+import { windowedStream } from './media-stream';
 
 /**
  * Media downloads.
@@ -50,7 +51,8 @@ export interface MessageMediaOptions {
  * `thumb: true` resolves the best thumbnail of the media instead — the poster
  * for a video or the preview of a photo. A `range` produces a partial
  * response from the closest 4 KB-aligned offset, which is what lets `<video>`
- * seek without downloading the whole file.
+ * seek without downloading the whole file (`media-stream.ts` cuts the window
+ * itself, for the reason documented there).
  */
 export async function streamMessageMedia(
   client: TelegramClient,
@@ -98,12 +100,13 @@ export async function streamAvatar(client: TelegramClient, chatId: number, size:
 /**
  * A full (status 200) download. `exactSize` says whether `location.fileSize`
  * is the true byte length — for photos it is derived from the size list, so it
- * is used for bounds but not promised as `content-length`.
+ * is used for bounds but not promised as `content-length`; without it the
+ * window runs to the end of the file.
  */
 function fullDownload(client: TelegramClient, location: FileLocation, mime: string, exactSize: boolean): MediaDownload {
   const size = exactSize ? (location.fileSize ?? null) : null;
   return {
-    stream: iterate(client, location, {}),
+    stream: windowedStream(client, location, { offset: 0, drop: 0, length: size }),
     mime,
     size,
     length: size,
@@ -133,73 +136,15 @@ function rangedDownload(
   // Telegram offsets must be 4 KB-aligned, so start at the closest aligned
   // offset below the request and drop the extra prefix bytes from the stream.
   const aligned = range.start - (range.start % RANGE_ALIGNMENT);
-  const skip = range.start - aligned;
   const length = end - range.start + 1;
   return {
-    stream: dropPrefix(iterate(client, location, { offset: aligned, limit: length + skip }), skip),
+    stream: windowedStream(client, location, { offset: aligned, drop: range.start - aligned, length }),
     mime,
     size,
     length,
     status: 206,
     contentRange: `bytes ${range.start}-${end}/${size}`,
   };
-}
-
-function iterate(client: TelegramClient, location: FileLocation, params: { offset?: number; limit?: number }): ReadableStream<Uint8Array> {
-  const iterator = client.downloadAsIterable(location, {
-    ...(location.fileSize !== undefined && { fileSize: location.fileSize }),
-    ...(params.offset !== undefined && { offset: params.offset }),
-    ...(params.limit !== undefined && { limit: params.limit }),
-  });
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const next = await iterator.next();
-      if (next.done) {
-        controller.close();
-        return;
-      }
-      controller.enqueue(next.value);
-    },
-    async cancel() {
-      await iterator.return?.(undefined);
-    },
-  });
-}
-
-/**
- * Skips the first `drop` bytes of a stream, re-chunking as needed.
- */
-function dropPrefix(stream: ReadableStream<Uint8Array>, drop: number): ReadableStream<Uint8Array> {
-  if (drop <= 0) return stream;
-  const reader = stream.getReader();
-  let remaining = drop;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      while (remaining > 0) {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.close();
-          return;
-        }
-        if (value.byteLength <= remaining) {
-          remaining -= value.byteLength;
-          continue;
-        }
-        controller.enqueue(value.subarray(remaining));
-        remaining = 0;
-        return;
-      }
-      const { done, value } = await reader.read();
-      if (done) {
-        controller.close();
-        return;
-      }
-      controller.enqueue(value);
-    },
-    async cancel(reason) {
-      await reader.cancel(reason);
-    },
-  });
 }
 
 /**

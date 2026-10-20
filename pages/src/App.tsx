@@ -338,6 +338,7 @@ export function App() {
             pressingButtonIds={threads.pressingButtonIds}
             unreadDividerId={threads.thread?.unreadDividerId ?? null}
             focusMessageId={threads.thread?.focusMessageId ?? null}
+            positions={threads.positions}
             onBack={router.back}
             onLoadOlder={() => void threads.loadOlder()}
             onSend={threads.send}

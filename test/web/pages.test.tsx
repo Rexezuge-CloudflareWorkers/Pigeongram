@@ -1978,6 +1978,40 @@ describe('App', () => {
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
     });
 
+    it('returns to the channel where it was left when comments close', async () => {
+      const channelHistory = Array.from({ length: 7 }, (_, index) =>
+        index + 1 === post.id ? post : message({ id: index + 1, chatId: channel.id, text: `post ${String(index + 1)}` }),
+      );
+      installCommentsFetch(
+        (call) => {
+          if (call.body?.method !== 'getComments') return;
+          return json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT });
+        },
+        () => json({ messages: channelHistory }),
+      );
+      stubLayout({ listHeight: 600, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      // Fully read: the channel opens at the bottom.
+      expect(scrollContainer().scrollTop).toBe(600);
+      // Scroll up, then open comments from the post.
+      scrollContainer().scrollTop = 200;
+      fireEvent.scroll(scrollContainer());
+      openComments();
+      expect(await screen.findByText('Comments')).toBeDefined();
+
+      act(() => {
+        globalThis.history.replaceState({ app: 'telegram-web-client', depth: 1 }, '', `/chat/${String(channel.id)}`);
+        dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      await waitFor(() => expect(screen.queryByText('Comments')).toBeNull());
+      expect(within(threadSection()).getByText('A new feature shipped')).toBeDefined();
+      expect(scrollContainer().scrollTop).toBe(200);
+    });
+
     it('votes in a poll comment and folds live results in', async () => {
       const calls: unknown[] = [];
       const pollComment = comment({ id: ROOT + 1, poll, reply: replyHeader(ROOT) });

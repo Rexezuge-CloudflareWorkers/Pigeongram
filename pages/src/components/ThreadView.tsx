@@ -2,18 +2,14 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
+import type { ThreadPositionMemory } from '../thread-position';
+import { isAtBottom, flashRow, positionThread, readThreadPosition } from '../thread-position';
 import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
 import { Spinner } from './Spinner';
-
-/**
- * The list counts as "at the bottom" within this many pixels, for both the
- * stick-to-bottom pin and the read watermark.
- */
-const BOTTOM_PX = 80;
 
 /**
  * How long a read watermark is held back before it is reported: scrolling
@@ -55,6 +51,11 @@ interface ThreadViewProps {
   opened normally.
   */
   focusMessageId: number | null;
+  /**
+  The open thread's remembered place, so returning from the comments screen
+  lands where the reader left instead of at the divider or the bottom.
+  */
+  positions: ThreadPositionMemory;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
@@ -104,6 +105,7 @@ export function ThreadView({
   onOpenMedia,
   unreadDividerId,
   focusMessageId,
+  positions,
   onReadThrough,
 }: ThreadViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -189,7 +191,7 @@ export function ThreadView({
   */
   const reportVisible = useCallback(
     (element: HTMLDivElement): void => {
-      const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+      const atBottom = isAtBottom(element);
       const visible = new Set<number>();
       if (!atBottom) {
         const container = element.getBoundingClientRect();
@@ -231,21 +233,14 @@ export function ThreadView({
       positionedChat.current = chat.id;
       positionedFocus.current = focusMessageId;
       readThrough.current = 0;
-      const focus = focusMessageId === null ? null : element.querySelector<HTMLElement>(messageRowSelector(focusMessageId));
-      if (focus) {
-        focus.scrollIntoView({ block: 'center' });
-        flashRow(focus);
-      } else {
-        // The divider is the opening position; without one the thread was
-        // fully read and lands at the bottom. A divider whose message sits
-        // outside the loaded window (a jump window) falls back to the row.
-        const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
-        const anchor =
-          divider ?? (unreadDividerId === null ? null : element.querySelector<HTMLElement>(messageRowSelector(unreadDividerId)));
-        if (anchor) anchor.scrollIntoView({ block: 'start' });
-        else element.scrollTop = element.scrollHeight;
-      }
-      stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+      // The comments screen unmounts this view without closing the thread, so
+      // a remembered position wins over the linked post, divider and bottom.
+      positionThread(element, {
+        focusMessageId,
+        unreadDividerId,
+        resume: positions.resume(chat.id),
+      });
+      stickToBottom.current = isAtBottom(element);
       reportVisible(element);
       return;
     }
@@ -253,7 +248,7 @@ export function ThreadView({
     element.scrollTop = element.scrollHeight;
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
-  }, [chat, lastId, messages, loading, unreadDividerId, focusMessageId, reportVisible]);
+  }, [chat, lastId, messages, loading, unreadDividerId, focusMessageId, positions, reportVisible]);
 
   if (!chat) {
     return (
@@ -284,6 +279,11 @@ export function ThreadView({
   const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
   const attach = (file: File, caption: string, replyTo?: number): Promise<void> =>
     onAttach(file, caption, replyTo).then(() => setReplyingTo(null));
+  const openComments = (message: MessageDto): void => {
+    const element = scrollRef.current;
+    if (element) positions.remember(readThreadPosition(element, chat.id));
+    onOpenComments(message);
+  };
 
   return (
     <section className="thread">
@@ -305,7 +305,8 @@ export function ThreadView({
         ref={scrollRef}
         onScroll={(event) => {
           const element = event.currentTarget;
-          stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < BOTTOM_PX;
+          stickToBottom.current = isAtBottom(element);
+          positions.remember(readThreadPosition(element, chat.id));
           reportVisible(element);
         }}
       >
@@ -344,7 +345,7 @@ export function ThreadView({
                 onPressButton={onPressButton}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onJump={jumpToMessage}
-                onOpenComments={chat.kind === 'channel' ? onOpenComments : undefined}
+                onOpenComments={chat.kind === 'channel' ? openComments : undefined}
                 onOpenMedia={onOpenMedia}
               />
             </Fragment>
@@ -372,14 +373,6 @@ export function ThreadView({
       )}
     </section>
   );
-}
-
-/**
-Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
-*/
-function flashRow(element: HTMLElement): void {
-  element.classList.add('reply-flash');
-  setTimeout(() => element.classList.remove('reply-flash'), 1200);
 }
 
 /**

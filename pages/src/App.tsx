@@ -19,7 +19,7 @@ import { useRouter } from './useRouter';
 import { useThread } from './useThread';
 
 export function App() {
-  const { state, gate, error, reportError, onToken, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
+  const { state, authRequired, error, reportError, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
 
   const [me, setMe] = useState<MeDto | null>(null);
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
@@ -267,13 +267,12 @@ export function App() {
     reset();
   }, [closeComments, closeThread, closeViewer, reportError, reset, router]);
 
-  if (gate || !authorized) {
+  if (authRequired || !authorized) {
     return (
       <LoginScreen
         state={state}
-        gate={gate}
+        authRequired={authRequired}
         error={error}
-        onToken={onToken}
         onPhone={onPhone}
         onCode={onCode}
         onPassword={onPassword}

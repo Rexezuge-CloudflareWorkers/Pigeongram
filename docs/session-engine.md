@@ -57,9 +57,11 @@ The Free plan gives 10 ms CPU per invocation (wall time on waits is not CPU). Th
 
 ## Bridge API
 
-All routes live under `/api/*` on the worker; the Pages Function forwards them verbatim. Unless noted, responses
-are JSON, errors are `{"error": string}` with a 4xx/5xx status, and a misconfigured deployment answers `503` with
-the engine's configuration message.
+All routes live under `/api/*` on the worker; the Pages Function forwards them verbatim. Every `/api/*` request is
+gated by Cloudflare Access: the worker verifies the `Cf-Access-Jwt-Assertion` application token (signature, issuer,
+audience and expiry) before forwarding to the `SessionEngine`. The Access application's policy is the allowlist; the
+worker does not inspect the token's email. Unless noted, responses are JSON, errors are `{"error": string}` with a
+4xx/5xx status, and a misconfigured deployment answers `503` with the engine's configuration message.
 
 | Route                      | Body / query                            | Returns                                                    |
 | -------------------------- | --------------------------------------- | ---------------------------------------------------------- |
@@ -78,7 +80,7 @@ the engine's configuration message.
 | `POST /api/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                 |
 | `GET /api/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)  |
 
-`GET /health` lives on the worker, not the engine, and is never gated.
+`GET /health` lives on the worker, not the engine, and is never gated; it carries no account data.
 
 ### Media routes
 
@@ -229,20 +231,25 @@ from the peer reading the account's messages, and only inbox reads move `unread`
 ## Local development
 
 ```bash
-cp .dev.vars.example .dev.vars        # fill in api_id/api_hash and a SPIKE_TOKEN
+cp .dev.vars.example .dev.vars        # fill in api_id/api_hash
 pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler dev                # worker on :8787
 pnpm --filter @telegram-web-client/pages dev   # SPA on :5173, /api proxied
 ```
 
+Local development does not pass through Cloudflare Access. The example `.dev.vars` sets
+`ENVIRONMENT="development"` and `ACCESS_DEV_BYPASS="true"`; the worker skips JWT verification only outside
+production and fails closed if the bypass is ever present with `ENVIRONMENT="production"`. Never set the bypass on a
+deployment.
+
 Smoke checks (no Telegram credentials needed for the first two):
 
 ```bash
 curl -s localhost:8787/health
-curl -s localhost:8787/api/state -H "x-session-token: $SPIKE_TOKEN"   # → phase "unauthorized"
+curl -s localhost:8787/api/state                                      # → phase "unauthorized"
 ```
 
-With credentials in `.dev.vars`, open the SPA, paste the token, and scan the QR code from Telegram
+With credentials in `.dev.vars`, open the SPA and scan the QR code from Telegram
 (Settings → Devices → Link Desktop Device).
 
 Both sign-in paths are available in the SPA: the QR code (primary) and, behind "Use a phone number instead",
@@ -254,7 +261,9 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
 ## Milestone 1 — spike acceptance
 
 1. `pnpm exec wrangler deploy --dry-run` is clean (also verifies the wasm import).
-2. Deploy (`wrangler deploy` + secrets), then `GET /health` and `GET /api/state` through the token gate.
+2. Deploy (`wrangler deploy` + secrets + the Access vars), then `GET /health` and `GET /api/state` through Cloudflare
+   Access. A service token is the clean way to script the calls:
+   `curl -H "CF-Access-Client-Id: …" -H "CF-Access-Client-Secret: …" https://<pages-host>/api/state`.
 3. `POST /api/wake` answers with `totalWakes: 1, failedWakes: 0` and the DO returns to sleep; verify with
    `GET /api/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.
 4. QR login completes end-to-end: `phase` walks `qr → scanned → (password) → authorized`, and `me` is populated.
@@ -282,28 +291,40 @@ pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler deploy
 pnpm exec wrangler secret put TELEGRAM_API_ID
 pnpm exec wrangler secret put TELEGRAM_API_HASH
-pnpm exec wrangler secret put SPIKE_TOKEN       # until Access exists
 ```
+
+The worker verifies Cloudflare Access on `/api/*`, so the deployment also needs both verifier vars — through
+`WRANGLER_VARS_PATCH_JSON` in CD or the dashboard:
+
+```json
+{ "TEAM_DOMAIN": "https://<team>.cloudflareaccess.com", "POLICY_AUD": "<application-aud-tag>" }
+```
+
+Missing or malformed values make `/api/*` answer `503 {"code":"access_config"}`; there is no unauthenticated
+fallback. Set them before deploying this change.
 
 Pending owner actions (one-time):
 
 1. `api_id` / `api_hash` from my.telegram.org (the QR login needs them).
-2. Attach the production domain to the **Pages** project, issue the certificate, then put a Cloudflare Access
-   application (with an allow policy for the owner) in front of it.
-3. Only then remove `SPIKE_TOKEN` (`wrangler secret delete SPIKE_TOKEN`): Access is the gate from that point on,
-   and the worker itself is not publicly routable.
+2. Attach the production domain to the **Pages** project, issue the certificate, then put a self-hosted Cloudflare
+   Access application (with an allow policy for the owner) in front of the public hostname. Do not use an Access
+   application targeting the worker: Worker-destination Access rejects WebSocket upgrades. Copy its AUD tag and the
+   team domain into the verifier vars above.
+3. Optionally create an Access **service token** for scripted checks (`/api/stats` during the soak), and add a
+   Service Auth policy to the application.
 
 ## Troubleshooting
 
-| Symptom                                                          | Cause                                                                                                                                                      |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/*` → `401 {"code":"gate"}`                                 | `SPIKE_TOKEN` is set and the `x-session-token`/`?token=` value does not match                                                                              |
-| `/api/*` → `503` "TELEGRAM_API_ID…"                              | Secrets are missing on the deployment (the engine reports the configuration error)                                                                         |
-| `/api/*` → `503` "Session engine unreachable"                    | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                      |
-| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /api/login/cancel` then retry                                                                     |
-| Scanning the QR fails with a generic client-side error           | The code was older than its ~30 s life (the SPA hides dying codes and counts down); prefer the phone-number path if the camera lag keeps losing the race   |
-| `phase: "error"` on the phone path                               | The number or code was rejected; the phase message names it (`PHONE_NUMBER_INVALID`, `PHONE_CODE_EXPIRED`, `FLOOD_WAIT_…`)                                 |
-| Updates never arrive while a tab is open                         | The socket failed live connect: look for a `{"type":"error"}` frame and `wrangler tail`                                                                    |
-| `getHistory` answers "chatId must be a marked Telegram peer id"  | The client sent a raw/unmarked id; channel ids must be `-100…`                                                                                             |
-| Logs repeat "Not connected to any DC" in a tight loop            | The updates loop was started on an unsigned-in or disconnected client; the engine guards against both, so this means a stale build — redeploy and re-login |
-| One `[mtcute:updates] … Session is reset` warning per disconnect | The update loop's in-flight `getDifference` lands on the teardown every wake performs; expected, and the wake itself still reports `ok`                    |
+| Symptom                                                          | Cause                                                                                                                                                                                                            |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/*` → `401 {"code":"access"}`                               | The request reached the worker without a valid `Cf-Access-Jwt-Assertion`: the hostname is not behind Access, the Access session expired, or a service-binding call skipped it. Reload through the Pages hostname |
+| `/api/*` → `503 {"code":"access_config"}`                        | `TEAM_DOMAIN`/`POLICY_AUD` are missing or malformed, or `ACCESS_DEV_BYPASS` is set with `ENVIRONMENT="production"`                                                                                               |
+| `/api/*` → `503` "TELEGRAM_API_ID…"                              | Secrets are missing on the deployment (the engine reports the configuration error)                                                                                                                               |
+| `/api/*` → `503` "Session engine unreachable"                    | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                                                                            |
+| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /api/login/cancel` then retry                                                                                                                           |
+| Scanning the QR fails with a generic client-side error           | The code was older than its ~30 s life (the SPA hides dying codes and counts down); prefer the phone-number path if the camera lag keeps losing the race                                                         |
+| `phase: "error"` on the phone path                               | The number or code was rejected; the phase message names it (`PHONE_NUMBER_INVALID`, `PHONE_CODE_EXPIRED`, `FLOOD_WAIT_…`)                                                                                       |
+| Updates never arrive while a tab is open                         | The socket failed live connect: look for a `{"type":"error"}` frame and `wrangler tail`                                                                                                                          |
+| `getHistory` answers "chatId must be a marked Telegram peer id"  | The client sent a raw/unmarked id; channel ids must be `-100…`                                                                                                                                                   |
+| Logs repeat "Not connected to any DC" in a tight loop            | The updates loop was started on an unsigned-in or disconnected client; the engine guards against both, so this means a stale build — redeploy and re-login                                                       |
+| One `[mtcute:updates] … Session is reset` warning per disconnect | The update loop's in-flight `getDifference` lands on the teardown every wake performs; expected, and the wake itself still reports `ok`                                                                          |

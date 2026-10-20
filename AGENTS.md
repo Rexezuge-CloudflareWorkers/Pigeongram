@@ -39,13 +39,16 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 
 ### Layout
 
-- `worker/` — the API worker. `src/index.ts` is the Hono entry (health, the `SPIKE_TOKEN` gate on `/api/*`, forwarding
-  to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export. `src/session/` holds
-  the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`, `media`, `comments`, `stats`,
-  `login-flow`, `driver`, `http`, `socket-hub`) and the mtcute integration (`mtproto/{client,crypto,transport,sqlite,platform}.ts`).
-  The bridge contract is `src/types.ts` (the DTOs) plus `src/rpc-types.ts` (the RPC method shapes), both mirrored in
-  the SPA. `wrangler.template.jsonc` declares the DO binding (`SESSION_ENGINE`), the `v1` SQLite migration,
-  `workers_dev: false` and `WAKE_INTERVAL_SECONDS`.
+- `worker/` — the API worker. `src/index.ts` is the Hono entry (health, the Cloudflare Access JWT gate on `/api/*`,
+  forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
+  `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
+  domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
+  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`) and the mtcute integration
+  (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
+  `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA. `wrangler.template.jsonc` declares the DO
+  binding (`SESSION_ENGINE`), the `v1` SQLite migration, `workers_dev: false` and `WAKE_INTERVAL_SECONDS`; the
+  deployment-specific `TEAM_DOMAIN`/`POLICY_AUD` come from `WRANGLER_VARS_PATCH_JSON` and are declared in
+  `src/env.d.ts`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
   reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts, send/attach/react
@@ -94,15 +97,20 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
   closes it before leaving the thread.
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Function
-  (`API_WORKER` service binding). Until Cloudflare Access guards the Pages domain, every `/api/*` route is gated by the
-  `SPIKE_TOKEN` secret (`x-session-token` header, or `?token=` for socket upgrades); the SPA asks for it on a 401
-  `{"code":"gate"}` and stores it in localStorage. Delete the secret once Access is in place.
+  (`API_WORKER` service binding). Every `/api/*` route verifies the Cloudflare Access assertion (`Cf-Access-Jwt-Assertion`)
+  in `worker/src/access.ts` — RS256 signature against `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and
+  expiry — before forwarding to the DO. The Access application's policy is the allowlist; the worker deliberately does
+  not check the email. `/health` is public. When `TEAM_DOMAIN`/`POLICY_AUD` are absent or malformed, `/api/*` answers
+  `503 {"code":"access_config"}` — never an unauthenticated fallback. The Access app must be a **self-hosted** app on the
+  Pages hostname, not a Worker-destination app: the latter rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips
+  verification only while `ENVIRONMENT !== "production"` and belongs in `.dev.vars` only.
 - **Storage is mtcute's `BaseSqliteStorage` over the DO's SQLite.** `session/mtproto/sqlite.ts` adapts `ctx.storage.sql`
   to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
   There is no history backfill — session, update state and small caches only; history and media are fetched live through
   the bridge.
-- **Media routes are gated too.** `<img>`/`<video>`/`<audio>` cannot set headers, so `/api/file` and `/api/avatar`
-  accept the token as `?token=` (the SPA appends it). `POST /api/upload` takes the file as the raw request body,
+- **Media routes are gated too.** `<img>`/`<video>`/`<audio>` cannot set headers, so they rely on the same-origin
+  Access session cookie the browser sends with every request; Access forwards the assertion for the worker to verify.
+  There is no token query parameter. `POST /api/upload` takes the file as the raw request body,
   streams it straight into mtcute's upload pool, and is capped by `UPLOAD_MAX_BYTES` (default 100 MB) — that var is
   also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
   parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
@@ -121,9 +129,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - **The wasm crypto module is a static import** (`@mtcute/wasm/mtcute.wasm`, instantiated with `initSync`); wrangler's
   default `CompiledWasm` rule bundles it and `wrangler deploy --dry-run` is the check. If a wake's startup CPU ever gets
   tight, move the import behind a dynamic import rather than touching mtcute.
-- **Secrets are declared by hand in `worker/src/env.d.ts`.** The generated `worker-configuration.d.ts` only knows the
-  bindings and vars in the template, so `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`/`SPIKE_TOKEN` are augmented there; any
-  tsconfig whose program uses them must include that file (`test/tsconfig.json` does).
+- **Secrets and deployment-specific Access vars are declared by hand in `worker/src/env.d.ts`.** The generated
+  `worker-configuration.d.ts` only knows the bindings and vars in the template, so `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`
+  (secrets) and `TEAM_DOMAIN`/`POLICY_AUD`/`ACCESS_DEV_BYPASS` (per-deployment configuration) are augmented there. The
+  Access vars are not in the template because they are supplied through `WRANGLER_VARS_PATCH_JSON`; declaring them in a
+  template would make wrangler infer literal `""` types. Any tsconfig whose program uses them must include that file
+  (`test/tsconfig.json` does).
 - **The test partition is a convention:** the SPA suite lives in `test/web/**` (the `defineRepoVitestConfig` web project's
   shape); everything else in `test/` runs under `node` as the backend half.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
@@ -157,11 +168,11 @@ workflow files themselves.
 ## Where this is going / out of scope
 
 The session engine, the bridge (`POST /api/rpc`, `WS /api/updates`, the media routes `GET /api/file`,
-`GET /api/avatar`, `POST /api/upload`) and the Pages proxy are in place; what remains needs the owner. In order:
-(1) **M1 acceptance** — real QR login against the account, one measured wake cycle — after `api_id`/`api_hash`
-exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the **`telegram-tt` fork** behind
-the existing bridge contract, which also needs the domain + Cloudflare Access setup so the interim `SPIKE_TOKEN`
-gate can be removed. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
+`GET /api/avatar`, `POST /api/upload`), the Pages proxy, and the worker's Access JWT verification are in place; what
+remains needs the owner. In order: (1) **M1 acceptance** — real QR login against the account, one measured wake cycle —
+after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the
+**`telegram-tt` fork** behind the existing bridge contract, once the Pages hostname is behind the Access application and
+its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
 Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's
 point-in-time recovery is the current answer), coverage floors, integration tests, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.

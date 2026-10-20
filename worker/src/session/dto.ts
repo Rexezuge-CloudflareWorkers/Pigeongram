@@ -338,9 +338,10 @@ export function toDialogDto(dialog: Dialog): DialogDto {
     chat: toChatDto(dialog.peer),
     lastMessage: dialog.lastMessage ? toMessageDto(dialog.lastMessage) : null,
     unread: dialog.unreadCount,
-    // The raw field is optional even though mtcute's getter is typed as a
-    // number; a dialog that never carried it has read nothing.
+    // The raw fields are optional even though mtcute's getters are typed as
+    // numbers; a dialog that never carried them has read nothing.
     readInboxMaxId: dialog.lastReadIngoing ?? 0,
+    readOutboxMaxId: dialog.lastReadOutgoing ?? 0,
     pinned: dialog.isPinned,
     muted: dialog.isMuted === true,
   };

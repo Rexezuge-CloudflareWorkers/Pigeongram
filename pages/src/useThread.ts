@@ -4,6 +4,7 @@ import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
   applyReactionUpdate,
+  applyThreadReadUpdate,
   applyViewsUpdate,
   findPollMessage,
   mergeMessages,
@@ -17,7 +18,7 @@ import type { ThreadPositionMemory } from './thread-position';
 import { useThreadPositionMemory } from './thread-position';
 import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { ChatDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { DialogDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { prepareUpload } from './upload';
 import { useMessageButtons } from './useMessageButtons';
 import { usePollVoting } from './usePollVoting';
@@ -57,12 +58,11 @@ export interface ThreadController {
   */
   pressingButtonIds: ReadonlySet<number>;
   /**
-  Opens a chat at the dialog's read watermark, reading the first window (or a
-  window around a linked post, when one is given). The watermark comes from
-  the dialog list, which belongs to the caller. Answers with the window it
-  read, so a caller chasing that post (its comments) need not look it up.
+  Opens a chat at the dialog's read watermarks, reading the first window (or a
+  window around a linked post), and answers with the window it read, so a
+  caller chasing that post (its comments) need not look it up.
   */
-  open: (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions) => Promise<MessageDto[]>;
+  open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<MessageDto[]>;
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
@@ -140,7 +140,8 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   }, [thread]);
 
   const open = useCallback(
-    async (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions): Promise<MessageDto[]> => {
+    async (dialog: DialogDto, options?: OpenThreadOptions): Promise<MessageDto[]> => {
+      const chat = dialog.chat;
       const postId = options?.postId ?? null;
       // A fresh read is a new session: only a comments detour keeps the
       // remembered position, because it leaves this thread open.
@@ -148,8 +149,15 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
       // The divider is decided once, from the window the chat opens with: it
       // marks where reading stopped on open, so reading past it (or a message
       // arriving later) leaves it where it is.
-      const divider = (messages: MessageDto[]): number | null => firstUnread(messages, readInboxMaxId)?.id ?? null;
-      setThread({ chat, messages: [], readInboxMaxId, unreadDividerId: null, focusMessageId: postId });
+      const divider = (messages: MessageDto[]): number | null => firstUnread(messages, dialog.readInboxMaxId)?.id ?? null;
+      setThread({
+        chat,
+        messages: [],
+        readInboxMaxId: dialog.readInboxMaxId,
+        readOutboxMaxId: dialog.readOutboxMaxId,
+        unreadDividerId: null,
+        focusMessageId: postId,
+      });
       setError(null);
       setLoading(true);
       try {
@@ -360,16 +368,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
       else applyPoll(update, update.poll);
       return;
     }
-    if (update.type === 'read' && update.inbox) {
-      // The peer reading the account's own messages says nothing about the
-      // account's unread incoming ones, so only inbox reads move the
-      // watermark.
-      setThread((current) =>
-        current && current.chat.id === update.chatId
-          ? { ...current, readInboxMaxId: Math.max(current.readInboxMaxId, update.maxId) }
-          : current,
-      );
-    }
+    if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
   }, []);
 
   return {

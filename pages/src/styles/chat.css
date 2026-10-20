@@ -305,3 +305,9 @@
   color: rgba(233, 238, 243, 0.55);
   font-size: 11px;
 }
+
+/* Sent/single and read/double checks, tucked against the timestamp. */
+.message .meta .ticks {
+  letter-spacing: -0.18em;
+  padding-right: 0.12em;
+}

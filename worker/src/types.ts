@@ -443,6 +443,11 @@ export interface DialogDto {
   unread ones. The SPA opens a chat at this watermark instead of the bottom.
   */
   readInboxMaxId: number;
+  /**
+  Id of the last outgoing message the peer has read. The SPA shows a single
+  check for sent messages and a double check up to this watermark.
+  */
+  readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
 }

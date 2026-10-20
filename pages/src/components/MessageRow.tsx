@@ -69,6 +69,12 @@ export interface MessageRowProps {
   */
   pressingButton?: boolean;
   /**
+  Id of the last outgoing message the peer has read. Own messages up to it
+  render a double check, later ones a single sent check; channels keep their
+  views instead. Defaults to 0 for views that do not track the watermark.
+  */
+  readOutboxMaxId?: number;
+  /**
   Presses a callback or copy button; absent for views that do not press.
   */
   onPressButton?: (message: MessageDto, button: MessageButtonDto) => void;
@@ -97,6 +103,7 @@ export function MessageRow({
   onVote,
   pressingButton = false,
   onPressButton,
+  readOutboxMaxId = 0,
   onReply,
   onJump,
   onOpenComments,
@@ -104,6 +111,10 @@ export function MessageRow({
 }: MessageRowProps) {
   const message = group[0];
   const own = message.outgoing;
+  // Channels report views instead of read receipts, and service messages have
+  // no bubble to put a status on.
+  const showStatus = own && !message.service && chat.kind !== 'channel';
+  const read = showStatus && message.id <= readOutboxMaxId;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   const comments = message.comments;
   const album = group.length > 1;
@@ -240,6 +251,11 @@ export function MessageRow({
             👁 {formatCount(message.views)}
           </span>
         )}
+        {showStatus ? (
+          <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
+            {read ? '✓✓' : '✓'}
+          </span>
+        ) : null}
         {formatTime(message.date)}
       </span>
       {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (

@@ -275,6 +275,11 @@ export interface MessageDto {
   Unix milliseconds.
   */
   date: number;
+  /**
+  The message's text or media caption. Service messages carry no text of
+  their own; the bridge fills this with the label the UI renders (currently
+  the auto-delete timer change) and leaves it empty for other actions.
+  */
   text: string;
   /**
   Rich-text spans of `text` (empty when the message has none).

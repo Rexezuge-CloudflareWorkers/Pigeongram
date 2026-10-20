@@ -6,7 +6,7 @@ import { windowedStream } from '../../worker/src/session/media-stream';
 
 /**
  * `windowedStream` is where browser ranges are turned into byte windows: the
- * 4 KB-aligned offset, the dropped prefix and the cut tail. The stream
+ * part-block-aligned offset, the dropped prefix and the cut tail. The stream
  * behaviour matters as much as the arithmetic — a range that runs ahead of the
  * player buffers the file in the isolate, and one that keeps downloading after
  * the player left burns connection slots.
@@ -102,7 +102,7 @@ describe('windowedStream', () => {
   });
 
   it('drops the alignment prefix and cuts the tail', async () => {
-    // bytes=5-9 of a download that Telegram only serves from the aligned 4.
+    // bytes=5-9 of a download that starts at the aligned offset 4.
     const { source, state } = fakeSource([bytes(1, 2, 3, 4), bytes(5, 6, 7, 8), bytes(9, 10)]);
     const stream = windowedStream(source, LOCATION, { offset: 4, drop: 1, length: 5 });
 
@@ -147,41 +147,81 @@ describe('windowedStream', () => {
   });
 });
 
+const MIB = 1024 * 1024;
+
+/**
+ * A stand-in for Telegram's `upload.getFile` server checks (core.telegram.org/
+ * api/files): the part is 4 KB-aligned, `limit` divides 1 MB, and — the rule
+ * that broke deep video seeks — the whole part stays inside one 1 MB block.
+ */
+function telegramClient(): {
+  client: Parameters<typeof downloadAsIterable>[0];
+  requests: Array<{ offset: number; limit: number }>;
+} {
+  const requests: Array<{ offset: number; limit: number }> = [];
+  const client = {
+    async getPrimaryDcId(): Promise<number> {
+      return 2;
+    },
+    async getPoolSize(): Promise<number> {
+      return 1;
+    },
+    log: { debug(): void {} },
+    async call(request: { offset: number; limit: number }): Promise<{ _: 'upload.file'; bytes: Uint8Array }> {
+      const { offset, limit } = request;
+      if (offset % 4096 !== 0) throw new Error('OFFSET_INVALID');
+      if (limit % 4096 !== 0 || MIB % limit !== 0) throw new Error('LIMIT_INVALID');
+      if (Math.floor(offset / MIB) !== Math.floor((offset + limit - 1) / MIB)) throw new Error('LIMIT_INVALID');
+      requests.push({ offset, limit });
+      return { _: 'upload.file', bytes: new Uint8Array(limit) };
+    },
+  };
+  return {
+    client: client as unknown as Parameters<typeof downloadAsIterable>[0],
+    requests,
+  };
+}
+
+function realSource(client: Parameters<typeof downloadAsIterable>[0]): DownloadSource {
+  return {
+    downloadAsIterable(location, params) {
+      return downloadAsIterable(client, location, params);
+    },
+  };
+}
+
 describe('windowedStream × mtcute', () => {
   /**
-   * The regression guard for the original outage: mtcute validates the
+   * The regression guard for the original outages: mtcute validates the
    * download params in a generator that only runs on the first pull, so a
    * window it rejects fails after the `206` headers are on the wire. The real
    * generator does the chunking here; the stub client stands in for Telegram.
    */
   it('builds params the real download accepts for a mid-file range', async () => {
-    const requests: Array<{ offset: number; limit: number }> = [];
-    const client = {
-      async getPrimaryDcId(): Promise<number> {
-        return 2;
-      },
-      async getPoolSize(): Promise<number> {
-        return 1;
-      },
-      log: { debug(): void {} },
-      async call(request: { offset: number; limit: number }): Promise<{ _: 'upload.file'; bytes: Uint8Array }> {
-        requests.push({ offset: request.offset, limit: request.limit });
-        return { _: 'upload.file', bytes: new Uint8Array(request.limit) };
-      },
-    };
-    const source: DownloadSource = {
-      downloadAsIterable(location, params) {
-        return downloadAsIterable(client as unknown as Parameters<typeof downloadAsIterable>[0], location, params);
-      },
-    };
-
-    const fileSize = 16 * 1024 * 1024;
-    const stream = windowedStream(source, { fileSize } as unknown as FileLocation, { offset: 4096, drop: 0, length: 2 });
+    const { client, requests } = telegramClient();
+    const fileSize = 16 * MIB;
+    const stream = windowedStream(realSource(client), { fileSize } as unknown as FileLocation, {
+      offset: MIB,
+      drop: 0,
+      length: 2,
+    });
     const first = await stream.getReader().read();
 
     expect(first.value?.byteLength).toBe(2);
-    // `upload.getFile` offsets must be 4 KB-aligned; the first request starts
-    // exactly at the window's aligned offset.
-    expect(requests[0]?.offset).toBe(4096);
+    // The download starts exactly at the block-aligned window offset.
+    expect(requests[0]?.offset).toBe(MIB);
+  });
+
+  it('rejects the 4 KB-only alignment that returned LIMIT_INVALID', async () => {
+    const { client } = telegramClient();
+    // 64 KB before the second 1 MB boundary: the shape of the failed
+    // `bytes=259981312-` request. `media.ts` now aligns this down to block 1.
+    const stream = windowedStream(realSource(client), { fileSize: 16 * MIB } as unknown as FileLocation, {
+      offset: MIB - 64 * 1024,
+      drop: 0,
+      length: 2,
+    });
+
+    await expect(collect(stream)).rejects.toThrow('LIMIT_INVALID');
   });
 });

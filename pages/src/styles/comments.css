@@ -18,12 +18,13 @@
   text-decoration: underline;
 }
 
-/* Reaction chips rendered without a handler (the comments screen's post header). */
-.message .reaction.static {
+/* Reaction chips rendered without a handler (the comments screen's post header).
+   `is-static`, not `static`, so Tailwind's `.static` utility cannot clobber it. */
+.message .reaction.is-static {
   cursor: default;
 }
 
-.message .reaction.static:hover {
+.message .reaction.is-static:hover {
   border-color: transparent;
 }
 

@@ -43,7 +43,9 @@
   opacity: 0.65;
 }
 
-.message .poll-answer.static {
+/* Not `static`: Tailwind ships a `.static` utility (position: static) that
+   would override the row's `position: relative` and unpin the result bar. */
+.message .poll-answer.is-static {
   cursor: default;
 }
 

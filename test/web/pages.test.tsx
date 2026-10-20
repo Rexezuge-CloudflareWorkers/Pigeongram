@@ -377,14 +377,58 @@ describe('App', () => {
     return element;
   }
 
-  it('asks the operator to reload when Cloudflare Access rejects the request', async () => {
-    installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
+  it('shows the public intro when Cloudflare Access rejects the request', async () => {
+    const calls = installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Sign-in required' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Reload' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+    const signIn = screen.getByRole('link', { name: 'Sign in with Cloudflare Access' });
+    expect(signIn.getAttribute('href')).toBe('/user/login');
+    expect(calls.some((call) => call.path === '/user/login/qr')).toBe(false);
   });
 
-  it('shows the login screen and starts a QR flow when unauthorized', async () => {
+  it('carries a deep link through the Access login', async () => {
+    globalThis.history.replaceState(null, '', '/chat/2');
+    installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
+
+    render(<App />);
+
+    const signIn = await screen.findByRole('link', { name: 'Sign in with Cloudflare Access' });
+    expect(signIn.getAttribute('href')).toBe('/user/login?next=%2Fchat%2F2');
+  });
+
+  it('treats an unreadable Access redirect as anonymous', async () => {
+    installFetch(() => {
+      // An Access login redirect is cross-origin, so fetch rejects instead of
+      // returning the 302 for the page to read.
+      throw new TypeError('Failed to fetch');
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+  });
+
+  it('treats an Access login page as anonymous', async () => {
+    // A same-origin redirect can land on the login page with a 200 HTML body;
+    // the state probe must not mistake it for an engine snapshot.
+    installFetch(() => new Response('<!doctype html><title>Sign in</title>', { status: 200, headers: { 'content-type': 'text/html' } }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+  });
+
+  it('surfaces a bridge failure on the access probe with a retry', async () => {
+    installFetch(() => json({ error: 'Session engine unreachable' }, 503));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Checking access' })).toBeDefined();
+    expect(screen.getByText('Session engine unreachable')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+  });
+
+  it('shows the QR login when Access is verified but Telegram is not linked', async () => {
     const calls = installFetch((call) => {
       if (call.path === '/user/state') {
         return json({ phase: 'unauthorized', authorized: false, me: null });

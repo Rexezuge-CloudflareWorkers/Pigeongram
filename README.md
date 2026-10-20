@@ -6,8 +6,9 @@ An always-online Telegram web client hosted on Cloudflare:
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
-- **`pages/`** — the frontend. A Vite + React SPA (login by QR, chat list, threads, live updates, pathname deep links)
-  that talks to the worker through the bridge. It will grow into a fork of
+- **`pages/`** — the frontend. A Vite + React SPA with a three-state home: a public intro page, the Telegram QR login
+  once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, pathname
+  deep links). It talks to the worker through the bridge and will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
 - **`functions/`** — the Pages Functions proxying `/api/*` (public health) and `/user/*` (Access-gated user API) to
   the worker over the `API_WORKER` service binding, so the worker itself never has to be reachable from the internet.
@@ -123,11 +124,12 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
 3. Set the runtime secrets once per environment:
    `pnpm exec wrangler secret put TELEGRAM_API_ID`, `TELEGRAM_API_HASH`. Set the Access verifier vars
    (`TEAM_DOMAIN`, `POLICY_AUD`) before the worker deploy, per the repository-settings note above.
-4. Open the Pages URL. The SPA's `/user/*` calls are gated by Cloudflare Access; complete the owner login when
-   prompted, then the SPA shows the QR login. The worker verifies the Access assertion on every `/user/*` request;
-   `GET /api/health` is the public, ungated endpoint. The Access application must exempt `/api/*` at the edge (a
-   Bypass policy for `api`, or an application path scoped to `/user`) or the public health check will still be
-   intercepted before it reaches Pages.
+4. Open the Pages URL. Anonymous visitors see the public intro; **Sign in with Cloudflare Access** navigates to
+   `/user/login`, Access runs its login flow, and the worker sends the browser back to the path it came from (the SPA
+   root by default). Once Access is through, the SPA shows the Telegram QR login while the account is not linked, then
+   the chat list. The worker verifies the Access assertion on every `/user/*` request; `GET /api/health` is the
+   public, ungated endpoint. The Access application must be **path-scoped to `/user*`** (including `/user/login` and
+   `/user/`), so `/`, the SPA assets, and `/api/*` stay reachable without a login.
 5. `pnpm exec wrangler tail` (or the dashboard's live logs) shows a wake every `WAKE_INTERVAL_SECONDS` once the alarm
    is armed.
 
@@ -137,9 +139,9 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
 2. **Domain + Access** — attach the production domain to the **Pages** project, issue its certificate, then create a
    Cloudflare Access application in front of it with an allow policy for the owner. It must be a self-hosted
    application on the public hostname, not an Access application targeting the worker: Worker-destination Access
-   rejects WebSocket upgrades. Exempt `/api/*` from Access (Bypass policy) or scope the application to `/user`, so the
-   public health endpoint remains reachable while the user API stays gated. Note its AUD tag and the team domain, then
-   set `TEAM_DOMAIN`/`POLICY_AUD` as above.
+   rejects WebSocket upgrades. Scope its path to `/user*` so the public intro at `/`, the SPA assets, and
+   `GET /api/health` stay reachable while the user API and the Access entry point remain gated. Note its AUD tag and
+   the team domain, then set `TEAM_DOMAIN`/`POLICY_AUD` as above.
 3. **M1 acceptance + 72 h soak** — follow `docs/session-engine.md`; the runbook lists the exact checks and what to
    watch during the soak.
 

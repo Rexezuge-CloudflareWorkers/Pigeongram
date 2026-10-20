@@ -2,7 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { fetchDialogs, fetchMe, logout, readHistory } from './api';
 import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
+import { CheckingAccess } from './components/CheckingAccess';
 import { CommentsView } from './components/CommentsView';
+import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { MediaViewer } from './components/MediaViewer';
 import { ThreadView } from './components/ThreadView';
@@ -19,7 +21,7 @@ import { useRouter } from './useRouter';
 import { useThread } from './useThread';
 
 export function App() {
-  const { state, authRequired, error, reportError, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
+  const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
 
   const [me, setMe] = useState<MeDto | null>(null);
   const [dialogs, setDialogs] = useState<DialogDto[]>([]);
@@ -267,18 +269,19 @@ export function App() {
     reset();
   }, [closeComments, closeThread, closeViewer, reportError, reset, router]);
 
-  if (authRequired || !authorized) {
-    return (
-      <LoginScreen
-        state={state}
-        authRequired={authRequired}
-        error={error}
-        onPhone={onPhone}
-        onCode={onCode}
-        onPassword={onPassword}
-        onRetry={onRetry}
-      />
-    );
+  // The home page has three faces: a public intro until Access admits the
+  // browser, the QR login once Access is through but Telegram is not linked,
+  // and the chat list once both are. The probe itself is `access === 'checking'`.
+  if (access === 'anonymous') {
+    return <LandingPage />;
+  }
+
+  if (access === 'checking') {
+    return <CheckingAccess error={error} onRetry={retryAccess} />;
+  }
+
+  if (!authorized) {
+    return <LoginScreen state={state} error={error} onPhone={onPhone} onCode={onCode} onPassword={onPassword} onRetry={onRetry} />;
   }
 
   const displayName = me ? `${me.firstName}${me.lastName ? ` ${me.lastName}` : ''}` : 'Telegram';

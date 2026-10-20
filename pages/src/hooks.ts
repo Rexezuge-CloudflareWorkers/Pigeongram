@@ -1,13 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { cancelLogin, getState, isAuthError, startPhoneLogin, startQr, submitLoginCode, submitPassword, updatesSocketUrl } from './api';
+import {
+  ApiError,
+  cancelLogin,
+  getState,
+  isAuthError,
+  startPhoneLogin,
+  startQr,
+  submitLoginCode,
+  submitPassword,
+  updatesSocketUrl,
+} from './api';
 import type { EngineStateDto, ServerSocketMessage, UpdateEvent } from './types';
 
 const POLL_INTERVAL_MS = 2500;
 
 /**
- * The sign-in side of the bridge: polls the engine while the account is not
- * linked, auto-starts the QR login, and feeds the operator's login code and
- * cloud password back into the flow.
+Where the browser stands with Cloudflare Access: being probed, outside the
+front door, or through it. Telegram authorization is a separate question
+(`state.authorized`) and only matters once Access has let the caller in.
+*/
+export type AccessStatus = 'checking' | 'anonymous' | 'authenticated';
+
+/**
+ * The sign-in side of the bridge: probes the Access session, polls the engine
+ * while the account is not linked, auto-starts the QR login, and feeds the
+ * operator's login code and cloud password back into the flow.
  *
  * `reportError` is exposed because the authenticated half of the app reports
  * its failures — including an expired Cloudflare Access session — through the
@@ -15,9 +32,10 @@ const POLL_INTERVAL_MS = 2500;
  */
 export interface LoginFlowState {
   state: EngineStateDto | null;
-  authRequired: boolean;
+  access: AccessStatus;
   error: string | null;
   reportError: (failure: unknown) => void;
+  retryAccess: () => void;
   onPhone: (phone: string) => Promise<void>;
   onCode: (code: string) => Promise<void>;
   onPassword: (password: string) => Promise<void>;
@@ -30,33 +48,56 @@ export interface LoginFlowState {
 
 export function useLoginFlow(): LoginFlowState {
   const [state, setState] = useState<EngineStateDto | null>(null);
-  const [authRequired, setAuthRequired] = useState(false);
+  const [access, setAccess] = useState<AccessStatus>('checking');
   const [error, setError] = useState<string | null>(null);
 
   const reportError = useCallback((failure: unknown): void => {
     if (isAuthError(failure)) {
-      setAuthRequired(true);
+      setAccess('anonymous');
+      setState(null);
       return;
     }
     setError(failure instanceof Error ? failure.message : String(failure));
   }, []);
 
   const refreshState = useCallback(async (): Promise<void> => {
+    let next: EngineStateDto;
     try {
-      let next = await getState();
-      if (!next.authorized && next.phase === 'unauthorized') next = await startQr();
-      setState(next);
-      setAuthRequired(false);
-      setError(null);
+      next = await getState();
     } catch (failure) {
+      // The intro probe runs before anyone has signed in through Access, and
+      // an Access login redirect is cross-origin: fetch cannot read it and
+      // rejects with a TypeError. Treat any non-bridge failure during the
+      // probe as "anonymous"; real bridge failures (an ApiError other than
+      // 401/403) belong on the checking screen with a retry.
+      if (!(failure instanceof ApiError) || isAuthError(failure)) {
+        setAccess('anonymous');
+        setState(null);
+        return;
+      }
       reportError(failure);
+      return;
     }
+    // A successful probe is proof of the Access session even if the Telegram
+    // leg below fails: that error belongs on the login screen, not the intro.
+    setAccess('authenticated');
+    if (!next.authorized && next.phase === 'unauthorized') {
+      try {
+        next = await startQr();
+      } catch (failure) {
+        reportError(failure);
+        return;
+      }
+    }
+    setState(next);
+    setError(null);
   }, [reportError]);
 
   const authorized = state?.authorized ?? false;
 
   useEffect(() => {
-    if (authorized) return;
+    // Nothing to poll without Access; the sign-in button runs the edge flow.
+    if (access === 'anonymous' || authorized) return;
     let stopped = false;
     const run = async (): Promise<void> => {
       if (stopped) return;
@@ -76,7 +117,7 @@ export function useLoginFlow(): LoginFlowState {
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [authorized, refreshState]);
+  }, [access, authorized, refreshState]);
 
   const applyLogin = useCallback(
     async (run: () => Promise<EngineStateDto>): Promise<void> => {
@@ -95,6 +136,11 @@ export function useLoginFlow(): LoginFlowState {
     void cancelLogin().catch(reportError);
   }, [reportError]);
 
+  const retryAccess = useCallback((): void => {
+    setError(null);
+    void refreshState();
+  }, [refreshState]);
+
   const reset = useCallback((): void => {
     setState(null);
     setError(null);
@@ -102,9 +148,10 @@ export function useLoginFlow(): LoginFlowState {
 
   return {
     state,
-    authRequired,
+    access,
     error,
     reportError,
+    retryAccess,
     onPhone: useCallback((phone: string) => applyLogin(() => startPhoneLogin(phone)), [applyLogin]),
     onCode: useCallback((code: string) => applyLogin(() => submitLoginCode(code)), [applyLogin]),
     onPassword: useCallback((password: string) => applyLogin(() => submitPassword(password)), [applyLogin]),

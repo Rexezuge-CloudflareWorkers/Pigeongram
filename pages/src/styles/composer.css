@@ -1,5 +1,6 @@
-/* Composer bar: attach, upload status and the send field. */
+/* Composer bar: bot commands, attach, upload status and the send field. */
 .composer {
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -13,20 +14,74 @@
   display: none;
 }
 
-.composer .attach {
+.composer .attach,
+.composer .slash {
   font-size: 18px;
   line-height: 1;
   padding: 4px;
   color: var(--muted);
 }
 
-.composer .attach:hover:not(:disabled) {
+.composer .slash {
+  font-weight: 700;
+  min-width: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.composer .attach:hover:not(:disabled),
+.composer .slash:hover:not(:disabled),
+.composer .slash[aria-expanded='true'] {
   color: var(--text);
 }
 
-.composer .attach:disabled {
+.composer .slash[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+
+.composer .attach:disabled,
+.composer .slash:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.composer .command-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.composer .command-menu button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.composer .command-menu button.active {
+  background: var(--panel);
+}
+
+.composer .command-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.composer .command-description {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .composer .upload-status {

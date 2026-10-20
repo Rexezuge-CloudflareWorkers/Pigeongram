@@ -5,7 +5,7 @@
  * god-file cap; the SPA mirrors both in `pages/src/types.ts`.
  */
 
-import type { DialogDto, MeDto, MessageDto, MessagePollDto, PeerId } from './types';
+import type { BotCommandDto, DialogDto, MeDto, MessageDto, MessagePollDto, PeerId } from './types';
 
 export interface RpcRequestDto {
   method: string;
@@ -26,7 +26,8 @@ export type RpcMethod =
   | 'sendVote'
   | 'getPollResults'
   | 'getComments'
-  | 'sendComment';
+  | 'sendComment'
+  | 'getBotCommands';
 
 export interface GetDialogsParams {
   limit?: number;
@@ -139,6 +140,10 @@ export interface SendCommentParams {
   replyTo?: number;
 }
 
+export interface GetBotCommandsParams {
+  chatId: PeerId;
+}
+
 export interface GetMeResult {
   me: MeDto;
 }
@@ -208,4 +213,12 @@ export interface GetCommentsResult {
 
 export interface SendCommentResult {
   message: MessageDto;
+}
+
+export interface GetBotCommandsResult {
+  /**
+   * The chat's slash commands in Telegram's order. Group chats aggregate the
+   * commands of their bots, de-duplicated by name.
+   */
+  commands: BotCommandDto[];
 }

@@ -3,6 +3,7 @@ import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
 import type { ChatDto, MessageDto, MessageReactionDto, PeerId } from '../types';
+import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
@@ -105,6 +106,7 @@ export function ThreadView({
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
+  const botCommands = useBotCommands(chat);
 
   // The caller is refreshed every render (the `hooks.ts` pattern), so a read
   // the debounce flushes still reaches it; the chat id captured with the
@@ -338,12 +340,16 @@ export function ThreadView({
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       {chat.canSendMessages ? (
+        // A per-chat instance keeps a draft and an open command menu from
+        // leaking into the next thread.
         <Composer
+          key={chat.id}
           placeholder="Message"
           sending={sending}
           uploading={uploading}
           uploadProgress={uploadProgress}
           replyTarget={replyTarget}
+          botCommands={botCommands}
           onCancelReply={() => setReplyingTo(null)}
           onSend={send}
           onAttach={attach}

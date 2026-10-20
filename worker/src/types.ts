@@ -28,6 +28,15 @@ export interface MeDto {
 
 export type ChatKind = 'user' | 'bot' | 'group' | 'supergroup' | 'channel';
 
+/**
+One entry of a chat's slash-command menu. Telegram carries the command
+without its leading slash; the description is the text the bot registered.
+*/
+export interface BotCommandDto {
+  command: string;
+  description: string;
+}
+
 export interface ChatDto {
   id: PeerId;
   kind: ChatKind;

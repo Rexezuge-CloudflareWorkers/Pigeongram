@@ -122,9 +122,17 @@ canvas-decodable images to JPEG (what official clients do) and falls back to `do
 | `getPollResults` | `{chatId, messageId}`                                                  | `{poll}`                                                                                    |
 | `getComments`    | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`          | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
 | `sendComment`    | `{chatId, messageId, text, replyTo?}`                                  | `{message}`                                                                                 |
+| `getBotCommands` | `{chatId}`                                                             | `{commands: BotCommandDto[]}`                                                               |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
+
+`getBotCommands` reads the slash-command menu Telegram associates with a chat. Commands are not part of the
+dialog peer, so the engine looks at the full info instead: a user (`users.getFullUser`) carries one
+`botInfo.commands` for a bot's private chat, while a group or supergroup (`messages.getFullChat`) carries one
+`botInfo` per bot. The bridge flattens the group list, de-duplicates command names and returns
+`{command, description}` in Telegram's order; an empty list is a normal answer, not an error. The SPA asks for
+this when a bot, group or supergroup thread opens and offers the menu from the composer.
 
 `DialogDto` carries the chat, its `lastMessage`, `unread` and `readInboxMaxId` (the read watermark: the
 last read incoming message), plus `pinned`/`muted`. The SPA opens a chat at the first incoming message after

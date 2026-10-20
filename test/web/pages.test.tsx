@@ -234,6 +234,9 @@ function installSignedInFetch(
       case 'readHistory': {
         return options.rpc?.(call) ?? json({});
       }
+      case 'getBotCommands': {
+        return options.rpc?.(call) ?? json({ commands: [] });
+      }
       default: {
         return options.rpc?.(call) ?? json({ error: `Unknown RPC method: ${String(call.body?.method)}` }, 404);
       }
@@ -601,6 +604,22 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bob'));
     expect(await screen.findByText('oldest')).toBeDefined();
     expect(screen.getAllByText('see you').length).toBeGreaterThan(0);
+  });
+
+  it('loads the slash-command menu for an open bot chat', async () => {
+    const helper: ChatDto = { id: 7, kind: 'bot', title: 'Helper', username: 'helper_bot', photo: null, canSendMessages: true };
+    installSignedInFetch({
+      dialogs: [{ chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, pinned: false, muted: false }],
+      history: () => json({ messages: [] }),
+      rpc: (call) =>
+        call.body?.method === 'getBotCommands' ? json({ commands: [{ command: 'start', description: 'Start the bot' }] }) : undefined,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Helper'));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bot commands' }));
+    expect(screen.getByRole('option', { name: /\/start/ })).toBeDefined();
   });
 
   it('renders the forwarded-from header in a private chat', async () => {

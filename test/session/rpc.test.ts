@@ -231,3 +231,33 @@ describe('getPollResults dispatch', () => {
     expect(result.poll.totalVoters).toBeNull();
   });
 });
+
+describe('getBotCommands dispatch', () => {
+  it('returns the commands of a bot chat', async () => {
+    const calls: number[] = [];
+    const client = {
+      getFullUser: async (chatId: number) => {
+        calls.push(chatId);
+        return { full: { botInfo: { commands: [{ command: 'start', description: 'Start' }] } } };
+      },
+    } as unknown as TelegramClient;
+
+    await expect(dispatchRpc(client, 'getBotCommands', { chatId: 5 })).resolves.toEqual({
+      commands: [{ command: 'start', description: 'Start' }],
+    });
+    expect(calls).toEqual([5]);
+  });
+
+  it('rejects a malformed chat id before Telegram is touched', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      getFullUser: async (chatId: number) => {
+        calls.push(chatId);
+        return { full: {} };
+      },
+    } as unknown as TelegramClient;
+
+    await expect(dispatchRpc(client, 'getBotCommands', { chatId: 0 })).rejects.toThrow('chatId');
+    expect(calls).toEqual([]);
+  });
+});

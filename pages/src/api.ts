@@ -1,5 +1,6 @@
 import type {
   EngineStateDto,
+  GetBotCommandsResult,
   GetCommentsResult,
   GetDialogsResult,
   GetHistoryResult,
@@ -142,6 +143,12 @@ export const fetchComments = (
 
 export const sendComment = (chatId: PeerId, messageId: number, text: string, replyTo?: number): Promise<SendCommentResult> =>
   rpc('sendComment', { chatId, messageId, text, ...(replyTo !== undefined && { replyTo }) });
+
+/**
+Reads the slash-command menu Telegram offers for a chat: a bot's own commands
+in a private chat, or the aggregate of the group's bots.
+*/
+export const fetchBotCommands = (chatId: PeerId): Promise<GetBotCommandsResult> => rpc('getBotCommands', { chatId });
 
 export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
   rpc('searchMessages', { chatId, query, limit: 50 });

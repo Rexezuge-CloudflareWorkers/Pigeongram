@@ -22,6 +22,15 @@ export interface MeDto {
 
 export type ChatKind = 'user' | 'bot' | 'group' | 'supergroup' | 'channel';
 
+/**
+One entry of a chat's slash-command menu. Telegram carries the command
+without its leading slash; the description is the text the bot registered.
+*/
+export interface BotCommandDto {
+  command: string;
+  description: string;
+}
+
 export interface ChatDto {
   id: PeerId;
   kind: ChatKind;
@@ -437,7 +446,8 @@ export type RpcMethod =
   | 'sendVote'
   | 'getPollResults'
   | 'getComments'
-  | 'sendComment';
+  | 'sendComment'
+  | 'getBotCommands';
 
 export interface GetMeResult {
   me: MeDto;
@@ -508,4 +518,12 @@ export interface GetCommentsResult {
 
 export interface SendCommentResult {
   message: MessageDto;
+}
+
+export interface GetBotCommandsResult {
+  /**
+   * The chat's slash commands in Telegram's order. Group chats aggregate the
+   * commands of their bots, de-duplicated by name.
+   */
+  commands: BotCommandDto[];
 }

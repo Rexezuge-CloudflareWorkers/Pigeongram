@@ -2,6 +2,7 @@ import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
 import type { DialogDto } from '../types';
+import { readBotCommands } from './bot-commands';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
@@ -159,6 +160,11 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       }
       const discussion = await requireDiscussion(client, chatId, messageId);
       return { message: toMessageDto(await client.sendText(discussion.peer, text, { replyTo })) };
+    }
+
+    case 'getBotCommands': {
+      const chatId = requirePeerId(params.chatId);
+      return { commands: await readBotCommands(client, chatId) };
     }
 
     default: {

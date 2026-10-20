@@ -66,34 +66,34 @@ function apiError(status: number, payload: unknown): ApiError {
   );
 }
 
-export const getState = (): Promise<EngineStateDto> => request<EngineStateDto>('/api/state');
+export const getState = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/state');
 
-export const startQr = (): Promise<EngineStateDto> => request<EngineStateDto>('/api/login/qr', { method: 'POST' });
+export const startQr = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/login/qr', { method: 'POST' });
 
 export const startPhoneLogin = (phone: string): Promise<EngineStateDto> =>
-  request<EngineStateDto>('/api/login/phone', {
+  request<EngineStateDto>('/user/login/phone', {
     method: 'POST',
     body: JSON.stringify({ phone }),
   });
 
 export const submitLoginCode = (code: string): Promise<EngineStateDto> =>
-  request<EngineStateDto>('/api/login/code', {
+  request<EngineStateDto>('/user/login/code', {
     method: 'POST',
     body: JSON.stringify({ code }),
   });
 
-export const cancelLogin = (): Promise<EngineStateDto> => request<EngineStateDto>('/api/login/cancel', { method: 'POST' });
+export const cancelLogin = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/login/cancel', { method: 'POST' });
 
 export const submitPassword = (password: string): Promise<EngineStateDto> =>
-  request<EngineStateDto>('/api/login/password', {
+  request<EngineStateDto>('/user/login/password', {
     method: 'POST',
     body: JSON.stringify({ password }),
   });
 
-export const logout = (): Promise<{ ok: true }> => request('/api/logout', { method: 'POST' });
+export const logout = (): Promise<{ ok: true }> => request('/user/logout', { method: 'POST' });
 
 export const rpc = <T>(method: RpcMethod, params?: Record<string, unknown>): Promise<T> =>
-  request<T>('/api/rpc', { method: 'POST', body: JSON.stringify({ method, params }) });
+  request<T>('/user/rpc', { method: 'POST', body: JSON.stringify({ method, params }) });
 
 export const fetchDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100 });
 
@@ -150,7 +150,7 @@ export interface UploadInput {
 }
 
 /**
-Uploads a file's bytes as the raw body of `POST /api/upload`.
+Uploads a file's bytes as the raw body of `POST /user/upload`.
 
 XHR, unlike `fetch`, reports upload progress; the promise resolves once the
 engine has sent the message (after the Telegram-side upload), so the last
@@ -173,7 +173,7 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/upload?${params.toString()}`);
+    xhr.open('POST', `/user/upload?${params.toString()}`);
     xhr.responseType = 'json';
     xhr.upload.addEventListener('progress', (event) => {
       if (onProgress && event.lengthComputable && event.total > 0) {
@@ -235,17 +235,17 @@ export const fetchPollResults = (chatId: PeerId, messageId: number): Promise<Get
 export function fileUrl(chatId: PeerId, messageId: number, options: { thumb?: boolean } = {}): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });
   if (options.thumb) params.set('thumb', '1');
-  return `/api/file?${params.toString()}`;
+  return `/user/file?${params.toString()}`;
 }
 
 export function avatarUrl(chatId: PeerId, version: string, size: 'small' | 'big' = 'small'): string {
   const params = new URLSearchParams({ chatId: String(chatId), size, v: version });
-  return `/api/avatar?${params.toString()}`;
+  return `/user/avatar?${params.toString()}`;
 }
 
 export function updatesSocketUrl(): string {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.host}/api/updates`;
+  return `${protocol}//${location.host}/user/updates`;
 }
 
 /**

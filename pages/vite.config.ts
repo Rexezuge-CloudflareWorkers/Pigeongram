@@ -11,9 +11,11 @@ import { defineWebViteConfig } from '@rexezuge/tooling/vite';
 export default defineWebViteConfig({
   plugins: [react()],
   proxy: {
+    // The public plane is health only and needs no WebSocket forwarding.
+    '/api': { target: 'http://localhost:8787', changeOrigin: true },
     // `ws: true` is load-bearing: the SPA dials the updates socket at
-    // `ws://<dev host>/api/updates`, and Vite only forwards the upgrade when
+    // `ws://<dev host>/user/updates`, and Vite only forwards the upgrade when
     // WebSocket proxying is enabled.
-    '/api': { target: 'http://localhost:8787', changeOrigin: true, ws: true },
+    '/user': { target: 'http://localhost:8787', changeOrigin: true, ws: true },
   },
 });

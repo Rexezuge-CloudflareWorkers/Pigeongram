@@ -114,7 +114,7 @@ export function useLoginFlow(): LoginFlowState {
 }
 
 /**
- * Keeps one `/api/updates` socket attached, reconnecting with capped backoff.
+ * Keeps one `/user/updates` socket attached, reconnecting with capped backoff.
  *
  * `onUpdate` receives live bridge events; `onReady` fires whenever the socket
  * (re)connects, which the app uses to refetch state it may have missed while

@@ -20,7 +20,7 @@ interface CloudflareEnv {
    * Cloudflare Access team domain, for example
    * `https://your-team.cloudflareaccess.com`. Deployment-specific, so it is
    * supplied by `WRANGLER_VARS_PATCH_JSON` rather than the template. Required
-   * in production: `/api/*` fails closed without it.
+   * in production: `/user/*` fails closed without it.
    */
   TEAM_DOMAIN?: string;
   /**
@@ -31,7 +31,7 @@ interface CloudflareEnv {
   /**
    * Local-development escape hatch: skips Cloudflare Access JWT verification.
    * Honored only when `ENVIRONMENT` is not `production`; enabling it in
-   * production makes `/api/*` fail closed. Set it in `.dev.vars`, never in the
+   * production makes `/user/*` fail closed. Set it in `.dev.vars`, never in the
    * deployment's vars.
    */
   ACCESS_DEV_BYPASS?: string;

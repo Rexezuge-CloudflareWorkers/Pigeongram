@@ -6,8 +6,8 @@
 #     secrets (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`) are set once per
 #     environment with `wrangler secret put`, per README.md. The Access
 #     verifier vars (`TEAM_DOMAIN`, `POLICY_AUD`) come from
-#     `WRANGLER_VARS_PATCH_JSON`; without them the worker's `/api/*` answers
-#     503 `access_config`.
+#     `WRANGLER_VARS_PATCH_JSON`; without them the worker's `/user/*` answers
+#     503 `access_config`. `/api/health` is public and unaffected.
 #   * Apply Database Migration — no D1; the DO's SQLite is migrated by the
 #     `durable_objects` migrations in worker/wrangler.template.jsonc.
 #   * Build Web App (in deploy-worker) — this worker is API-only and serves no

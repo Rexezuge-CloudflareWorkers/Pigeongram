@@ -4,7 +4,7 @@ import { EngineError } from './errors';
 /**
  * Byte-window streaming for the media routes.
  *
- * One `/api/file` response is one window: the offset the download starts from,
+ * One `/user/file` response is one window: the offset the download starts from,
  * the bytes the alignment dragged in before the requested start, and the
  * length to serve. The offset starts on a 1 MB part block rather than merely
  * Telegram's documented 4 KB minimum: mtcute fetches 128 KB–1 MB chunks

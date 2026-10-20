@@ -1,16 +1,11 @@
 /**
- * The bridge: a Pages Function that forwards `/api/*` to the worker through
- * the `API_WORKER` service binding (declared in
+ * The public API plane: a Pages Function that forwards `/api/*` to the worker
+ * through the `API_WORKER` service binding (declared in
  * `pages/wrangler.template.jsonc`).
  *
- * Why a proxy at all: the worker has `workers_dev: false` and is reachable
- * only through this project, which is where Cloudflare Access lives. The
- * function adds nothing else — Access forwards its signed assertion with the
- * request and the worker verifies it, business logic is the session engine's.
- *
- * The request is passed through untouched, which is what makes the
- * `/api/updates` WebSocket upgrade work: the runtime forwards the upgrade and
- * the worker's 101 response straight back to the browser.
+ * Nothing under `/api/*` requires Cloudflare Access. Only `GET /api/health`
+ * is served today; account data lives under `/user/*`, behind Access and the
+ * worker's JWT verifier. The request is passed through untouched.
  *
  * This file must live at repo-root `functions/` — the materialized config is
  * read from the repo root, so Pages finds Functions next to it, not inside

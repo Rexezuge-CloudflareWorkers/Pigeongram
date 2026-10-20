@@ -64,27 +64,37 @@ afterEach(() => {
 });
 
 describe('worker entry', () => {
-  it('serves /health without Access', async () => {
-    const response = await call('/health');
+  it('serves /api/health without Access', async () => {
+    const response = await call('/api/health');
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: 'ok', service: 'telegram-web-client' });
   });
 
-  it('401s /api/* without an Access assertion when configured', async () => {
+  it('does not keep the old /health alias', async () => {
+    const response = await call('/health');
+    expect(response.status).toBe(404);
+  });
+
+  it('does not expose account routes on the public /api plane', async () => {
     const response = await call('/api/state', configured());
+    expect(response.status).toBe(404);
+  });
+
+  it('401s /user/* without an Access assertion when configured', async () => {
+    const response = await call('/user/state', configured());
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ code: 'access', error: expect.any(String) as string });
   });
 
-  it('503s /api/* when Access is not configured', async () => {
-    const response = await call('/api/state');
+  it('503s /user/* when Access is not configured', async () => {
+    const response = await call('/user/state');
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ code: 'access_config', error: expect.any(String) as string });
   });
 
   it('lets a valid Access assertion through to the engine', async () => {
     const token = await accessToken();
-    const response = await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
+    const response = await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
     // The test env has no SESSION_ENGINE binding; reaching this 503 means the
     // request passed the Access gate.
     expect(response.status).toBe(503);
@@ -93,19 +103,19 @@ describe('worker entry', () => {
 
   it('rejects an expired Access assertion', async () => {
     const token = await accessToken({ expiresAt: Math.floor(Date.now() / 1000) - 10 });
-    const response = await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
+    const response = await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
     expect(response.status).toBe(401);
   });
 
   it('rejects an assertion issued for another Access application', async () => {
     const token = await accessToken({ audience: 'some-other-aud' });
-    const response = await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
+    const response = await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
     expect(response.status).toBe(401);
   });
 
   it('rejects an assertion from another team domain', async () => {
     const token = await accessToken({ issuer: 'https://other-team.cloudflareaccess.com' });
-    const response = await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
+    const response = await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
     expect(response.status).toBe(401);
   });
 
@@ -119,32 +129,32 @@ describe('worker entry', () => {
       .setIssuedAt(issuedAt)
       .setExpirationTime(issuedAt + 300)
       .sign(other.privateKey);
-    const response = await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
+    const response = await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': token } });
     expect(response.status).toBe(401);
   });
 
   it('caches the team JWKS across requests', async () => {
     const first = await accessToken();
     const second = await accessToken();
-    await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': first } });
-    await call('/api/state', configured(), { headers: { 'cf-access-jwt-assertion': second } });
+    await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': first } });
+    await call('/user/state', configured(), { headers: { 'cf-access-jwt-assertion': second } });
     expect(jwksFetches).toBe(1);
   });
 
   it('honors the local-development bypass outside production', async () => {
-    const response = await call('/api/state', { ACCESS_DEV_BYPASS: 'true' });
+    const response = await call('/user/state', { ACCESS_DEV_BYPASS: 'true' });
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('Session engine unreachable') as string });
   });
 
   it('refuses the development bypass in production', async () => {
-    const response = await call('/api/state', { ACCESS_DEV_BYPASS: 'true', ENVIRONMENT: 'production' });
+    const response = await call('/user/state', { ACCESS_DEV_BYPASS: 'true', ENVIRONMENT: 'production' });
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ code: 'access_config' });
   });
 
   it('does not accept the retired query token on the socket route', async () => {
-    const response = await call('/api/updates?token=secret', configured());
+    const response = await call('/user/updates?token=secret', configured());
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ code: 'access' });
   });

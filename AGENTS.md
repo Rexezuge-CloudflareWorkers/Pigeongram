@@ -9,10 +9,10 @@ file records the architecture, the load-bearing invariants, and the house conven
 a Hono API and a Durable Object (`SessionEngine`) that owns one Telegram account's MTProto session: a 5-minute alarm
 wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect (the always-reachable baseline), and
 while a browser socket is attached it holds the session live and pushes updates. The Pages app (`pages/`) is the Vite +
-React front end (QR login, chat list, threads), and the Pages Function (`functions/`) proxies `/api/*` to the worker
-over a service binding so the worker never faces the internet. One account, single user, Free-tier-first: the 10 ms CPU
-per invocation limit is the constraint the session engine is measured against. `docs/session-engine.md` is the engine's
-runbook.
+React front end (QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
+and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
+One account, single user, Free-tier-first: the 10 ms CPU per invocation limit is the constraint the session engine is
+measured against. `docs/session-engine.md` is the engine's runbook.
 
 ## Commands
 
@@ -33,14 +33,14 @@ honours the `packageManager` pin). Every command below also works as `volta run 
 
 Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materialize the config
 (`pnpm exec tsx scripts/prepare-wrangler-config.ts`), then `pnpm exec wrangler dev` (worker, port 8787) and
-`pnpm --filter @telegram-web-client/pages dev` (SPA, port 5173, `/api` proxied to the worker).
+`pnpm --filter @telegram-web-client/pages dev` (SPA, port 5173, `/api` and `/user` proxied to the worker).
 
 ## Architecture & invariants
 
 ### Layout
 
-- `worker/` — the API worker. `src/index.ts` is the Hono entry (health, the Cloudflare Access JWT gate on `/api/*`,
-  forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
+- `worker/` — the API worker. `src/index.ts` is the Hono entry (public `/api/health`, the Cloudflare Access JWT gate on
+  `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
   `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
   domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
   `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`) and the mtcute integration
@@ -61,8 +61,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   context that routes link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread,
   everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
-  for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` is a pass-through to `env.API_WORKER`; it must
-  not import workspace packages (Pages bundles it separately).
+  for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` and `user/[[path]].ts` are pass-throughs to
+  `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
 - `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
   troubleshooting.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
@@ -96,21 +96,26 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   list (and, for comments, the matching chat) behind the URL entry so browser back stays in the app; every entry carries
   `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
   closes it before leaving the thread.
-- **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Function
-  (`API_WORKER` service binding). Every `/api/*` route verifies the Cloudflare Access assertion (`Cf-Access-Jwt-Assertion`)
-  in `worker/src/access.ts` — RS256 signature against `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and
-  expiry — before forwarding to the DO. The Access application's policy is the allowlist; the worker deliberately does
-  not check the email. `/health` is public. When `TEAM_DOMAIN`/`POLICY_AUD` are absent or malformed, `/api/*` answers
-  `503 {"code":"access_config"}` — never an unauthenticated fallback. The Access app must be a **self-hosted** app on the
-  Pages hostname, not a Worker-destination app: the latter rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips
-  verification only while `ENVIRONMENT !== "production"` and belongs in `.dev.vars` only.
+- **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Functions
+  (`API_WORKER` service binding). The API surface is split by prefix: `/api/*` is public and carries only
+  `GET /api/health`; everything account-scoped lives under `/user/*`, where every request verifies the Cloudflare
+  Access assertion (`Cf-Access-Jwt-Assertion`) in `worker/src/access.ts` — RS256 signature against
+  `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and expiry — before forwarding to the DO. The Access
+  application's policy is the allowlist; the worker deliberately does not check the email. `/api/health` is public and
+  carries no account data. When `TEAM_DOMAIN`/`POLICY_AUD` are absent or malformed, `/user/*` answers
+  `503 {"code":"access_config"}` — never an unauthenticated fallback. At the edge, the Access application must exempt
+  `/api/*` (Bypass policy) or be path-scoped to `/user`, otherwise the public health route is intercepted before
+  Pages. The Access app must be a **self-hosted** app on the Pages hostname, not a Worker-destination app: the latter
+  rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips verification only while `ENVIRONMENT !== "production"` and
+  belongs in `.dev.vars` only. Do not add an `/api/*` catch-all that forwards to the DO: the public plane must never
+  reach the account API.
 - **Storage is mtcute's `BaseSqliteStorage` over the DO's SQLite.** `session/mtproto/sqlite.ts` adapts `ctx.storage.sql`
   to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
   There is no history backfill — session, update state and small caches only; history and media are fetched live through
   the bridge.
 - **Media routes are gated too.** `<img>`/`<video>`/`<audio>` cannot set headers, so they rely on the same-origin
   Access session cookie the browser sends with every request; Access forwards the assertion for the worker to verify.
-  There is no token query parameter. `POST /api/upload` takes the file as the raw request body,
+  There is no token query parameter. `POST /user/upload` takes the file as the raw request body,
   streams it straight into mtcute's upload pool, and is capped by `UPLOAD_MAX_BYTES` (default 100 MB) — that var is
   also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
   parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
@@ -124,7 +129,7 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `precise`, and a part that straddles a 1 MB boundary is rejected with `LIMIT_INVALID`, which is how deep seeks into
   large videos broke next.
 - **Sockets use the hibernation API**, so the DO can sleep while a tab is attached; the wire protocol lives in
-  `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/api/updates` accept path has no
+  `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/user/updates` accept path has no
   unit test — it is covered by the local smoke test.
 - **The wasm crypto module is a static import** (`@mtcute/wasm/mtcute.wasm`, instantiated with `initSync`); wrangler's
   default `CompiledWasm` rule bundles it and `wrangler deploy --dry-run` is the check. If a wake's startup CPU ever gets
@@ -167,8 +172,8 @@ workflow files themselves.
 
 ## Where this is going / out of scope
 
-The session engine, the bridge (`POST /api/rpc`, `WS /api/updates`, the media routes `GET /api/file`,
-`GET /api/avatar`, `POST /api/upload`), the Pages proxy, and the worker's Access JWT verification are in place; what
+The session engine, the bridge (`POST /user/rpc`, `WS /user/updates`, the media routes `GET /user/file`,
+`GET /user/avatar`, `POST /user/upload`), the Pages proxies, and the worker's Access JWT verification are in place; what
 remains needs the owner. In order: (1) **M1 acceptance** — real QR login against the account, one measured wake cycle —
 after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the
 **`telegram-tt` fork** behind the existing bridge contract, once the Pages hostname is behind the Access application and

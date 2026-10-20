@@ -1,6 +1,6 @@
 /**
  * The RPC half of the JSON contract: the method names exposed over
- * `POST /api/rpc` with their parameters and results. Split from `types.ts`
+ * `POST /user/rpc` with their parameters and results. Split from `types.ts`
  * (which keeps the DTOs they carry) so each contract module stays under the
  * god-file cap; the SPA mirrors both in `pages/src/types.ts`.
  */
@@ -13,7 +13,7 @@ export interface RpcRequestDto {
 }
 
 /**
-Methods exposed over `POST /api/rpc`.
+Methods exposed over `POST /user/rpc`.
 */
 export type RpcMethod =
   | 'getMe'

@@ -405,7 +405,7 @@ export interface MessageMediaDto {
 }
 
 /**
-Media kinds `POST /api/upload` accepts.
+Media kinds `POST /user/upload` accepts.
 */
 export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
 

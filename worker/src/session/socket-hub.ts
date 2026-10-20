@@ -15,7 +15,7 @@ export interface SocketHubHost {
 }
 
 /**
- * The `/api/updates` fan-out.
+ * The `/user/updates` fan-out.
  *
  * Sockets are accepted with the hibernation API, so the engine is woken by
  * `webSocketMessage`/`webSocketClose` rather than by live listeners. The

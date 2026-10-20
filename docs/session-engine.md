@@ -5,7 +5,7 @@ How the `SessionEngine` Durable Object works, how to drive it locally, and how t
 ## Shape
 
 ```
-browser ──HTTP──▶ Pages (static + /api/* proxy in functions/) ──service binding──▶ worker (Hono)
+browser ──HTTP──▶ Pages (static + /api/* and /user/* proxies in functions/) ──service binding──▶ worker (Hono)
                                                                                       │
                                                                         SESSION_ENGINE Durable Object
                                                                                       │
@@ -19,14 +19,14 @@ browser ──HTTP──▶ Pages (static + /api/* proxy in functions/) ──se
   tables (`engine_wakes`, `engine_meta`).
 - The worker is **API-only** and, in production, not publicly reachable: `workers_dev: false`, no route, and the
   Pages project is the only caller (through the `API_WORKER` service binding).
-- Locally the SPA talks to the worker directly (`/api` is proxied from 5173 to 8787).
+- Locally the SPA talks to the worker through the Vite proxy (`/api` and `/user` are proxied from 5173 to 8787).
 
 ### Two modes
 
 | Mode     | When                                             | What happens                                                                                         |
 | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | **Wake** | Default; `alarm()` every `WAKE_INTERVAL_SECONDS` | connect → `getDifference` catch-up → record `engine_wakes` row → disconnect → re-arm                 |
-| **Live** | At least one `/api/updates` socket is attached   | connect → catch up → stay connected; updates broadcast as they arrive; RPCs ride the same connection |
+| **Live** | At least one `/user/updates` socket is attached  | connect → catch up → stay connected; updates broadcast as they arrive; RPCs ride the same connection |
 
 Leaving live: when the last socket closes, the engine disconnects and re-arms the wake cadence. A failed live
 connect broadcasts `{"type":"error"}` to attached sockets and falls back to the wake cadence. An RPC burst on a
@@ -36,7 +36,7 @@ Account presence is therefore **offline unless a browser tab is open**.
 Both modes refuse to touch the network before the account is linked (`phase: "unauthorized"`): an anonymous
 client has no DC to talk to, and mtcute's updates loop restarts without backoff when it cannot fetch its initial
 state — which would pin the DO's CPU forever. A pre-login wake therefore records a no-op row (so the alarm cadence
-stays observable in `/api/stats`) and connects nothing.
+stays observable in `/user/stats`) and connects nothing.
 
 `WAKE_INTERVAL_SECONDS` (wrangler var, default `300`, minimum `30`) is the only cadence knob.
 
@@ -46,45 +46,48 @@ The Free plan gives 10 ms CPU per invocation (wall time on waits is not CPU). Th
 
 - **No history backfill.** `getDifference` updates and reference messages are persisted; no dialogs/messages are
   fetched into the DO. History and media are served live through the bridge while the session is connected.
-- **Chunked crypto, not buffered payloads.** `/api/file`, `/api/avatar` and `/api/upload` stream; uploads are
+- **Chunked crypto, not buffered payloads.** `/user/file`, `/user/avatar` and `/user/upload` stream; uploads are
   chunked and encrypted (AES-IGE) part by part on mtcute's upload pool. Upload CPU grows with the file size, so
   `UPLOAD_MAX_BYTES` is also the CPU-affordability knob — lower it if large uploads exhaust the budget.
 - **WASM crypto.** SHA-1/IGE/gzip come from `@mtcute/wasm` (57 KB), imported as a `CompiledWasm` module and
   instantiated synchronously; the JS crypto is only for the random pool and 2FA (`crypto.subtle`).
 - **Small bundle.** mtcute core is ~470 KB gzip in the worker bundle; the 3 MiB Free limit has plenty of room.
-- **Bounded storage.** The DO's SQLite is the only storage (no D1, no R2). `GET /api/stats` reports
+- **Bounded storage.** The DO's SQLite is the only storage (no D1, no R2). `GET /user/stats` reports
   `databaseBytes` so growth is visible in the soak.
 
 ## Bridge API
 
-All routes live under `/api/*` on the worker; the Pages Function forwards them verbatim. Every `/api/*` request is
-gated by Cloudflare Access: the worker verifies the `Cf-Access-Jwt-Assertion` application token (signature, issuer,
-audience and expiry) before forwarding to the `SessionEngine`. The Access application's policy is the allowlist; the
-worker does not inspect the token's email. Unless noted, responses are JSON, errors are `{"error": string}` with a
-4xx/5xx status, and a misconfigured deployment answers `503` with the engine's configuration message.
+The API surface is split by prefix. `GET /api/health` is the public plane: no Cloudflare Access gate, no account
+data. Every account route lives under `/user/*`; the `user/[[path]].ts` Pages Function forwards them verbatim and the
+worker verifies the `Cf-Access-Jwt-Assertion` application token (signature, issuer, audience and expiry) before
+forwarding to the `SessionEngine`. The Access application's policy is the allowlist; the worker does not inspect the
+token's email. Unless noted, responses are JSON, errors are `{"error": string}` with a 4xx/5xx status, and a
+misconfigured deployment answers `503` with the engine's configuration message.
 
-| Route                      | Body / query                            | Returns                                                    |
-| -------------------------- | --------------------------------------- | ---------------------------------------------------------- |
-| `GET /api/state`           | —                                       | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …) |
-| `POST /api/login/qr`       | —                                       | `EngineStateDto`; starts (or joins) the QR login           |
-| `POST /api/login/phone`    | `{"phone": string}`                     | `EngineStateDto`; sends a login code (phone-number path)   |
-| `POST /api/login/code`     | `{"code": string}`                      | `EngineStateDto`; submits the login code                   |
-| `POST /api/login/password` | `{"password": string}`                  | `EngineStateDto`; submits the 2FA cloud password           |
-| `POST /api/login/cancel`   | —                                       | `EngineStateDto`; aborts an in-flight login                |
-| `POST /api/logout`         | —                                       | `{"ok": true}`; logs out, closes updates sockets, re-arms  |
-| `POST /api/rpc`            | `{"method": string, "params"?: object}` | method-specific JSON (below)                               |
-| `GET /api/updates`         | WebSocket                               | server events (below)                                      |
-| `GET /api/file`            | `?chatId=&messageId=&thumb=1` + `Range` | media bytes (see below)                                    |
-| `GET /api/avatar`          | `?chatId=&size=small\|big`              | profile photo bytes (`image/jpeg`, cached a day)           |
-| `POST /api/upload`         | query params + raw body (see below)     | `{"message": MessageDto}`; sends one file                  |
-| `POST /api/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                 |
-| `GET /api/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)  |
+| Route                       | Body / query                            | Returns                                                    |
+| --------------------------- | --------------------------------------- | ---------------------------------------------------------- |
+| `GET /api/health`           | —                                       | `{"status":"ok","service":"telegram-web-client"}`; public  |
+| `GET /user/state`           | —                                       | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …) |
+| `POST /user/login/qr`       | —                                       | `EngineStateDto`; starts (or joins) the QR login           |
+| `POST /user/login/phone`    | `{"phone": string}`                     | `EngineStateDto`; sends a login code (phone-number path)   |
+| `POST /user/login/code`     | `{"code": string}`                      | `EngineStateDto`; submits the login code                   |
+| `POST /user/login/password` | `{"password": string}`                  | `EngineStateDto`; submits the 2FA cloud password           |
+| `POST /user/login/cancel`   | —                                       | `EngineStateDto`; aborts an in-flight login                |
+| `POST /user/logout`         | —                                       | `{"ok": true}`; logs out, closes updates sockets, re-arms  |
+| `POST /user/rpc`            | `{"method": string, "params"?: object}` | method-specific JSON (below)                               |
+| `GET /user/updates`         | WebSocket                               | server events (below)                                      |
+| `GET /user/file`            | `?chatId=&messageId=&thumb=1` + `Range` | media bytes (see below)                                    |
+| `GET /user/avatar`          | `?chatId=&size=small\|big`              | profile photo bytes (`image/jpeg`, cached a day)           |
+| `POST /user/upload`         | query params + raw body (see below)     | `{"message": MessageDto}`; sends one file                  |
+| `POST /user/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                 |
+| `GET /user/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)  |
 
-`GET /health` lives on the worker, not the engine, and is never gated; it carries no account data.
+`GET /api/health` lives on the worker, not the engine, and is never gated; it carries no account data. The old
+`/health` alias is gone, and no account route is served under `/api/*`: an old `/api/state` call is a 404.
 
 ### Media routes
 
-`GET /api/file` serves every downloadable kind (photo/video/audio/voice/sticker/document) with the right content
+`GET /user/file` serves every downloadable kind (photo/video/audio/voice/sticker/document) with the right content
 type, resolved fresh from the message on each request — no file location or `file_reference` ever reaches the
 browser. `thumb=1` answers with the best thumbnail instead (video posters). Videos and documents are served with
 `accept-ranges`/`content-range` so `<video>` seeking works; the engine owns each byte window
@@ -94,10 +97,10 @@ straddle a 1 MB boundary), drops the extra prefix bytes, cuts the tail at the re
 mtcute as `limit`: it accepts only whole-file sizes and throws after the response headers have already gone out —
 which is what used to kill playback after the first buffered seconds.
 
-`GET /api/avatar` resolves the peer's photo server-side. The DTOs carry an opaque `photo` token
+`GET /user/avatar` resolves the peer's photo server-side. The DTOs carry an opaque `photo` token
 (`ChatPhoto.uniqueFileId`) purely to bust the browser cache; the SPA appends it to the URL as `v=`.
 
-`POST /api/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
+`POST /user/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
 `content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), and
 optional `width`/`height`/`duration`. `commentTo` (a channel post id) turns the upload into a comment on that
@@ -234,7 +237,7 @@ from the peer reading the account's messages, and only inbox reads move `unread`
 cp .dev.vars.example .dev.vars        # fill in api_id/api_hash
 pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler dev                # worker on :8787
-pnpm --filter @telegram-web-client/pages dev   # SPA on :5173, /api proxied
+pnpm --filter @telegram-web-client/pages dev   # SPA on :5173, /api and /user proxied
 ```
 
 Local development does not pass through Cloudflare Access. The example `.dev.vars` sets
@@ -245,8 +248,8 @@ deployment.
 Smoke checks (no Telegram credentials needed for the first two):
 
 ```bash
-curl -s localhost:8787/health
-curl -s localhost:8787/api/state                                      # → phase "unauthorized"
+curl -s localhost:8787/api/health                                # public plane
+curl -s localhost:8787/user/state                                # → phase "unauthorized" (dev bypass)
 ```
 
 With credentials in `.dev.vars`, open the SPA and scan the QR code from Telegram
@@ -261,11 +264,11 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
 ## Milestone 1 — spike acceptance
 
 1. `pnpm exec wrangler deploy --dry-run` is clean (also verifies the wasm import).
-2. Deploy (`wrangler deploy` + secrets + the Access vars), then `GET /health` and `GET /api/state` through Cloudflare
-   Access. A service token is the clean way to script the calls:
-   `curl -H "CF-Access-Client-Id: …" -H "CF-Access-Client-Secret: …" https://<pages-host>/api/state`.
-3. `POST /api/wake` answers with `totalWakes: 1, failedWakes: 0` and the DO returns to sleep; verify with
-   `GET /api/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.
+2. Deploy (`wrangler deploy` + secrets + the Access vars), then `GET /api/health` without a credential and
+   `GET /user/state` through Cloudflare Access. A service token is the clean way to script the user API:
+   `curl -H "CF-Access-Client-Id: …" -H "CF-Access-Client-Secret: …" https://<pages-host>/user/state`.
+3. `POST /user/wake` answers with `totalWakes: 1, failedWakes: 0` and the DO returns to sleep; verify with
+   `GET /user/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.
 4. QR login completes end-to-end: `phase` walks `qr → scanned → (password) → authorized`, and `me` is populated.
 5. A message sent to the account from another device appears in the SPA within a wake interval or immediately while
    a tab is open (live mode); sends and reads round-trip, a photo/video upload lands in the thread and as the chat
@@ -277,7 +280,7 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
 After the spike passes, leave the deployment at the default 300 s cadence for 72 hours with a tab closed
 (so every cycle is a wake):
 
-- Poll `GET /api/stats?days=30` daily (or keep the SPA open and read the soak numbers); watch
+- Poll `GET /user/stats?days=30` daily (or keep the SPA open and read the soak numbers); watch
   `counters.failedWakes`, `days[].avgMs`, `days[].updates`, and `databaseBytes`.
 - In the Cloudflare dashboard, check the worker's CPU-time metrics and the DO's storage/size metrics against the
   Free plan; confirm no wake exceeds the per-invocation CPU budget.
@@ -293,35 +296,39 @@ pnpm exec wrangler secret put TELEGRAM_API_ID
 pnpm exec wrangler secret put TELEGRAM_API_HASH
 ```
 
-The worker verifies Cloudflare Access on `/api/*`, so the deployment also needs both verifier vars — through
+The worker verifies Cloudflare Access on `/user/*`, so the deployment also needs both verifier vars — through
 `WRANGLER_VARS_PATCH_JSON` in CD or the dashboard:
 
 ```json
 { "TEAM_DOMAIN": "https://<team>.cloudflareaccess.com", "POLICY_AUD": "<application-aud-tag>" }
 ```
 
-Missing or malformed values make `/api/*` answer `503 {"code":"access_config"}`; there is no unauthenticated
-fallback. Set them before deploying this change.
+Missing or malformed values make `/user/*` answer `503 {"code":"access_config"}`; there is no unauthenticated
+fallback. `GET /api/health` is unaffected and remains public. Set them before deploying this change.
 
 Pending owner actions (one-time):
 
 1. `api_id` / `api_hash` from my.telegram.org (the QR login needs them).
 2. Attach the production domain to the **Pages** project, issue the certificate, then put a self-hosted Cloudflare
    Access application (with an allow policy for the owner) in front of the public hostname. Do not use an Access
-   application targeting the worker: Worker-destination Access rejects WebSocket upgrades. Copy its AUD tag and the
-   team domain into the verifier vars above.
-3. Optionally create an Access **service token** for scripted checks (`/api/stats` during the soak), and add a
+   application targeting the worker: Worker-destination Access rejects WebSocket upgrades. Exempt `/api/*` from
+   Access (a Bypass policy) or scope the application path to `/user`, so `GET /api/health` stays reachable without a
+   login while the user API is gated. Copy its AUD tag and the team domain into the verifier vars above.
+3. Optionally create an Access **service token** for scripted checks (`/user/stats` during the soak), and add a
    Service Auth policy to the application.
 
 ## Troubleshooting
 
 | Symptom                                                          | Cause                                                                                                                                                                                                            |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/*` → `401 {"code":"access"}`                               | The request reached the worker without a valid `Cf-Access-Jwt-Assertion`: the hostname is not behind Access, the Access session expired, or a service-binding call skipped it. Reload through the Pages hostname |
-| `/api/*` → `503 {"code":"access_config"}`                        | `TEAM_DOMAIN`/`POLICY_AUD` are missing or malformed, or `ACCESS_DEV_BYPASS` is set with `ENVIRONMENT="production"`                                                                                               |
-| `/api/*` → `503` "TELEGRAM_API_ID…"                              | Secrets are missing on the deployment (the engine reports the configuration error)                                                                                                                               |
-| `/api/*` → `503` "Session engine unreachable"                    | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                                                                            |
-| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /api/login/cancel` then retry                                                                                                                           |
+| `/api/health` → login redirect or `401`                          | The Access application still covers `/api/*` at the edge; exempt it with a Bypass policy or scope the application to `/user`                                                                                     |
+| `/health` → `404`                                                | Expected: the health route moved to `/api/health`                                                                                                                                                                |
+| `/api/state` → `404`                                             | Expected: account routes moved to `/user/*`; use `/user/state`                                                                                                                                                   |
+| `/user/*` → `401 {"code":"access"}`                              | The request reached the worker without a valid `Cf-Access-Jwt-Assertion`: the hostname is not behind Access, the Access session expired, or a service-binding call skipped it. Reload through the Pages hostname |
+| `/user/*` → `503 {"code":"access_config"}`                       | `TEAM_DOMAIN`/`POLICY_AUD` are missing or malformed, or `ACCESS_DEV_BYPASS` is set with `ENVIRONMENT="production"`                                                                                               |
+| `/user/*` → `503` "TELEGRAM_API_ID…"                             | Secrets are missing on the deployment (the engine reports the configuration error)                                                                                                                               |
+| `/user/*` → `503` "Session engine unreachable"                   | The `SESSION_ENGINE` binding is missing (e.g. a root `wrangler.jsonc` without the DO)                                                                                                                            |
+| `phase: "error"` after scanning the QR                           | Wrong api_id/api_hash, or the login was cancelled; `POST /user/login/cancel` then retry                                                                                                                          |
 | Scanning the QR fails with a generic client-side error           | The code was older than its ~30 s life (the SPA hides dying codes and counts down); prefer the phone-number path if the camera lag keeps losing the race                                                         |
 | `phase: "error"` on the phone path                               | The number or code was rejected; the phase message names it (`PHONE_NUMBER_INVALID`, `PHONE_CODE_EXPIRED`, `FLOOD_WAIT_…`)                                                                                       |
 | Updates never arrive while a tab is open                         | The socket failed live connect: look for a `{"type":"error"}` frame and `wrangler tail`                                                                                                                          |

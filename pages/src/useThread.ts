@@ -13,6 +13,8 @@ import {
   updateThreadPoll,
 } from './state';
 import type { ChatThread, PollUpdateTarget } from './state';
+import type { ThreadPositionMemory } from './thread-position';
+import { useThreadPositionMemory } from './thread-position';
 import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
 import type { ChatDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
@@ -86,6 +88,10 @@ export interface ThreadController {
   */
   bumpCommentCount: (chatId: PeerId, postId: number) => void;
   /**
+  The open thread's scroll position; a comments detour resumes it on return.
+  */
+  positions: ThreadPositionMemory;
+  /**
   Folds one socket update into the open thread. `App`'s update handler
   forwards every event; updates that are not the thread pass through.
   */
@@ -123,6 +129,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
+  const positions = useThreadPositionMemory();
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -132,35 +139,42 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     threadRef.current = thread;
   }, [thread]);
 
-  const open = useCallback(async (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions): Promise<MessageDto[]> => {
-    const postId = options?.postId ?? null;
-    // The divider is decided once, from the window the chat opens with: it
-    // marks where reading stopped on open, so reading past it (or a message
-    // arriving later) leaves it where it is.
-    const divider = (messages: MessageDto[]): number | null => firstUnread(messages, readInboxMaxId)?.id ?? null;
-    setThread({ chat, messages: [], readInboxMaxId, unreadDividerId: null, focusMessageId: postId });
-    setError(null);
-    setLoading(true);
-    try {
-      const page = await fetchOpenWindow(chat.id, postId);
-      setThread((current) =>
-        current && current.chat.id === chat.id
-          ? { ...current, messages: mergeMessages(current.messages, page), unreadDividerId: divider(page) }
-          : current,
-      );
-      return page;
-    } catch (failure) {
-      setError(failureText(failure));
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const open = useCallback(
+    async (chat: ChatDto, readInboxMaxId: number, options?: OpenThreadOptions): Promise<MessageDto[]> => {
+      const postId = options?.postId ?? null;
+      // A fresh read is a new session: only a comments detour keeps the
+      // remembered position, because it leaves this thread open.
+      positions.forget();
+      // The divider is decided once, from the window the chat opens with: it
+      // marks where reading stopped on open, so reading past it (or a message
+      // arriving later) leaves it where it is.
+      const divider = (messages: MessageDto[]): number | null => firstUnread(messages, readInboxMaxId)?.id ?? null;
+      setThread({ chat, messages: [], readInboxMaxId, unreadDividerId: null, focusMessageId: postId });
+      setError(null);
+      setLoading(true);
+      try {
+        const page = await fetchOpenWindow(chat.id, postId);
+        setThread((current) =>
+          current && current.chat.id === chat.id
+            ? { ...current, messages: mergeMessages(current.messages, page), unreadDividerId: divider(page) }
+            : current,
+        );
+        return page;
+      } catch (failure) {
+        setError(failureText(failure));
+        return [];
+      } finally {
+        setLoading(false);
+      }
+    },
+    [positions],
+  );
 
   const close = useCallback((): void => {
+    positions.forget();
     setThread(null);
     setError(null);
-  }, []);
+  }, [positions]);
 
   const loadOlder = useCallback(async (): Promise<void> => {
     const chat = thread?.chat;
@@ -379,6 +393,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     pressButton,
     setReadWatermark,
     bumpCommentCount,
+    positions,
     applyUpdate,
   };
 }

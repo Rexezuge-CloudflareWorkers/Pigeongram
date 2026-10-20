@@ -210,7 +210,7 @@ export function MessageRow({
             const count = <span className="reaction-count">{reaction.count}</span>;
             if (!onReact) {
               return (
-                <span key={reactionKey(reaction)} className={`reaction static${reaction.chosen ? ' chosen' : ''}`} title={title}>
+                <span key={reactionKey(reaction)} className={`reaction is-static${reaction.chosen ? ' chosen' : ''}`} title={title}>
                   {emoji}
                   {count}
                 </span>

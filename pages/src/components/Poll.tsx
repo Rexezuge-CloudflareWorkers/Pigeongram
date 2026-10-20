@@ -59,7 +59,7 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
         );
         if (!interactive) {
           return (
-            <div key={index} className={`poll-answer static${answer.chosen ? ' chosen' : ''}`}>
+            <div key={index} className={`poll-answer is-static${answer.chosen ? ' chosen' : ''}`}>
               {content}
             </div>
           );

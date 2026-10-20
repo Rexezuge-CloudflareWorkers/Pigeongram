@@ -86,11 +86,11 @@ the engine's configuration message.
 type, resolved fresh from the message on each request — no file location or `file_reference` ever reaches the
 browser. `thumb=1` answers with the best thumbnail instead (video posters). Videos and documents are served with
 `accept-ranges`/`content-range` so `<video>` seeking works; the engine owns each byte window
-(`session/media-stream.ts`): it requests from Telegram's 4 KB-aligned offset, drops the extra prefix bytes, cuts the
-tail at the requested end and applies backpressure (one chunk buffered), so a slow player never pulls the file into
-the isolate. Browser ranges are never forwarded to mtcute as `limit`: it accepts only whole-file sizes and throws
-after the response headers have already gone out — which is what used to kill playback after the first buffered
-seconds.
+(`session/media-stream.ts`): it requests from a 1 MB-block-aligned offset (mtcute's non-precise parts must not
+straddle a 1 MB boundary), drops the extra prefix bytes, cuts the tail at the requested end and applies backpressure
+(one chunk buffered), so a slow player never pulls the file into the isolate. Browser ranges are never forwarded to
+mtcute as `limit`: it accepts only whole-file sizes and throws after the response headers have already gone out —
+which is what used to kill playback after the first buffered seconds.
 
 `GET /api/avatar` resolves the peer's photo server-side. The DTOs carry an opaque `photo` token
 (`ChatPhoto.uniqueFileId`) purely to bust the browser cache; the SPA appends it to the URL as `v=`.

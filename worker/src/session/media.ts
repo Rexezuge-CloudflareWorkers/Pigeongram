@@ -13,9 +13,19 @@ import { windowedStream } from './media-stream';
  */
 
 /**
- * Byte alignment Telegram requires for ranged downloads (`4 KB`).
+ * Byte alignment for Telegram's ranged downloads.
+ *
+ * `upload.getFile` only asks for a 4 KB-aligned `offset`, but mtcute's
+ * `downloadAsIterable` fetches `partSize`-sized chunks (128 KB–1 MB) from that
+ * offset without the `precise` flag, and Telegram requires every part to stay
+ * inside one 1 MB block (`offset / 1MB == (offset + limit - 1) / 1MB`). A
+ * merely 4 KB-aligned offset can sit a few bytes before a block boundary, so
+ * the first chunk crosses it and Telegram answers `LIMIT_INVALID` — which is
+ * what killed deep seeks into large videos (`bytes=259981312-` is 64 KB before
+ * the 248th block). Starting on a 1 MB block keeps every chunk inside its
+ * block; the prefix up to the requested start is dropped from the stream.
  */
-const RANGE_ALIGNMENT = 4096;
+const DOWNLOAD_ALIGNMENT = 1024 * 1024;
 
 export type AvatarSize = 'small' | 'big';
 
@@ -133,9 +143,9 @@ function rangedDownload(
     throw new EngineError('Requested range is outside the file', 416);
   }
 
-  // Telegram offsets must be 4 KB-aligned, so start at the closest aligned
-  // offset below the request and drop the extra prefix bytes from the stream.
-  const aligned = range.start - (range.start % RANGE_ALIGNMENT);
+  // Telegram parts must not straddle a 1 MB block, so start at the closest
+  // block below the request and drop the extra prefix bytes from the stream.
+  const aligned = range.start - (range.start % DOWNLOAD_ALIGNMENT);
   const length = end - range.start + 1;
   return {
     stream: windowedStream(client, location, { offset: aligned, drop: range.start - aligned, length }),

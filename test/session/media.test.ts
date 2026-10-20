@@ -36,9 +36,11 @@ const PHOTO = { type: 'photo', fileSize: SIZE, thumbnails: [] as unknown[] };
 
 /**
  * A client whose `downloadAsIterable` serves the synthetic file from the
- * requested offset, recording every download's params.
+ * requested offset, recording every download's params. `size` defaults to the
+ * module's small fixture so cases that need to cross a 1 MB part block can
+ * pass their own.
  */
-function fakeClient(media: unknown, peer: unknown = null): { client: TelegramClient; requests: DownloadParams[] } {
+function fakeClient(media: unknown, peer: unknown = null, size = SIZE): { client: TelegramClient; requests: DownloadParams[] } {
   const requests: DownloadParams[] = [];
   const client = {
     async getMessages(): Promise<unknown[]> {
@@ -51,8 +53,8 @@ function fakeClient(media: unknown, peer: unknown = null): { client: TelegramCli
       requests.push(params);
       const start = params.offset ?? 0;
       return (async function* () {
-        for (let at = start; at < SIZE; at += CHUNK) {
-          const chunk = bytesAt(at, Math.min(CHUNK, SIZE - at));
+        for (let at = start; at < size; at += CHUNK) {
+          const chunk = bytesAt(at, Math.min(CHUNK, size - at));
           await params.throttle?.(chunk.byteLength);
           yield chunk;
         }
@@ -91,8 +93,28 @@ describe('streamMessageMedia', () => {
 
     expect(download).toMatchObject({ status: 206, length: 5000, contentRange: `bytes 5000-9999/${SIZE}` });
     await expect(body(download)).resolves.toEqual(bytesAt(5000, 5000));
-    // Telegram only serves 4 KB-aligned offsets; the extra prefix is dropped.
-    expect(requests[0]?.offset).toBe(4096);
+    // Telegram parts must start on a 1 MB block; the extra prefix is dropped.
+    expect(requests[0]?.offset).toBe(0);
+  });
+
+  it('starts a mid-file range on a 1 MB part block', async () => {
+    // The shape that produced `LIMIT_INVALID`: the browser seeks 64 KB before
+    // the second 1 MB boundary. A merely 4 KB-aligned offset let mtcute's
+    // first 128 KB part cross that boundary, which Telegram rejects.
+    const size = 3 * 1024 * 1024;
+    const start = 1024 * 1024 + 983_040;
+    const { client, requests } = fakeClient({ ...VIDEO, fileSize: size }, null, size);
+
+    const download = await streamMessageMedia(client, 1, 2, { range: { start, end: start + 99 } });
+
+    expect(download).toMatchObject({
+      status: 206,
+      length: 100,
+      contentRange: `bytes ${start}-${start + 99}/${size}`,
+    });
+    // The part block below the request, not the request's own 4 KB alignment.
+    expect(requests[0]?.offset).toBe(1024 * 1024);
+    await expect(body(download)).resolves.toEqual(bytesAt(start, 100));
   });
 
   it('rejects a range that starts past the file', async () => {

@@ -4,11 +4,14 @@ import { EngineError } from './errors';
 /**
  * Byte-window streaming for the media routes.
  *
- * One `/api/file` response is one window: the 4 KB-aligned offset Telegram
- * requires, the bytes the alignment dragged in before the requested start, and
- * the length to serve. The window is enforced here rather than through
- * mtcute's `limit`, because `downloadAsIterable` accepts only the whole file
- * size or a ≤1 MB divisor of 1 MB and rejects everything else with
+ * One `/api/file` response is one window: the offset the download starts from,
+ * the bytes the alignment dragged in before the requested start, and the
+ * length to serve. The offset starts on a 1 MB part block rather than merely
+ * Telegram's documented 4 KB minimum: mtcute fetches 128 KB–1 MB chunks
+ * without `precise`, and a part that straddles a 1 MB boundary is rejected
+ * with `LIMIT_INVALID` (see `media.ts`). The window is enforced here rather
+ * than through mtcute's `limit`, because `downloadAsIterable` accepts only the
+ * whole file size or a ≤1 MB divisor of 1 MB and rejects everything else with
  * `MtArgumentError` — thrown on the first pull, with the `206` response
  * headers already sent. That is what broke `<video>` seeking, and Safari's
  * `bytes=0-1` probe before a single frame was ever sent. So the download is
@@ -18,7 +21,8 @@ import { EngineError } from './errors';
 
 export interface DownloadWindow {
   /**
-   * Byte offset to start downloading from; 4 KB-aligned.
+   * Byte offset to start downloading from; 1 MB-aligned so that mtcute's
+   * chunks never cross a Telegram part block.
    */
   offset: number;
   /**

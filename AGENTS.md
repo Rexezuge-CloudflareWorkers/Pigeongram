@@ -108,10 +108,13 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
   without consuming the body (cloudflare/workerd#918), so malformed and oversized uploads must never reach it.
 - **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
-  window over `downloadAsIterable` — 4 KB-aligned offset, dropped prefix, local tail cut, and `throttle` backpressure
-  so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB divisor) and
-  rejects browser ranges with `MtArgumentError` on the first pull, i.e. after the `206` headers are already sent. That
-  is what broke `<video>` after its first buffered seconds and Safari's `bytes=0-1` probe outright.
+  window over `downloadAsIterable` — a 1 MB-block-aligned offset, dropped prefix, local tail cut, and `throttle`
+  backpressure so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB
+  divisor) and rejects browser ranges with `MtArgumentError` on the first pull, i.e. after the `206` headers are
+  already sent; that is what broke `<video>` after its first buffered seconds and Safari's `bytes=0-1` probe. The
+  offset must be 1 MB-block-aligned, not merely the 4 KB Telegram documents: mtcute fetches 128 KB–1 MB parts without
+  `precise`, and a part that straddles a 1 MB boundary is rejected with `LIMIT_INVALID`, which is how deep seeks into
+  large videos broke next.
 - **Sockets use the hibernation API**, so the DO can sleep while a tab is attached; the wire protocol lives in
   `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/api/updates` accept path has no
   unit test — it is covered by the local smoke test.

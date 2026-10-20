@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineWebViteConfig } from '@rexezuge/tooling/vite';
 
@@ -9,7 +10,7 @@ import { defineWebViteConfig } from '@rexezuge/tooling/vite';
  * and serves no embedded shell — the Pages project is the whole front end.
  */
 export default defineWebViteConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   proxy: {
     // The public plane is health only and needs no WebSocket forwarding.
     '/api': { target: 'http://localhost:8787', changeOrigin: true },

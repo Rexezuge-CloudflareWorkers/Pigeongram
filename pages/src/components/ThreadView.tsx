@@ -7,6 +7,7 @@ import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
+import { Spinner } from './Spinner';
 
 /**
  * The list counts as "at the bottom" within this many pixels, for both the
@@ -309,11 +310,11 @@ export function ThreadView({
         }}
       >
         {messages.length > 0 ? (
-          <button type="button" className="load-older" disabled={loadingOlder} onClick={onLoadOlder}>
-            {loadingOlder ? 'Loading…' : 'Load older messages'}
+          <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
+            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older messages'}
           </button>
         ) : null}
-        {loading ? <p className="muted pad">Loading messages…</p> : null}
+        {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
         {!loading && messages.length === 0 ? <p className="muted pad">No messages yet — say hello.</p> : null}
         {groups.map((group, index) => {
           const anchor = group[0];

@@ -1,6 +1,7 @@
 import { miniAppDeepLink, launchTelegramApp } from '../links';
 import { useTelegramLinkHandler } from '../telegram-links';
 import type { MessageButtonDto, MessageDto, MessageMarkupDto } from '../types';
+import { Spinner } from './Spinner';
 
 /**
 A message's inline keyboard: Telegram's rows of buttons, rendered under the
@@ -103,9 +104,11 @@ function MessageButton({
       className={className}
       disabled={disabledReason !== null}
       title={disabledReason ?? undefined}
+      aria-busy={pressing && button.kind === 'callback'}
       onClick={() => onPress?.(message, button)}
     >
       {button.text}
+      {pressing && button.kind === 'callback' ? <Spinner inline size={12} color="currentColor" /> : null}
     </button>
   );
 }

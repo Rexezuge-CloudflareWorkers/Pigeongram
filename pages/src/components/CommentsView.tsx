@@ -6,6 +6,7 @@ import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types'
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
+import { Spinner } from './Spinner';
 
 interface CommentsViewProps {
   thread: CommentsThread;
@@ -158,11 +159,11 @@ export function CommentsView({
         </div>
         <div className="day">{commentCountLabel(thread.count)}</div>
         {comments.length > 0 && thread.nextOffset ? (
-          <button type="button" className="load-older" disabled={loadingOlder} onClick={onLoadOlder}>
-            {loadingOlder ? 'Loading…' : 'Load older comments'}
+          <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
+            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older comments'}
           </button>
         ) : null}
-        {loading && comments.length === 0 ? <p className="muted pad">Loading comments…</p> : null}
+        {loading && comments.length === 0 ? <Spinner size={28} label="Loading comments…" padding="24px 0" /> : null}
         {!loading && comments.length === 0 ? (
           <p className="muted pad">{thread.count === 0 ? 'No comments yet — be the first.' : 'No comments loaded.'}</p>
         ) : null}

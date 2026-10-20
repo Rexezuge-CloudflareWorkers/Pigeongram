@@ -1,0 +1,39 @@
+/* Tailwind v4 entry point.
+ *
+ * Full Tailwind is deliberate: preflight and utilities both apply. The app's
+ * existing stylesheets are imported into the `components` layer so they sit
+ * above preflight but below utilities — a utility class on new markup wins over
+ * a legacy rule, while the legacy rule still wins over the browser defaults
+ * preflight resets.
+ */
+@import 'tailwindcss';
+
+@import './base.css' layer(components);
+@import './landing.css' layer(components);
+@import './media.css' layer(components);
+@import './album.css' layer(components);
+@import './chat.css' layer(components);
+@import './buttons.css' layer(components);
+@import './comments.css' layer(components);
+@import './composer.css' layer(components);
+@import './menu.css' layer(components);
+@import './poll.css' layer(components);
+@import './replies.css' layer(components);
+@import './viewer.css' layer(components);
+
+/* Scan the SPA sources explicitly; the CSS lives one directory below `src/`. */
+@source '../**/*.{ts,tsx}';
+
+/* Bridge the app's existing palette into Tailwind's color namespace, so new
+ * utilities can say `text-muted` or `bg-panel` instead of arbitrary values. */
+@theme inline {
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-own: var(--own);
+  --color-badge: var(--badge);
+  --color-danger: var(--danger);
+}

@@ -1,18 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import './styles/base.css';
-import './styles/landing.css';
-import './styles/media.css';
-import './styles/album.css';
-import './styles/chat.css';
-import './styles/buttons.css';
-import './styles/comments.css';
-import './styles/composer.css';
-import './styles/menu.css';
-import './styles/poll.css';
-import './styles/replies.css';
-import './styles/viewer.css';
+import './styles/tailwind.css';
 
 createRoot(document.querySelector('#root')!).render(
   <StrictMode>

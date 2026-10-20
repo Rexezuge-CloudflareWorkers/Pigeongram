@@ -68,9 +68,22 @@
 }
 
 .message .sticker {
+  display: block;
   max-width: 160px;
   height: auto;
   border-radius: 8px;
+}
+
+/* An animated sticker draws into a Lottie SVG; the box is reserved by the
+   aspect ratio set from the DTO, so the thread does not move when it loads. */
+.message .sticker-lottie {
+  width: min(160px, 100%);
+  max-width: 100%;
+}
+
+.message .sticker-link {
+  display: inline-block;
+  max-width: 100%;
 }
 
 .message .document {

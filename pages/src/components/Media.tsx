@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { fileUrl } from '../api';
-import { formatBytes, mediaPreview } from '../format';
+import { mediaPreview } from '../format';
 import { isVisualAlbum } from '../groups';
 import type { MessageDto, MessageMediaDto } from '../types';
+import { DocumentLink } from './DocumentLink';
 import { MessageText } from './MessageText';
+import { StickerMedia } from './Sticker';
 
 /**
 Whether a media item opens in the full-page viewer: the visual kinds, whose
@@ -90,19 +92,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       return <audio className="audio" src={src} controls preload="metadata" onError={onError} />;
     }
     case 'sticker': {
-      if (media.mime === 'image/webp') {
-        return (
-          <img
-            className="sticker"
-            src={src}
-            alt="Sticker"
-            width={media.width ?? undefined}
-            height={media.height ?? undefined}
-            loading="lazy"
-          />
-        );
-      }
-      return <DocumentLink message={message} />;
+      return <StickerMedia message={message} media={media} />;
     }
     default: {
       return <DocumentLink message={message} />;
@@ -172,20 +162,4 @@ function durationLabel(seconds: number): string {
   const minutes = Math.floor((total % 3600) / 60);
   const remainder = String(total % 60).padStart(2, '0');
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${remainder}` : `${minutes}:${remainder}`;
-}
-
-function DocumentLink({ message }: { message: MessageDto }) {
-  const media = message.media;
-  return (
-    <a
-      className="document"
-      href={fileUrl(message.chatId, message.id)}
-      download={media?.fileName ?? 'download'}
-      target="_blank"
-      rel="noreferrer"
-    >
-      <span className="doc-name">{media?.fileName ?? 'File'}</span>
-      {media && media.size !== null ? <span className="doc-size">{formatBytes(media.size)}</span> : null}
-    </a>
-  );
 }

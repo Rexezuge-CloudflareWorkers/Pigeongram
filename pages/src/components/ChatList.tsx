@@ -1,4 +1,6 @@
 import { formatListStamp, previewOf } from '../format';
+import type { PendingMessage } from '../outbox';
+import { withPendingDialogs } from '../outbox';
 import type { ChatDto, DialogDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { Spinner } from './Spinner';
@@ -7,19 +9,25 @@ interface ChatListProps {
   dialogs: DialogDto[];
   activeChatId: PeerId | null;
   loading: boolean;
+  /**
+   * Sends still in flight, folded over the server dialogs for the preview and
+   * ordering only. Dropping one from the outbox is the rollback.
+   */
+  pending?: readonly PendingMessage[];
   onSelect: (chat: ChatDto) => void;
 }
 
-export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListProps) {
+export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect }: ChatListProps) {
   if (loading && dialogs.length === 0) {
     return <Spinner size={32} label="Loading chats…" padding="32px 0" />;
   }
-  if (dialogs.length === 0) {
+  const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
+  if (rows.length === 0) {
     return <p className="muted pad">No chats yet.</p>;
   }
   return (
     <ul className="chats">
-      {dialogs.map((dialog) => {
+      {rows.map((dialog) => {
         const last = dialog.lastMessage;
         return (
           <li key={dialog.chat.id}>

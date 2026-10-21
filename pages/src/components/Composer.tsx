@@ -2,23 +2,20 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { BotCommandDto, MessageDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { ComposerReply } from './ReplyQuote';
-import { Spinner } from './Spinner';
 import { UploadDialog } from './UploadDialog';
 
 /**
 The message box shared by the thread and the comments view: draft, attach,
-reply banner, bot command menu, busy state and upload progress. The caller
-owns the reply target and clears it once a send succeeds, so the banner
-survives a failed attempt.
+reply banner and bot command menu. Sends are optimistic: submitting clears the
+box and refocuses it immediately, while the outbox owns the bridge round trip,
+progress and retries. The caller still owns the reply target and clears it as
+soon as the send is enqueued.
 */
 
 const NO_COMMANDS: readonly BotCommandDto[] = [];
 
 interface ComposerProps {
   placeholder: string;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
   /**
   The message being replied to, or null when the composer is not replying.
   */
@@ -32,17 +29,7 @@ interface ComposerProps {
   onAttach: (request: UploadRequest) => Promise<void>;
 }
 
-export function Composer({
-  placeholder,
-  sending,
-  uploading,
-  uploadProgress,
-  replyTarget,
-  botCommands,
-  onCancelReply,
-  onSend,
-  onAttach,
-}: ComposerProps) {
+export function Composer({ placeholder, replyTarget, botCommands, onCancelReply, onSend, onAttach }: ComposerProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -55,7 +42,6 @@ export function Composer({
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const listId = useId();
   const commands = botCommands ?? NO_COMMANDS;
-  const busy = sending || uploading;
 
   const query = menuOpen ? (slashQuery(draft) ?? '') : '';
   const matches = menuOpen ? filterCommands(commands, query) : NO_COMMANDS;
@@ -86,25 +72,27 @@ export function Composer({
 
   const submit = (): void => {
     const text = draft.trim();
-    if (!text || busy) return;
+    if (!text) return;
     const replyTo = replyTarget?.id;
     setMenuOpen(false);
     setDraft('');
-    void onSend(text, replyTo).catch(() => setDraft(text));
+    textareaRef.current?.focus();
+    // The outbox owns failures: the pending bubble keeps the text and offers
+    // Retry, so restoring the draft here would duplicate the message.
+    void Promise.resolve(onSend(text, replyTo)).catch(() => {});
   };
 
   const attach = (files: File[], grouped: boolean): void => {
-    if (files.length === 0 || busy) return;
+    if (files.length === 0) return;
     setPendingFiles(null);
-    // Whatever is in the box rides along as the caption, Telegram-style.
+    // Whatever is in the box rides along as the caption, Telegram-style; the
+    // pending row keeps it if the upload fails.
     const caption = draft.trim();
     const replyTo = replyTarget?.id;
     setMenuOpen(false);
-    void onAttach({ files, caption, replyTo, grouped })
-      .then(() => setDraft((current) => (current === caption ? '' : current)))
-      .catch(() => {
-        // The caption stays in the box so the upload can be retried.
-      });
+    setDraft('');
+    textareaRef.current?.focus();
+    void Promise.resolve(onAttach({ files, caption, replyTo, grouped })).catch(() => {});
   };
 
   const changeDraft = (value: string): void => {
@@ -173,14 +161,13 @@ export function Composer({
           onChange={(event) => {
             const files = Array.from(event.target.files ?? []);
             event.target.value = '';
-            if (files.length > 0 && !busy) setPendingFiles(files);
+            if (files.length > 0) setPendingFiles(files);
           }}
         />
         {commands.length > 0 ? (
           <button
             type="button"
             className="slash"
-            disabled={busy}
             aria-label="Bot commands"
             title="Bot commands"
             aria-haspopup="listbox"
@@ -191,14 +178,7 @@ export function Composer({
             /
           </button>
         ) : null}
-        <button
-          type="button"
-          className="attach"
-          disabled={busy}
-          aria-label="Attach files"
-          title="Attach files"
-          onClick={() => fileRef.current?.click()}
-        >
+        <button type="button" className="attach" aria-label="Attach files" title="Attach files" onClick={() => fileRef.current?.click()}>
           📎
         </button>
         {showMenu ? (
@@ -272,14 +252,7 @@ export function Composer({
             submit();
           }}
         />
-        {uploading ? (
-          <span className="upload-status">
-            <Spinner inline size={14} />
-            {uploadStatus(uploadProgress)}
-          </span>
-        ) : null}
-        <button type="submit" disabled={busy || draft.trim().length === 0} aria-busy={sending}>
-          {sending ? <Spinner inline size={14} color="currentColor" /> : null}
+        <button type="submit" disabled={draft.trim().length === 0}>
           Send
         </button>
       </form>
@@ -302,9 +275,4 @@ function filterCommands(commands: readonly BotCommandDto[], query: string): read
   if (query === '') return commands;
   const needle = query.toLowerCase();
   return commands.filter((command) => command.command.toLowerCase().startsWith(needle));
-}
-
-function uploadStatus(progress: number | null): string {
-  if (progress === null || progress >= 1) return 'Sending…';
-  return `Uploading ${Math.round(progress * 100)}%`;
 }

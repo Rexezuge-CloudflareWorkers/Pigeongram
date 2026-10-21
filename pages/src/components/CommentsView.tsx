@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
+import type { PendingMessage } from '../outbox';
 import type { CommentsThread } from '../state';
 import { settleToBottom } from '../thread-position';
 import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
@@ -8,50 +9,54 @@ import type { UploadRequest } from '../upload';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
+import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
 
 interface CommentsViewProps {
   thread: CommentsThread;
   loading: boolean;
   loadingOlder: boolean;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
+  /**
+   * Comments still on their way to Telegram, in submission order.
+   */
+  pending: readonly PendingMessage[];
   error: string | null;
   /**
-  Comment ids with a reaction request in flight; their chips are disabled.
-  */
+   * Comment ids with a reaction request in flight; their chips are disabled.
+   */
   reactingIds: ReadonlySet<number>;
   /**
-  Comment (or pinned post) ids with a vote in flight; their poll's answers are
-  disabled.
-  */
+   * Comment (or pinned post) ids with a vote in flight; their poll's answers are
+   * disabled.
+   */
   votingIds: ReadonlySet<number>;
   /**
-  Comment (or pinned post) ids with a callback button press in flight.
-  */
+   * Comment (or pinned post) ids with a callback button press in flight.
+   */
   pressingButtonIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  onRetryPending: (key: string) => void;
+  onDiscardPending: (key: string) => void;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
-  Starts forwarding a display group; an album forwards every member.
-  */
+   * Starts forwarding a display group; an album forwards every member.
+   */
   onForward: (messages: readonly MessageDto[]) => void;
   /**
-  Casts a vote in a poll comment, or retracts it with `null`.
-  */
+   * Casts a vote in a poll comment, or retracts it with `null`.
+   */
   onVote: (message: MessageDto, options: number[] | null) => void;
   /**
-  Presses an inline callback or copy button on the post or a comment.
-  */
+   * Presses an inline callback or copy button on the post or a comment.
+   */
   onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   /**
-  Opens the full-page viewer at a message's media (an album opens at the
-  clicked member).
-  */
+   * Opens the full-page viewer at a message's media (an album opens at the
+   * clicked member).
+   */
   onOpenMedia: (messageId: number) => void;
 }
 
@@ -64,9 +69,7 @@ export function CommentsView({
   thread,
   loading,
   loadingOlder,
-  sending,
-  uploading,
-  uploadProgress,
+  pending,
   error,
   reactingIds,
   votingIds,
@@ -75,6 +78,8 @@ export function CommentsView({
   onLoadOlder,
   onSend,
   onAttach,
+  onRetryPending,
+  onDiscardPending,
   onReact,
   onForward,
   onVote,
@@ -89,11 +94,16 @@ export function CommentsView({
 
   const comments = thread.comments;
   const lastId = comments.at(-1)?.id ?? 0;
+  // The controller scopes comment sends by post; another post's pending
+  // entries stay in the outbox without appearing under this one.
+  const postScope = `${String(thread.chat.id)}:${String(thread.post.id)}`;
+  const pendingForPost = pending.filter((entry) => entry.scope === postScope);
+  const lastPendingKey = pendingForPost.at(-1)?.key ?? null;
   useEffect(() => {
     const element = scrollRef.current;
     if (!element || !stickToBottom.current) return;
     element.scrollTop = element.scrollHeight;
-  }, [lastId, thread.post.id, comments.length]);
+  }, [lastId, lastPendingKey, thread.post.id, comments.length]);
 
   // Media loading after the first paint and the mobile keyboard both change the
   // list's height. A pinned view follows, so the end stays in view.
@@ -106,6 +116,9 @@ export function CommentsView({
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;
   const commentById = new Map(comments.map((comment) => [comment.id, comment]));
   const groups = groupMessages(comments);
+  // The day a pending comment falls on, when it is not the loaded list's last
+  // day.
+  const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;
 
   const jumpToComment = (messageId: number): void => {
     const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
@@ -115,8 +128,16 @@ export function CommentsView({
     setTimeout(() => target.classList.remove('reply-flash'), 1200);
   };
 
-  const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
-  const attach = (request: UploadRequest): Promise<void> => onAttach(request).then(() => setReplyingTo(null));
+  const send = (text: string, replyTo?: number): Promise<void> => {
+    // The outbox carries the reply preview, so the composer is free for the
+    // next comment before this send is acknowledged.
+    setReplyingTo(null);
+    return onSend(text, replyTo);
+  };
+  const attach = (request: UploadRequest): Promise<void> => {
+    setReplyingTo(null);
+    return onAttach(request);
+  };
 
   return (
     <section className="thread comments">
@@ -194,18 +215,17 @@ export function CommentsView({
             </Fragment>
           );
         })}
+        {pendingForPost.map((entry, index) => (
+          <Fragment key={entry.key}>
+            {index === 0 && (lastGroupDate === null || !isSameDay(lastGroupDate, entry.createdAt)) ? (
+              <div className="day">{formatDay(entry.createdAt)}</div>
+            ) : null}
+            <PendingMessageRow entry={entry} onRetry={onRetryPending} onDiscard={onDiscardPending} />
+          </Fragment>
+        ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      <Composer
-        placeholder="Comment"
-        sending={sending}
-        uploading={uploading}
-        uploadProgress={uploadProgress}
-        replyTarget={replyTarget}
-        onCancelReply={() => setReplyingTo(null)}
-        onSend={send}
-        onAttach={attach}
-      />
+      <Composer placeholder="Comment" replyTarget={replyTarget} onCancelReply={() => setReplyingTo(null)} onSend={send} onAttach={attach} />
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { Long } from '@mtcute/core';
 import { EngineError } from './errors';
 
 /**
@@ -98,6 +99,29 @@ export function optionalInt(value: unknown): number | undefined {
     throw new EngineError('Expected a non-negative integer', 400);
   }
   return value;
+}
+
+/**
+ * A client-chosen Telegram `random_id`, as a positive decimal 64-bit integer.
+ * Reusing it on a retry is what makes the retry idempotent: Telegram drops a
+ * duplicate send whose random id it has already accepted.
+ */
+export function optionalRandomId(value: unknown): Long | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !/^[1-9]\d{0,18}$/.test(value)) {
+    throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
+  }
+  const parsed = ((): Long => {
+    try {
+      return Long.fromString(value);
+    } catch {
+      throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
+    }
+  })();
+  if (parsed.isNegative() || parsed.toString() !== value) {
+    throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
+  }
+  return parsed;
 }
 
 export function clampInt(value: unknown, min: number, max: number, fallback: number): number {

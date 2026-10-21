@@ -14,14 +14,15 @@ import {
   updateThreadPoll,
 } from './state';
 import type { ChatThread, PollUpdateTarget } from './state';
-import type { ThreadPositionMemory } from './thread-position';
+import type { ThreadController } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
 import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { DialogDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
+import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
 
 /**
@@ -30,74 +31,6 @@ watermark the view reports scroll positions against, and the send/attach/react
 actions and folding of live updates. A hook rather than state inside `App` so
 both stay readable (and under the god-file cap), mirroring `useComments`.
 */
-
-export interface ThreadController {
-  /**
-  The open chat and its loaded messages, or null while no chat is open.
-  */
-  thread: ChatThread | null;
-  loading: boolean;
-  loadingOlder: boolean;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
-  /**
-  The last failure of an open, page, send or upload, as shown by the thread.
-  */
-  error: string | null;
-  /**
-  Message ids with a reaction request in flight; their chips are disabled.
-  */
-  reactingIds: ReadonlySet<number>;
-  /**
-  Message ids with a vote in flight; their poll's answers are disabled.
-  */
-  votingIds: ReadonlySet<number>;
-  /**
-  Message ids with a callback button press in flight; their callback buttons
-  are disabled.
-  */
-  pressingButtonIds: ReadonlySet<number>;
-  /**
-  Opens a chat at the dialog's read watermarks, reading the first window (or a
-  window around a linked post), and answers with the window it read, so a
-  caller chasing that post (its comments) need not look it up.
-  */
-  open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<MessageDto[]>;
-  close: () => void;
-  loadOlder: () => Promise<void>;
-  send: (text: string, replyTo?: number) => Promise<void>;
-  attach: (request: UploadRequest) => Promise<void>;
-  react: (message: MessageDto, reaction: MessageReactionDto) => void;
-  /**
-  Casts a vote in a poll message: the indexes name the selected answers, or
-  `null` retracts the current vote.
-  */
-  vote: (message: MessageDto, options: number[] | null) => void;
-  /**
-  Presses an inline callback or copy button on a message.
-  */
-  pressButton: (message: MessageDto, button: MessageButtonDto) => void;
-  /**
-  Advances the open thread's read watermark, for a read the view reported or
-  the server confirmed.
-  */
-  setReadWatermark: (chatId: PeerId, maxId: number) => void;
-  /**
-  Bumps a loaded channel post's comment count after one of the account's own
-  comments was accepted by the comments screen.
-  */
-  bumpCommentCount: (chatId: PeerId, postId: number) => void;
-  /**
-  The open thread's scroll position; a comments detour resumes it on return.
-  */
-  positions: ThreadPositionMemory;
-  /**
-  Folds one socket update into the open thread. `App`'s update handler
-  forwards every event; updates that are not the thread pass through.
-  */
-  applyUpdate: (update: UpdateEvent) => void;
-}
 
 interface UseThreadOptions {
   /**
@@ -125,12 +58,10 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
   const positions = useThreadPositionMemory();
+  const outbox = useOutbox({ onError });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -212,51 +143,64 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   }, []);
 
   const send = useCallback(
-    async (text: string, replyTo?: number): Promise<void> => {
+    (text: string, replyTo?: number): Promise<void> => {
       const chat = thread?.chat;
-      if (!chat) return;
-      setSending(true);
-      setError(null);
-      try {
-        const result = await sendMessage(chat.id, text, replyTo);
-        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
-        onSent(result.message);
-      } catch (failure) {
-        setError(failureText(failure));
-        throw failure;
-      } finally {
-        setSending(false);
-      }
+      if (!chat) return Promise.resolve();
+      const replyPreview = replyTo === undefined ? null : (thread.messages.find((message) => message.id === replyTo) ?? null);
+      outbox.send({
+        chatId: chat.id,
+        scope: String(chat.id),
+        text,
+        ...(replyTo !== undefined && { replyTo }),
+        replyPreview,
+        deliver: (body, randomIds) => {
+          if (body.kind !== 'text') throw new Error('The outbox delivered a file body for a text message');
+          return sendMessage(chat.id, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
+        },
+        onSettled: (messages) => {
+          setThread((current) => updateThread(current, chat.id, (list) => mergeMessages(list, messages)));
+          const last = messages.at(-1);
+          if (last) onSent(last);
+        },
+      });
+      return Promise.resolve();
     },
-    [thread, onSent],
+    [thread, outbox, onSent],
   );
 
   const attach = useCallback(
-    async (request: UploadRequest): Promise<void> => {
+    (request: UploadRequest): Promise<void> => {
       const chat = thread?.chat;
-      if (!chat) return;
-      setUploading(true);
-      setUploadProgress(null);
-      setError(null);
-      try {
-        await sendUploadBatch(
-          { chatId: chat.id, ...(request.replyTo !== undefined && { replyTo: request.replyTo }) },
-          request,
-          setUploadProgress,
-          (message) => {
-            setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [message])));
-            onSent(message);
-          },
-        );
-      } catch (failure) {
-        setError(failureText(failure));
-        throw failure;
-      } finally {
-        setUploading(false);
-        setUploadProgress(null);
-      }
+      if (!chat) return Promise.resolve();
+      const replyPreview =
+        request.replyTo === undefined ? null : (thread.messages.find((message) => message.id === request.replyTo) ?? null);
+      outbox.attach({
+        chatId: chat.id,
+        scope: String(chat.id),
+        request,
+        replyPreview,
+        deliver: (body, randomIds, onProgress) => {
+          if (body.kind !== 'file') throw new Error('The outbox delivered a text body for an attachment');
+          const messages: MessageDto[] = [];
+          return sendUploadBatch(
+            { chatId: chat.id, ...(request.replyTo !== undefined && { replyTo: request.replyTo }) },
+            body.request,
+            (fraction) => onProgress(fraction ?? 0),
+            (message) => {
+              messages.push(message);
+            },
+            randomIds,
+          ).then(() => messages);
+        },
+        onSettled: (messages) => {
+          setThread((current) => updateThread(current, chat.id, (list) => mergeMessages(list, messages)));
+          const last = messages.at(-1);
+          if (last) onSent(last);
+        },
+      });
+      return Promise.resolve();
     },
-    [thread, onSent],
+    [thread, outbox, onSent],
   );
 
   const react = useCallback(
@@ -366,9 +310,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     thread,
     loading,
     loadingOlder,
-    sending,
-    uploading,
-    uploadProgress,
+    pending: outbox.pending,
     error,
     reactingIds,
     votingIds,
@@ -378,6 +320,9 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     loadOlder,
     send,
     attach,
+    retryPending: outbox.retry,
+    discardPending: outbox.discard,
+    clearPending: outbox.clear,
     react,
     vote,
     pressButton,

@@ -12,6 +12,7 @@ import {
   optionalAnswerIndexes,
   optionalInt,
   optionalMessageId,
+  optionalRandomId,
   optionalText,
   requireMessageId,
   requireMessageIds,
@@ -66,7 +67,15 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const chatId = requirePeerId(params.chatId);
       const text = requireText(params.text);
       const replyTo = optionalMessageId(params.replyTo);
-      return { message: toMessageDto(await client.sendText(chatId, text, { ...(replyTo !== undefined && { replyTo }) })) };
+      const randomId = optionalRandomId(params.randomId);
+      return {
+        message: toMessageDto(
+          await client.sendText(chatId, text, {
+            ...(replyTo !== undefined && { replyTo }),
+            ...(randomId !== undefined && { randomId }),
+          }),
+        ),
+      };
     }
 
     case 'forwardMessages': {
@@ -179,14 +188,24 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const messageId = requireMessageId(params.messageId);
       const text = requireText(params.text);
       const replyTo = optionalMessageId(params.replyTo);
+      const randomId = optionalRandomId(params.randomId);
       const post = await requireCommentPost(client, chatId, messageId);
       if (replyTo === undefined) {
         // `commentText` resolves the thread itself and covers the
         // first-comment case Telegram accepts through the channel.
-        return { message: toMessageDto(await client.commentText(post, text)) };
+        return {
+          message: toMessageDto(await client.commentText(post, text, { ...(randomId !== undefined && { randomId }) })),
+        };
       }
       const discussion = await requireDiscussion(client, chatId, messageId);
-      return { message: toMessageDto(await client.sendText(discussion.peer, text, { replyTo })) };
+      return {
+        message: toMessageDto(
+          await client.sendText(discussion.peer, text, {
+            replyTo,
+            ...(randomId !== undefined && { randomId }),
+          }),
+        ),
+      };
     }
 
     case 'getBotCommands': {

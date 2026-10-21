@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseUploadGroupSpec } from '../../worker/src/session/upload-spec';
+import { parseUploadGroupSpec, parseUploadSpec } from '../../worker/src/session/upload-spec';
 
 /**
  * The album manifest is the one untrusted, structured part of an upload: it
@@ -107,5 +107,26 @@ describe('parseUploadGroupSpec', () => {
 
     const badReply = request(`chatId=1&manifest=${encode([item(), item()])}&replyTo=0`);
     expect(() => parseUploadGroupSpec(badReply.url, badReply.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+  });
+});
+
+describe('parseUploadSpec random id', () => {
+  function single(query: string): { url: URL; request: Request } {
+    const url = new URL(`https://session-engine.internal/user/upload?${query}`);
+    return { url, request: new Request(url, { method: 'POST', body: 'abcdef' }) };
+  }
+
+  it('keeps the client-chosen random id, so a retry is idempotent', () => {
+    const { url, request: body } = single('chatId=1&kind=document&size=6&randomId=123456789');
+    const spec = parseUploadSpec(url, body, env);
+
+    expect(spec.randomId?.toString()).toBe('123456789');
+  });
+
+  it('rejects a random id that is not a positive 64-bit integer', () => {
+    for (const randomId of ['nope', '0', '-1', '1.5', '9223372036854775808']) {
+      const { url, request: body } = single(`chatId=1&kind=document&size=6&randomId=${randomId}`);
+      expect(() => parseUploadSpec(url, body, env), randomId).toThrowError(expect.objectContaining({ status: 400 }));
+    }
   });
 });

@@ -15,9 +15,6 @@ function renderComposer(): { onAttach: ReturnType<typeof vi.fn>; container: HTML
   const { container } = render(
     <Composer
       placeholder="Message"
-      sending={false}
-      uploading={false}
-      uploadProgress={null}
       replyTarget={null}
       onCancelReply={() => {
         // Not exercised here.

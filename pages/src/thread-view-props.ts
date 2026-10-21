@@ -1,0 +1,93 @@
+import type { PendingMessage } from './outbox';
+import type { ThreadPositionMemory } from './thread-position';
+import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from './types';
+import type { UploadRequest } from './upload';
+
+/**
+ * The thread screen's props, split from `ThreadView.tsx` to keep that component
+ * under the god-file cap. The contract is what `App` forwards from the thread
+ * controller plus the view-only unread and focus anchors.
+ */
+export interface ThreadViewProps {
+  chat: ChatDto | null;
+  /**
+   * The open chat's live presence. It rides beside the chat rather than inside
+   * it, so a peer coming online does not replace the chat object the view's
+   * effects depend on.
+   */
+  presence: PresenceDto | null;
+  messages: MessageDto[];
+  loading: boolean;
+  loadingOlder: boolean;
+  /**
+   * Messages still on their way to Telegram, in submission order. The view
+   * filters them to the open chat and renders them after the loaded list.
+   */
+  pending: readonly PendingMessage[];
+  error: string | null;
+  /**
+   * Message ids with a reaction request in flight; their chips are disabled.
+   */
+  reactingIds: ReadonlySet<number>;
+  /**
+   * Message ids with a vote in flight; their polls' answers are disabled.
+   */
+  votingIds: ReadonlySet<number>;
+  /**
+   * Message ids with a callback button press in flight.
+   */
+  pressingButtonIds: ReadonlySet<number>;
+  /**
+   * Id of the last outgoing message the peer has read. Own messages up to it
+   * render a double check; later ones a single sent check.
+   */
+  readOutboxMaxId: number;
+  /**
+   * The message the unread divider sits above: the first unread message of the
+   * window the chat opened with. Reading advances the watermark but not the
+   * line, and the line stays for as long as the chat is open; reopening the
+   * chat computes a fresh one. Null when the chat opened fully read.
+   */
+  unreadDividerId: number | null;
+  /**
+   * A linked post the chat was opened for: the first window lands on it (and
+   * flashes it) instead of on the first unread message; null when the chat was
+   * opened normally.
+   */
+  focusMessageId: number | null;
+  /**
+   * The open thread's remembered place, so returning from the comments screen
+   * lands where the reader left instead of at the divider or the bottom.
+   */
+  positions: ThreadPositionMemory;
+  onBack: () => void;
+  onLoadOlder: () => void;
+  onSend: (text: string, replyTo?: number) => Promise<void>;
+  onAttach: (request: UploadRequest) => Promise<void>;
+  onRetryPending: (key: string) => void;
+  onDiscardPending: (key: string) => void;
+  onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+   * Starts forwarding a display group; an album forwards every member.
+   */
+  onForward: (messages: readonly MessageDto[]) => void;
+  /**
+   * Casts a vote in a poll message, or retracts it with `null`.
+   */
+  onVote: (message: MessageDto, options: number[] | null) => void;
+  /**
+   * Presses an inline callback or copy button on a message.
+   */
+  onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
+  onOpenComments: (message: MessageDto) => void;
+  /**
+   * Opens the full-page viewer at a message's media (an album opens at the
+   * clicked member).
+   */
+  onOpenMedia: (messageId: number) => void;
+  /**
+   * Reports the highest message id the viewport proves read, for the chat the
+   * watermark was measured in (a pending report can outlive a switch).
+   */
+  onReadThrough: (chatId: PeerId, maxId: number) => void;
+}

@@ -5,6 +5,7 @@ import {
   optionalAnswerIndexes,
   optionalInt,
   optionalMessageId,
+  optionalRandomId,
   optionalText,
   requireCallbackData,
   requireMessageId,
@@ -45,6 +46,15 @@ describe('bridge parameter validation', () => {
     expect(optionalMessageId(7)).toBe(7);
     for (const bad of ['7', 0, -1, 1.5, NaN, Infinity]) {
       expect(() => optionalMessageId(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('accepts a positive decimal random id and rejects everything else', () => {
+    expect(optionalRandomId(undefined)).toBeUndefined();
+    expect(optionalRandomId(null)).toBeUndefined();
+    expect(optionalRandomId('123456789')?.toString()).toBe('123456789');
+    for (const bad of ['', 'abc', '-1', '0', '1.5', 12, ' 1', '9223372036854775808']) {
+      expect(() => optionalRandomId(bad)).toThrow(EngineError);
     }
   });
 

@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react';
 import type { Route, RouteApplyOptions } from './routes';
 import type { DialogDto } from './types';
 import type { CommentsController } from './comments-controller';
-import type { ThreadController } from './useThread';
+import type { ThreadController } from './thread-controller';
 
 /**
  * Applies a `Route` to the thread and comments controllers.

@@ -70,12 +70,18 @@ export function canGroupUploads(files: readonly File[]): boolean {
  * when the prepared kinds still agree; everything else is sent message by
  * message, with the caption riding the first item only. `onSent` is called as
  * each message lands, so a later failure keeps the successes in the UI.
+ *
+ * `randomIds` are the client-chosen Telegram ids, one per file: a retry of a
+ * single-file send reuses the id, so Telegram drops the duplicate if the first
+ * attempt actually landed. An album has no client-chosen id (Telegram picks
+ * the group's), so the ids are ignored there.
  */
 export async function sendUploadBatch(
   destination: UploadDestination,
   request: UploadRequest,
   onProgress: (fraction: number | null) => void,
   onSent: (message: MessageDto) => void,
+  randomIds?: readonly string[],
 ): Promise<void> {
   const prepared: PreparedUpload[] = [];
   for (const file of request.files) {
@@ -99,11 +105,13 @@ export async function sendUploadBatch(
   }
 
   for (const [index, item] of prepared.entries()) {
+    const randomId = randomIds?.[index];
     const result = await uploadFile(
       {
         ...destination,
         ...uploadItem(item),
         ...(index === 0 && request.caption.length > 0 && { caption: request.caption }),
+        ...(randomId !== undefined && { randomId }),
       },
       item.body,
       (fraction) => onProgress((index + fraction) / prepared.length),

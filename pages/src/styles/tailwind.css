@@ -17,6 +17,7 @@
 @import './comments.css' layer(components);
 @import './composer.css' layer(components);
 @import './menu.css' layer(components);
+@import './pending.css' layer(components);
 @import './poll.css' layer(components);
 @import './replies.css' layer(components);
 @import './viewer.css' layer(components);

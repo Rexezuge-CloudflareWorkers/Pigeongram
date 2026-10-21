@@ -18,9 +18,6 @@ function renderComposer(commands: readonly BotCommandDto[] = COMMANDS): { onSend
   render(
     <Composer
       placeholder="Message"
-      sending={false}
-      uploading={false}
-      uploadProgress={null}
       replyTarget={null}
       botCommands={commands}
       onCancelReply={() => {

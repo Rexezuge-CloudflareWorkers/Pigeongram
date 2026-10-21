@@ -1,6 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
+import type { RpcBatchOutcome } from '../rpc-types';
 import type { DialogDto, PresenceDto } from '../types';
 import { readBotCommands } from './bot-commands';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
@@ -14,6 +15,7 @@ import {
   optionalMessageId,
   optionalRandomId,
   optionalText,
+  parseBatchCalls,
   requireMessageId,
   requireMessageIds,
   requireCallbackData,
@@ -32,17 +34,36 @@ import {
 export async function dispatchRpc(client: TelegramClient, method: string, rawParams: unknown): Promise<unknown> {
   const params = requireRecord(rawParams);
   switch (method) {
+    case 'batch': {
+      const calls = parseBatchCalls(params.calls);
+      // The calls run concurrently over the one Telegram connection: a batch
+      // is the only way to overlap them, because the Durable Object hands out
+      // one event at a time and separate requests would queue behind each
+      // other instead.
+      const results = await Promise.all(
+        calls.map(async (call) => {
+          try {
+            return { ok: true, result: await dispatchRpc(client, call.method, call.params) } satisfies RpcBatchOutcome;
+          } catch (error) {
+            // A failed call is reported on its own: one broken read must not
+            // take the reads beside it down with it.
+            return { ok: false, error: failureText(error) } satisfies RpcBatchOutcome;
+          }
+        }),
+      );
+      return { results };
+    }
+
     case 'getMe': {
       return { me: toMeDto(await client.getMe()) };
     }
 
     case 'getDialogs': {
       const limit = clampInt(params.limit, 1, 200, 100);
-      const dialogs: DialogDto[] = [];
-      for await (const dialog of client.iterDialogs({ limit })) {
-        dialogs.push(toDialogDto(dialog));
-      }
-      return { dialogs: overlayPresence(dialogs, await readContactPresences(client)) };
+      // The chat list and the contact presences are two independent Telegram
+      // reads; running them together saves a round trip on every list load.
+      const [dialogs, presences] = await Promise.all([collectDialogs(client, limit), readContactPresences(client)]);
+      return { dialogs: overlayPresence(dialogs, presences) };
     }
 
     case 'getHistory': {
@@ -53,11 +74,8 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       // Only the newer direction is meaningful: the bridge has no forward
       // paging, so a positive skip would hide the messages next to a jump.
       const addOffset = clampInt(params.addOffset, -50, 0, 0);
-      const page = await client.getHistory(chatId, {
-        limit,
-        ...(offsetId !== undefined && { offset: { id: offsetId, date: offsetDate ?? 0 } }),
-        ...(addOffset !== 0 && { addOffset }),
-      });
+      const anchorId = optionalInt(params.anchorId);
+      const page = await readWindow(client, chatId, { limit, offsetId, offsetDate, addOffset, anchorId });
       const messages = await completeOldestAlbum(client, chatId, page);
       // mtcute answers newest-first; the bridge promises oldest-first.
       return { messages: messages.map(toMessageDto).toReversed() };
@@ -234,6 +252,69 @@ function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, Pre
     if (!presence) return dialog;
     return { ...dialog, chat: { ...dialog.chat, presence } };
   });
+}
+
+/**
+ * Reads the chat list, one Telegram page at a time.
+ */
+async function collectDialogs(client: TelegramClient, limit: number): Promise<DialogDto[]> {
+  const dialogs: DialogDto[] = [];
+  for await (const dialog of client.iterDialogs({ limit })) {
+    dialogs.push(toDialogDto(dialog));
+  }
+  return dialogs;
+}
+
+/**
+How many messages of context a jump window reads on the newer side of the
+linked post; the rest of the page is the post and its older messages.
+*/
+const JUMP_CONTEXT = 25;
+
+interface WindowRequest {
+  limit: number;
+  offsetId?: number;
+  offsetDate?: number;
+  addOffset: number;
+  /**
+   * The message the window has to hold, when the reader jumped to one.
+   */
+  anchorId?: number;
+}
+
+/**
+ * Reads one window of a chat.
+ *
+ * With an anchor, the window is read *around* that message: the post lands
+ * mid-page with its newer context beside it. When the first read missed it —
+ * a deleted post, or one past the end of the history — the page that ends at
+ * it is read instead, which still lands the reader right next to it. That
+ * fallback used to cost the SPA a second round trip.
+ */
+async function readWindow(client: TelegramClient, chatId: number, request: WindowRequest): Promise<Message[]> {
+  if (request.anchorId !== undefined) {
+    const skip = request.addOffset === 0 ? -JUMP_CONTEXT : request.addOffset;
+    const around = await client.getHistory(chatId, {
+      limit: request.limit,
+      offset: { id: request.anchorId, date: 0 },
+      addOffset: skip,
+    });
+    if (around.some((message) => message.id === request.anchorId)) return around;
+    return client.getHistory(chatId, { limit: request.limit, offset: { id: request.anchorId + 1, date: 0 } });
+  }
+  return client.getHistory(chatId, {
+    limit: request.limit,
+    ...(request.offsetId !== undefined && { offset: { id: request.offsetId, date: request.offsetDate ?? 0 } }),
+    ...(request.addOffset !== 0 && { addOffset: request.addOffset }),
+  });
+}
+
+/**
+ * The message a failed call reports.
+ */
+function failureText(error: unknown): string {
+  if (error instanceof EngineError) return error.message;
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

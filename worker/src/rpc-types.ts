@@ -31,6 +31,44 @@ export type RpcMethod =
   | 'sendComment'
   | 'getBotCommands';
 
+/**
+The methods a `batch` call may carry.
+
+Deliberately the read-only half of {@link RpcMethod}: a batch runs its calls
+concurrently, so a write in it would have no defined completion order, and
+Telegram's own ordering guarantees matter more than the round trip saved.
+`readHistory` is excluded for the same reason it stays a single call — it
+mutates the account's read watermark.
+*/
+export type BatchableRpcMethod =
+  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
+
+/**
+One call inside a `batch`.
+*/
+export interface RpcBatchCall {
+  method: BatchableRpcMethod;
+  params?: Record<string, unknown>;
+}
+
+/**
+The outcome of one call inside a `batch`.
+
+A failed call is reported on its own, so one broken read (a post without a
+comments section) never takes the reads beside it down with it.
+*/
+export interface RpcBatchOutcome {
+  ok: boolean;
+  /**
+  The call's result, when it succeeded.
+  */
+  result?: unknown;
+  /**
+  The failure's message, when it failed.
+  */
+  error?: string;
+}
+
 export interface GetDialogsParams {
   limit?: number;
 }
@@ -52,6 +90,13 @@ export interface GetHistoryParams {
    * for a page around it instead of everything older than it.
    */
   addOffset?: number;
+  /**
+   * The message the window has to hold: a linked post the reader jumped to.
+   * The engine reads around it and, when the first read missed it (a deleted
+   * post, or one past the end of the history), reads the page that ends at it
+   * instead — the fallback the SPA used to spend a second round trip on.
+   */
+  anchorId?: number;
 }
 
 export interface SendMessageParams {

@@ -6,7 +6,6 @@ import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBotto
 import type { ThreadViewProps } from '../thread-view-props';
 import type { ChatDto, MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
-import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
@@ -27,6 +26,7 @@ export function ThreadView({
   loadingOlder,
   pending,
   error,
+  botCommands,
   reactingIds,
   votingIds,
   pressingButtonIds,
@@ -59,7 +59,6 @@ export function ThreadView({
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
-  const botCommands = useBotCommands(chat);
 
   // The caller is refreshed every render (the `hooks.ts` pattern), so a read
   // the debounce flushes still reaches it; the chat id captured with the

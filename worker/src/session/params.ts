@@ -1,4 +1,5 @@
 import { Long } from '@mtcute/core';
+import type { BatchableRpcMethod, RpcBatchCall } from '../rpc-types';
 import { EngineError } from './errors';
 
 /**
@@ -6,6 +7,24 @@ import { EngineError } from './errors';
  * behind a gate, but malformed input should still fail loudly with a 400
  * instead of being smuggled into mtcute.
  */
+
+/**
+How many calls one `batch` may carry.
+*/
+const MAX_BATCH_CALLS = 8;
+
+/**
+The methods a `batch` may carry: the read-only half of the bridge's surface.
+*/
+const BATCHABLE_METHODS: ReadonlySet<string> = new Set<BatchableRpcMethod>([
+  'getMe',
+  'getDialogs',
+  'getHistory',
+  'searchMessages',
+  'getPollResults',
+  'getComments',
+  'getBotCommands',
+]);
 
 export function requireRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
@@ -182,4 +201,34 @@ export function requireQuery(value: unknown, max = 256): string {
     throw new EngineError(`query must be at most ${max} characters`, 400);
   }
   return value;
+}
+
+/**
+The calls a `batch` carries.
+
+The list is capped so one request cannot become a fan-out amplifier, and every
+method is checked against the read-only whitelist: a batch runs its calls
+concurrently, so a write in it would have no defined completion order.
+*/
+export function parseBatchCalls(value: unknown): RpcBatchCall[] {
+  if (!Array.isArray(value)) {
+    throw new EngineError('calls must be an array of batched calls', 400);
+  }
+  if (value.length === 0) {
+    throw new EngineError('calls must hold at least one batched call', 400);
+  }
+  if (value.length > MAX_BATCH_CALLS) {
+    throw new EngineError(`calls must hold at most ${MAX_BATCH_CALLS} batched calls`, 400);
+  }
+  return value.map((entry, index) => {
+    const record = requireRecord(entry);
+    const method = record.method;
+    if (typeof method !== 'string' || !BATCHABLE_METHODS.has(method)) {
+      throw new EngineError(`calls[${index}].method must be a batchable read method`, 400);
+    }
+    return {
+      method: method as BatchableRpcMethod,
+      params: requireRecord(record.params),
+    };
+  });
 }

@@ -5,6 +5,7 @@ import { presenceOfPeer } from './presence';
 import type {
   ChatDto,
   DialogDto,
+  DialogMessageDto,
   MeDto,
   MessageCommentsDto,
   MessageDto,
@@ -341,7 +342,7 @@ export function toPollDto(poll: Poll): MessagePollDto {
 export function toDialogDto(dialog: Dialog): DialogDto {
   return {
     chat: toChatDto(dialog.peer),
-    lastMessage: dialog.lastMessage ? toMessageDto(dialog.lastMessage) : null,
+    lastMessage: dialog.lastMessage ? toDialogMessageDto(dialog.lastMessage) : null,
     unread: dialog.unreadCount,
     // The raw fields are optional even though mtcute's getters are typed as
     // numbers; a dialog that never carried them has read nothing.
@@ -349,5 +350,22 @@ export function toDialogDto(dialog: Dialog): DialogDto {
     readOutboxMaxId: dialog.lastReadOutgoing ?? 0,
     pinned: dialog.isPinned,
     muted: dialog.isMuted === true,
+  };
+}
+
+/**
+ * The chat list's view of a dialog's last message: the preview, the
+ * timestamp and the media or poll label, and nothing else.
+ */
+export function toDialogMessageDto(message: Message): DialogMessageDto {
+  const media = message.media;
+  return {
+    id: message.id,
+    date: message.date.getTime(),
+    text: message.text,
+    media: media === undefined ? null : toMessageMediaDto(media),
+    poll: media?.type === 'poll' ? toPollDto(media) : null,
+    outgoing: message.isOutgoing,
+    service: message.isService,
   };
 }

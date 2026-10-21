@@ -1,13 +1,12 @@
-import { fetchHistory } from './api';
-import type { MessageDto, PeerId } from './types';
+import type { ChatDto } from './types';
 
 /**
- * Where a thread opens: the newest messages, or a window around a linked post.
+ * The rules of a thread's first window: how much of the chat it reads, and
+ * which chats carry a slash-command menu.
  *
- * Kept away from the thread controller because the two requests a jump may
- * make — and the rule for falling back between them — are the part of opening
- * worth reading on their own. The window size matches the controller's paging
- * so `loadOlder` continues from the same edge.
+ * Kept away from the thread controller because the window is worth reading on
+ * its own. The size matches the controller's paging so `loadOlder` continues
+ * from the same edge.
  */
 
 export interface OpenThreadOptions {
@@ -22,25 +21,14 @@ export interface OpenThreadOptions {
 How many messages of context the jump window reads on the newer side of a
 linked post; the rest of the page is the post and its older messages.
 */
-const JUMP_CONTEXT = 25;
-
-const WINDOW_LIMIT = 50;
+export const WINDOW_LIMIT = 50;
 
 /**
-Reads a chat's first window: the newest messages, or a window around a linked
-post with newer context on one side and older history on the other.
+Whether a chat carries a slash-command menu.
 
-A window that came back without the post — a deleted post, or one past the end
-of the history — falls back to the page that ends at the post, which still
-lands the view right next to it.
+Telegram keeps bot commands outside the dialog peer, so they arrive through
+their own read when a bot, group or supergroup opens.
 */
-export async function fetchOpenWindow(chatId: PeerId, postId: number | null): Promise<MessageDto[]> {
-  if (postId === null) {
-    const newest = await fetchHistory(chatId, { limit: WINDOW_LIMIT });
-    return newest.messages;
-  }
-  const around = await fetchHistory(chatId, { limit: WINDOW_LIMIT, offsetId: postId, addOffset: -JUMP_CONTEXT });
-  if (around.messages.some((message) => message.id === postId)) return around.messages;
-  const ending = await fetchHistory(chatId, { limit: WINDOW_LIMIT, offsetId: postId + 1 });
-  return ending.messages;
+export function supportsCommands(kind: ChatDto['kind']): boolean {
+  return kind === 'bot' || kind === 'group' || kind === 'supergroup';
 }

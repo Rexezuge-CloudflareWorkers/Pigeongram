@@ -21,7 +21,7 @@ import {
   updateThreadPoll,
 } from '../../pages/src/state';
 import { firstUnread, readWatermark } from '../../pages/src/reading';
-import type { ChatDto, DialogDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../pages/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 
@@ -91,6 +91,21 @@ function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
   };
 }
 
+/**
+The chat list's view of a message: the list renders a preview, not a thread.
+*/
+function dialogMessage(source: MessageDto): DialogMessageDto {
+  return {
+    id: source.id,
+    date: source.date,
+    text: source.text,
+    media: source.media,
+    poll: source.poll,
+    outgoing: source.outgoing,
+    service: source.service,
+  };
+}
+
 describe('chat-list state', () => {
   it('ignores messages for chats the list does not know', () => {
     const dialogs = [dialog(1), dialog(2)];
@@ -103,7 +118,8 @@ describe('chat-list state', () => {
     const next = applyNewMessage(dialogs, incoming, null);
     expect(next.map((entry) => entry.chat.id)).toEqual([1, 3, 2]);
     expect(next[1].unread).toBe(1);
-    expect(next[1].lastMessage).toBe(incoming);
+    // The list keeps a preview of the message, not the whole message.
+    expect(next[1].lastMessage).toEqual(dialogMessage(incoming));
   });
 
   it('keeps pinned chats in place and does not bump the open chat or outgoing messages', () => {
@@ -127,7 +143,9 @@ describe('chat-list state', () => {
     // A stale read update must not rewind the watermark reading stopped at.
     expect(applyReadUpdate(read, 1, 4, 3)[0].readInboxMaxId).toBe(7);
 
-    const withLast = dialogs.map((entry) => (entry.chat.id === 1 ? { ...entry, lastMessage: message({ id: 9, chatId: 1 }) } : entry));
+    const withLast = dialogs.map((entry) =>
+      entry.chat.id === 1 ? { ...entry, lastMessage: dialogMessage(message({ id: 9, chatId: 1 })) } : entry,
+    );
     const edited = applyEditedMessage(withLast, message({ id: 9, chatId: 1, text: 'edited' }));
     expect(edited[0].lastMessage?.text).toBe('edited');
     expect(edited[1].lastMessage).toBeNull();

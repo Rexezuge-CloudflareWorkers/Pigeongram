@@ -469,7 +469,7 @@ export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
 
 export interface DialogDto {
   chat: ChatDto;
-  lastMessage: MessageDto | null;
+  lastMessage: DialogMessageDto | null;
   unread: number;
   /**
   Id of the last read incoming message; incoming messages after it are the
@@ -483,6 +483,28 @@ export interface DialogDto {
   readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
+}
+
+/**
+The chat list's view of a dialog's last message.
+
+A trimmed {@link MessageDto}: the list renders a preview, a timestamp and a
+media or poll label, and nothing else. Carrying the full message would put
+every dialog's entities, reactions, inline markup and nested reply quote into
+the chat-list payload — for a hundred dialogs, that is the bulk of the
+response and the bulk of the browser's parse.
+*/
+export interface DialogMessageDto {
+  id: number;
+  /**
+  Unix milliseconds.
+  */
+  date: number;
+  text: string;
+  media: MessageMediaDto | null;
+  poll: MessagePollDto | null;
+  outgoing: boolean;
+  service: boolean;
 }
 
 /**

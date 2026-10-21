@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { fetchComments, readHistory, sendComment, sendReaction } from './api';
-import type { CommentsController } from './comments-controller';
+import type { CommentsController, PrefetchedComments } from './comments-controller';
 import {
   applyCommentEdit,
   applyCommentMessage,
@@ -87,12 +87,12 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
 
   /**
-  Re-reads the newest window of the open thread and folds it in. An
-  already-loaded older-pages cursor stays put: a refresh can only make the
-  window newer, and rewinding it would re-fetch pages the view already holds.
+  Folds a read of the thread into the open window and reports the read to
+  Telegram. An already-loaded older-pages cursor stays put: a refresh can
+  only make the window newer, and rewinding it would re-fetch pages the view
+  already holds.
   */
-  const refresh = useCallback(async (post: PostKey): Promise<void> => {
-    const result = await fetchComments(post.chatId, post.messageId, { limit: COMMENTS_LIMIT });
+  const applyComments = useCallback((post: PostKey, result: GetCommentsResult): void => {
     setThread((current) =>
       updateCommentsThread(current, post, (open) => ({
         ...open,
@@ -113,8 +113,15 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     }
   }, []);
 
+  const refresh = useCallback(
+    async (post: PostKey): Promise<void> => {
+      applyComments(post, await fetchComments(post.chatId, post.messageId, { limit: COMMENTS_LIMIT }));
+    },
+    [applyComments],
+  );
+
   const open = useCallback(
-    async (chat: ChatDto, message: MessageDto): Promise<void> => {
+    async (chat: ChatDto, message: MessageDto, prefetched?: PrefetchedComments): Promise<void> => {
       const count = message.comments?.count ?? 0;
       // Reopening the same post keeps the loaded window and its cursor and
       // just re-reads it; another post starts from scratch.
@@ -126,14 +133,21 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
       setError(null);
       setLoading(true);
       try {
-        await refresh({ chatId: chat.id, messageId: message.id });
+        const post = { chatId: chat.id, messageId: message.id };
+        if (prefetched === undefined) {
+          await refresh(post);
+        } else if (prefetched.ok) {
+          applyComments(post, prefetched.result);
+        } else {
+          setError(prefetched.error);
+        }
       } catch (failure) {
         setError(failureText(failure));
       } finally {
         setLoading(false);
       }
     },
-    [refresh],
+    [applyComments, refresh],
   );
 
   const close = useCallback((): void => {

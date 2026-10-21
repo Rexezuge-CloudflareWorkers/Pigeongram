@@ -15,8 +15,8 @@ browser ──HTTP──▶ Pages (static + /api/* and /user/* proxies in functi
 ```
 
 - One DO instance (`ENGINE_OBJECT_NAME = 'main'`) owns the account. All state is in its SQLite database:
-  mtcute's storage (`BaseSqliteStorage`: auth keys, session, peers, dialogs, reference messages) plus two engine
-  tables (`engine_wakes`, `engine_meta`).
+  mtcute's storage (`BaseSqliteStorage`: auth keys, session, peers, dialogs, reference messages) plus three engine
+  tables (`engine_wakes`, `engine_meta`, `engine_avatars`).
 - The worker is **API-only** and, in production, not publicly reachable: `workers_dev: false`, no route, and the
   Pages project is the only caller (through the `API_WORKER` service binding).
 - Locally the SPA talks to the worker through the Vite proxy (`/api` and `/user` are proxied from 5173 to 8787).
@@ -39,6 +39,29 @@ state — which would pin the DO's CPU forever. A pre-login wake therefore recor
 stays observable in `/user/stats`) and connects nothing.
 
 `WAKE_INTERVAL_SECONDS` (wrangler var, default `300`, minimum `30`) is the only cadence knob.
+
+## Latency
+
+A Durable Object hands out **one event at a time**: while a handler awaits, the next request waits behind it. Two
+bridge calls therefore cost two round trips in sequence, no matter how the browser sends them — and each round trip
+costs a Telegram round trip on the far side.
+
+Inside one event the opposite holds: mtcute's transport multiplexes, so several Telegram calls can be in flight over
+the one connection at the same time. **The lever is therefore: fewer events, and more concurrency inside each event.**
+
+| Change                                                  | What it does                                                                                                                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `batch` (`POST /user/rpc`)                              | Several read-only methods in one request, run concurrently over the one connection                                                                                                   |
+| `getHistory`'s `anchorId`                               | The jump-window fallback happens server-side, instead of costing a second round trip                                                                                                 |
+| `getDialogs`                                            | The chat list and the contact presences are two independent Telegram reads, run together                                                                                             |
+| The replay runs outside the input gate                  | `startLive` connects, then hands the `getDifference` catch-up to `waitUntil` — it is the longest event in the system, and holding the gate for it queued every bridge call behind it |
+| The storage warms up before the first event             | `blockConcurrencyWhile` runs the migrations once, while the object is still empty                                                                                                    |
+| The avatar cache (`engine_avatars`)                     | A profile photo is fetched from Telegram once and kept in the DO's SQLite; the chat list asks for one avatar per row, and every one of them was a Telegram round trip                |
+| Avatars load near the viewport                          | A row nobody is looking at does not ask for its photo                                                                                                                                |
+| `DialogDto.lastMessage` is a trimmed `DialogMessageDto` | The chat list renders a preview, a timestamp and a media label — not the message's entities, reactions, inline markup and nested reply quote                                         |
+
+The chat list's own read is one `batch` of `getMe` and `getDialogs`, and the updates socket's first `ready` does not
+read the list again: the boot has just read it. A reconnect still does, because the list may be stale then.
 
 ## Free-tier posture
 
@@ -105,7 +128,9 @@ mtcute as `limit`: it accepts only whole-file sizes and throws after the respons
 which is what used to kill playback after the first buffered seconds.
 
 `GET /user/avatar` resolves the peer's photo server-side. The DTOs carry an opaque `photo` token
-(`ChatPhoto.uniqueFileId`) purely to bust the browser cache; the SPA appends it to the URL as `v=`.
+(`ChatPhoto.uniqueFileId`) purely to bust the browser cache; the SPA appends it to the URL as `v=`. The engine keeps
+the bytes in `engine_avatars`, keyed by the version token **it** resolved (never the one the caller sent), so a repeat
+request is a local read instead of another `upload.getFile` round trip.
 
 `POST /user/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
@@ -131,22 +156,34 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 
 ### RPC methods
 
-| Method                | Params                                                                 | Returns                                                                                     |
-| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getMe`               | —                                                                      | `{me}`                                                                                      |
-| `getDialogs`          | `{limit?: 1..200}`                                                     | `{dialogs: DialogDto[]}` (pinned first)                                                     |
-| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
-| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
-| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                             | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
-| `readHistory`         | `{chatId, maxId?}`                                                     | `{}`                                                                                        |
-| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                   | `{messages, nextOffsetId?}`                                                                 |
-| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                          | `{message: MessageDto \| null}`                                                             |
-| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                       | `{poll}`                                                                                    |
-| `pressCallbackButton` | `{chatId, messageId, data}`                                            | `{text: string \| null, alert: boolean, url: string \| null}`                               |
-| `getPollResults`      | `{chatId, messageId}`                                                  | `{poll}`                                                                                    |
-| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`          | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
-| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                       | `{message}`                                                                                 |
-| `getBotCommands`      | `{chatId}`                                                             | `{commands: BotCommandDto[]}`                                                               |
+| Method                | Params                                                                            | Returns                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `getMe`               | —                                                                                 | `{me}`                                                                                      |
+| `getDialogs`          | `{limit?: 1..200}`                                                                | `{dialogs: DialogDto[]}` (pinned first)                                                     |
+| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
+| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                 |
+| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
+| `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                        |
+| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                 |
+| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                             |
+| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                    |
+| `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                               |
+| `getPollResults`      | `{chatId, messageId}`                                                             | `{poll}`                                                                                    |
+| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
+| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
+| `getBotCommands`      | `{chatId}`                                                                        | `{commands: BotCommandDto[]}`                                                               |
+| `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                        |
+
+`getHistory`'s `anchorId` names the message the window has to hold: the engine reads _around_ it (with the newer
+context beside it) and, when the first read missed it — a deleted post, or one past the end of the history — reads the
+page that ends at it instead. The fallback the SPA used to spend a second round trip on now happens server-side.
+
+`batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
+`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `getPollResults`, `getComments` and `getBotCommands`; a
+write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
+`readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark. Each
+call reports its own outcome, so one broken read (a post without a comments section) never takes the reads beside it
+down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.

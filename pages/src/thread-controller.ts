@@ -2,13 +2,41 @@ import type { PendingMessage } from './outbox';
 import type { ChatThread } from './state';
 import type { ThreadPositionMemory } from './thread-position';
 import type { OpenThreadOptions } from './thread-window';
-import type { DialogDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type {
+  BotCommandDto,
+  DialogDto,
+  GetCommentsResult,
+  MessageButtonDto,
+  MessageDto,
+  MessageReactionDto,
+  PeerId,
+  UpdateEvent,
+} from './types';
 import type { UploadRequest } from './upload';
 
 /**
  * The chat thread's controller contract, split from `useThread.ts` to keep the
  * hook under the god-file cap (the same shape as `CommentsController`).
  */
+
+/**
+What opening a chat answered.
+*/
+export interface OpenThreadResult {
+  /**
+  The window the chat opened with.
+  */
+  messages: MessageDto[];
+  /**
+  The post's comment thread, when a post was named. Null when no post was
+  named, or when the read failed — the reason is in `commentsError`.
+  */
+  comments: GetCommentsResult | null;
+  /**
+  Why the post's comments could not be read, when they could not.
+  */
+  commentsError: string | null;
+}
 export interface ThreadController {
   /**
   The open chat and its loaded messages, or null while no chat is open.
@@ -26,6 +54,12 @@ export interface ThreadController {
   */
   error: string | null;
   /**
+  The slash-command menu of the open chat, empty for a chat without one. It
+  is read together with the thread's window, so the composer has it as soon
+  as the thread does.
+  */
+  botCommands: readonly BotCommandDto[];
+  /**
   Message ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;
@@ -40,10 +74,10 @@ export interface ThreadController {
   pressingButtonIds: ReadonlySet<number>;
   /**
   Opens a chat at the dialog's read watermarks, reading the first window (or a
-  window around a linked post), and answers with the window it read, so a
-  caller chasing that post (its comments) need not look it up.
+  window around a linked post), and answers with what it read, so a caller
+  chasing that post (its comments) need not look it up.
   */
-  open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<MessageDto[]>;
+  open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<OpenThreadResult>;
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;

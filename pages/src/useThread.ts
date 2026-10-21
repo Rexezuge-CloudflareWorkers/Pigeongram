@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchHistory, fetchPollResults, sendMessage, sendReaction } from './api';
+import { fetchChatScreen, fetchHistory, fetchPollResults, sendMessage, sendReaction } from './api';
 import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
@@ -14,11 +14,11 @@ import {
   updateThreadPoll,
 } from './state';
 import type { ChatThread, PollUpdateTarget } from './state';
-import type { ThreadController } from './thread-controller';
+import type { ThreadController, OpenThreadResult } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
-import { fetchOpenWindow } from './thread-window';
+import { supportsCommands, WINDOW_LIMIT } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { BotCommandDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
@@ -54,12 +54,18 @@ function failureText(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
+/**
+The empty slash-command menu, before a chat is opened.
+*/
+const NO_COMMANDS: readonly BotCommandDto[] = [];
+
 export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
+  const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
 
@@ -72,7 +78,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   }, [thread]);
 
   const open = useCallback(
-    async (dialog: DialogDto, options?: OpenThreadOptions): Promise<MessageDto[]> => {
+    async (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
       const chat = dialog.chat;
       const postId = options?.postId ?? null;
       // A fresh read is a new session: only a comments detour keeps the
@@ -93,16 +99,28 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
       setError(null);
       setLoading(true);
       try {
-        const page = await fetchOpenWindow(chat.id, postId);
+        // The window, the chat's slash commands and — when a post is named —
+        // its comments are one request: the engine reads them at the same
+        // time, where separate requests would queue behind each other.
+        const screen = await fetchChatScreen(chat.id, postId, {
+          limit: WINDOW_LIMIT,
+          ...(postId !== null && { anchorId: postId }),
+          withCommands: supportsCommands(chat.kind),
+        });
+        setBotCommands(screen.commands);
         setThread((current) =>
           current && current.chat.id === chat.id
-            ? { ...current, messages: mergeMessages(current.messages, page), unreadDividerId: divider(page) }
+            ? {
+                ...current,
+                messages: mergeMessages(current.messages, screen.messages),
+                unreadDividerId: divider(screen.messages),
+              }
             : current,
         );
-        return page;
+        return { messages: screen.messages, comments: screen.comments, commentsError: screen.commentsError };
       } catch (failure) {
         setError(failureText(failure));
-        return [];
+        return { messages: [], comments: null, commentsError: failureText(failure) };
       } finally {
         setLoading(false);
       }
@@ -114,6 +132,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     positions.forget();
     setThread(null);
     setError(null);
+    setBotCommands(NO_COMMANDS);
   }, [positions]);
 
   const loadOlder = useCallback(async (): Promise<void> => {
@@ -312,6 +331,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     loadingOlder,
     pending: outbox.pending,
     error,
+    botCommands,
     reactingIds,
     votingIds,
     pressingButtonIds,

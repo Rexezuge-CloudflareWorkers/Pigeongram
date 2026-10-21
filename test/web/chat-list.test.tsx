@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ChatList } from '../../pages/src/components/ChatList';
-import type { ChatDto, DialogDto, MessageDto, PresenceDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, PresenceDto } from '../../pages/src/types';
 
 afterEach(cleanup);
 
@@ -52,6 +52,21 @@ function message(text: string): MessageDto {
     forward: null,
     views: null,
     comments: null,
+  };
+}
+
+/**
+The chat list's view of a message: the list renders a preview, not a thread.
+*/
+function dialogMessage(source: MessageDto): DialogMessageDto {
+  return {
+    id: source.id,
+    date: source.date,
+    text: source.text,
+    media: source.media,
+    poll: source.poll,
+    outgoing: source.outgoing,
+    service: source.service,
   };
 }
 
@@ -148,7 +163,7 @@ describe('ChatList pin marker', () => {
   });
 
   it('keeps the pin out of the preview text', () => {
-    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true, lastMessage: message('see you') })]);
+    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true, lastMessage: dialogMessage(message('see you')) })]);
 
     const preview = rowIn('Bob').querySelector('.chat-preview');
     expect(preview?.textContent).toBe('see you');

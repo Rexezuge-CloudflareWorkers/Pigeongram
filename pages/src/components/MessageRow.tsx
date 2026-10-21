@@ -51,7 +51,9 @@ export interface MessageRowProps {
   for headers that point at the thread's root, which Telegram shows bare.
   */
   showQuote?: boolean;
-  /** Whether the sender's avatar renders beside the bubble (default false). */
+  /**
+  Whether the sender's avatar renders beside the bubble (default false).
+  */
   showAvatar?: boolean;
   /**
   Whether this message has a reaction request in flight; its chips are

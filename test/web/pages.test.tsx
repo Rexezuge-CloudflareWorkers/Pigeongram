@@ -869,7 +869,15 @@ describe('App', () => {
   });
 
   it("shows group senders' avatars beside their bubbles", async () => {
-    const team: ChatDto = { id: 4, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: true };
+    const team: ChatDto = {
+      id: 4,
+      kind: 'supergroup',
+      title: 'Team',
+      username: null,
+      photo: null,
+      canSendMessages: true,
+      presence: null,
+    };
     const incoming = message({
       id: 20,
       chatId: 4,
@@ -899,13 +907,13 @@ describe('App', () => {
     const incomingLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="20"]')?.closest('.message-line');
     expect(incomingLine).not.toBeNull();
     expect(incomingLine?.classList.contains('own')).toBe(false);
-    expect(incomingLine?.querySelector<HTMLImageElement>('.avatar img')?.getAttribute('src')).toBe(
+    expect(incomingLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
       '/user/avatar?chatId=2&size=small&v=bob-photo',
     );
 
     const outgoingLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="21"]')?.closest('.message-line');
     expect(outgoingLine?.classList.contains('own')).toBe(true);
-    expect(outgoingLine?.querySelector<HTMLImageElement>('.avatar img')?.getAttribute('src')).toBe(
+    expect(outgoingLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
       '/user/avatar?chatId=1&size=small&v=ada-photo',
     );
   });
@@ -2516,12 +2524,12 @@ describe('App', () => {
       expect(await within(threadSection()).findByText('nice')).toBeDefined();
 
       const commentLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="11"]')?.closest('.message-line');
-      expect(commentLine?.querySelector<HTMLImageElement>('.avatar img')?.getAttribute('src')).toBe(
+      expect(commentLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
         '/user/avatar?chatId=2&size=small&v=dana-photo',
       );
       // The pinned post is not a commenter, and its header already carries the
       // channel's avatar.
-      expect(threadSection().querySelector('.comments-post .avatar')).toBeNull();
+      expect(threadSection().querySelector(':scope .comments-post .avatar')).toBeNull();
     });
 
     it('leaves the comments button off non-channel chats', async () => {

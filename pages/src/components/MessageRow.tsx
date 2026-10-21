@@ -269,12 +269,12 @@ export function MessageRow({
             👁 {formatCount(message.views)}
           </span>
         )}
+        {formatTime(message.date)}
         {showStatus ? (
           <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
             {read ? '✓✓' : '✓'}
           </span>
         ) : null}
-        {formatTime(message.date)}
       </span>
       {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
         <button type="button" className="comments-button" onClick={() => onOpenComments(message)}>

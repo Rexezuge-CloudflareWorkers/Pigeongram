@@ -2,14 +2,15 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
-import type { ThreadPositionMemory } from '../thread-position';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
-import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from '../types';
+import type { ThreadViewProps } from '../thread-view-props';
+import type { ChatDto, MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
+import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
 
 /**
@@ -18,95 +19,13 @@ import { Spinner } from './Spinner';
  */
 const READ_DEBOUNCE_MS = 250;
 
-interface ThreadViewProps {
-  chat: ChatDto | null;
-  /**
-  The open chat's live presence. It rides beside the chat rather than inside
-  it, so a peer coming online does not replace the chat object the view's
-  effects depend on.
-  */
-  presence: PresenceDto | null;
-  messages: MessageDto[];
-  loading: boolean;
-  loadingOlder: boolean;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
-  error: string | null;
-  /**
-  Message ids with a reaction request in flight; their chips are disabled.
-  */
-  reactingIds: ReadonlySet<number>;
-  /**
-  Message ids with a vote in flight; their polls' answers are disabled.
-  */
-  votingIds: ReadonlySet<number>;
-  /**
-  Message ids with a callback button press in flight.
-  */
-  pressingButtonIds: ReadonlySet<number>;
-  /**
-  Id of the last outgoing message the peer has read. Own messages up to it
-  render a double check; later ones a single sent check.
-  */
-  readOutboxMaxId: number;
-  /**
-  The message the unread divider sits above: the first unread message of the
-  window the chat opened with. Reading advances the watermark but not the
-  line, and the line stays for as long as the chat is open; reopening the
-  chat computes a fresh one. Null when the chat opened fully read.
-  */
-  unreadDividerId: number | null;
-  /**
-  A linked post the chat was opened for: the first window lands on it (and
-  flashes it) instead of on the first unread message; null when the chat was
-  opened normally.
-  */
-  focusMessageId: number | null;
-  /**
-  The open thread's remembered place, so returning from the comments screen
-  lands where the reader left instead of at the divider or the bottom.
-  */
-  positions: ThreadPositionMemory;
-  onBack: () => void;
-  onLoadOlder: () => void;
-  onSend: (text: string, replyTo?: number) => Promise<void>;
-  onAttach: (request: UploadRequest) => Promise<void>;
-  onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
-  /**
-  Starts forwarding a display group; an album forwards every member.
-  */
-  onForward: (messages: readonly MessageDto[]) => void;
-  /**
-  Casts a vote in a poll message, or retracts it with `null`.
-  */
-  onVote: (message: MessageDto, options: number[] | null) => void;
-  /**
-  Presses an inline callback or copy button on a message.
-  */
-  onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
-  onOpenComments: (message: MessageDto) => void;
-  /**
-  Opens the full-page viewer at a message's media (an album opens at the
-  clicked member).
-  */
-  onOpenMedia: (messageId: number) => void;
-  /**
-  Reports the highest message id the viewport proves read, for the chat the
-  watermark was measured in (a pending report can outlive a switch).
-  */
-  onReadThrough: (chatId: PeerId, maxId: number) => void;
-}
-
 export function ThreadView({
   chat,
   presence,
   messages,
   loading,
   loadingOlder,
-  sending,
-  uploading,
-  uploadProgress,
+  pending,
   error,
   reactingIds,
   votingIds,
@@ -116,6 +35,8 @@ export function ThreadView({
   onLoadOlder,
   onSend,
   onAttach,
+  onRetryPending,
+  onDiscardPending,
   onReact,
   onForward,
   onVote,
@@ -218,6 +139,12 @@ export function ThreadView({
   );
 
   const lastId = messages.at(-1)?.id ?? 0;
+  // Pending sends are filtered by the same stable scope the controller used
+  // when it enqueued them; a comments detour can leave another chat's entries
+  // in the outbox without leaking them into this thread.
+  const threadScope = chat === null ? null : String(chat.id);
+  const pendingForChat = threadScope === null ? [] : pending.filter((entry) => entry.scope === threadScope);
+  const lastPendingKey = pendingForChat.at(-1)?.key ?? null;
   useLayoutEffect(() => {
     if (!chat) {
       // Closing the thread unmounts the list; the next open — even of the same
@@ -253,7 +180,7 @@ export function ThreadView({
     element.scrollTop = element.scrollHeight;
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
-  }, [chat, lastId, messages, loading, unreadDividerId, focusMessageId, positions, reportVisible]);
+  }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, positions, reportVisible]);
 
   if (!chat) {
     return (
@@ -266,6 +193,8 @@ export function ThreadView({
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
   const messageById = new Map(messages.map((message) => [message.id, message]));
   const groups = groupMessages(messages);
+  // The day a pending send falls on, when it is not the loaded list's last day.
+  const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;
 
   /**
   Scrolls the thread to a loaded message and flashes it, so a quote click
@@ -281,8 +210,16 @@ export function ThreadView({
     flashRow(target);
   };
 
-  const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
-  const attach = (request: UploadRequest): Promise<void> => onAttach(request).then(() => setReplyingTo(null));
+  const send = (text: string, replyTo?: number): Promise<void> => {
+    // The outbox carries the reply preview, so the composer is free for the
+    // next message before this send is acknowledged.
+    setReplyingTo(null);
+    return onSend(text, replyTo);
+  };
+  const attach = (request: UploadRequest): Promise<void> => {
+    setReplyingTo(null);
+    return onAttach(request);
+  };
   const openComments = (message: MessageDto): void => {
     const element = scrollRef.current;
     if (element) positions.remember(readThreadPosition(element, chat.id));
@@ -358,6 +295,14 @@ export function ThreadView({
             </Fragment>
           );
         })}
+        {pendingForChat.map((entry, index) => (
+          <Fragment key={entry.key}>
+            {index === 0 && (lastGroupDate === null || !isSameDay(lastGroupDate, entry.createdAt)) ? (
+              <div className="day">{formatDay(entry.createdAt)}</div>
+            ) : null}
+            <PendingMessageRow entry={entry} onRetry={onRetryPending} onDiscard={onDiscardPending} />
+          </Fragment>
+        ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       {chat.canSendMessages ? (
@@ -366,9 +311,6 @@ export function ThreadView({
         <Composer
           key={chat.id}
           placeholder="Message"
-          sending={sending}
-          uploading={uploading}
-          uploadProgress={uploadProgress}
           replyTarget={replyTarget}
           botCommands={botCommands}
           onCancelReply={() => setReplyingTo(null)}

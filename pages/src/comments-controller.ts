@@ -1,3 +1,4 @@
+import type { PendingMessage } from './outbox';
 import type { CommentsThread } from './state';
 import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, UpdateEvent } from './types';
 import type { UploadRequest } from './upload';
@@ -13,11 +14,13 @@ export interface CommentsController {
   thread: CommentsThread | null;
   loading: boolean;
   loadingOlder: boolean;
-  sending: boolean;
-  uploading: boolean;
-  uploadProgress: number | null;
   /**
-  The last failure of an open, page, send or upload, as shown by the screen.
+  Comments still on their way to Telegram, in submission order. They render
+  beside the loaded comments and never enter the thread's message list.
+  */
+  pending: readonly PendingMessage[];
+  /**
+  The last failure of an open or page, as shown by the screen.
   */
   error: string | null;
   /**
@@ -38,6 +41,9 @@ export interface CommentsController {
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
+  retryPending: (key: string) => void;
+  discardPending: (key: string) => void;
+  clearPending: () => void;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
   Casts a vote in a poll on the pinned post or a comment, or retracts it with

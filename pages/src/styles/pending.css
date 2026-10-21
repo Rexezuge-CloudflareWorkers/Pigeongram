@@ -1,0 +1,50 @@
+/* Optimistic sends: the bubble is real enough to read and reply to, but its
+   meta line carries the outbox status. A failed send stays put with Retry and
+   Discard instead of rolling back into the composer. */
+.message.pending {
+  opacity: 0.82;
+}
+
+.message.pending .pending-meta {
+  align-items: center;
+}
+
+.message .pending-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.message .pending-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.message .pending-actions button {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.message .pending-actions button.discard {
+  color: var(--muted);
+}
+
+.message .pending-failure {
+  flex: 1 1 100%;
+  color: #ff9b9b;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

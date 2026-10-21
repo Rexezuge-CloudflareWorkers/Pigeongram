@@ -123,6 +123,40 @@ function fireResize(target: Element): void {
   }
 }
 
+/**
+ * A stand-in for the browser's upload request: the bridge answers on the next
+ * tick with a message, so a test can watch the pending bubble meanwhile.
+ */
+class FakeXhr {
+  static readonly instances: FakeXhr[] = [];
+
+  status = 200;
+  response: unknown = null;
+  responseType = '';
+  url = '';
+  readonly upload = { addEventListener: (): void => {} };
+  private readonly listeners = new Map<string, Array<(event: unknown) => void>>();
+
+  constructor() {
+    FakeXhr.instances.push(this);
+  }
+
+  open(_method: string, url: string): void {
+    this.url = url;
+  }
+
+  addEventListener(type: string, listener: (event: unknown) => void): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  send(): void {
+    setTimeout(() => {
+      this.response = { message: message({ id: 15, chatId: 2, outgoing: true, text: 'the note' }) };
+      for (const listener of this.listeners.get('load') ?? []) listener({});
+    }, 0);
+  }
+}
+
 const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 const dialogs: DialogDto[] = [
   {
@@ -1387,7 +1421,11 @@ describe('App', () => {
       await waitFor(() => {
         expect(sent.length).toBe(1);
       });
-      expect(sent[0].body).toEqual({ method: 'sendMessage', params: { chatId: 2, text: 'sure', replyTo: 10 } });
+      expect(sent[0].body).toEqual({
+        method: 'sendMessage',
+        params: expect.objectContaining({ chatId: 2, text: 'sure', replyTo: 10 }),
+      });
+      expect((sent[0].body as { params: { randomId?: string } }).params.randomId).toMatch(/^\d+$/);
       await waitFor(() => {
         expect(screen.queryByText('Reply to Bob')).toBeNull();
       });
@@ -2599,7 +2637,7 @@ describe('App', () => {
       });
       expect(sent[0].body).toEqual({
         method: 'sendComment',
-        params: { chatId: channel.id, messageId: 7, text: 'shipping it' },
+        params: expect.objectContaining({ chatId: channel.id, messageId: 7, text: 'shipping it' }),
       });
       expect(await within(threadSection()).findByText('shipping it')).toBeDefined();
 
@@ -2619,7 +2657,7 @@ describe('App', () => {
       });
       expect(sent[1].body).toEqual({
         method: 'sendComment',
-        params: { chatId: channel.id, messageId: 7, text: 'thanks', replyTo: ROOT + 1 },
+        params: expect.objectContaining({ chatId: channel.id, messageId: 7, text: 'thanks', replyTo: ROOT + 1 }),
       });
       await waitFor(() => {
         expect(screen.queryByText('Reply to Dana')).toBeNull();
@@ -2725,7 +2763,7 @@ describe('App', () => {
       });
       expect(sent[0].body).toEqual({
         method: 'sendComment',
-        params: { chatId: channel.id, messageId: 7, text: 'first!' },
+        params: expect.objectContaining({ chatId: channel.id, messageId: 7, text: 'first!' }),
       });
       await waitFor(() => {
         expect(reads).toBe(2);
@@ -2940,6 +2978,138 @@ describe('App', () => {
 
       deliver({ type: 'user_status', userId: 2, presence: { status: 'online', lastSeenAt: null } });
       expect(threadSection().querySelector('[data-status="online"]')).not.toBeNull();
+    });
+  });
+
+  describe('optimistic sends', () => {
+    it('shows the message in the thread and the chat list before the bridge answers', async () => {
+      const resolvers: Array<(message: MessageDto) => void> = [];
+      const sends: FetchCall[] = [];
+      installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'sendMessage') return;
+          sends.push(call);
+          return new Promise<Response>((resolve) => {
+            resolvers.push((sent) => resolve(json({ message: sent })));
+          });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const composer = screen.getByPlaceholderText('Message') as HTMLTextAreaElement;
+      await act(async () => {
+        fireEvent.change(composer, { target: { value: 'first' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      });
+
+      // The bubble is on screen before the bridge has answered.
+      expect(within(threadSection()).getByText('first')).toBeDefined();
+      const chatList = document.querySelector<HTMLElement>('.chats');
+      expect(chatList).not.toBeNull();
+      expect(within(chatList as HTMLElement).getByText('first')).toBeDefined();
+      // The composer is free for the next message.
+      expect(composer.value).toBe('');
+      expect(sends).toHaveLength(1);
+
+      await act(async () => {
+        fireEvent.change(composer, { target: { value: 'second' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      });
+      expect(within(threadSection()).getByText('second')).toBeDefined();
+      expect(composer.value).toBe('');
+      // Text sends are serialized, so the second one waits for the first.
+      expect(sends).toHaveLength(1);
+
+      await act(async () => {
+        resolvers[0]?.(message({ id: 11, chatId: 2, outgoing: true, text: 'first' }));
+      });
+      await waitFor(() => {
+        expect(sends).toHaveLength(2);
+      });
+      expect(within(threadSection()).getByText('first')).toBeDefined();
+
+      await act(async () => {
+        resolvers[1]?.(message({ id: 12, chatId: 2, outgoing: true, text: 'second' }));
+      });
+      await waitFor(() => {
+        expect(within(threadSection()).getAllByText('first')).toHaveLength(1);
+        expect(within(threadSection()).getAllByText('second')).toHaveLength(1);
+      });
+      expect(within(threadSection()).queryByText(/Not sent/)).toBeNull();
+    });
+
+    it('keeps a failed send as a not-sent bubble and retries it with the same random id', async () => {
+      const sends: FetchCall[] = [];
+      installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'sendMessage') return;
+          sends.push(call);
+          return sends.length === 1
+            ? json({ error: 'The bridge is offline' }, 500)
+            : json({ message: message({ id: 13, chatId: 2, outgoing: true, text: 'retry me' }) });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'retry me' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect(await within(threadSection()).findByText(/Not sent/)).toBeDefined();
+      expect(within(threadSection()).getByText('retry me')).toBeDefined();
+
+      const randomId = (sends[0]?.body as { params: { randomId?: string } }).params.randomId;
+      expect(randomId).toMatch(/^\d+$/);
+
+      fireEvent.click(within(threadSection()).getByRole('button', { name: 'Retry' }));
+      await waitFor(() => {
+        expect(sends).toHaveLength(2);
+      });
+      expect((sends[1]?.body as { params: { randomId?: string } }).params.randomId).toBe(randomId);
+
+      await waitFor(() => {
+        expect(within(threadSection()).getAllByText('retry me')).toHaveLength(1);
+      });
+      expect(within(threadSection()).queryByText(/Not sent/)).toBeNull();
+    });
+
+    it('shows an attachment right away and sends it with a random id', async () => {
+      vi.stubGlobal('XMLHttpRequest', FakeXhr);
+      installSignedInFetch();
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'the note' } });
+      const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+      expect(input).not.toBeNull();
+      const file = new File([new Uint8Array([1, 2, 3])], 'note.txt', { type: 'text/plain' });
+      fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+
+      // The dialog reviews the selection; confirming it starts the upload.
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Send' }));
+
+      // The file and its caption are on screen before the upload answers.
+      expect(within(threadSection()).getByText(/note\.txt/)).toBeDefined();
+      expect(within(threadSection()).getByText('the note')).toBeDefined();
+
+      await waitFor(() => {
+        expect(FakeXhr.instances).toHaveLength(1);
+      });
+      expect(FakeXhr.instances[0]?.url).toContain('randomId=');
+      expect(FakeXhr.instances[0]?.url).toContain('caption=the+note');
+
+      await waitFor(() => {
+        expect(within(threadSection()).queryByText(/note\.txt/)).toBeNull();
+      });
+      expect(within(threadSection()).getAllByText('the note')).toHaveLength(1);
     });
   });
 });

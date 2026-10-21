@@ -52,7 +52,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
   reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
-  send/attach/react and forward with a writable-destination picker — `thread-window.ts` the first-window read
+  send/attach/react and forward with a writable-destination picker — `outbox.ts`/`useOutbox.ts` the optimistic send
+  layer, `thread-window.ts` the first-window read
   (newest messages, or a window around a linked post), `reading.ts` the
   unread-position logic they share, `components/` the screens). The home page has three states: `LandingPage.tsx` is
   the public intro, `LoginScreen.tsx` the Telegram QR login, and `CheckingAccess.tsx` the Access probe's first paint —
@@ -111,6 +112,17 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   only the visual one; taking the minimum keeps the composer above a keyboard that one of them lags in reporting. The
   hook observes both the root (`ResizeObserver`) and the visual viewport, and `settleToBottom` re-pins both scroll views
   on the resulting host resize. Don't replace this with a fixed `100%`/`dvh` height.
+- **Sends are optimistic, but the thread and the dialogs stay server truth.** `pages/src/outbox.ts` (the entry shape and
+  the chat-list overlay) and `pages/src/useOutbox.ts` (the bridge round trip) keep pending sends in their own layer: a
+  `PendingMessage` renders beside the loaded messages (`components/PendingMessageRow.tsx`) and is folded over the
+  dialogs for the sidebar preview only. Never inject a synthetic message into `ChatThread.messages` or
+  `DialogDto.lastMessage`: message ids, read watermarks, unread counts and reply lookups are read from the server, and a
+  pending row with a negative id would poison all of them. Dropping the entry is the whole rollback. Text sends are
+  chained per chat so rapid messages keep their order, uploads run independently so a large file never delays the next
+  text, and a failed send stays as a "Not sent" bubble with Retry/Discard. A retry reuses the entry's `randomId`, so
+  Telegram drops the duplicate if the first attempt actually landed — the engine validates that id like any other
+  parameter (`worker/src/session/params.ts`, and `worker/src/session/upload-spec.ts` for the upload query). An album
+  (`POST /user/upload-group`) has no client-chosen id: Telegram picks the group's, so a retried album is a new album.
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Functions
   (`API_WORKER` service binding). The API surface is split by prefix: `/api/*` is public and carries only
   `GET /api/health`; everything account-scoped lives under `/user/*`, where every request verifies the Cloudflare

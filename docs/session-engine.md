@@ -109,7 +109,8 @@ which is what used to kill playback after the first buffered seconds.
 
 `POST /user/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
-`content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), and
+`content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), optional
+`randomId` (the client-chosen idempotency key, see below), and
 optional `width`/`height`/`duration`. `commentTo` (a channel post id) turns the upload into a comment on that
 post: it is sent to the linked discussion group, and `replyTo` then names a comment inside the thread instead
 of a message in `chatId`. The body is streamed through the DO into mtcute's upload connection pool, so nothing
@@ -135,7 +136,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getMe`               | —                                                                      | `{me}`                                                                                      |
 | `getDialogs`          | `{limit?: 1..200}`                                                     | `{dialogs: DialogDto[]}` (pinned first)                                                     |
 | `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
-| `sendMessage`         | `{chatId, text, replyTo?}`                                             | `{message}`                                                                                 |
+| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                             | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
 | `readHistory`         | `{chatId, maxId?}`                                                     | `{}`                                                                                        |
 | `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                   | `{messages, nextOffsetId?}`                                                                 |
@@ -144,11 +145,18 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `pressCallbackButton` | `{chatId, messageId, data}`                                            | `{text: string \| null, alert: boolean, url: string \| null}`                               |
 | `getPollResults`      | `{chatId, messageId}`                                                  | `{poll}`                                                                                    |
 | `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`          | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
-| `sendComment`         | `{chatId, messageId, text, replyTo?}`                                  | `{message}`                                                                                 |
+| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                       | `{message}`                                                                                 |
 | `getBotCommands`      | `{chatId}`                                                             | `{commands: BotCommandDto[]}`                                                               |
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
+
+`randomId` is an optional client-chosen Telegram `random_id`: a positive decimal 64-bit integer that the engine
+forwards to `sendText`/`commentText`/`sendMedia`. The SPA generates one per composed message and reuses it when a
+failed send is retried, so a retry whose first attempt actually reached Telegram is dropped by Telegram instead of
+posting the message twice. It is validated like every other parameter, so a malformed value is a 400 before the
+network is touched. `POST /user/upload` takes it as a query parameter; an album (`POST /user/upload-group`) has none,
+because Telegram picks the group's id — a retried album is a new album.
 
 `getBotCommands` reads the slash-command menu Telegram associates with a chat. Commands are not part of the
 dialog peer, so the engine looks at the full info instead: a user (`users.getFullUser`) carries one

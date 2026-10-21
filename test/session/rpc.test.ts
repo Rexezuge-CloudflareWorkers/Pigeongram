@@ -403,3 +403,43 @@ describe('pressCallbackButton dispatch', () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe('sendMessage dispatch', () => {
+  function fakeSendClient(): {
+    client: TelegramClient;
+    calls: Array<{ chatId: number; text: string; params: unknown }>;
+  } {
+    const calls: Array<{ chatId: number; text: string; params: unknown }> = [];
+    const client = {
+      sendText: async (chatId: number, text: string, params?: unknown) => {
+        calls.push({ chatId, text, params });
+        return message(40);
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('forwards the client random id, so a retry cannot duplicate the message', async () => {
+    const { client, calls } = fakeSendClient();
+    await dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId: '123456789' });
+
+    expect(calls).toHaveLength(1);
+    const params = calls[0].params as { randomId?: Long };
+    expect(params.randomId?.toString()).toBe('123456789');
+  });
+
+  it('omits the random id when the client did not choose one', async () => {
+    const { client, calls } = fakeSendClient();
+    await dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi' });
+
+    expect(calls[0].params).toEqual({});
+  });
+
+  it('rejects a malformed random id before Telegram is touched', async () => {
+    const { client, calls } = fakeSendClient();
+    for (const randomId of ['', 'abc', '-1', '0', '1.5', 12, '9223372036854775808']) {
+      await expect(dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId })).rejects.toThrow('randomId');
+    }
+    expect(calls).toEqual([]);
+  });
+});

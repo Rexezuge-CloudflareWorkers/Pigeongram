@@ -17,6 +17,7 @@ import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useCommentsPoll } from './useCommentsPoll';
 import { useMessageButtons } from './useMessageButtons';
+import { useOutbox } from './useOutbox';
 
 /**
 The comments screen's controller: the open channel-post thread with its loaded
@@ -70,11 +71,9 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   const [thread, setThread] = useState<CommentsThread | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
+  const outbox = useOutbox({ onError });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread; a layout effect runs with the commit, so no
@@ -190,66 +189,79 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   );
 
   const send = useCallback(
-    async (text: string, replyTo?: number): Promise<void> => {
-      if (!thread) return;
-      const post = { chatId: thread.chat.id, messageId: thread.post.id };
+    (text: string, replyTo?: number): Promise<void> => {
+      const open = thread;
+      if (!open) return Promise.resolve();
+      const post = { chatId: open.chat.id, messageId: open.post.id };
       // The first comment creates the discussion thread, so the send response
       // cannot carry the group's coordinates; a re-read settles them.
-      const first = thread.discussionChatId === null;
-      setSending(true);
-      setError(null);
-      try {
-        const result = await sendComment(post.chatId, post.messageId, text, replyTo);
-        applySentComment(thread, result.message);
-        if (first) {
-          await refresh(post).catch(() => {
-            // The comment went out; only the thread coordinates stay unknown.
-          });
-        }
-      } catch (failure) {
-        setError(failureText(failure));
-        throw failure;
-      } finally {
-        setSending(false);
-      }
+      const first = open.discussionChatId === null;
+      const replyPreview = replyTo === undefined ? null : (open.comments.find((comment) => comment.id === replyTo) ?? null);
+      outbox.send({
+        chatId: open.discussionChatId ?? open.chat.id,
+        scope: `${String(post.chatId)}:${String(post.messageId)}`,
+        text,
+        ...(replyTo !== undefined && { replyTo }),
+        replyPreview,
+        deliver: (body, randomIds) => {
+          if (body.kind !== 'text') throw new Error('The outbox delivered a file body for a text comment');
+          return sendComment(post.chatId, post.messageId, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
+        },
+        onSettled: (messages) => {
+          for (const comment of messages) applySentComment(open, comment);
+          if (first) {
+            void refresh(post).catch(() => {
+              // The comment went out; only the thread coordinates stay unknown.
+            });
+          }
+        },
+      });
+      return Promise.resolve();
     },
-    [thread, applySentComment, refresh],
+    [thread, applySentComment, refresh, outbox],
   );
 
   const attach = useCallback(
-    async (request: UploadRequest): Promise<void> => {
-      if (!thread) return;
+    (request: UploadRequest): Promise<void> => {
       const open = thread;
+      if (!open) return Promise.resolve();
       const post = { chatId: open.chat.id, messageId: open.post.id };
       const first = open.discussionChatId === null;
-      setUploading(true);
-      setUploadProgress(null);
-      setError(null);
-      try {
-        await sendUploadBatch(
-          {
-            chatId: post.chatId,
-            commentTo: post.messageId,
-            ...(request.replyTo !== undefined && { replyTo: request.replyTo }),
-          },
-          request,
-          setUploadProgress,
-          (comment) => applySentComment(open, comment),
-        );
-        if (first) {
-          await refresh(post).catch(() => {
-            // The upload went out; only the thread coordinates stay unknown.
-          });
-        }
-      } catch (failure) {
-        setError(failureText(failure));
-        throw failure;
-      } finally {
-        setUploading(false);
-        setUploadProgress(null);
-      }
+      const replyPreview = request.replyTo === undefined ? null : (open.comments.find((comment) => comment.id === request.replyTo) ?? null);
+      outbox.attach({
+        chatId: open.discussionChatId ?? open.chat.id,
+        scope: `${String(post.chatId)}:${String(post.messageId)}`,
+        request,
+        replyPreview,
+        deliver: (body, randomIds, onProgress) => {
+          if (body.kind !== 'file') throw new Error('The outbox delivered a text body for an attachment');
+          const comments: MessageDto[] = [];
+          return sendUploadBatch(
+            {
+              chatId: post.chatId,
+              commentTo: post.messageId,
+              ...(request.replyTo !== undefined && { replyTo: request.replyTo }),
+            },
+            body.request,
+            (fraction) => onProgress(fraction ?? 0),
+            (comment) => {
+              comments.push(comment);
+            },
+            randomIds,
+          ).then(() => comments);
+        },
+        onSettled: (messages) => {
+          for (const comment of messages) applySentComment(open, comment);
+          if (first) {
+            void refresh(post).catch(() => {
+              // The upload went out; only the thread coordinates stay unknown.
+            });
+          }
+        },
+      });
+      return Promise.resolve();
     },
-    [thread, applySentComment, refresh],
+    [thread, applySentComment, refresh, outbox],
   );
 
   const react = useCallback(
@@ -336,9 +348,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     thread,
     loading,
     loadingOlder,
-    sending,
-    uploading,
-    uploadProgress,
+    pending: outbox.pending,
     error,
     reactingIds,
     votingIds,
@@ -348,6 +358,9 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     loadOlder,
     send,
     attach,
+    retryPending: outbox.retry,
+    discardPending: outbox.discard,
+    clearPending: outbox.clear,
     react,
     vote,
     pressButton,

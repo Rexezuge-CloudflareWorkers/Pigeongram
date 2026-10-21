@@ -61,6 +61,11 @@ export interface SendMessageParams {
    * Id of the message to reply to, in the same chat.
    */
   replyTo?: number;
+  /**
+   * Client-chosen Telegram `random_id` as a positive decimal 64-bit integer.
+   * A retry reuses it so an accepted send is not duplicated.
+   */
+  randomId?: string;
 }
 
 export interface ForwardMessagesParams {
@@ -166,6 +171,11 @@ export interface SendCommentParams {
    * top-level comment.
    */
   replyTo?: number;
+  /**
+   * Client-chosen Telegram `random_id`, reused by a retry so an accepted
+   * comment is not duplicated.
+   */
+  randomId?: string;
 }
 
 export interface GetBotCommandsParams {

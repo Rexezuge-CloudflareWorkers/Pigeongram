@@ -1,5 +1,7 @@
+import { Long } from '@mtcute/core';
 import type { UploadKind } from '../types';
 import { EngineError } from './errors';
+import { optionalRandomId } from './params';
 
 /**
  * Parsing and validation for the raw-body upload routes.
@@ -37,6 +39,11 @@ export interface UploadSpec extends UploadMediaSpec {
   is set, otherwise a message in `chatId`.
   */
   replyTo?: number;
+  /**
+   * Client-chosen Telegram `random_id`, reused by a retry so an accepted send
+   * is not duplicated. An album has none: Telegram picks the group's id.
+   */
+  randomId?: Long;
 }
 
 /**
@@ -81,6 +88,7 @@ export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv):
   const width = parseQuantity(url.searchParams.get('width'));
   const height = parseQuantity(url.searchParams.get('height'));
   const duration = parseQuantity(url.searchParams.get('duration'));
+  const randomId = optionalRandomId(url.searchParams.get('randomId'));
 
   return {
     chatId,
@@ -94,6 +102,7 @@ export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv):
     ...(width !== null && { width }),
     ...(height !== null && { height }),
     ...(duration !== null && { duration }),
+    ...(randomId !== undefined && { randomId }),
   };
 }
 

@@ -231,6 +231,8 @@ describe('SessionEngine (request handling)', () => {
       ['chatId=1&kind=document&size=0', 'abcd', 400], // non-positive size
       ['chatId=1&kind=document&size=4&replyTo=0', 'abcd', 400], // non-positive reply target
       ['chatId=1&kind=document&size=4&replyTo=nope', 'abcd', 400], // non-numeric reply target
+      ['chatId=1&kind=document&size=4&randomId=nope', 'abcd', 400], // malformed random id
+      ['chatId=1&kind=document&size=4&randomId=0', 'abcd', 400], // non-positive random id
     ];
     for (const [query, body, status] of cases) {
       const { engine } = createHarness(FAKE_CREDENTIALS);
@@ -325,6 +327,14 @@ describe('SessionEngine (configured client)', () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(
       request('POST', '/user/rpc', { method: 'sendMessage', params: { chatId: 1, text: 'hi', replyTo: 0 } }),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it('400s a sendMessage with a malformed random id before any network call', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS);
+    const response = await engine.fetch(
+      request('POST', '/user/rpc', { method: 'sendMessage', params: { chatId: 1, text: 'hi', randomId: 'nope' } }),
     );
     expect(response.status).toBe(400);
   });

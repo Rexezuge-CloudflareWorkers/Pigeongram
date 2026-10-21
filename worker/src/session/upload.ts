@@ -30,6 +30,7 @@ export async function sendUploadedMedia(
   const media = buildInputMedia(spec, body);
   const params = {
     ...(spec.caption !== undefined && { caption: spec.caption }),
+    ...(spec.randomId !== undefined && { randomId: spec.randomId }),
     ...(signal !== undefined && { abortSignal: signal }),
   };
 

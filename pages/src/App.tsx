@@ -2,12 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { fetchDialogs, fetchMe, logout, readHistory } from './api';
 import { ChatList } from './components/ChatList';
 import { CheckingAccess } from './components/CheckingAccess';
-import { CommentsView } from './components/CommentsView';
 import { ForwardPicker } from './components/ForwardPicker';
 import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { MediaViewer } from './components/MediaViewer';
-import { ThreadView } from './components/ThreadView';
+import { ThreadPane } from './components/ThreadPane';
 import { UserMenu } from './components/UserMenu';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
@@ -67,6 +66,7 @@ export function App() {
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;
   const closeThread = threads.close;
+  const clearThreadPending = threads.clearPending;
   const setReadWatermark = threads.setReadWatermark;
   const bumpCommentCount = threads.bumpCommentCount;
 
@@ -89,6 +89,7 @@ export function App() {
 
   const comments = useComments({ onCommentSent: handleCommentSent, onError: reportError, onNotice: notify });
   const closeComments = comments.close;
+  const clearCommentsPending = comments.clearPending;
   const applyCommentUpdate = comments.applyUpdate;
 
   const selectedRef = useRef<PeerId | null>(null);
@@ -279,6 +280,8 @@ export function App() {
     }
     closeThread();
     closeComments();
+    clearThreadPending();
+    clearCommentsPending();
     closeViewer();
     forwarding.close();
     router.reset();
@@ -286,7 +289,7 @@ export function App() {
     setDialogsLoading(true);
     setMe(null);
     reset();
-  }, [closeComments, closeThread, closeViewer, forwarding.close, reportError, reset, router]);
+  }, [clearCommentsPending, clearThreadPending, closeComments, closeThread, closeViewer, forwarding.close, reportError, reset, router]);
 
   // The home page has three faces: a public intro until Access admits the
   // browser, the QR login once Access is through but Telegram is not linked,
@@ -309,64 +312,28 @@ export function App() {
         <header className="me">
           <UserMenu me={me} connected={connected} onSignOut={handleLogout} />
         </header>
-        <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={openChat} />
+        <ChatList
+          dialogs={dialogs}
+          activeChatId={selected?.id ?? null}
+          loading={dialogsLoading}
+          pending={threads.pending}
+          onSelect={openChat}
+        />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink} onOpenForward={openForwardOrigin}>
-        {comments.thread ? (
-          <CommentsView
-            thread={comments.thread}
-            loading={comments.loading}
-            loadingOlder={comments.loadingOlder}
-            sending={comments.sending}
-            uploading={comments.uploading}
-            uploadProgress={comments.uploadProgress}
-            error={comments.error}
-            reactingIds={comments.reactingIds}
-            votingIds={comments.votingIds}
-            pressingButtonIds={comments.pressingButtonIds}
-            onBack={router.back}
-            onLoadOlder={() => void comments.loadOlder()}
-            onSend={comments.send}
-            onAttach={comments.attach}
-            onReact={comments.react}
-            onForward={forwarding.open}
-            onVote={comments.vote}
-            onPressButton={comments.pressButton}
-            onOpenMedia={(messageId) => openViewer('comments', messageId)}
-          />
-        ) : (
-          <ThreadView
-            chat={selected}
-            presence={selectedPresence}
-            messages={threads.thread?.messages ?? []}
-            loading={threads.loading}
-            loadingOlder={threads.loadingOlder}
-            sending={threads.sending}
-            uploading={threads.uploading}
-            uploadProgress={threads.uploadProgress}
-            error={threads.error}
-            reactingIds={threads.reactingIds}
-            votingIds={threads.votingIds}
-            pressingButtonIds={threads.pressingButtonIds}
-            readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
-            unreadDividerId={threads.thread?.unreadDividerId ?? null}
-            focusMessageId={threads.thread?.focusMessageId ?? null}
-            positions={threads.positions}
-            onBack={router.back}
-            onLoadOlder={() => void threads.loadOlder()}
-            onSend={threads.send}
-            onAttach={threads.attach}
-            onReact={threads.react}
-            onForward={forwarding.open}
-            onVote={threads.vote}
-            onPressButton={threads.pressButton}
-            onReadThrough={markRead}
-            onOpenMedia={(messageId) => openViewer('thread', messageId)}
-            onOpenComments={(message) => {
-              if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
-            }}
-          />
-        )}
+        <ThreadPane
+          threads={threads}
+          comments={comments}
+          selected={selected}
+          presence={selectedPresence}
+          onBack={router.back}
+          onForward={forwarding.open}
+          onOpenMedia={openViewer}
+          onReadThrough={markRead}
+          onOpenComments={(message) => {
+            if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
+          }}
+        />
       </TelegramLinkProvider>
       {viewer.viewer ? (
         <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />

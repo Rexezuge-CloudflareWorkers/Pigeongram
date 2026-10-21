@@ -1,3 +1,4 @@
+import { ApiError, apiError } from './api-error';
 import type {
   EngineStateDto,
   ForwardMessagesResult,
@@ -14,24 +15,12 @@ import type {
   SendCommentResult,
   SendMessageResult,
   SendReactionResult,
-  SendUploadGroupResult,
   SendVoteResult,
-  UploadKind,
 } from './types';
 
-/**
-An HTTP failure from the bridge, carrying the engine's error payload.
-*/
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+export { ApiError } from './api-error';
+export type { UploadGroupInput, UploadGroupItem, UploadInput } from './upload-api';
+export { uploadFile, uploadGroup } from './upload-api';
 
 /**
 The Cloudflare Access entry point.
@@ -73,18 +62,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw apiError(response.status, payload);
   }
   return payload as T;
-}
-
-/**
-Turns a bridge error payload (or a proxy/platform failure) into an `ApiError`.
-*/
-function apiError(status: number, payload: unknown): ApiError {
-  const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
-  return new ApiError(
-    typeof record.error === 'string' ? record.error : `Request failed (${status})`,
-    status,
-    typeof record.code === 'string' ? record.code : undefined,
-  );
 }
 
 /**
@@ -139,8 +116,13 @@ export const fetchHistory = (
   options: { limit?: number; offsetId?: number; offsetDate?: number; addOffset?: number } = {},
 ): Promise<GetHistoryResult> => rpc('getHistory', { chatId, ...options });
 
-export const sendMessage = (chatId: PeerId, text: string, replyTo?: number): Promise<SendMessageResult> =>
-  rpc('sendMessage', { chatId, text, ...(replyTo !== undefined && { replyTo }) });
+export const sendMessage = (chatId: PeerId, text: string, replyTo?: number, randomId?: string): Promise<SendMessageResult> =>
+  rpc('sendMessage', {
+    chatId,
+    text,
+    ...(replyTo !== undefined && { replyTo }),
+    ...(randomId !== undefined && { randomId }),
+  });
 
 /**
 Forwards messages from their source chat into another chat. An album sends
@@ -158,8 +140,20 @@ export const fetchComments = (
   options: { limit?: number; offsetId?: number; offsetDate?: number } = {},
 ): Promise<GetCommentsResult> => rpc('getComments', { chatId, messageId, ...options });
 
-export const sendComment = (chatId: PeerId, messageId: number, text: string, replyTo?: number): Promise<SendCommentResult> =>
-  rpc('sendComment', { chatId, messageId, text, ...(replyTo !== undefined && { replyTo }) });
+export const sendComment = (
+  chatId: PeerId,
+  messageId: number,
+  text: string,
+  replyTo?: number,
+  randomId?: string,
+): Promise<SendCommentResult> =>
+  rpc('sendComment', {
+    chatId,
+    messageId,
+    text,
+    ...(replyTo !== undefined && { replyTo }),
+    ...(randomId !== undefined && { randomId }),
+  });
 
 /**
 Reads the slash-command menu Telegram offers for a chat: a bot's own commands
@@ -169,130 +163,6 @@ export const fetchBotCommands = (chatId: PeerId): Promise<GetBotCommandsResult> 
 
 export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
   rpc('searchMessages', { chatId, query, limit: 50 });
-
-export interface UploadInput {
-  chatId: PeerId;
-  kind: UploadKind;
-  fileName: string;
-  mime: string;
-  size: number;
-  caption?: string;
-  /**
-  Id of the channel post being commented on, when the upload is a comment.
-  */
-  commentTo?: number;
-  /**
-  Id of the message being replied to: a comment when `commentTo` is set,
-  otherwise a message in `chatId`.
-  */
-  replyTo?: number;
-  width?: number;
-  height?: number;
-  duration?: number;
-}
-
-/**
-One album member's metadata. Its bytes are the item's slice of the
-concatenated request body, so `size` is required and must be exact.
-*/
-export interface UploadGroupItem {
-  kind: UploadKind;
-  fileName: string;
-  mime: string;
-  size: number;
-  width?: number;
-  height?: number;
-  duration?: number;
-}
-
-export interface UploadGroupInput {
-  chatId: PeerId;
-  items: readonly UploadGroupItem[];
-  caption?: string;
-  commentTo?: number;
-  replyTo?: number;
-}
-
-/**
-Uploads a file's bytes as the raw body of `POST /user/upload`.
-
-XHR, unlike `fetch`, reports upload progress; the promise resolves once the
-engine has sent the message (after the Telegram-side upload), so the last
-stretch is only visible as an indeterminate state.
-*/
-export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fraction: number) => void): Promise<SendMessageResult> {
-  const params = new URLSearchParams({
-    chatId: String(input.chatId),
-    kind: input.kind,
-    fileName: input.fileName,
-    mime: input.mime,
-    size: String(input.size),
-  });
-  if (input.caption) params.set('caption', input.caption);
-  if (input.commentTo !== undefined) params.set('commentTo', String(input.commentTo));
-  if (input.replyTo !== undefined) params.set('replyTo', String(input.replyTo));
-  if (input.width !== undefined) params.set('width', String(input.width));
-  if (input.height !== undefined) params.set('height', String(input.height));
-  if (input.duration !== undefined) params.set('duration', String(input.duration));
-  return sendUpload<SendMessageResult>(`/user/upload?${params.toString()}`, body, onProgress);
-}
-
-/**
-Uploads 2–10 files as one Telegram album.
-
-The body is the files concatenated in `items` order; the manifest carries each
-item's metadata and byte length so the engine can split the stream back apart
-without a multipart parser or an in-memory buffer. The manifest is
-base64url-encoded JSON to keep non-ASCII file names inside the URL limit.
-*/
-export function uploadGroup(input: UploadGroupInput, body: Blob, onProgress?: (fraction: number) => void): Promise<SendUploadGroupResult> {
-  const params = new URLSearchParams({
-    chatId: String(input.chatId),
-    manifest: encodeManifest(input.items),
-  });
-  if (input.caption) params.set('caption', input.caption);
-  if (input.commentTo !== undefined) params.set('commentTo', String(input.commentTo));
-  if (input.replyTo !== undefined) params.set('replyTo', String(input.replyTo));
-  return sendUpload<SendUploadGroupResult>(`/user/upload-group?${params.toString()}`, body, onProgress);
-}
-
-/**
-Shared raw-body upload transport: XHR so the composer can show browser-to-
-worker progress. The engine's own Telegram-side upload has no progress channel,
-so the tail of the operation is indeterminate.
-*/
-function sendUpload<T>(path: string, body: Blob, onProgress?: (fraction: number) => void): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', path);
-    xhr.responseType = 'json';
-    xhr.upload.addEventListener('progress', (event) => {
-      if (onProgress && event.lengthComputable && event.total > 0) {
-        onProgress(Math.min(1, event.loaded / event.total));
-      }
-    });
-    xhr.addEventListener('load', () => {
-      const payload = xhr.response as unknown;
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(payload as T);
-        return;
-      }
-      reject(apiError(xhr.status, payload));
-    });
-    xhr.addEventListener('error', () => reject(new ApiError('Upload failed — network error', 0)));
-    xhr.addEventListener('abort', () => reject(new ApiError('Upload cancelled', 0)));
-    xhr.send(body);
-  });
-}
-
-function encodeManifest(items: readonly UploadGroupItem[]): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(items));
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  // base64url keeps the manifest inside a URL without percent-encoding, and
-  // the padding is dropped: the worker accepts the shorter form.
-  return btoa(binary).split('=', 1)[0].replaceAll('+', '-').replaceAll('/', '_');
-}
 
 /**
 Sets (or, with `null`, removes) the current user's reaction on a message.

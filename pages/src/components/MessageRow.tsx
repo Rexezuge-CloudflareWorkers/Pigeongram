@@ -3,6 +3,7 @@ import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
+import { Avatar } from './Avatar';
 import { ForwardOrigin } from './ForwardOrigin';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageButtons } from './MessageButtons';
@@ -50,6 +51,8 @@ export interface MessageRowProps {
   for headers that point at the thread's root, which Telegram shows bare.
   */
   showQuote?: boolean;
+  /** Whether the sender's avatar renders beside the bubble (default false). */
+  showAvatar?: boolean;
   /**
   Whether this message has a reaction request in flight; its chips are
   disabled.
@@ -102,6 +105,7 @@ export function MessageRow({
   chat,
   original,
   showQuote = true,
+  showAvatar = false,
   reacting = false,
   onReact,
   voting = false,
@@ -125,6 +129,11 @@ export function MessageRow({
   const comments = message.comments;
   const album = group.length > 1;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
+  // The caller enables avatars for group threads and comments; service messages and anonymous senders have none.
+  const avatar =
+    showAvatar && !message.service && message.senderId !== null && (message.senderPhoto !== null || message.senderName !== null) ? (
+      <Avatar chatId={message.senderId} photo={message.senderPhoto} title={message.senderName ?? ''} small />
+    ) : null;
   // Telegram attaches an album's keyboard to one of its members, not
   // necessarily the first; that member is also the callback's target.
   const buttonMessage = group.find((entry) => entry.markup !== null) ?? null;
@@ -157,7 +166,7 @@ export function MessageRow({
     return true;
   };
 
-  return (
+  const bubble = (
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
       data-message-id={message.id}
@@ -273,6 +282,13 @@ export function MessageRow({
       {menu ? (
         <MessageMenu messages={group} x={menu.x} y={menu.y} onReply={onReply} onForward={onForward} onClose={() => setMenu(null)} />
       ) : null}
+    </div>
+  );
+  if (!avatar) return bubble;
+  return (
+    <div className={`message-line${own ? ' own' : ''}`}>
+      {avatar}
+      {bubble}
     </div>
   );
 }

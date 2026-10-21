@@ -336,6 +336,7 @@ export function ThreadView({
               <MessageRow
                 group={group}
                 chat={chat}
+                showAvatar={chat.kind === 'group' || chat.kind === 'supergroup'}
                 original={
                   anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
                     ? (messageById.get(anchor.reply.messageId) ?? null)

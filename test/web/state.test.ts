@@ -56,6 +56,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     groupedId: null,
     senderId: 1,
     senderName: 'Ada',
+    senderPhoto: null,
     outgoing: false,
     date: NOW,
     text: `message ${overrides.id}`,

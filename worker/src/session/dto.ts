@@ -208,8 +208,9 @@ function toMessageForwardDto(message: Message): MessageForwardDto | null {
 export function toMessageDto(message: Message): MessageDto {
   // `sender` is typed as `Peer`, but service messages from anonymous admins
   // carry a sender without an id; guard at runtime instead of trusting the
-  // nominal type.
-  const sender = message.sender as { id?: number; displayName?: string } | null;
+  // nominal type. `photoVersion` catches the other unusable senders (min
+  // users, missing access hashes) and degrades to the initials fallback.
+  const sender = message.sender as Peer | null;
   const senderName = sender?.displayName ?? null;
   const media = message.media;
   return {
@@ -218,6 +219,7 @@ export function toMessageDto(message: Message): MessageDto {
     groupedId: message.groupedId?.toString() ?? null,
     senderId: typeof sender?.id === 'number' ? sender.id : null,
     senderName,
+    senderPhoto: sender === null ? null : photoVersion(sender),
     outgoing: message.isOutgoing,
     date: message.date.getTime(),
     text: message.isService ? serviceText(message, senderName) : message.text,

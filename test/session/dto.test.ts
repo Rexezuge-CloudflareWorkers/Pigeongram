@@ -79,7 +79,7 @@ const rawSupergroup = {
 
 function index(): PeersIndex {
   return PeersIndex.from({
-    users: [rawUser, rawBot],
+    users: [rawUser, rawUserWithPhoto, rawBot],
     chats: [rawGroup, rawChannel, rawSupergroup],
   });
 }
@@ -266,6 +266,7 @@ describe('toMessageDto', () => {
       groupedId: null,
       senderId: 1,
       senderName: 'Ada Lovelace',
+      senderPhoto: null,
       outgoing: false,
       date: 1_700_000_000_000,
       text: 'hello',
@@ -280,6 +281,11 @@ describe('toMessageDto', () => {
       views: null,
       comments: null,
     });
+  });
+
+  it("carries the sender's avatar version token", () => {
+    const dto = toMessageDto(message({ fromId: { _: 'peerUser', userId: 3 } }));
+    expect(dto.senderPhoto).toBe('AQADRgAI');
   });
 
   it('maps an inline keyboard into rows of button actions', () => {

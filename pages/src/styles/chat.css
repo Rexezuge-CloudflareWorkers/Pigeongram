@@ -180,6 +180,28 @@
   background: var(--own);
 }
 
+/* A group sender's avatar sits beside the bubble rather than inside it, so the
+   bubble keeps its own background and padding. The row reserves the avatar's
+   gutter in its width cap, keeping the bubble at its previous size. */
+.message-line {
+  align-self: flex-start;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(604px, calc(82% + 44px), 100%);
+}
+
+.message-line.own {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-line > .message {
+  align-self: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .message.service {
   align-self: center;
   background: none;

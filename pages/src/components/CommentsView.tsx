@@ -144,6 +144,7 @@ export function CommentsView({
             chat={thread.chat}
             original={null}
             showQuote={false}
+            showAvatar={false}
             voting={votingIds.has(thread.post.id)}
             onVote={onVote}
             pressingButton={pressingButtonIds.has(thread.post.id)}
@@ -172,6 +173,7 @@ export function CommentsView({
               <MessageRow
                 group={group}
                 chat={thread.chat}
+                showAvatar
                 original={
                   anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
                     ? (commentById.get(anchor.reply.messageId) ?? null)

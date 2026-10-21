@@ -375,6 +375,12 @@ export interface MessageDto {
   groupedId: string | null;
   senderId: PeerId | null;
   senderName: string | null;
+  /**
+  Opaque token identifying the sender's current profile photo, or null. It
+  changes when the photo changes and only exists to bust the `/user/avatar`
+  cache.
+  */
+  senderPhoto: string | null;
   outgoing: boolean;
   /**
   Unix milliseconds.

@@ -162,7 +162,8 @@ last read incoming message) and `readOutboxMaxId` (the last outgoing message the
 `pinned`/`muted`. The SPA opens a chat at the first incoming message after the inbox watermark instead of
 the bottom, and renders a single check for sent own messages and a double check up to the outbox watermark.
 `readHistory`'s optional `maxId` reports how far the user actually scrolled (omitted, it reads the whole
-history — the comments screen's behavior).
+history — the comments screen's behavior). `ChatDto.presence` carries the peer's online state — see
+[Presence](#presence) below.
 
 `MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
@@ -245,7 +246,7 @@ someone else does not bump the button until the channel thread reloads.
 
 Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read"|"user_status", …}}`.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
 `updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.
@@ -257,6 +258,29 @@ so the caller's own vote renders without waiting for the socket.
 The `read` update carries `{chatId, maxId, unread, inbox}`: `inbox` distinguishes the account's own inbox
 from the peer reading the account's messages. Only inbox reads move `unread` and `readInboxMaxId`; outbox
 reads move `readOutboxMaxId`, which is what turns the account's own double checks on.
+The `user_status` update carries `{userId, presence}` and says that a peer came online or went offline.
+
+### Presence
+
+A peer's presence is a person's online state; a bot, a group and a channel never have one. `ChatDto.presence`
+is `{status, lastSeenAt}` (`status` is `online`, `offline`, `recently`, `within_week` or `within_month`;
+`lastSeenAt` is the exact last-sighting timestamp, which only the `offline` state carries) or `null` when
+Telegram said nothing.
+
+Two sources feed it, and the engine uses both (`session/presence.ts`):
+
+- **`contacts.getStatuses`** is authoritative for the account's contacts. `getDialogs` reads it once per call
+  and overlays the answer on the chat list, so the presence rides the payload the SPA already fetches. The
+  method is unavailable to bot accounts, so an unreadable answer degrades to no presences at all rather than
+  to an error — a chat list without dots beats no chat list.
+- **The peer object itself** carries the state Telegram attached to the user, which covers people outside the
+  contact list.
+- **`updateUserStatus`** (mapped to the `user_status` update) reports every change that follows, so a dot
+  appears and disappears while the list is open. The engine's wake cycle replays the same updates through
+  `getDifference`, so a peer that changed state while no tab was attached is current again on the next load.
+
+Telegram only reveals what a peer shares, so the presence is best-effort: the official clients show the same
+incompleteness.
 
 ## Local development
 

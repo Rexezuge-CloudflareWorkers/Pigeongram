@@ -7,8 +7,8 @@ An always-online Telegram web client hosted on Cloudflare:
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
 - **`pages/`** — the frontend. A Vite + React + Tailwind SPA with a three-state home: a public intro page, the Telegram QR login
-  once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, pathname
-  deep links). It talks to the worker through the bridge and will grow into a fork of
+  once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, online
+  presence, pathname deep links). It talks to the worker through the bridge and will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
 - **`functions/`** — the Pages Functions proxying `/api/*` (public health) and `/user/*` (Access-gated user API) to
   the worker over the `API_WORKER` service binding, so the worker itself never has to be reachable from the internet.

@@ -2,6 +2,7 @@ import { getMarkedPeerId, Message, MessageReactions, Poll } from '@mtcute/core';
 import type { RawUpdateInfo } from '@mtcute/core';
 import type { UpdateEvent } from '../types';
 import { toMessageDto, toMessageReactionDtos, toPollDto } from './dto';
+import { presenceOf } from './presence';
 
 /**
  * Maps the raw updates the engine cares about onto bridge events.
@@ -93,6 +94,15 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         maxId: update.maxId,
         unread: 0,
         inbox: false,
+      };
+    }
+    case 'updateUserStatus': {
+      // A peer came online or went offline. The id is the user's plain id,
+      // which is also the marked peer id of a user chat.
+      return {
+        type: 'user_status',
+        userId: update.userId,
+        presence: presenceOf(update.status),
       };
     }
     default: {

@@ -4,7 +4,7 @@ import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
 import type { ThreadPositionMemory } from '../thread-position';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
-import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId } from '../types';
+import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
@@ -20,6 +20,12 @@ const READ_DEBOUNCE_MS = 250;
 
 interface ThreadViewProps {
   chat: ChatDto | null;
+  /**
+  The open chat's live presence. It rides beside the chat rather than inside
+  it, so a peer coming online does not replace the chat object the view's
+  effects depend on.
+  */
+  presence: PresenceDto | null;
   messages: MessageDto[];
   loading: boolean;
   loadingOlder: boolean;
@@ -94,6 +100,7 @@ interface ThreadViewProps {
 
 export function ThreadView({
   chat,
+  presence,
   messages,
   loading,
   loadingOlder,
@@ -288,7 +295,7 @@ export function ThreadView({
         <button type="button" className="back" onClick={onBack} aria-label="Back to chat list">
           ←
         </button>
-        <Avatar chatId={chat.id} photo={chat.photo} title={chat.title} kind={chat.kind} small />
+        <Avatar chatId={chat.id} photo={chat.photo} title={chat.title} kind={chat.kind} small presence={presence} />
         <div className="thread-title">
           <strong>{chat.title}</strong>
           <span className="muted small">

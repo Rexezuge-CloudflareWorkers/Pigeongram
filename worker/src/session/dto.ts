@@ -1,6 +1,7 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
 import { serviceText } from './service-text';
 import { toMessageMarkupDto } from './markup';
+import { presenceOfPeer } from './presence';
 import type {
   ChatDto,
   DialogDto,
@@ -36,6 +37,7 @@ export function toChatDto(peer: Peer): ChatDto {
     title: peer.displayName,
     username: peer.username ?? null,
     photo: photoVersion(peer),
+    presence: presenceOfPeer(peer),
   };
   if (peer.type === 'user') {
     return { ...base, kind: peer.isBot ? 'bot' : 'user', canSendMessages: true };

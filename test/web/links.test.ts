@@ -11,7 +11,7 @@ import {
 import type { ChatDto, DialogDto, MessageForwardDto } from '../../pages/src/types';
 
 function chat(id: number, username: string | null): ChatDto {
-  return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true };
+  return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
 }
 
 describe('parseTelegramLink', () => {

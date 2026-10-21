@@ -15,6 +15,7 @@ import type { Route } from './routes';
 import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate } from './state';
 import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
+import { useAppHeight } from './useAppHeight';
 import { useChatNavigation } from './useChatNavigation';
 import { useComments } from './useComments';
 import { useForwarding } from './useForwarding';
@@ -24,6 +25,7 @@ import { useRouter } from './useRouter';
 import { useThread } from './useThread';
 
 export function App() {
+  useAppHeight();
   const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
 
   const [me, setMe] = useState<MeDto | null>(null);

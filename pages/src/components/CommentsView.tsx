@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import type { CommentsThread } from '../state';
+import { settleToBottom } from '../thread-position';
 import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
@@ -93,24 +94,12 @@ export function CommentsView({
     element.scrollTop = element.scrollHeight;
   }, [lastId, thread.post.id, comments.length]);
 
-  // The thread's settling rule: media loads grow the list after the open
-  // scroll, and a pinned view follows the growth instead of losing the end.
+  // Media loading after the first paint and the mobile keyboard both change the
+  // list's height. A pinned view follows, so the end stays in view.
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    const settle = (): void => {
-      if (!stickToBottom.current) return;
-      element.scrollTop = element.scrollHeight;
-    };
-    // Media events do not bubble; a capture listener still sees them.
-    element.addEventListener('load', settle, { capture: true });
-    element.addEventListener('error', settle, { capture: true });
-    element.addEventListener('loadedmetadata', settle, { capture: true });
-    return () => {
-      element.removeEventListener('load', settle, true);
-      element.removeEventListener('error', settle, true);
-      element.removeEventListener('loadedmetadata', settle, true);
-    };
+    return settleToBottom(element, () => stickToBottom.current);
   }, []);
 
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;

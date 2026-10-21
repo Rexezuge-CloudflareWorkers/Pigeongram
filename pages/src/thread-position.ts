@@ -159,3 +159,30 @@ export function flashRow(element: HTMLElement): void {
   element.classList.add('reply-flash');
   setTimeout(() => element.classList.remove('reply-flash'), 1200);
 }
+
+/**
+Keeps a pinned scroll container at the end while its own box or the media
+inside it changes size. The `load` family does not bubble, so media settling is
+caught with capture listeners; the `ResizeObserver` covers the rest — the
+on-screen keyboard shortening the list, a growing composer, a window resize.
+A reader who scrolled away is left where they are.
+*/
+export function settleToBottom(element: HTMLElement, pinned: () => boolean): () => void {
+  const settle = (): void => {
+    if (!pinned()) return;
+    element.scrollTop = element.scrollHeight;
+  };
+  element.addEventListener('load', settle, { capture: true });
+  element.addEventListener('error', settle, { capture: true });
+  element.addEventListener('loadedmetadata', settle, { capture: true });
+  // jsdom has no ResizeObserver; the behavior is covered through a fake the
+  // unit tests install.
+  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(settle);
+  observer?.observe(element);
+  return () => {
+    element.removeEventListener('load', settle, true);
+    element.removeEventListener('error', settle, true);
+    element.removeEventListener('loadedmetadata', settle, true);
+    observer?.disconnect();
+  };
+}

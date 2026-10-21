@@ -691,6 +691,7 @@ describe('App', () => {
       forward: {
         senderId: null,
         senderName: 'News Channel',
+        senderUsername: null,
         date: 1_699_999_800_000,
         fromChatId: null,
         fromMessageId: null,
@@ -703,6 +704,75 @@ describe('App', () => {
     fireEvent.click(await screen.findByText('Bob'));
 
     expect(await screen.findByText('↗ Forwarded from News Channel')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'News Channel' })).toBeNull();
+  });
+
+  it('opens the origin chat from a clickable forwarded-from name', async () => {
+    const forwarded = message({
+      id: 11,
+      chatId: 2,
+      senderId: 2,
+      senderName: 'Bob',
+      text: 'fresh news',
+      forward: {
+        senderId: 3,
+        senderName: 'Carol',
+        senderUsername: 'carol',
+        date: 1_699_999_800_000,
+        fromChatId: null,
+        fromMessageId: null,
+        signature: null,
+      },
+    });
+    const calls = installSignedInFetch({
+      dialogs: [...dialogs, carolDialog],
+      history: (chatId) => json({ messages: chatId === 3 ? carolHistory : [forwarded] }),
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Bob'));
+    const header = await within(threadSection()).findByText('↗ Forwarded from');
+    const origin = within(header).getByRole('button', { name: 'Carol' });
+    expect(header.textContent).toBe('↗ Forwarded from Carol');
+    expect(within(header).getAllByRole('button')).toHaveLength(1);
+
+    fireEvent.click(origin);
+    expect(await within(threadSection()).findByText('carol says hi')).toBeDefined();
+    const opened = calls.some((call) => {
+      const params = call.body?.params as { chatId?: number } | undefined;
+      return call.body?.method === 'getHistory' && params?.chatId === 3;
+    });
+    expect(opened).toBe(true);
+  });
+
+  it('hands an unknown forwarded origin to the installed app', async () => {
+    const forwarded = message({
+      id: 11,
+      chatId: 2,
+      senderId: 2,
+      senderName: 'Bob',
+      text: 'fresh news',
+      forward: {
+        senderId: 999,
+        senderName: 'Unknown Channel',
+        senderUsername: 'unknown_channel',
+        date: 1_699_999_800_000,
+        fromChatId: null,
+        fromMessageId: null,
+        signature: null,
+      },
+    });
+    installSignedInFetch({ history: () => json({ messages: [forwarded] }) });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Bob'));
+    const origin = await within(threadSection()).findByRole('button', { name: 'Unknown Channel' });
+    fireEvent.click(origin);
+
+    const frame = document.querySelector('iframe');
+    expect(frame?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+    globalThis.dispatchEvent(new Event('blur'));
+    expect(document.querySelector('iframe')).toBeNull();
   });
 
   it('renders the forwarded-from header above the sender name in a group', async () => {
@@ -716,6 +786,7 @@ describe('App', () => {
       forward: {
         senderId: null,
         senderName: 'News Channel',
+        senderUsername: null,
         date: 1_699_999_800_000,
         fromChatId: null,
         fromMessageId: null,

@@ -18,6 +18,7 @@ import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from 
 import { useChatNavigation } from './useChatNavigation';
 import { useComments } from './useComments';
 import { useForwarding } from './useForwarding';
+import { useForwardOrigin } from './useForwardOrigin';
 import { useMediaViewer } from './useMediaViewer';
 import { useRouter } from './useRouter';
 import { useThread } from './useThread';
@@ -217,6 +218,7 @@ export function App() {
     },
     [router],
   );
+  const openForwardOrigin = useForwardOrigin(dialogs, openChat);
 
   /**
   Routes a click on a link inside a message: a chat this client already knows
@@ -309,7 +311,7 @@ export function App() {
         </header>
         <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={openChat} />
       </aside>
-      <TelegramLinkProvider handler={handleTelegramLink}>
+      <TelegramLinkProvider handler={handleTelegramLink} onOpenForward={openForwardOrigin}>
         {comments.thread ? (
           <CommentsView
             thread={comments.thread}

@@ -204,6 +204,21 @@
   white-space: nowrap;
 }
 
+.message .forward-origin-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.message .forward-origin-link:hover,
+.message .forward-origin-link:focus-visible {
+  text-decoration: underline;
+}
+
 .message .text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

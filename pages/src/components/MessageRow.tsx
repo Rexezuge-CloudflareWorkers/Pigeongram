@@ -3,6 +3,7 @@ import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
+import { ForwardOrigin } from './ForwardOrigin';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageButtons } from './MessageButtons';
 import { MessageMenu } from './MessageMenu';
@@ -197,7 +198,7 @@ export function MessageRow({
       onPointerUp={cancelPress}
       onPointerCancel={cancelPress}
     >
-      {message.forward ? <span className="forward-origin">↗ Forwarded from {message.forward.senderName ?? 'a hidden user'}</span> : null}
+      {message.forward ? <ForwardOrigin forward={message.forward} /> : null}
       {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
       {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
       {album ? (

@@ -4,8 +4,8 @@ import type { MeDto, MessageDto, UpdateEvent } from '../types';
 import { toMeDto } from './dto';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
 import { streamAvatar, streamMessageMedia } from './media';
-import type { UploadSpec } from './upload';
-import { sendUploadedMedia } from './upload';
+import type { UploadGroupSpec, UploadSpec } from './upload-spec';
+import { sendUploadedMedia, sendUploadedMediaGroup } from './upload';
 import { createMtBundle } from './mtproto/client';
 import type { MtBundle } from './mtproto/client';
 import type { TransactionalStorageLike } from './mtproto/sqlite';
@@ -255,6 +255,10 @@ export class TelegramDriver {
 
   async sendUpload(spec: UploadSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto> {
     return sendUploadedMedia(this.#ensure().client, spec, body, signal);
+  }
+
+  async sendUploadGroup(spec: UploadGroupSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto[]> {
+    return sendUploadedMediaGroup(this.#ensure().client, spec, body, signal);
   }
 
   /**

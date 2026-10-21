@@ -152,7 +152,8 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
    per wake measured against the Free-plan limit. The runbook is `docs/session-engine.md`.
 2. **72 h soak** — _pending the spike_: 5-minute alarm cadence; watch duration/rows/storage against Free-tier limits.
 3. **UI fork** — _bridge done, fork pending_: the minimal first-party SPA already uses the remote-session bridge
-   (`POST /user/rpc`, `WS /user/updates`, media routes `GET /user/file`, `GET /user/avatar`, `POST /user/upload`);
+   (`POST /user/rpc`, `WS /user/updates`, media routes `GET /user/file`, `GET /user/avatar`, `POST /user/upload`,
+   `POST /user/upload-group`);
    `telegram-tt` can be dropped in behind the same contract.
 4. **API routing** — _implemented_: the Pages Functions at repo-root `functions/` proxy `/api/*` (public) and
    `/user/*` (Access-gated) over the `API_WORKER` service binding, keeping the worker off the public internet.

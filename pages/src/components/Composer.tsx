@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { BotCommandDto, MessageDto } from '../types';
+import type { UploadRequest } from '../upload';
 import { ComposerReply } from './ReplyQuote';
 import { Spinner } from './Spinner';
+import { UploadDialog } from './UploadDialog';
 
 /**
 The message box shared by the thread and the comments view: draft, attach,
@@ -27,7 +29,7 @@ interface ComposerProps {
   botCommands?: readonly BotCommandDto[];
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
-  onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
+  onAttach: (request: UploadRequest) => Promise<void>;
 }
 
 export function Composer({
@@ -50,6 +52,7 @@ export function Composer({
   const [draft, setDraft] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeCommand, setActiveCommand] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const listId = useId();
   const commands = botCommands ?? NO_COMMANDS;
   const busy = sending || uploading;
@@ -90,13 +93,14 @@ export function Composer({
     void onSend(text, replyTo).catch(() => setDraft(text));
   };
 
-  const attach = (file: File | undefined): void => {
-    if (!file || busy) return;
+  const attach = (files: File[], grouped: boolean): void => {
+    if (files.length === 0 || busy) return;
+    setPendingFiles(null);
     // Whatever is in the box rides along as the caption, Telegram-style.
     const caption = draft.trim();
     const replyTo = replyTarget?.id;
     setMenuOpen(false);
-    void onAttach(file, caption, replyTo)
+    void onAttach({ files, caption, replyTo, grouped })
       .then(() => setDraft((current) => (current === caption ? '' : current)))
       .catch(() => {
         // The caption stays in the box so the upload can be retried.
@@ -151,132 +155,136 @@ export function Composer({
   };
 
   return (
-    <form
-      ref={formRef}
-      className="composer"
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      {replyTarget ? <ComposerReply message={replyTarget} onCancel={onCancelReply} /> : null}
-      <input
-        ref={fileRef}
-        type="file"
-        className="attach-input"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = '';
-          attach(file);
-        }}
-      />
-      {commands.length > 0 ? (
-        <button
-          type="button"
-          className="slash"
-          disabled={busy}
-          aria-label="Bot commands"
-          title="Bot commands"
-          aria-haspopup="listbox"
-          aria-expanded={showMenu}
-          aria-controls={showMenu ? listId : undefined}
-          onClick={toggleMenu}
-        >
-          /
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="attach"
-        disabled={busy}
-        aria-label="Attach a file"
-        title="Attach a file"
-        onClick={() => fileRef.current?.click()}
-      >
-        📎
-      </button>
-      {showMenu ? (
-        <div className="command-menu" id={listId} role="listbox" aria-label="Bot commands">
-          {matches.map((command, index) => (
-            <button
-              key={command.command}
-              id={`${listId}-${index}`}
-              type="button"
-              role="option"
-              aria-selected={index === active}
-              className={index === active ? 'active' : undefined}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActiveCommand(index)}
-              onClick={() => pick(command)}
-            >
-              <span className="command-name">/{command.command}</span>
-              {command.description ? <span className="command-description">{command.description}</span> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <textarea
-        ref={textareaRef}
-        value={draft}
-        rows={1}
-        placeholder={placeholder}
-        aria-autocomplete="list"
-        aria-expanded={showMenu}
-        aria-controls={showMenu ? listId : undefined}
-        aria-activedescendant={showMenu ? `${listId}-${active}` : undefined}
-        onChange={(event) => changeDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (showMenu) {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              moveActive(1);
-              return;
-            }
-            if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              moveActive(-1);
-              return;
-            }
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              setMenuOpen(false);
-              return;
-            }
-            if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
-              const command = matches[active];
-              // A fully typed command is ready to send; a prefix is completed.
-              const exact = command !== undefined && draft === `/${command.command}`;
-              if (event.key === 'Tab' || !exact) {
-                event.preventDefault();
-                if (command) pick(command);
-                return;
-              }
-            }
-          }
-          if (event.key === 'Escape' && replyTarget) {
-            event.preventDefault();
-            onCancelReply();
-            return;
-          }
-          if (event.key !== 'Enter' || event.shiftKey) {
-            return;
-          }
-
+    <>
+      <form
+        ref={formRef}
+        className="composer"
+        onSubmit={(event) => {
           event.preventDefault();
           submit();
         }}
-      />
-      {uploading ? (
-        <span className="upload-status">
-          <Spinner inline size={14} />
-          {uploadStatus(uploadProgress)}
-        </span>
-      ) : null}
-      <button type="submit" disabled={busy || draft.trim().length === 0} aria-busy={sending}>
-        {sending ? <Spinner inline size={14} color="currentColor" /> : null}
-        Send
-      </button>
-    </form>
+      >
+        {replyTarget ? <ComposerReply message={replyTarget} onCancel={onCancelReply} /> : null}
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          className="attach-input"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = '';
+            if (files.length > 0 && !busy) setPendingFiles(files);
+          }}
+        />
+        {commands.length > 0 ? (
+          <button
+            type="button"
+            className="slash"
+            disabled={busy}
+            aria-label="Bot commands"
+            title="Bot commands"
+            aria-haspopup="listbox"
+            aria-expanded={showMenu}
+            aria-controls={showMenu ? listId : undefined}
+            onClick={toggleMenu}
+          >
+            /
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="attach"
+          disabled={busy}
+          aria-label="Attach files"
+          title="Attach files"
+          onClick={() => fileRef.current?.click()}
+        >
+          📎
+        </button>
+        {showMenu ? (
+          <div className="command-menu" id={listId} role="listbox" aria-label="Bot commands">
+            {matches.map((command, index) => (
+              <button
+                key={command.command}
+                id={`${listId}-${index}`}
+                type="button"
+                role="option"
+                aria-selected={index === active}
+                className={index === active ? 'active' : undefined}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveCommand(index)}
+                onClick={() => pick(command)}
+              >
+                <span className="command-name">/{command.command}</span>
+                {command.description ? <span className="command-description">{command.description}</span> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          rows={1}
+          placeholder={placeholder}
+          aria-autocomplete="list"
+          aria-expanded={showMenu}
+          aria-controls={showMenu ? listId : undefined}
+          aria-activedescendant={showMenu ? `${listId}-${active}` : undefined}
+          onChange={(event) => changeDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (showMenu) {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveActive(1);
+                return;
+              }
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveActive(-1);
+                return;
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setMenuOpen(false);
+                return;
+              }
+              if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+                const command = matches[active];
+                // A fully typed command is ready to send; a prefix is completed.
+                const exact = command !== undefined && draft === `/${command.command}`;
+                if (event.key === 'Tab' || !exact) {
+                  event.preventDefault();
+                  if (command) pick(command);
+                  return;
+                }
+              }
+            }
+            if (event.key === 'Escape' && replyTarget) {
+              event.preventDefault();
+              onCancelReply();
+              return;
+            }
+            if (event.key !== 'Enter' || event.shiftKey) {
+              return;
+            }
+
+            event.preventDefault();
+            submit();
+          }}
+        />
+        {uploading ? (
+          <span className="upload-status">
+            <Spinner inline size={14} />
+            {uploadStatus(uploadProgress)}
+          </span>
+        ) : null}
+        <button type="submit" disabled={busy || draft.trim().length === 0} aria-busy={sending}>
+          {sending ? <Spinner inline size={14} color="currentColor" /> : null}
+          Send
+        </button>
+      </form>
+      {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}
+    </>
   );
 }
 

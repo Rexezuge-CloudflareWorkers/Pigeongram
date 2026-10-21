@@ -86,6 +86,14 @@ function uploadRequest(query: string, body: string, headers: Record<string, stri
   return new Request(`https://session-engine.internal/user/upload?${query}`, { method: 'POST', body, headers });
 }
 
+function groupManifest(items: unknown[]): string {
+  return Buffer.from(JSON.stringify(items)).toString('base64url');
+}
+
+function uploadGroupRequest(query: string, body: string, headers: Record<string, string> = {}): Request {
+  return new Request(`https://session-engine.internal/user/upload-group?${query}`, { method: 'POST', body, headers });
+}
+
 const FAKE_CREDENTIALS: TestEnv = {
   TELEGRAM_API_ID: '12345',
   TELEGRAM_API_HASH: '0123456789abcdef',
@@ -243,6 +251,56 @@ describe('SessionEngine (request handling)', () => {
   it('400s an upload whose content-length disagrees with its size', async () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(uploadRequest('chatId=1&kind=document&size=5', '01234', { 'content-length': '4' }));
+    expect(response.status).toBe(400);
+  });
+
+  it('validates album uploads before touching the network', async () => {
+    const pair = groupManifest([
+      { kind: 'document', size: 1 },
+      { kind: 'document', size: 1 },
+    ]);
+    const cases: Array<[string, string, number]> = [
+      ['chatId=1', 'xx', 400], // missing manifest
+      ['chatId=1&manifest=!!!', 'xx', 400], // malformed base64url
+      [`chatId=1&manifest=${groupManifest([{ kind: 'document', size: 1 }])}`, 'x', 400], // one item
+      [`chatId=1&manifest=${groupManifest(Array.from({ length: 11 }, () => ({ kind: 'document', size: 1 })))}`, 'x'.repeat(11), 400], // 11 items
+      [
+        `chatId=1&manifest=${groupManifest([
+          { kind: 'document', size: 1 },
+          { kind: 'photo', size: 1 },
+        ])}`,
+        'xx',
+        400,
+      ], // mixed media
+      [`chatId=1&manifest=${pair}&replyTo=0`, 'xx', 400], // unusable reply target
+    ];
+    for (const [query, body, status] of cases) {
+      const { engine } = createHarness(FAKE_CREDENTIALS);
+      const response = await engine.fetch(uploadGroupRequest(query, body));
+      expect(response.status, query).toBe(status);
+    }
+  });
+
+  it('413s an album above the configured cap', async () => {
+    const { engine } = createHarness({ ...FAKE_CREDENTIALS, UPLOAD_MAX_BYTES: '10' });
+    const manifest = groupManifest([
+      { kind: 'document', size: 6 },
+      { kind: 'document', size: 6 },
+    ]);
+    const response = await engine.fetch(uploadGroupRequest(`chatId=1&manifest=${manifest}`, '012345678901'));
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('limited') as string,
+    });
+  });
+
+  it('400s an album whose content-length disagrees with the manifest total', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS);
+    const manifest = groupManifest([
+      { kind: 'document', size: 5 },
+      { kind: 'document', size: 5 },
+    ]);
+    const response = await engine.fetch(uploadGroupRequest(`chatId=1&manifest=${manifest}`, '0123456789', { 'content-length': '9' }));
     expect(response.status).toBe(400);
   });
 });

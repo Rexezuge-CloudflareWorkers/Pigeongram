@@ -138,6 +138,15 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
   parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
   without consuming the body (cloudflare/workerd#918), so malformed and oversized uploads must never reach it.
+- **Albums are one request body, not many.** `POST /user/upload-group` carries 2–10 files concatenated in the order
+  the `manifest` query parameter (base64url JSON) declares, and `session/upload.ts` splits that one body back into the
+  exact byte ranges (`UploadBodySplitter`) before mtcute's `sendMediaGroup` uploads them in order. The parser
+  (`session/upload-spec.ts`) is shared by the engine and the edge, and it enforces the album rules: 2–10 items, one
+  media class (photos/videos/GIFs together, documents together), and a total within `UPLOAD_MAX_BYTES`. The split
+  streams use `highWaterMark: 0` on purpose — with the default of 1, Web Streams pulls every part at construction, so
+  the later files would claim the shared reader before the earlier ones. The composer's upload dialog
+  (`pages/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
+  (checked by default when the selection can group) and sends ungrouped files one by one.
 - **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
   window over `downloadAsIterable` — a 1 MB-block-aligned offset, dropped prefix, local tail cut, and `throttle`
   backpressure so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB
@@ -191,9 +200,10 @@ workflow files themselves.
 ## Where this is going / out of scope
 
 The session engine, the bridge (`POST /user/rpc`, `WS /user/updates`, the media routes `GET /user/file`,
-`GET /user/avatar`, `POST /user/upload`), the Pages proxies, and the worker's Access JWT verification are in place; what
-remains needs the owner. In order: (1) **M1 acceptance** — real QR login against the account, one measured wake cycle —
-after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the deployment is up; (3) the
+`GET /user/avatar`, `POST /user/upload`, `POST /user/upload-group`), the Pages proxies, and the worker's Access JWT
+verification are in place; what remains needs the owner. In order: (1) **M1 acceptance** — real QR login against the
+account, one measured wake cycle — after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the
+deployment is up; (3) the
 **`telegram-tt` fork** behind the existing bridge contract, once the Pages hostname is behind the Access application and
 its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
 Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's

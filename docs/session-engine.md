@@ -69,24 +69,25 @@ navigates to `GET /user/login`, which sits behind the same Access gate; after th
 the browser back into the SPA. The optional `next` query must be a same-origin absolute path (protocol-relative URLs,
 backslashes, and CR/LF are rejected) and defaults to `/`.
 
-| Route                       | Body / query                            | Returns                                                    |
-| --------------------------- | --------------------------------------- | ---------------------------------------------------------- |
-| `GET /api/health`           | —                                       | `{"status":"ok","service":"telegram-web-client"}`; public  |
-| `GET /user/login`           | `?next=/path` (optional)                | `302` into the SPA; the Access entry point                 |
-| `GET /user/state`           | —                                       | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …) |
-| `POST /user/login/qr`       | —                                       | `EngineStateDto`; starts (or joins) the QR login           |
-| `POST /user/login/phone`    | `{"phone": string}`                     | `EngineStateDto`; sends a login code (phone-number path)   |
-| `POST /user/login/code`     | `{"code": string}`                      | `EngineStateDto`; submits the login code                   |
-| `POST /user/login/password` | `{"password": string}`                  | `EngineStateDto`; submits the 2FA cloud password           |
-| `POST /user/login/cancel`   | —                                       | `EngineStateDto`; aborts an in-flight login                |
-| `POST /user/logout`         | —                                       | `{"ok": true}`; logs out, closes updates sockets, re-arms  |
-| `POST /user/rpc`            | `{"method": string, "params"?: object}` | method-specific JSON (below)                               |
-| `GET /user/updates`         | WebSocket                               | server events (below)                                      |
-| `GET /user/file`            | `?chatId=&messageId=&thumb=1` + `Range` | media bytes (see below)                                    |
-| `GET /user/avatar`          | `?chatId=&size=small\|big`              | profile photo bytes (`image/jpeg`, cached a day)           |
-| `POST /user/upload`         | query params + raw body (see below)     | `{"message": MessageDto}`; sends one file                  |
-| `POST /user/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                 |
-| `GET /user/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)  |
+| Route                       | Body / query                            | Returns                                                     |
+| --------------------------- | --------------------------------------- | ----------------------------------------------------------- |
+| `GET /api/health`           | —                                       | `{"status":"ok","service":"telegram-web-client"}`; public   |
+| `GET /user/login`           | `?next=/path` (optional)                | `302` into the SPA; the Access entry point                  |
+| `GET /user/state`           | —                                       | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …)  |
+| `POST /user/login/qr`       | —                                       | `EngineStateDto`; starts (or joins) the QR login            |
+| `POST /user/login/phone`    | `{"phone": string}`                     | `EngineStateDto`; sends a login code (phone-number path)    |
+| `POST /user/login/code`     | `{"code": string}`                      | `EngineStateDto`; submits the login code                    |
+| `POST /user/login/password` | `{"password": string}`                  | `EngineStateDto`; submits the 2FA cloud password            |
+| `POST /user/login/cancel`   | —                                       | `EngineStateDto`; aborts an in-flight login                 |
+| `POST /user/logout`         | —                                       | `{"ok": true}`; logs out, closes updates sockets, re-arms   |
+| `POST /user/rpc`            | `{"method": string, "params"?: object}` | method-specific JSON (below)                                |
+| `GET /user/updates`         | WebSocket                               | server events (below)                                       |
+| `GET /user/file`            | `?chatId=&messageId=&thumb=1` + `Range` | media bytes (see below)                                     |
+| `GET /user/avatar`          | `?chatId=&size=small\|big`              | profile photo bytes (`image/jpeg`, cached a day)            |
+| `POST /user/upload`         | query params + raw body (see below)     | `{"message": MessageDto}`; sends one file                   |
+| `POST /user/upload-group`   | `?chatId=&manifest=` + raw body         | `{"messages": MessageDto[]}`; sends 2–10 files as one album |
+| `POST /user/wake`           | —                                       | `WakeCountersDto`; runs one wake cycle now                  |
+| `GET /user/stats`           | `?days=1..30` (default 7)               | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)   |
 
 `GET /api/health` lives on the worker, not the engine, and is never gated; it carries no account data. The old
 `/health` alias is gone, and no account route is served under `/api/*`: an old `/api/state` call is a 404.
@@ -117,6 +118,15 @@ buffers in the isolate, and `UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) re
 upload never reaches the DO at all — workerd reads a request stream after its response when a Durable Object
 answers without consuming the body (cloudflare/workerd#918). The kind is never guessed server-side: the SPA converts non-JPEG
 canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else.
+
+`POST /user/upload-group` sends an album. The body is the 2–10 files **concatenated in manifest order**, and the
+`manifest` query parameter carries the per-file metadata as base64url-encoded JSON (`kind`, `size`, `fileName`, `mime`,
+optional `width`/`height`/`duration`); `chatId`, `caption`, `commentTo` and `replyTo` ride along as they do for a single
+file. The engine splits the one request body back into the exact byte ranges the manifest declared
+(`session/upload.ts`: `UploadBodySplitter`) and hands them to mtcute's `sendMediaGroup`/`commentMediaGroup`, which
+uploads the items strictly in order. The caption rides the first item only, and the reply is the album's messages
+oldest first. The same parser runs at the edge, so a malformed manifest, a mixed album (a document next to a photo) or
+an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps the **total** of the album.
 
 ### RPC methods
 

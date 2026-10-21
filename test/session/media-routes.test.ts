@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { TelegramDriver } from '../../worker/src/session/driver';
 import { EngineError } from '../../worker/src/session/errors';
 import type { MediaDownload } from '../../worker/src/session/media';
-import { avatarResponse, fileResponse } from '../../worker/src/session/media-routes';
+import { avatarResponse, fileResponse, uploadGroupResponse } from '../../worker/src/session/media-routes';
+import type { UploadGroupSpec } from '../../worker/src/session/upload-spec';
 
 /**
  * The HTTP half of `/user/file` and `/user/avatar`: which `Range` forms reach the
@@ -104,6 +105,46 @@ describe('fileResponse', () => {
     const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=5000-' });
 
     await expect(fileResponse(driver, request, url)).rejects.toMatchObject({ status: 416 });
+  });
+});
+
+describe('uploadGroupResponse', () => {
+  it('parses the manifest, hands the raw body to the driver and returns every message', async () => {
+    const manifest = Buffer.from(
+      JSON.stringify([
+        { kind: 'document', size: 2, fileName: 'a.txt', mime: 'text/plain' },
+        { kind: 'document', size: 3, fileName: 'b.txt', mime: 'text/plain' },
+      ]),
+    ).toString('base64url');
+    const sendUploadGroup = vi.fn(async (_spec: UploadGroupSpec, _body: ReadableStream<Uint8Array>) => [{ id: 2 }, { id: 1 }]);
+    const driver = { sendUploadGroup } as unknown as TelegramDriver;
+    const { url } = target(`/user/upload-group?chatId=1&manifest=${manifest}`);
+    const upload = new Request(url, { method: 'POST', body: 'abcde', headers: { 'content-type': 'application/octet-stream' } });
+
+    const response = await uploadGroupResponse(driver, upload, url, {} as CloudflareEnv);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ messages: [{ id: 2 }, { id: 1 }] });
+    expect(sendUploadGroup).toHaveBeenCalledTimes(1);
+    expect(sendUploadGroup.mock.calls[0]?.[0]).toMatchObject({
+      chatId: 1,
+      items: [
+        { kind: 'document', size: 2, fileName: 'a.txt' },
+        { kind: 'document', size: 3, fileName: 'b.txt' },
+      ],
+    });
+    // The route passes the live request stream, not a buffered copy.
+    expect(sendUploadGroup.mock.calls[0]?.[1]).toBe(upload.body);
+  });
+
+  it('400s an invalid manifest before the driver sees it', async () => {
+    const sendUploadGroup = vi.fn();
+    const driver = { sendUploadGroup } as unknown as TelegramDriver;
+    const { url } = target('/user/upload-group?chatId=1&manifest=!!!');
+    const upload = new Request(url, { method: 'POST', body: 'x' });
+
+    await expect(uploadGroupResponse(driver, upload, url, {} as CloudflareEnv)).rejects.toMatchObject({ status: 400 });
+    expect(sendUploadGroup).not.toHaveBeenCalled();
   });
 });
 

@@ -1,5 +1,6 @@
 import type { CommentsThread } from './state';
 import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, UpdateEvent } from './types';
+import type { UploadRequest } from './upload';
 
 /**
  * The comments screen's controller contract, split from `useComments.ts` to
@@ -36,7 +37,7 @@ export interface CommentsController {
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
-  attach: (file: File, caption: string, replyTo?: number) => Promise<void>;
+  attach: (request: UploadRequest) => Promise<void>;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
   Casts a vote in a poll on the pinned post or a comment, or retracts it with

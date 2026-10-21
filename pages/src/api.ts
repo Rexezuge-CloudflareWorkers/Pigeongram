@@ -14,6 +14,7 @@ import type {
   SendCommentResult,
   SendMessageResult,
   SendReactionResult,
+  SendUploadGroupResult,
   SendVoteResult,
   UploadKind,
 } from './types';
@@ -191,6 +192,28 @@ export interface UploadInput {
 }
 
 /**
+One album member's metadata. Its bytes are the item's slice of the
+concatenated request body, so `size` is required and must be exact.
+*/
+export interface UploadGroupItem {
+  kind: UploadKind;
+  fileName: string;
+  mime: string;
+  size: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+export interface UploadGroupInput {
+  chatId: PeerId;
+  items: readonly UploadGroupItem[];
+  caption?: string;
+  commentTo?: number;
+  replyTo?: number;
+}
+
+/**
 Uploads a file's bytes as the raw body of `POST /user/upload`.
 
 XHR, unlike `fetch`, reports upload progress; the promise resolves once the
@@ -211,10 +234,37 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
   if (input.width !== undefined) params.set('width', String(input.width));
   if (input.height !== undefined) params.set('height', String(input.height));
   if (input.duration !== undefined) params.set('duration', String(input.duration));
+  return sendUpload<SendMessageResult>(`/user/upload?${params.toString()}`, body, onProgress);
+}
 
+/**
+Uploads 2–10 files as one Telegram album.
+
+The body is the files concatenated in `items` order; the manifest carries each
+item's metadata and byte length so the engine can split the stream back apart
+without a multipart parser or an in-memory buffer. The manifest is
+base64url-encoded JSON to keep non-ASCII file names inside the URL limit.
+*/
+export function uploadGroup(input: UploadGroupInput, body: Blob, onProgress?: (fraction: number) => void): Promise<SendUploadGroupResult> {
+  const params = new URLSearchParams({
+    chatId: String(input.chatId),
+    manifest: encodeManifest(input.items),
+  });
+  if (input.caption) params.set('caption', input.caption);
+  if (input.commentTo !== undefined) params.set('commentTo', String(input.commentTo));
+  if (input.replyTo !== undefined) params.set('replyTo', String(input.replyTo));
+  return sendUpload<SendUploadGroupResult>(`/user/upload-group?${params.toString()}`, body, onProgress);
+}
+
+/**
+Shared raw-body upload transport: XHR so the composer can show browser-to-
+worker progress. The engine's own Telegram-side upload has no progress channel,
+so the tail of the operation is indeterminate.
+*/
+function sendUpload<T>(path: string, body: Blob, onProgress?: (fraction: number) => void): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/user/upload?${params.toString()}`);
+    xhr.open('POST', path);
     xhr.responseType = 'json';
     xhr.upload.addEventListener('progress', (event) => {
       if (onProgress && event.lengthComputable && event.total > 0) {
@@ -224,7 +274,7 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
     xhr.addEventListener('load', () => {
       const payload = xhr.response as unknown;
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(payload as SendMessageResult);
+        resolve(payload as T);
         return;
       }
       reject(apiError(xhr.status, payload));
@@ -233,6 +283,15 @@ export function uploadFile(input: UploadInput, body: Blob, onProgress?: (fractio
     xhr.addEventListener('abort', () => reject(new ApiError('Upload cancelled', 0)));
     xhr.send(body);
   });
+}
+
+function encodeManifest(items: readonly UploadGroupItem[]): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(items));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  // base64url keeps the manifest inside a URL without percent-encoding, and
+  // the padding is dropped: the worker accepts the shorter form.
+  return btoa(binary).split('=', 1)[0].replaceAll('+', '-').replaceAll('/', '_');
 }
 
 /**

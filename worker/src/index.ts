@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { requireAccess } from './access';
 import { ENGINE_OBJECT_NAME } from './session/engine';
 import { errorResponse } from './session/http';
-import { parseUploadSpec } from './session/media-routes';
+import { parseUploadGroupSpec, parseUploadSpec } from './session/upload-spec';
 
 // Wrangler discovers the Durable Object class through this re-export.
 export { SessionEngine } from './session/engine';
@@ -79,6 +79,15 @@ function safeReturnPath(request: Request): string {
 app.post('/user/upload', async (c, next) => {
   try {
     parseUploadSpec(new URL(c.req.url), c.req.raw, c.env);
+  } catch (error) {
+    return errorResponse(error);
+  }
+  await next();
+});
+
+app.post('/user/upload-group', async (c, next) => {
+  try {
+    parseUploadGroupSpec(new URL(c.req.url), c.req.raw, c.env);
   } catch (error) {
     return errorResponse(error);
   }

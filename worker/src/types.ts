@@ -29,6 +29,23 @@ export interface MeDto {
 export type ChatKind = 'user' | 'bot' | 'group' | 'supergroup' | 'channel';
 
 /**
+A peer's presence. Only a person has one — a bot, a group and a channel never
+do, and Telegram hides the state of people who keep their last seen to
+themselves.
+*/
+export type PresenceStatus = 'online' | 'offline' | 'recently' | 'within_week' | 'within_month';
+
+export interface PresenceDto {
+  status: PresenceStatus;
+  /**
+  Unix milliseconds of the last sighting. Only meaningful for `offline`,
+  where Telegram reports the exact time; the coarser states say only "some
+  time ago".
+  */
+  lastSeenAt: number | null;
+}
+
+/**
 One entry of a chat's slash-command menu. Telegram carries the command
 without its leading slash; the description is the text the bot registered.
 */
@@ -52,6 +69,11 @@ export interface ChatDto {
   blocked too.
   */
   canSendMessages: boolean;
+  /**
+  The peer's presence, or null when it has none (a bot, a group, a channel)
+  or when Telegram did not tell us.
+  */
+  presence: PresenceDto | null;
 }
 
 /**
@@ -499,6 +521,18 @@ export type UpdateEvent =
       the account's messages); only inbox reads advance `readInboxMaxId`.
       */
       inbox: boolean;
+    }
+  | {
+      type: 'user_status';
+      /**
+      The user's plain id, which is also the marked peer id of a user chat.
+      */
+      userId: PeerId;
+      /**
+      The new presence, or null when the status carries no state the UI can
+      show (Telegram's "unknown" status).
+      */
+      presence: PresenceDto | null;
     };
 
 /**

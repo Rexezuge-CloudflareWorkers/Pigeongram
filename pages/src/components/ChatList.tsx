@@ -25,10 +25,16 @@ export function ChatList({ dialogs, activeChatId, loading, onSelect }: ChatListP
           <li key={dialog.chat.id}>
             <button
               type="button"
-              className={`chat${dialog.chat.id === activeChatId ? ' active' : ''}`}
+              className={`chat group${dialog.chat.id === activeChatId ? ' active' : ''}`}
               onClick={() => onSelect(dialog.chat)}
             >
-              <Avatar chatId={dialog.chat.id} photo={dialog.chat.photo} title={dialog.chat.title} kind={dialog.chat.kind} />
+              <Avatar
+                chatId={dialog.chat.id}
+                photo={dialog.chat.photo}
+                title={dialog.chat.title}
+                kind={dialog.chat.kind}
+                presence={dialog.chat.presence}
+              />
               <span className="chat-body">
                 <span className="chat-top">
                   <span className="chat-title">{dialog.chat.title}</span>

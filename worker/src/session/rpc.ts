@@ -1,11 +1,12 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
-import type { DialogDto } from '../types';
+import type { DialogDto, PresenceDto } from '../types';
 import { readBotCommands } from './bot-commands';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
+import { readContactPresences } from './presence';
 import {
   clampInt,
   optionalAnswerIndexes,
@@ -40,7 +41,7 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       for await (const dialog of client.iterDialogs({ limit })) {
         dialogs.push(toDialogDto(dialog));
       }
-      return { dialogs };
+      return { dialogs: overlayPresence(dialogs, await readContactPresences(client)) };
     }
 
     case 'getHistory': {
@@ -197,6 +198,23 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       throw new EngineError(`Unknown RPC method: ${method}`, 404);
     }
   }
+}
+
+/**
+ * Overlays the account's contact presences onto the chat list.
+ *
+ * Telegram attaches a state to the user objects it sends only when it knows
+ * one, so the contact list — which is the authoritative answer for the people
+ * in it — wins over whatever the dialog carried.
+ */
+function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, PresenceDto>): DialogDto[] {
+  if (contacts.size === 0) return dialogs;
+  return dialogs.map((dialog) => {
+    if (dialog.chat.kind !== 'user') return dialog;
+    const presence = contacts.get(dialog.chat.id);
+    if (!presence) return dialog;
+    return { ...dialog, chat: { ...dialog.chat, presence } };
+  });
 }
 
 /**

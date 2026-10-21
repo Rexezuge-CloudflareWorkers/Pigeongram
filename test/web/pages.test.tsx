@@ -126,7 +126,7 @@ function fireResize(target: Element): void {
 const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 const dialogs: DialogDto[] = [
   {
-    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true },
+    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true, presence: null },
     lastMessage: {
       id: 10,
       chatId: 2,
@@ -198,7 +198,7 @@ const history: MessageDto[] = [
   },
 ];
 
-const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true };
+const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true, presence: null };
 
 const carolDialog: DialogDto = {
   chat: carol,
@@ -622,6 +622,7 @@ describe('App', () => {
         username: 'announce',
         photo: null,
         canSendMessages: false,
+        presence: null,
       };
       const post = message({
         id: 7,
@@ -714,7 +715,15 @@ describe('App', () => {
   });
 
   it('loads the slash-command menu for an open bot chat', async () => {
-    const helper: ChatDto = { id: 7, kind: 'bot', title: 'Helper', username: 'helper_bot', photo: null, canSendMessages: true };
+    const helper: ChatDto = {
+      id: 7,
+      kind: 'bot',
+      title: 'Helper',
+      username: 'helper_bot',
+      photo: null,
+      canSendMessages: true,
+      presence: null,
+    };
     installSignedInFetch({
       dialogs: [{ chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
       history: () => json({ messages: [] }),
@@ -824,7 +833,7 @@ describe('App', () => {
   });
 
   it('renders the forwarded-from header above the sender name in a group', async () => {
-    const team: ChatDto = { id: 4, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: true };
+    const team: ChatDto = { id: 4, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: true, presence: null };
     const forwarded = message({
       id: 20,
       chatId: 4,
@@ -2185,6 +2194,7 @@ describe('App', () => {
       username: 'announce',
       photo: null,
       canSendMessages: false,
+      presence: null,
     };
 
     const post = message({
@@ -2651,6 +2661,7 @@ describe('App', () => {
         username: 'announce',
         photo: null,
         canSendMessages,
+        presence: null,
       };
       return { chat, lastMessage: post, unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false };
     }
@@ -2680,7 +2691,15 @@ describe('App', () => {
     });
 
     it('explains a revoked send permission in a group', async () => {
-      const group: ChatDto = { id: -30, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: false };
+      const group: ChatDto = {
+        id: -30,
+        kind: 'supergroup',
+        title: 'Team',
+        username: null,
+        photo: null,
+        canSendMessages: false,
+        presence: null,
+      };
       installSignedInFetch({
         dialogs: [{ chat: group, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
         history: () => json({ messages: [message({ id: 1, chatId: -30, text: 'hello team' })] }),
@@ -2806,6 +2825,35 @@ describe('App', () => {
 
       expect(within(threadSection()).queryByText('hi Bob')).toBeNull();
       expect(within(threadSection()).getByText('carol says hi')).toBeDefined();
+    });
+  });
+
+  describe('chat list presence', () => {
+    it('marks a peer that came online and unmarks one that went away', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      expect(await screen.findByText('Bob')).toBeDefined();
+      const bobRow = (): Element | null => screen.getByText('Bob').closest('button');
+      expect(bobRow()?.querySelector('[data-status="online"]')).toBeNull();
+
+      deliver({ type: 'user_status', userId: 2, presence: { status: 'online', lastSeenAt: null } });
+      expect(bobRow()?.querySelector('[data-status="online"]')).not.toBeNull();
+
+      deliver({ type: 'user_status', userId: 2, presence: { status: 'offline', lastSeenAt: 1_700_000_000_000 } });
+      expect(bobRow()?.querySelector('[data-status="online"]')).toBeNull();
+    });
+
+    it('marks the peer in the open thread’s header', async () => {
+      installSignedInFetch({ history: () => json({ messages: [] }) });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByRole('button', { name: 'Back to chat list' })).toBeDefined();
+      expect(threadSection().querySelector('[data-status="online"]')).toBeNull();
+
+      deliver({ type: 'user_status', userId: 2, presence: { status: 'online', lastSeenAt: null } });
+      expect(threadSection().querySelector('[data-status="online"]')).not.toBeNull();
     });
   });
 });

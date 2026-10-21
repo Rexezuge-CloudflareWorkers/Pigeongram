@@ -1,4 +1,4 @@
-import { Long, Message, PeersIndex, Poll } from '@mtcute/core';
+import { Long, Message, PeersIndex, Poll, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
@@ -24,6 +24,26 @@ const peers = PeersIndex.from({
   ],
   chats: [],
 });
+
+const rawUser = {
+  _: 'user',
+  id: 1,
+  self: false,
+  contact: false,
+  mutualContact: false,
+  deleted: false,
+  bot: false,
+  botChatHistory: false,
+  botNochats: false,
+  verified: false,
+  restricted: false,
+  min: false,
+  firstName: 'Ada',
+  lastName: 'Lovelace',
+  username: 'ada',
+} as unknown as tl.RawUser;
+
+const rawBot = { ...rawUser, id: 5, bot: true, firstName: 'Helper', username: 'helper_bot' } as unknown as tl.RawUser;
 
 function message(id: number, groupedId?: number): Message {
   return new Message(
@@ -90,6 +110,48 @@ function poll(results?: tl.RawPollResults): Poll {
     results,
   );
 }
+
+describe('getDialogs dispatch', () => {
+  function fakeDialogsClient(options: { statuses?: unknown[]; fails?: boolean } = {}): {
+    client: TelegramClient;
+    calls: string[];
+  } {
+    const calls: string[] = [];
+    const client = {
+      iterDialogs: async function* () {
+        yield { peer: new User(rawUser) };
+        yield { peer: new User(rawBot) };
+      },
+      call: async (request: { _: string }) => {
+        calls.push(request._);
+        if (options.fails) throw new Error('METHOD_NOT_AVAILABLE');
+        return options.statuses ?? [];
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('overlays the contact presences onto the people in the list', async () => {
+    const { client, calls } = fakeDialogsClient({
+      statuses: [{ _: 'contactStatus', userId: 1, status: { _: 'userStatusOnline', expires: 0 } }],
+    });
+
+    const result = (await dispatchRpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
+
+    expect(calls).toEqual(['contacts.getStatuses']);
+    expect(result.dialogs[0].chat.presence).toEqual({ status: 'online', lastSeenAt: null });
+    expect(result.dialogs[1].chat.presence).toBeNull();
+  });
+
+  it('keeps the chat list when the contact statuses are unavailable', async () => {
+    const { client } = fakeDialogsClient({ fails: true });
+
+    const result = (await dispatchRpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
+
+    expect(result.dialogs).toHaveLength(2);
+    expect(result.dialogs[0].chat.presence).toBeNull();
+  });
+});
 
 describe('readHistory dispatch', () => {
   it('reads up to the given watermark', async () => {

@@ -1,4 +1,4 @@
-import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state. Kept in its own
@@ -83,6 +83,14 @@ export function applyReadThrough(dialogs: DialogDto[], chatId: PeerId, maxId: nu
     const read = messages.filter((message) => !message.outgoing && message.id > dialog.readInboxMaxId && message.id <= maxId).length;
     return { ...dialog, readInboxMaxId: maxId, unread: Math.max(0, dialog.unread - read) };
   });
+}
+
+/**
+ * Folds a presence change into the chat list. A peer's id is the marked peer
+ * id of a user chat, so the row is found by it.
+ */
+export function applyUserStatus(dialogs: DialogDto[], userId: PeerId, presence: PresenceDto | null): DialogDto[] {
+  return dialogs.map((dialog) => (dialog.chat.id === userId ? { ...dialog, chat: { ...dialog.chat, presence } } : dialog));
 }
 
 /**

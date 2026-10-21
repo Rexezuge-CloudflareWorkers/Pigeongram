@@ -12,7 +12,7 @@ import { UserMenu } from './components/UserMenu';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import type { Route } from './routes';
-import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate } from './state';
+import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate, applyUserStatus } from './state';
 import { TelegramLinkProvider } from './telegram-links';
 import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useAppHeight } from './useAppHeight';
@@ -93,6 +93,8 @@ export function App() {
 
   const selectedRef = useRef<PeerId | null>(null);
   const selected = threads.thread?.chat ?? null;
+  // The open chat's presence comes from the list, which the live updates keep current.
+  const selectedPresence = selected ? (dialogs.find((dialog) => dialog.chat.id === selected.id)?.chat.presence ?? null) : null;
   const authorized = state?.authorized ?? false;
 
   // `canOpen` and the boot apply run outside render (history events and the
@@ -185,6 +187,10 @@ export function App() {
             ? applyReadUpdate(current, update.chatId, update.unread, update.maxId)
             : applyOutboxReadUpdate(current, update.chatId, update.maxId),
         );
+        return;
+      }
+      if (update.type === 'user_status') {
+        setDialogs((current) => applyUserStatus(current, update.userId, update.presence));
       }
     },
     [applyCommentUpdate, applyThreadUpdate],
@@ -331,6 +337,7 @@ export function App() {
         ) : (
           <ThreadView
             chat={selected}
+            presence={selectedPresence}
             messages={threads.thread?.messages ?? []}
             loading={threads.loading}
             loadingOlder={threads.loadingOlder}

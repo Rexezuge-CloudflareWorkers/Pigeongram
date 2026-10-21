@@ -241,7 +241,28 @@ describe('mapRawUpdate', () => {
     ).toEqual({ type: 'read', chatId: getMarkedPeerId(20, 'channel'), maxId: 98, unread: 0, inbox: false });
   });
 
+  it('turns a presence change into a user_status event', () => {
+    expect(mapRawUpdate(info({ _: 'updateUserStatus', userId: 1, status: { _: 'userStatusOnline' } }))).toEqual({
+      type: 'user_status',
+      userId: 1,
+      presence: { status: 'online', lastSeenAt: null },
+    });
+    expect(mapRawUpdate(info({ _: 'updateUserStatus', userId: 1, status: { _: 'userStatusOffline', wasOnline: 1_700_000_000 } }))).toEqual({
+      type: 'user_status',
+      userId: 1,
+      presence: { status: 'offline', lastSeenAt: 1_700_000_000_000 },
+    });
+  });
+
+  it('reports an unknown status as no presence at all', () => {
+    expect(mapRawUpdate(info({ _: 'updateUserStatus', userId: 1, status: { _: 'userStatusEmpty' } }))).toEqual({
+      type: 'user_status',
+      userId: 1,
+      presence: null,
+    });
+  });
+
   it('ignores updates the bridge has no event for', () => {
-    expect(mapRawUpdate(info({ _: 'updateUserStatus', userId: 1, status: { _: 'userStatusOffline' } }))).toBeNull();
+    expect(mapRawUpdate(info({ _: 'updateUserTyping', userId: 1 }))).toBeNull();
   });
 });

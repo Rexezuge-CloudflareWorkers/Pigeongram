@@ -8,6 +8,7 @@ import {
   applyReactionUpdate,
   applyReadThrough,
   applyReadUpdate,
+  applyUserStatus,
   applyViewsUpdate,
   findChatTitle,
   findPollMessage,
@@ -73,7 +74,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
 }
 
 function chat(id: number): ChatDto {
-  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null, canSendMessages: true };
+  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null, canSendMessages: true, presence: null };
 }
 
 function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
@@ -163,6 +164,16 @@ describe('chat-list state', () => {
   it('finds chat titles by id', () => {
     expect(findChatTitle([dialog(4)], 4)).toBe('Chat 4');
     expect(findChatTitle([dialog(4)], 5)).toBeNull();
+  });
+
+  it('folds a presence change into the row of that peer', () => {
+    const dialogs = [dialog(1), dialog(2)];
+    const online = applyUserStatus(dialogs, 2, { status: 'online', lastSeenAt: null });
+    expect(online[1].chat.presence).toEqual({ status: 'online', lastSeenAt: null });
+    expect(online[0]).toBe(dialogs[0]);
+
+    const offline = applyUserStatus(online, 2, { status: 'offline', lastSeenAt: 1_700_000_000_000 });
+    expect(offline[1].chat.presence).toEqual({ status: 'offline', lastSeenAt: 1_700_000_000_000 });
   });
 });
 

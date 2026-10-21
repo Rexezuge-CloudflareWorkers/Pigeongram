@@ -144,6 +144,7 @@ describe('toChatDto', () => {
       username: 'ada',
       photo: null,
       canSendMessages: true,
+      presence: null,
     });
     expect(toChatDto(new User(rawBot))).toEqual({
       id: 5,
@@ -152,6 +153,7 @@ describe('toChatDto', () => {
       username: 'helper_bot',
       photo: null,
       canSendMessages: true,
+      presence: null,
     });
     expect(toChatDto(new Chat(rawGroup))).toEqual({
       id: -10,
@@ -160,6 +162,7 @@ describe('toChatDto', () => {
       username: null,
       photo: null,
       canSendMessages: true,
+      presence: null,
     });
     expect(toChatDto(new Chat(rawChannel))).toEqual({
       id: getMarkedPeerId(20, 'channel'),
@@ -168,6 +171,7 @@ describe('toChatDto', () => {
       username: 'announce',
       photo: null,
       canSendMessages: false,
+      presence: null,
     });
     expect(toChatDto(new Chat(rawSupergroup))).toEqual({
       id: getMarkedPeerId(30, 'channel'),
@@ -176,6 +180,7 @@ describe('toChatDto', () => {
       username: null,
       photo: null,
       canSendMessages: true,
+      presence: null,
     });
   });
 
@@ -232,6 +237,7 @@ describe('toChatDto', () => {
       username: 'grace',
       photo: 'AQADRgAI',
       canSendMessages: true,
+      presence: null,
     });
     expect(toChatDto(new Chat(rawGroupWithPhoto))).toEqual({
       id: -11,
@@ -240,6 +246,7 @@ describe('toChatDto', () => {
       username: null,
       photo: 'AQADRwAI',
       canSendMessages: true,
+      presence: null,
     });
   });
 
@@ -817,7 +824,7 @@ describe('toDialogDto', () => {
     } as unknown as tl.RawDialog;
     const dto = toDialogDto(new Dialog(raw, index(), new Map()));
     expect(dto).toEqual({
-      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null, canSendMessages: true },
+      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null, canSendMessages: true, presence: null },
       lastMessage: null,
       unread: 3,
       readInboxMaxId: 12,

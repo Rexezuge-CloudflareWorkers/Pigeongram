@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UploadGroupInput, UploadInput } from '../../pages/src/api';
-import { canGroupUploads, mediaKind, sendUploadBatch } from '../../pages/src/upload';
+import { canGroupUploads, mediaKind, previewMime, sendUploadBatch } from '../../pages/src/upload';
 
 const api = vi.hoisted(() => ({
   uploadFile: vi.fn(),
@@ -26,6 +26,19 @@ describe('mediaKind', () => {
     expect(mediaKind(file('a.pdf', 'application/pdf'))).toBe('document');
     // SVG is not something `inputMediaUploadedPhoto` accepts.
     expect(mediaKind(file('a.svg', 'image/svg+xml'))).toBe('document');
+  });
+});
+
+describe('previewMime', () => {
+  it('allows raster images only', () => {
+    expect(previewMime(file('a.png', 'image/png'))).toBe('image/png');
+    expect(previewMime(file('a.gif', 'image/gif'))).toBe('image/gif');
+    expect(previewMime(file('a.JPG', 'image/jpeg'))).toBe('image/jpeg');
+    // SVG can carry script, and nothing else is an image at all.
+    expect(previewMime(file('a.svg', 'image/svg+xml'))).toBeNull();
+    expect(previewMime(file('a.html', 'text/html'))).toBeNull();
+    expect(previewMime(file('a.pdf', 'application/pdf'))).toBeNull();
+    expect(previewMime(file('a.bin', ''))).toBeNull();
   });
 });
 

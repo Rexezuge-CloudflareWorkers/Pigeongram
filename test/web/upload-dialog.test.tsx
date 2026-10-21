@@ -1,8 +1,25 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from '../../pages/src/components/Composer';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/**
+ * jsdom has no object URLs, so the preview needs a stand-in. The stub keeps
+ * the real constructor, so `new URL(...)` still behaves.
+ */
+class StubbedUrl extends URL {
+  static createObjectURL(): string {
+    return 'blob:preview';
+  }
+
+  static revokeObjectURL(): void {
+    // The dialog hands the URL back when the row unmounts.
+  }
+}
 
 function file(name: string, type = 'application/pdf', body = 'content'): File {
   return new File([body], name, { type });
@@ -42,6 +59,20 @@ function dialogInput(): HTMLInputElement {
 }
 
 describe('Composer upload dialog', () => {
+  beforeEach(() => {
+    vi.stubGlobal('URL', StubbedUrl);
+  });
+
+  it('previews a picked image and leaves a document without one', async () => {
+    const { container } = renderComposer();
+    fireEvent.change(picker(container), { target: { files: [file('a.png', 'image/png'), file('b.pdf')] } });
+
+    const dialog = await screen.findByRole('dialog');
+    const previews = dialog.querySelectorAll('img');
+    expect(previews).toHaveLength(1);
+    expect(previews[0]?.getAttribute('src')).toBe('blob:preview');
+  });
+
   it('reviews a multi-file selection and sends it as an album with the draft caption', async () => {
     const { onAttach, container } = renderComposer();
     fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'Summer' } });

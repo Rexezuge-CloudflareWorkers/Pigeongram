@@ -49,11 +49,16 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                   {last ? <span className="chat-stamp">{formatListStamp(last.date)}</span> : null}
                 </span>
                 <span className="chat-bottom">
-                  <span className="chat-preview">
-                    {dialog.pinned ? '📌 ' : ''}
-                    {last ? previewOf(last.text, last.media, last.poll) : '—'}
-                  </span>
-                  {dialog.unread > 0 ? <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span> : null}
+                  <span className="chat-preview">{last ? previewOf(last.text, last.media, last.poll) : '—'}</span>
+                  {/* The count and the pin share one slot: the count has priority,
+                      so an unread pinned chat drops the pin. */}
+                  {dialog.unread > 0 ? (
+                    <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span>
+                  ) : dialog.pinned ? (
+                    <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-[13px] leading-none text-muted">
+                      📌
+                    </span>
+                  ) : null}
                 </span>
               </span>
             </button>

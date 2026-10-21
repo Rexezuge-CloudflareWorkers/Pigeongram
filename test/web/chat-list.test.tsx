@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ChatList } from '../../pages/src/components/ChatList';
-import type { ChatDto, DialogDto, PresenceDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageDto, PresenceDto } from '../../pages/src/types';
 
 afterEach(cleanup);
 
@@ -18,7 +18,7 @@ function chat(id: number, overrides: Partial<ChatDto> = {}): ChatDto {
   };
 }
 
-function dialog(chatDto: ChatDto): DialogDto {
+function dialog(chatDto: ChatDto, overrides: Partial<DialogDto> = {}): DialogDto {
   return {
     chat: chatDto,
     lastMessage: null,
@@ -27,6 +27,31 @@ function dialog(chatDto: ChatDto): DialogDto {
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+    ...overrides,
+  };
+}
+
+function message(text: string): MessageDto {
+  return {
+    id: 10,
+    chatId: 2,
+    groupedId: null,
+    senderId: 2,
+    senderName: 'Bob',
+    senderPhoto: null,
+    outgoing: false,
+    date: 1_700_000_000_000,
+    text,
+    entities: [],
+    reactions: [],
+    service: false,
+    media: null,
+    poll: null,
+    markup: null,
+    reply: null,
+    forward: null,
+    views: null,
+    comments: null,
   };
 }
 
@@ -82,5 +107,56 @@ describe('ChatList presence', () => {
 
     expect(badgeIn('Team')).toBeNull();
     expect(badgeIn('Helper')).toBeNull();
+  });
+});
+
+describe('ChatList pin marker', () => {
+  function rowIn(name: string): HTMLElement {
+    const row = screen.getByText(name).closest('button');
+    if (!row) throw new Error(`no row for ${name}`);
+    return row as HTMLElement;
+  }
+
+  function pinIn(name: string): Element | null {
+    return rowIn(name).querySelector('[data-pin]');
+  }
+
+  function countIn(name: string): Element | null {
+    return rowIn(name).querySelector('.badge');
+  }
+
+  it('puts the pin in the count slot of a chat with nothing unread', () => {
+    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
+
+    expect(pinIn('Bob')).not.toBeNull();
+    expect(pinIn('Bob')?.textContent).toBe('📌');
+    expect(countIn('Bob')).toBeNull();
+  });
+
+  it('drops the pin when a message arrives: the count has priority', () => {
+    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true, unread: 3 })]);
+
+    expect(countIn('Bob')?.textContent).toBe('3');
+    expect(pinIn('Bob')).toBeNull();
+  });
+
+  it('leaves an unpinned chat with neither the pin nor a count', () => {
+    renderList([dialog(chat(1, { title: 'Bob' }))]);
+
+    expect(pinIn('Bob')).toBeNull();
+    expect(countIn('Bob')).toBeNull();
+  });
+
+  it('keeps the pin out of the preview text', () => {
+    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true, lastMessage: message('see you') })]);
+
+    const preview = rowIn('Bob').querySelector('.chat-preview');
+    expect(preview?.textContent).toBe('see you');
+  });
+
+  it('marks the pin as decorative, so the preview carries no stray glyph', () => {
+    renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
+
+    expect(pinIn('Bob')?.getAttribute('aria-hidden')).toBe('true');
   });
 });

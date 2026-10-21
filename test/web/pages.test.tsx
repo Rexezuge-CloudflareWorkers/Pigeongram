@@ -80,8 +80,50 @@ class FakeWebSocket {
   }
 }
 
-const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
+/**
+A ResizeObserver jsdom does not provide. Tests decide when a resize happens by
+firing every observer watching a target.
+*/
+class FakeResizeObserver implements ResizeObserver {
+  static readonly instances: FakeResizeObserver[] = [];
 
+  readonly targets = new Set<Element>();
+
+  constructor(readonly callback: ResizeObserverCallback) {
+    FakeResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.targets.add(target);
+  }
+
+  unobserve(target: Element): void {
+    this.targets.delete(target);
+  }
+
+  disconnect(): void {
+    this.targets.clear();
+  }
+
+  takeRecords(): ResizeObserverEntry[] {
+    return [];
+  }
+
+  fire(): void {
+    this.callback([], this);
+  }
+}
+
+/**
+Tells every observer watching `target` that its box changed size.
+*/
+function fireResize(target: Element): void {
+  for (const observer of FakeResizeObserver.instances) {
+    if (observer.targets.has(target)) observer.fire();
+  }
+}
+
+const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 const dialogs: DialogDto[] = [
   {
     chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true },
@@ -308,7 +350,9 @@ function stubScrollIntoView(): ReturnType<typeof vi.fn> {
 
 beforeEach(() => {
   FakeWebSocket.instances.length = 0;
+  FakeResizeObserver.instances.length = 0;
   vi.stubGlobal('WebSocket', FakeWebSocket);
+  vi.stubGlobal('ResizeObserver', FakeResizeObserver);
   stubScrollIntoView();
   globalThis.history.replaceState(null, '', '/');
 });
@@ -349,18 +393,22 @@ describe('App', () => {
   order inside a `listHeight` list, and the `.messages` viewport is
   `viewportHeight` tall at its current `scrollTop`. Only the rows
   overlapping the viewport (or a bottom before the last row) are reported
-  read.
+  read. The returned box stays mutable, so a test can grow the list or shrink
+  the viewport (the on-screen keyboard) after the open.
   */
-  function stubLayout({ listHeight, viewportHeight }: { listHeight: number; viewportHeight: number }): { listHeight: number } {
+  function stubLayout({ listHeight, viewportHeight }: { listHeight: number; viewportHeight: number }): {
+    listHeight: number;
+    viewportHeight: number;
+  } {
     let scroll = 0;
-    const box = { listHeight };
+    const box = { listHeight, viewportHeight };
     layout = [];
     for (const key of ['scrollHeight', 'clientHeight', 'scrollTop', 'getBoundingClientRect'] as const) {
       layout.push([key, Object.getOwnPropertyDescriptor(Element.prototype, key)]);
     }
     Object.defineProperties(Element.prototype, {
       scrollHeight: { configurable: true, get: () => box.listHeight },
-      clientHeight: { configurable: true, get: () => viewportHeight },
+      clientHeight: { configurable: true, get: () => box.viewportHeight },
       scrollTop: {
         configurable: true,
         get: () => scroll,
@@ -370,7 +418,7 @@ describe('App', () => {
       },
     });
     Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
-      if (this.classList.contains('messages')) return rect(0, viewportHeight);
+      if (this.classList.contains('messages')) return rect(0, box.viewportHeight);
       const rows = this.parentElement?.querySelectorAll('[data-message-id]');
       const index = rows ? Array.from(rows).indexOf(this) : -1;
       if (index < 0) return rect(0, 0);
@@ -1884,6 +1932,41 @@ describe('App', () => {
       box.listHeight = 600;
       fireEvent.load(img);
       expect(scrollContainer().scrollTop).toBe(0);
+    });
+  });
+
+  describe('mobile keyboard', () => {
+    /**
+    Bob's dialog, fully read: a plain open lands at the bottom.
+    */
+    const readDialog: DialogDto = { ...dialogs[0], unread: 0, readInboxMaxId: 10 };
+
+    it('keeps a pinned thread at the end when the viewport shrinks', async () => {
+      installSignedInFetch({
+        dialogs: [readDialog],
+        history: () => json({ messages: [message({ id: 10, chatId: 2, text: 'latest' })] }),
+      });
+      const box = stubLayout({ listHeight: 300, viewportHeight: 100 });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('latest')).toBeDefined();
+      expect(scrollContainer().scrollTop).toBe(300);
+
+      // The keyboard takes the bottom of the app. The browser clamps the old
+      // scroll position against the shorter list; the pin restores the end so
+      // the newest message stays above the composer.
+      box.viewportHeight = 50;
+      scrollContainer().scrollTop = 250;
+      fireResize(scrollContainer());
+      expect(scrollContainer().scrollTop).toBe(300);
+
+      // A reader who scrolled away keeps their place.
+      scrollContainer().scrollTop = 100;
+      fireEvent.scroll(scrollContainer());
+      box.viewportHeight = 40;
+      fireResize(scrollContainer());
+      expect(scrollContainer().scrollTop).toBe(100);
     });
   });
 

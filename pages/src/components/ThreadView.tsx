@@ -3,7 +3,7 @@ import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
 import type { ThreadPositionMemory } from '../thread-position';
-import { isAtBottom, flashRow, positionThread, readThreadPosition } from '../thread-position';
+import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId } from '../types';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
@@ -172,27 +172,13 @@ export function ThreadView({
     [flushRead],
   );
 
-  // Media loads after the first paint and changes the list's height. While the
-  // view is pinned to the bottom, follow the growth: the positioning effect
-  // pinned before any bytes arrived, and without this a settling image would
-  // leave the viewer a few messages short of the end. Once the reader has
-  // scrolled away, settling is left alone.
+  // Media loading after the first paint and the mobile keyboard both change the
+  // list's height. A pinned view follows, so the end stays in view; once the
+  // reader has scrolled away it is left alone.
   useEffect(() => {
     const element = scrollRef.current;
     if (!element || !chat) return;
-    const settle = (): void => {
-      if (!stickToBottom.current) return;
-      element.scrollTop = element.scrollHeight;
-    };
-    // Media events do not bubble; a capture listener still sees them.
-    element.addEventListener('load', settle, { capture: true });
-    element.addEventListener('error', settle, { capture: true });
-    element.addEventListener('loadedmetadata', settle, { capture: true });
-    return () => {
-      element.removeEventListener('load', settle, true);
-      element.removeEventListener('error', settle, true);
-      element.removeEventListener('loadedmetadata', settle, true);
-    };
+    return settleToBottom(element, () => stickToBottom.current);
   }, [chat]);
 
   /**

@@ -172,8 +172,10 @@ button.ghost:hover {
 
 /* ---- signed-in shell ---------------------------------------------------- */
 
+/* The shell follows the visual viewport (`useAppHeight`), so a mobile keyboard
+   shortens it instead of covering the composer; 100% is the pre-hook fallback. */
 .app {
-  height: 100%;
+  height: var(--app-height, 100%);
   display: grid;
   grid-template-columns: minmax(280px, 380px) 1fr;
 }

@@ -200,19 +200,6 @@ button.ghost:hover {
   border-bottom: 1px solid var(--border);
 }
 
-.me-id {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.me-id strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ---- mobile shell -------------------------------------------------------- */
 
 @media (max-width: 720px) {

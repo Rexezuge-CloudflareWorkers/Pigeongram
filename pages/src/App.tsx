@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchDialogs, fetchMe, logout, readHistory } from './api';
-import { Avatar } from './components/Avatar';
 import { ChatList } from './components/ChatList';
 import { CheckingAccess } from './components/CheckingAccess';
 import { CommentsView } from './components/CommentsView';
@@ -9,6 +8,7 @@ import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { MediaViewer } from './components/MediaViewer';
 import { ThreadView } from './components/ThreadView';
+import { UserMenu } from './components/UserMenu';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import type { Route } from './routes';
@@ -295,19 +295,11 @@ export function App() {
     return <LoginScreen state={state} error={error} onPhone={onPhone} onCode={onCode} onPassword={onPassword} onRetry={onRetry} />;
   }
 
-  const displayName = me ? `${me.firstName}${me.lastName ? ` ${me.lastName}` : ''}` : 'Telegram';
   return (
     <div className={`app${selected ? ' thread-open' : ''}`}>
       <aside className="sidebar">
         <header className="me">
-          <Avatar chatId={me?.id ?? 0} photo={me?.photo ?? null} title={displayName} small />
-          <div className="me-id">
-            <strong>{displayName}</strong>
-            <span className="muted small">{connected ? 'live' : 'polling'}</span>
-          </div>
-          <button type="button" className="ghost" onClick={() => void handleLogout()}>
-            Sign out
-          </button>
+          <UserMenu me={me} connected={connected} onSignOut={handleLogout} />
         </header>
         <ChatList dialogs={dialogs} activeChatId={selected?.id ?? null} loading={dialogsLoading} onSelect={openChat} />
       </aside>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { readClipboard } from '../clipboard';
 import type { BotCommandDto, MessageDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { ComposerReply } from './ReplyQuote';
@@ -150,6 +151,17 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
         onSubmit={(event) => {
           event.preventDefault();
           submit();
+        }}
+        onPaste={(event) => {
+          // A paste is an upload the user never made explicit with the file
+          // picker: the browser hands over whatever the source app put on the
+          // clipboard. Only a clipboard without text is taken over — a cell
+          // copied from a spreadsheet arrives as text *and* an image of the
+          // cell, and there the text is what was meant to be pasted.
+          const { files, text } = readClipboard(event.clipboardData);
+          if (files.length === 0 || text.trim().length > 0) return;
+          event.preventDefault();
+          setPendingFiles(files);
         }}
       >
         {replyTarget ? <ComposerReply message={replyTarget} onCancel={onCancelReply} /> : null}

@@ -204,10 +204,12 @@ when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, 
 headers carry only the message id, so the SPA resolves the quote's sender and snippet from the thread it already
 has; `sendMessage` takes `replyTo` (a message id in the same chat) to send one.
 
-A forwarded message carries `forward`: the origin's `senderId`/`senderName` (a hidden forward's name instead of an
-id), the original's `date`, the original chat/message for saved-messages forwards and channel posts
+A forwarded message carries `forward`: the origin's `senderId`/`senderName`/`senderUsername` (a hidden forward's
+name instead of an id), the original's `date`, the original chat/message for saved-messages forwards and channel posts
 (`fromChatId`/`fromMessageId`), and the post `signature` when the header has one. `worker/src/session/dto.ts` maps
-it from Telegram's forward header, and the bubble renders a "Forwarded from …" line above the sender name.
+it from Telegram's forward header, and the bubble renders a "Forwarded from …" line above the sender name. Only the
+origin name is a control: it opens the origin chat when that chat is among the loaded dialogs, and otherwise hands off
+to the installed app by username or marked id.
 
 ### Channel-post comments
 

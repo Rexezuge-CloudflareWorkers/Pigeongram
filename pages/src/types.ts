@@ -290,6 +290,11 @@ export interface MessageForwardDto {
   */
   senderName: string | null;
   /**
+  The origin's public username, when it has one; lets the SPA hand an origin
+  outside its loaded dialogs to the installed app by username.
+  */
+  senderUsername: string | null;
+  /**
   Unix milliseconds of the original message's date.
   */
   date: number;

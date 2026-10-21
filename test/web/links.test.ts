@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_LAUNCH_TIMEOUT_MS,
   findLinkedChat,
+  forwardOriginLink,
   launchTelegramApp,
   markedChatId,
   miniAppDeepLink,
   parseTelegramLink,
 } from '../../pages/src/links';
-import type { ChatDto, DialogDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, MessageForwardDto } from '../../pages/src/types';
 
 function chat(id: number, username: string | null): ChatDto {
   return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true };
@@ -155,6 +156,57 @@ describe('findLinkedChat', () => {
     expect(markedChatId(1_234_567_890)).toBe(-1_001_234_567_890);
     expect(findLinkedChat(dialogs, { internalId: 1_234_567_890 })).toBe(dialogs[1].chat);
     expect(findLinkedChat(dialogs, { internalId: 42 })).toBeNull();
+  });
+});
+
+describe('forwardOriginLink', () => {
+  function forward(overrides: Partial<MessageForwardDto>): MessageForwardDto {
+    return {
+      senderId: null,
+      senderName: null,
+      senderUsername: null,
+      date: 0,
+      fromChatId: null,
+      fromMessageId: null,
+      signature: null,
+      ...overrides,
+    };
+  }
+
+  it('prefers a public username, which has a web fallback too', () => {
+    expect(forwardOriginLink(forward({ senderId: 42, senderUsername: 'carol' }))).toEqual({
+      chat: { username: 'carol' },
+      postId: null,
+      commentId: null,
+      deepLink: 'tg://resolve?domain=carol',
+      webUrl: 'https://t.me/carol',
+    });
+  });
+
+  it('addresses a user without a username by id', () => {
+    expect(forwardOriginLink(forward({ senderId: 42 }))).toMatchObject({
+      deepLink: 'tg://user?id=42',
+      webUrl: null,
+    });
+  });
+
+  it('addresses a private channel through its marked id', () => {
+    const id = markedChatId(1_234_567_890);
+    expect(forwardOriginLink(forward({ senderId: id }))).toMatchObject({
+      deepLink: 'tg://privatepost?channel=1234567890',
+      webUrl: null,
+    });
+  });
+
+  it('falls back to the saved-messages source chat', () => {
+    expect(forwardOriginLink(forward({ senderId: null, fromChatId: markedChatId(7) }))).toMatchObject({
+      deepLink: 'tg://privatepost?channel=7',
+    });
+  });
+
+  it('returns null for a hidden sender or a basic group', () => {
+    expect(forwardOriginLink(forward({ senderId: null, senderName: 'Anonymous' }))).toBeNull();
+    expect(forwardOriginLink(forward({ senderId: -42 }))).toBeNull();
   });
 });
 

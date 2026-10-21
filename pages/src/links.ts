@@ -1,4 +1,4 @@
-import type { ChatDto, DialogDto } from './types';
+import type { ChatDto, DialogDto, MessageForwardDto } from './types';
 
 /**
  * Telegram links and the handoff to the installed app.
@@ -151,6 +151,34 @@ export function findLinkedChat(dialogs: readonly DialogDto[], chat: TelegramChat
  */
 export function markedChatId(internalId: number): number {
   return -(1_000_000_000_000 + internalId);
+}
+
+/**
+ * The deep link that opens a forwarded message's origin in the installed app.
+ *
+ * A public username is the most reliable target; otherwise the marked id is
+ * enough for a user or a private channel. A hidden forward, or a basic group
+ * whose only identity is its marked id, has no addressable link and answers
+ * `null`.
+ */
+export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | null {
+  if (forward.senderUsername !== null) return chatLink(forward.senderUsername, null, null);
+  const target = forward.senderId ?? forward.fromChatId;
+  if (target === null) return null;
+  if (target > 0) {
+    return { chat: null, postId: null, commentId: null, deepLink: `tg://user?id=${String(target)}`, webUrl: null };
+  }
+  if (target < -1_000_000_000_000) {
+    const internalId = -target - 1_000_000_000_000;
+    return {
+      chat: null,
+      postId: null,
+      commentId: null,
+      deepLink: `tg://privatepost?channel=${String(internalId)}`,
+      webUrl: null,
+    };
+  }
+  return null;
 }
 
 /**

@@ -184,7 +184,7 @@ function toMessageForwardDto(message: Message): MessageForwardDto | null {
   // `sender` is typed `PeerSender`, but the getter throws when a header
   // carries neither `fromId` nor `fromName`; the date alone is still worth
   // showing, so a malformed header keeps the forward without a name.
-  let sender: { id?: number; displayName?: string } | null = null;
+  let sender: { id?: number; displayName?: string; username?: string | null } | null = null;
   try {
     sender = forward.sender;
   } catch {
@@ -193,6 +193,7 @@ function toMessageForwardDto(message: Message): MessageForwardDto | null {
   return {
     senderId: typeof sender?.id === 'number' ? sender.id : null,
     senderName: sender?.displayName ?? null,
+    senderUsername: sender?.username ?? null,
     date: forward.date.getTime(),
     fromChatId: forward.fromChat()?.id ?? null,
     // mtcute's getter only reads `savedFromMsgId`; a direct channel forward

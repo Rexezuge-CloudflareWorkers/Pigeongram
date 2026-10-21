@@ -498,6 +498,7 @@ describe('toMessageDto', () => {
     expect(dto.forward).toEqual({
       senderId: getMarkedPeerId(20, 'channel'),
       senderName: 'Announcements',
+      senderUsername: 'announce',
       date: 1_700_000_000_000,
       fromChatId: null,
       fromMessageId: 4,
@@ -510,6 +511,7 @@ describe('toMessageDto', () => {
     expect(dto.forward).toEqual({
       senderId: null,
       senderName: 'Anonymous',
+      senderUsername: null,
       date: 1_700_000_000_000,
       fromChatId: null,
       fromMessageId: null,
@@ -531,6 +533,7 @@ describe('toMessageDto', () => {
     );
     expect(dto.forward).toMatchObject({
       senderName: 'Ada Lovelace',
+      senderUsername: 'ada',
       fromChatId: getMarkedPeerId(20, 'channel'),
       fromMessageId: 99,
     });
@@ -541,6 +544,7 @@ describe('toMessageDto', () => {
     expect(dto.forward).toEqual({
       senderId: null,
       senderName: null,
+      senderUsername: null,
       date: 1_700_000_000_000,
       fromChatId: null,
       fromMessageId: null,

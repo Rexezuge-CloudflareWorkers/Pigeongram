@@ -36,4 +36,6 @@
   --color-own: var(--own);
   --color-badge: var(--badge);
   --color-danger: var(--danger);
+  --color-online: var(--online);
+  --color-warn: var(--warn);
 }

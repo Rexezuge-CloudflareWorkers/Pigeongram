@@ -111,10 +111,19 @@ export function UserMenu({ me, connected, onSignOut }: UserMenuProps) {
         aria-label={`Account menu for ${displayName}`}
         onClick={() => setMenuOpen((open) => !open)}
       >
-        <Avatar chatId={me?.id ?? 0} photo={me?.photo ?? null} title={displayName} small />
+        <span className="relative inline-flex shrink-0">
+          <Avatar chatId={me?.id ?? 0} photo={me?.photo ?? null} title={displayName} small />
+          {/* Presence badge: decorative, so the status text carries the meaning
+              for assistive tech. The ring matches the sidebar panel behind it. */}
+          <span
+            aria-hidden="true"
+            data-status={connected ? 'online' : 'pending'}
+            className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-panel ${connected ? 'bg-online' : 'bg-warn'}`}
+          />
+        </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <strong className="truncate">{displayName}</strong>
-          <span className="text-xs text-muted">{connected ? 'live' : 'polling'}</span>
+          <span className="text-xs text-muted">{connected ? 'Online' : 'Connecting…'}</span>
         </span>
         <svg
           className={`size-4 shrink-0 fill-current text-muted transition-transform${menuOpen ? ' rotate-180' : ''}`}

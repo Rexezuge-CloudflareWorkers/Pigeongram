@@ -12,6 +12,11 @@ function renderMenu(onSignOut: () => Promise<void> | void = async () => {}): HTM
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
+function renderStatus(connected: boolean): HTMLButtonElement {
+  render(<UserMenu me={me} connected={connected} onSignOut={async () => {}} />);
+  return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
+}
+
 function openMenu(trigger: HTMLButtonElement): HTMLElement {
   fireEvent.click(trigger);
   return screen.getByRole('menu', { name: 'Account menu' });
@@ -24,6 +29,25 @@ function requestSignOut(trigger: HTMLButtonElement): HTMLElement {
 }
 
 describe('UserMenu', () => {
+  it('shows the connected state as Online with a green badge on the avatar', () => {
+    const trigger = renderStatus(true);
+
+    expect(screen.getByText('Online')).toBeDefined();
+    const badge = trigger.querySelector('[data-status="online"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.className).toContain('bg-online');
+    expect(badge?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows the disconnected state as Connecting with an amber badge', () => {
+    const trigger = renderStatus(false);
+
+    expect(screen.getByText('Connecting…')).toBeDefined();
+    const badge = trigger.querySelector('[data-status="pending"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.className).toContain('bg-warn');
+  });
+
   it('opens the account menu from the profile control and keeps sign out inside', () => {
     const onSignOut = vi.fn();
     const trigger = renderMenu(onSignOut);

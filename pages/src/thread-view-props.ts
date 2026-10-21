@@ -16,6 +16,17 @@ export interface ThreadViewProps {
    * effects depend on.
    */
   presence: PresenceDto | null;
+  /**
+   * Whether the open chat sits in the account's archive. The header offers the
+   * move in the direction the chat is not in: an archived chat can be brought
+   * back, a chat in the list can be put away.
+   */
+  archived: boolean;
+  /**
+   * Whether the chat's archive move is in flight; the button is disabled
+   * meanwhile.
+   */
+  archiving: boolean;
   messages: MessageDto[];
   loading: boolean;
   loadingOlder: boolean;
@@ -67,6 +78,10 @@ export interface ThreadViewProps {
    */
   positions: ThreadPositionMemory;
   onBack: () => void;
+  /**
+   * Moves the open chat into the archive, or back out of it.
+   */
+  onSetArchived: (archived: boolean) => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;

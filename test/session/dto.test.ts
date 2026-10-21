@@ -837,6 +837,7 @@ describe('toDialogDto', () => {
       readOutboxMaxId: 7,
       pinned: false,
       muted: false,
+      archived: false,
     });
   });
 
@@ -849,6 +850,17 @@ describe('toDialogDto', () => {
     const dto = toDialogDto(new Dialog(raw, index(), new Map()));
     expect(dto.readInboxMaxId).toBe(0);
     expect(dto.readOutboxMaxId).toBe(0);
+  });
+
+  it('marks a dialog that sits in the archive', () => {
+    // The archive is Telegram's peer folder 1; every other chat is in folder 0.
+    const raw = {
+      _: 'dialog',
+      peer: { _: 'peerUser', userId: 1 },
+      folderId: 1,
+      notifySettings: { _: 'peerNotifySettings', silent: false },
+    } as unknown as tl.RawDialog;
+    expect(toDialogDto(new Dialog(raw, index(), new Map())).archived).toBe(true);
   });
 
   it('takes the unread count the caller corrected', () => {

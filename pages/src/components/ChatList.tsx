@@ -15,15 +15,20 @@ interface ChatListProps {
    */
   pending?: readonly PendingMessage[];
   onSelect: (chat: ChatDto) => void;
+  /**
+   * What an empty list says. The archive has its own wording: an empty
+   * archive is not an account without chats.
+   */
+  emptyLabel?: string;
 }
 
-export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect }: ChatListProps) {
+export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, emptyLabel }: ChatListProps) {
   if (loading && dialogs.length === 0) {
     return <Spinner size={32} label="Loading chats…" padding="32px 0" />;
   }
   const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
   if (rows.length === 0) {
-    return <p className="muted pad">No chats yet.</p>;
+    return <p className="muted pad">{emptyLabel ?? 'No chats yet.'}</p>;
   }
   return (
     <ul className="chats">

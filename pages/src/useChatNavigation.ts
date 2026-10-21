@@ -37,7 +37,9 @@ export function useChatNavigation({
 
   return useCallback(
     async (route: Route, options: RouteApplyOptions): Promise<void> => {
-      if (route.view === 'list') {
+      if (route.view === 'list' || route.view === 'archived') {
+        // The archive is a screen of its own: it shows the archived chats, so
+        // the open thread closes like it does for the chat list.
         sequence.current += 1;
         comments.close();
         threads.close();

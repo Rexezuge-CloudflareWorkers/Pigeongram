@@ -3,6 +3,7 @@ import { Long } from '@mtcute/core';
 import type { Dialog, Message } from '@mtcute/core';
 import type { RpcBatchOutcome } from '../rpc-types';
 import type { DialogDto, PresenceDto } from '../types';
+import { setChatArchived } from './archive';
 import { readBotCommands } from './bot-commands';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
@@ -13,11 +14,13 @@ import type { UnreadAlbumLedger } from './unread-albums';
 import {
   clampInt,
   optionalAnswerIndexes,
+  optionalBoolean,
   optionalInt,
   optionalMessageId,
   optionalRandomId,
   optionalText,
   parseBatchCalls,
+  requireBoolean,
   requireMessageId,
   requireMessageIds,
   requireCallbackData,
@@ -66,9 +69,12 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
 
     case 'getDialogs': {
       const limit = clampInt(params.limit, 1, 200, 100);
+      // The archive is its own peer folder, so it is its own read: one limit
+      // over both would cost the main list the chats the archive holds.
+      const archived = optionalBoolean(params.archived, 'archived') === true;
       // The chat list and the contact presences are two independent Telegram
       // reads; running them together saves a round trip on every list load.
-      const [dialogs, presences] = await Promise.all([collectDialogs(client, limit, albums), readContactPresences(client)]);
+      const [dialogs, presences] = await Promise.all([collectDialogs(client, limit, albums, archived), readContactPresences(client)]);
       return { dialogs: overlayPresence(dialogs, presences) };
     }
 
@@ -237,6 +243,13 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       return { commands: await readBotCommands(client, chatId) };
     }
 
+    case 'setArchived': {
+      const chatId = requirePeerId(params.chatId);
+      const archived = requireBoolean(params.archived, 'archived');
+      await setChatArchived(client, chatId, archived);
+      return { chatId, archived };
+    }
+
     default: {
       throw new EngineError(`Unknown RPC method: ${method}`, 404);
     }
@@ -267,9 +280,9 @@ function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, Pre
  * the counts the list carries are the ones the badge shows: an album counts
  * once, not once per file.
  */
-async function collectDialogs(client: TelegramClient, limit: number, albums: UnreadAlbumLedger): Promise<DialogDto[]> {
+async function collectDialogs(client: TelegramClient, limit: number, albums: UnreadAlbumLedger, archived: boolean): Promise<DialogDto[]> {
   const dialogs: Dialog[] = [];
-  for await (const dialog of client.iterDialogs({ limit })) {
+  for await (const dialog of client.iterDialogs({ limit, archived: archived ? 'only' : 'exclude' })) {
     dialogs.push(dialog);
   }
   await reconcileUnreadAlbums(client, dialogs, albums);

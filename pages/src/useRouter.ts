@@ -52,6 +52,11 @@ export interface Router {
    * lands on an in-app screen.
    */
   boot: () => void;
+  /**
+   * The route the app is on. It is the URL's route before the first apply, so
+   * a caller can ask what the URL asks for before the stack is seeded.
+   */
+  route: () => Route;
   navigateTo: (route: Route, options?: { force?: boolean }) => void;
   /**
    * The view's back button: the same traversal as the browser's back gesture.
@@ -149,15 +154,26 @@ export function useRouter({ onRoute, canOpen, onViewerEnter, onViewerLeave }: Ro
       // when the app was not entered through its list.
       depthRef.current = 0;
       history.replaceState(marker(0), '', '/');
-      if (route.view === 'chat') {
-        depthRef.current = 1;
-        history.pushState(marker(1), '', pathForRoute(route));
-      } else if (route.view === 'comments') {
-        const post = { view: 'chat' as const, chatId: route.chatId, postId: route.postId };
-        depthRef.current = 1;
-        history.pushState(marker(1), '', pathForRoute(post));
-        depthRef.current = 2;
-        history.pushState(marker(2), '', pathForRoute(route));
+      switch (route.view) {
+        case 'chat':
+        case 'archived': {
+          // A chat and the archive are both screens of their own, so they get
+          // the chat list behind them: back leaves for the list.
+          depthRef.current = 1;
+          history.pushState(marker(1), '', pathForRoute(route));
+
+          break;
+        }
+        case 'comments': {
+          const post = { view: 'chat' as const, chatId: route.chatId, postId: route.postId };
+          depthRef.current = 1;
+          history.pushState(marker(1), '', pathForRoute(post));
+          depthRef.current = 2;
+          history.pushState(marker(2), '', pathForRoute(route));
+
+          break;
+        }
+        // No default
       }
     }
 
@@ -231,7 +247,9 @@ export function useRouter({ onRoute, canOpen, onViewerEnter, onViewerLeave }: Ro
     if (entryState()?.layer === 'viewer') history.back();
   }, []);
 
-  return { boot, navigateTo, back, reset, openViewer, closeViewer };
+  const route = useCallback((): Route => routeRef.current, []);
+
+  return { boot, route, navigateTo, back, reset, openViewer, closeViewer };
 }
 
 function entryState(): EntryState | null {

@@ -458,6 +458,12 @@ export interface DialogDto {
   readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
+  /**
+   * Whether the chat sits in the account's archive — Telegram's peer folder 1.
+   * The main list holds the chats in folder 0, and the archive the ones in
+   * folder 1; a chat is in exactly one of them.
+   */
+  archived: boolean;
 }
 
 /**
@@ -581,7 +587,8 @@ export type RpcMethod =
   | 'getPollResults'
   | 'getComments'
   | 'sendComment'
-  | 'getBotCommands';
+  | 'getBotCommands'
+  | 'setArchived';
 
 /**
 The methods a `batch` call may carry.
@@ -589,7 +596,8 @@ The methods a `batch` call may carry.
 Deliberately the read-only half of {@link RpcMethod}: a batch runs its calls
 concurrently, so a write in it would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call — it
-mutates the account's read watermark.
+mutates the account's read watermark. `setArchived` is excluded because it
+moves a chat between the chat list and the archive.
 */
 export type BatchableRpcMethod =
   'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
@@ -617,6 +625,14 @@ export interface GetMeResult {
 
 export interface GetDialogsResult {
   dialogs: DialogDto[];
+}
+
+/**
+The state a chat was left in: `true` when it is in the archive.
+*/
+export interface SetArchivedResult {
+  chatId: PeerId;
+  archived: boolean;
 }
 
 export interface GetHistoryResult {

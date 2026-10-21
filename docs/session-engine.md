@@ -159,7 +159,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | Method                | Params                                                                            | Returns                                                                                     |
 | --------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `getMe`               | —                                                                                 | `{me}`                                                                                      |
-| `getDialogs`          | `{limit?: 1..200}`                                                                | `{dialogs: DialogDto[]}` (pinned first)                                                     |
+| `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                     |
 | `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
 | `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                 |
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
@@ -172,7 +172,16 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
 | `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
 | `getBotCommands`      | `{chatId}`                                                                        | `{commands: BotCommandDto[]}`                                                               |
+| `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                        |
 | `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                        |
+
+`getDialogs`'s `archived` flag reads the archive instead of the chat list: `true` returns the chats in Telegram's
+peer folder `1`, `false` (the default) the ones in folder `0`. The two are separate reads on purpose — one limit over
+both would cost the chat list the chats the archive holds.
+
+`setArchived` moves a chat into the archive or brings it back out of it. The archive is Telegram's peer folder `1`,
+and `folders.editPeerFolders` is the API the official clients use for it, so the move is the same one Telegram's own
+clients make. The peer is resolved server-side, and the method is a write: it is not on the batch whitelist.
 
 `getHistory`'s `anchorId` names the message the window has to hold: the engine reads _around_ it (with the newer
 context beside it) and, when the first read missed it — a deleted post, or one past the end of the history — reads the
@@ -181,9 +190,9 @@ page that ends at it instead. The fallback the SPA used to spend a second round 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
 `getMe`, `getDialogs`, `getHistory`, `searchMessages`, `getPollResults`, `getComments` and `getBotCommands`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
-`readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark. Each
-call reports its own outcome, so one broken read (a post without a comments section) never takes the reads beside it
-down with it.
+`readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark, and
+`setArchived` because it moves a chat between the chat list and the archive. Each call reports its own outcome, so
+one broken read (a post without a comments section) never takes the reads beside it down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -204,7 +213,8 @@ this when a bot, group or supergroup thread opens and offers the menu from the c
 
 `DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus
-`pinned`/`muted`. The SPA opens a chat at the first incoming message after the inbox watermark instead of
+`pinned`/`muted` and `archived` (whether the chat sits in the account's archive — Telegram's peer folder `1`; every
+other chat is in folder `0`). The SPA opens a chat at the first incoming message after the inbox watermark instead of
 the bottom, and renders a single check for sent own messages and a double check up to the outbox watermark.
 `readHistory`'s optional `maxId` reports how far the user actually scrolled (omitted, it reads the whole
 history — the comments screen's behavior). `ChatDto.presence` carries the peer's online state — see
@@ -310,6 +320,22 @@ read that fails only leaves that chat's count at Telegram's raw one.
 
 The SPA counts the same way: `DialogMessageDto.groupedId` tells it that a new message continues the album the chat
 list already counted, and the optimistic read-through subtracts albums rather than messages.
+
+### The archive
+
+Telegram keeps the archived chats in the peer folder with the id `1`; every other chat is in folder `0`. The engine
+reads the two apart: `getDialogs` without the `archived` flag is the chat list (`messages.getDialogs` with
+`folder_id: 0`), and with it the archive (`folder_id: 1`). They are separate reads on purpose — one limit over both
+would cost the chat list the chats the archive holds, and the archive is a screen the reader asks for, not one every
+list load pays for.
+
+`setArchived` moves a chat between the two. It resolves the peer server-side and calls `folders.editPeerFolders`,
+the API the official clients use for the archive, so the move is the one Telegram's own clients make.
+
+On the SPA side the archive is a screen of its own (`/archived`), reached from the account popup in the sidebar. The
+chat list and the archive live in one list (`pages/src/useDialogs.ts`), so every lookup of a chat — the router, the
+thread, the read receipts, the forward picker — finds it in the same place. The thread header carries the move
+itself: an archive button for a chat in the list, an unarchive button for one in the archive.
 
 ### Updates socket protocol
 

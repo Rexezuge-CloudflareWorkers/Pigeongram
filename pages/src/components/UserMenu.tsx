@@ -6,8 +6,9 @@ import { ConfirmDialog } from './ConfirmDialog';
 
 /**
 The sidebar's account control. The profile row is the trigger for a
-Material-style menu anchored under it; Sign out lives in that menu and asks for
-confirmation in a modal before the existing logout flow runs.
+Material-style menu anchored under it; the archive and Sign out live in that
+menu, and Sign out asks for confirmation in a modal before the existing logout
+flow runs.
 
 The menu is a portal with `position: fixed` so the sidebar cannot clip it. Its
 position is measured from the trigger once the menu has a size, then clamped to
@@ -19,9 +20,13 @@ interface UserMenuProps {
   me: MeDto | null;
   connected: boolean;
   onSignOut: () => Promise<void> | void;
+  /**
+  Opens the archive: the chats the account archived.
+  */
+  onOpenArchive: () => void;
 }
 
-export function UserMenu({ me, connected, onSignOut }: UserMenuProps) {
+export function UserMenu({ me, connected, onSignOut, onOpenArchive }: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -84,6 +89,11 @@ export function UserMenu({ me, connected, onSignOut }: UserMenuProps) {
   const requestSignOut = (): void => {
     setMenuOpen(false);
     setConfirmOpen(true);
+  };
+
+  const requestArchive = (): void => {
+    setMenuOpen(false);
+    onOpenArchive();
   };
 
   const confirmSignOut = useCallback(async (): Promise<void> => {
@@ -160,6 +170,17 @@ export function UserMenu({ me, connected, onSignOut }: UserMenuProps) {
                   {handle ? <span className="truncate text-xs text-muted">{handle}</span> : null}
                 </div>
                 <div className="my-1 h-px bg-line" role="separator" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+                  onClick={requestArchive}
+                >
+                  <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.18-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
+                  </svg>
+                  <span>Archived chats</span>
+                </button>
                 <button
                   type="button"
                   role="menuitem"

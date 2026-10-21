@@ -203,6 +203,7 @@ const dialogs: DialogDto[] = [
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+    archived: false,
   },
 ];
 
@@ -261,6 +262,7 @@ const carolDialog: DialogDto = {
   readOutboxMaxId: 0,
   pinned: false,
   muted: false,
+  archived: false,
 };
 
 const carolHistory: MessageDto[] = [
@@ -368,6 +370,7 @@ reads — with an `rpc` escape hatch for test-specific methods.
 function installSignedInFetch(
   options: {
     dialogs?: DialogDto[];
+    archivedDialogs?: DialogDto[];
     history?: (chatId: number) => Response | Promise<Response>;
     rpc?: (call: FetchCall) => Response | Promise<Response> | undefined;
   } = {},
@@ -379,6 +382,10 @@ function installSignedInFetch(
         return json({ me });
       }
       case 'getDialogs': {
+        // The archive is its own read: the same method with the flag set.
+        if (params.archived === true) {
+          return json({ dialogs: options.archivedDialogs ?? [] });
+        }
         return json({ dialogs: options.dialogs ?? dialogs });
       }
       case 'getHistory': {
@@ -416,6 +423,16 @@ The rendered thread, so assertions cannot match chat-list previews.
 function threadSection(): HTMLElement {
   const element = document.querySelector<HTMLElement>('section.thread');
   if (!element) throw new Error('The thread is not rendered');
+  return element;
+}
+
+/**
+The chat list in the sidebar, so an assertion about a row cannot match a title
+in the open thread.
+*/
+function sidebar(): HTMLElement {
+  const element = document.querySelector<HTMLElement>('aside.sidebar');
+  if (!element) throw new Error('The sidebar is not rendered');
   return element;
 }
 
@@ -759,6 +776,7 @@ describe('App', () => {
             readOutboxMaxId: 0,
             pinned: false,
             muted: false,
+            archived: false,
           },
         ],
         history: () => json({ messages: [post] }),
@@ -881,7 +899,9 @@ describe('App', () => {
       presence: null,
     };
     installSignedInFetch({
-      dialogs: [{ chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
+      dialogs: [
+        { chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false, archived: false },
+      ],
       history: () => json({ messages: [] }),
       rpc: (call) =>
         call.body?.method === 'getBotCommands' ? json({ commands: [{ command: 'start', description: 'Start the bot' }] }) : undefined,
@@ -1007,7 +1027,9 @@ describe('App', () => {
       },
     });
     installSignedInFetch({
-      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
+      dialogs: [
+        { chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false, archived: false },
+      ],
       history: () => json({ messages: [forwarded] }),
     });
 
@@ -1047,7 +1069,9 @@ describe('App', () => {
       text: 'hi Bob',
     });
     installSignedInFetch({
-      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
+      dialogs: [
+        { chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false, archived: false },
+      ],
       history: () => json({ messages: [incoming, outgoing] }),
     });
 
@@ -1247,6 +1271,7 @@ describe('App', () => {
         readOutboxMaxId: 0,
         pinned: false,
         muted: false,
+        archived: false,
       };
       installSignedInFetch({ dialogs: [pollDialog] });
 
@@ -2421,6 +2446,7 @@ describe('App', () => {
       readOutboxMaxId: 0,
       pinned: false,
       muted: false,
+      archived: false,
     };
 
     function comment(overrides: Partial<MessageDto> & { id: number }): MessageDto {
@@ -2902,7 +2928,16 @@ describe('App', () => {
         canSendMessages,
         presence: null,
       };
-      return { chat, lastMessage: dialogMessage(post), unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false };
+      return {
+        chat,
+        lastMessage: dialogMessage(post),
+        unread: 0,
+        readInboxMaxId: 7,
+        readOutboxMaxId: 0,
+        pinned: false,
+        muted: false,
+        archived: false,
+      };
     }
 
     it('replaces the composer with a notice in a read-only channel', async () => {
@@ -2940,7 +2975,18 @@ describe('App', () => {
         presence: null,
       };
       installSignedInFetch({
-        dialogs: [{ chat: group, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
+        dialogs: [
+          {
+            chat: group,
+            lastMessage: null,
+            unread: 0,
+            readInboxMaxId: 0,
+            readOutboxMaxId: 0,
+            pinned: false,
+            muted: false,
+            archived: false,
+          },
+        ],
         history: () => json({ messages: [message({ id: 1, chatId: -30, text: 'hello team' })] }),
       });
 
@@ -3093,6 +3139,159 @@ describe('App', () => {
 
       deliver({ type: 'user_status', userId: 2, presence: { status: 'online', lastSeenAt: null } });
       expect(threadSection().querySelector('[data-status="online"]')).not.toBeNull();
+    });
+  });
+
+  describe('archive', () => {
+    const archivedDialog: DialogDto = {
+      chat: { id: 4, kind: 'user', title: 'Dave', username: 'dave', photo: null, canSendMessages: true, presence: null },
+      lastMessage: null,
+      unread: 0,
+      readInboxMaxId: 0,
+      readOutboxMaxId: 0,
+      pinned: false,
+      muted: false,
+      archived: true,
+    };
+
+    /**
+    Opens the archive from the profile popup.
+    */
+    async function openArchive(): Promise<void> {
+      fireEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }));
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Account menu' })).getByRole('menuitem', { name: 'Archived chats' }));
+    }
+
+    it('reads the archive only when the reader asks for it', async () => {
+      const calls = installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+      expect(await screen.findByText('Bob')).toBeDefined();
+      expect(calls.some((call) => (call.body?.params as { archived?: boolean } | undefined)?.archived === true)).toBe(false);
+
+      await openArchive();
+
+      expect(await screen.findByText('Dave')).toBeDefined();
+      expect(within(sidebar()).queryByText('Bob')).toBeNull();
+      expect(location.pathname).toBe('/archived');
+      expect(calls.some((call) => (call.body?.params as { archived?: boolean } | undefined)?.archived === true)).toBe(true);
+    });
+
+    it('says so when the archive is empty', async () => {
+      installSignedInFetch();
+
+      render(<App />);
+      await openArchive();
+
+      expect(await screen.findByText('No archived chats.')).toBeDefined();
+    });
+
+    it('says that the account has no chats when the chat list is empty', async () => {
+      installSignedInFetch({ dialogs: [] });
+
+      render(<App />);
+
+      // The list is read in one request with the account, so an empty list is
+      // an answer, not a load that never finished.
+      expect(await screen.findByText('No chats yet.')).toBeDefined();
+    });
+
+    it('leaves the archive for the chat list on back', async () => {
+      installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+      await openArchive();
+      expect(await screen.findByText('Dave')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chats' }));
+
+      expect(await screen.findByText('Bob')).toBeDefined();
+      expect(location.pathname).toBe('/');
+    });
+
+    it('opens an archived chat in the thread', async () => {
+      installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+      await openArchive();
+
+      fireEvent.click(await screen.findByText('Dave'));
+
+      expect(await screen.findByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/4');
+    });
+
+    it('opens an archived chat from a shared link', async () => {
+      // The chat list does not carry the archived chats, so the link makes the
+      // app read the archive before it gives up on the chat.
+      globalThis.history.replaceState(null, '', '/chat/4');
+      installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+
+      expect(await screen.findByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/4');
+    });
+
+    it('archives a chat and takes it out of the chat list', async () => {
+      const calls = installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'setArchived') return;
+          const params = call.body?.params as { chatId: number; archived: boolean };
+          return json({ chatId: params.chatId, archived: params.archived });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByRole('button', { name: 'Archive chat' })).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archive chat' }));
+
+      await waitFor(() => expect(within(sidebar()).queryByText('Bob')).toBeNull());
+      const move = calls.find((call) => call.body?.method === 'setArchived');
+      expect(move?.body?.params).toEqual({ chatId: 2, archived: true });
+    });
+
+    it('puts an archived chat back into the chat list', async () => {
+      const calls = installSignedInFetch({
+        dialogs: [],
+        archivedDialogs: [archivedDialog],
+        rpc: (call) => {
+          if (call.body?.method !== 'setArchived') return;
+          const params = call.body?.params as { chatId: number; archived: boolean };
+          return json({ chatId: params.chatId, archived: params.archived });
+        },
+      });
+
+      render(<App />);
+      await openArchive();
+      fireEvent.click(await screen.findByText('Dave'));
+      expect(await screen.findByRole('button', { name: 'Unarchive chat' })).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Unarchive chat' }));
+
+      await waitFor(() => expect(within(sidebar()).queryByText('Dave')).not.toBeNull());
+      const move = calls.find((call) => call.body?.method === 'setArchived');
+      expect(move?.body?.params).toEqual({ chatId: 4, archived: false });
+    });
+
+    it('puts a chat back where it was when the bridge refuses the move', async () => {
+      installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'setArchived') return;
+          return json({ error: 'FOLDER_ID_INVALID' }, 400);
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByRole('button', { name: 'Archive chat' })).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archive chat' }));
+
+      expect(await within(sidebar()).findByText('Bob')).toBeDefined();
+      expect(await screen.findByRole('alert')).toBeDefined();
     });
   });
 

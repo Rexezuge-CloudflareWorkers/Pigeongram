@@ -8,12 +8,12 @@ afterEach(cleanup);
 const me: MeDto = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 
 function renderMenu(onSignOut: () => Promise<void> | void = async () => {}): HTMLButtonElement {
-  render(<UserMenu me={me} connected onSignOut={onSignOut} />);
+  render(<UserMenu me={me} connected onSignOut={onSignOut} onOpenArchive={() => {}} />);
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
 function renderStatus(connected: boolean): HTMLButtonElement {
-  render(<UserMenu me={me} connected={connected} onSignOut={async () => {}} />);
+  render(<UserMenu me={me} connected={connected} onSignOut={async () => {}} onOpenArchive={() => {}} />);
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
@@ -56,12 +56,24 @@ describe('UserMenu', () => {
     expect(screen.queryByRole('menu', { name: 'Account menu' })).toBeNull();
 
     const menu = openMenu(trigger);
-    const item = within(menu).getByRole('menuitem', { name: 'Sign out' });
+    const item = within(menu).getByRole('menuitem', { name: 'Archived chats' }) as HTMLButtonElement;
 
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(within(menu).getByText('@ada')).toBeDefined();
     expect(document.activeElement).toBe(item);
     expect(onSignOut).not.toHaveBeenCalled();
+  });
+
+  it('opens the archive from the profile menu and closes the menu', () => {
+    const onOpenArchive = vi.fn();
+    render(<UserMenu me={me} connected onSignOut={async () => {}} onOpenArchive={onOpenArchive} />);
+    const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
+
+    const menu = openMenu(trigger);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archived chats' }));
+
+    expect(onOpenArchive).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('asks for confirmation and cancels without signing out', () => {

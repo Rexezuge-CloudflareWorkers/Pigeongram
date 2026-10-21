@@ -121,6 +121,29 @@ export function optionalInt(value: unknown): number | undefined {
 }
 
 /**
+A boolean flag, or `undefined` when it was not provided. A flag that is there
+but is not a boolean is a 400: the bridge never guesses what the caller meant.
+*/
+export function optionalBoolean(value: unknown, name: string): boolean | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'boolean') {
+    throw new EngineError(`${name} must be a boolean`, 400);
+  }
+  return value;
+}
+
+/**
+Like {@link optionalBoolean}, but the flag has to be there.
+*/
+export function requireBoolean(value: unknown, name: string): boolean {
+  const parsed = optionalBoolean(value, name);
+  if (parsed === undefined) {
+    throw new EngineError(`${name} must be a boolean`, 400);
+  }
+  return parsed;
+}
+
+/**
  * A client-chosen Telegram `random_id`, as a positive decimal 64-bit integer.
  * Reusing it on a retry is what makes the retry idempotent: Telegram drops a
  * duplicate send whose random id it has already accepted.

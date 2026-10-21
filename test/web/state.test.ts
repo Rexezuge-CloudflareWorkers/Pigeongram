@@ -87,6 +87,7 @@ function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+    archived: false,
     ...overrides,
   };
 }

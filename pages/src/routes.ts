@@ -12,10 +12,16 @@ import type { PeerId } from './types';
  * positive Telegram message id. Anything that does not match the grammar falls
  * back to the chat list, which keeps a stray or truncated URL from stranding
  * the app on an empty screen.
+ *
+ * The archive is a screen of its own (`/archived`): the chats the account
+ * archived, in the place Telegram keeps them.
  */
 
 export type Route =
-  { view: 'list' } | { view: 'chat'; chatId: PeerId; postId: number | null } | { view: 'comments'; chatId: PeerId; postId: number };
+  | { view: 'list' }
+  | { view: 'archived' }
+  | { view: 'chat'; chatId: PeerId; postId: number | null }
+  | { view: 'comments'; chatId: PeerId; postId: number };
 
 /**
  * What `useRouter` hands to its route handler: whether the caller asked to
@@ -33,6 +39,9 @@ export function routeForPath(pathname: string): Route {
     .split('/')
     .filter((segment) => segment.length > 0)
     .map(decode);
+  // The archive is its own screen: the chats the account archived, in the
+  // place Telegram keeps them.
+  if (segments.length === 1 && segments[0] === 'archived') return { view: 'archived' };
   if (segments[0] !== 'chat' || segments.length < 2) return { view: 'list' };
   const chatId = peerId(segments[1]);
   if (chatId === null) return { view: 'list' };
@@ -47,6 +56,7 @@ export function routeForPath(pathname: string): Route {
 
 export function pathForRoute(route: Route): string {
   if (route.view === 'list') return '/';
+  if (route.view === 'archived') return '/archived';
   if (route.view === 'chat') {
     return route.postId === null ? `/chat/${String(route.chatId)}` : `/chat/${String(route.chatId)}/post/${String(route.postId)}`;
   }
@@ -55,15 +65,27 @@ export function pathForRoute(route: Route): string {
 
 export function sameRoute(left: Route, right: Route): boolean {
   if (left.view !== right.view) return false;
-  if (left.view === 'list') return true;
-  if (right.view === 'list') return false;
+  if (left.view === 'list' || left.view === 'archived') return true;
+  if (right.view === 'list' || right.view === 'archived') return false;
   return left.chatId === right.chatId && left.postId === right.postId;
 }
 
 /**
- * The view one step up: a comment thread returns to its post's chat, and a
- * chat returns to the list. Used as the fallback when a history entry has no
- * in-app parent.
+ * The route of a chat, of a linked post, or of a comments thread.
+ *
+ * A chat without a post is the plain chat screen; a post without a comments
+ * thread is the post's chat; a comment id names the thread itself.
+ */
+export function routeForChat(chatId: PeerId, postId: number | null, commentId?: number): Route {
+  if (postId === null) return { view: 'chat', chatId, postId: null };
+  if (commentId === undefined) return { view: 'chat', chatId, postId };
+  return { view: 'comments', chatId, postId };
+}
+
+/**
+ * The view one step up: a comment thread returns to its post's chat, the
+ * archive returns to the chat list, and a chat returns to the list. Used as
+ * the fallback when a history entry has no in-app parent.
  */
 export function parentRoute(route: Route): Route {
   if (route.view === 'comments') return { view: 'chat', chatId: route.chatId, postId: route.postId };

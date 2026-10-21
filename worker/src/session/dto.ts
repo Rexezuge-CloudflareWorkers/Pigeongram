@@ -356,6 +356,9 @@ export function toDialogDto(dialog: Dialog, unread: number = dialog.unreadCount)
     readOutboxMaxId: dialog.lastReadOutgoing ?? 0,
     pinned: dialog.isPinned,
     muted: dialog.isMuted === true,
+    // The archive is the peer folder with the id 1; every other chat is in
+    // folder 0, so the flag says which list the chat belongs to.
+    archived: dialog.isArchived,
   };
 }
 

@@ -22,6 +22,7 @@ import type {
   SendMessageResult,
   SendReactionResult,
   SendVoteResult,
+  SetArchivedResult,
 } from './types';
 
 export { ApiError } from './api-error';
@@ -141,6 +142,18 @@ function batchResult<T>(outcome: RpcBatchOutcome | undefined, what: string): T {
 }
 
 export const fetchDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100 });
+
+/**
+Reads the account's archive: the chats Telegram keeps in the peer folder 1.
+It is a separate read from the chat list, because one limit over both would
+cost the main list the chats the archive holds.
+*/
+export const fetchArchivedDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100, archived: true });
+
+/**
+Moves a chat into the archive, or back out of it.
+*/
+export const setArchived = (chatId: PeerId, archived: boolean): Promise<SetArchivedResult> => rpc('setArchived', { chatId, archived });
 
 /**
 The signed-in shell's first read: who the account is and the chat list.

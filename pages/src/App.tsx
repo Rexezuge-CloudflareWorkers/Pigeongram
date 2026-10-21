@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { fetchBootstrap, fetchDialogs, logout, readHistory } from './api';
+import { fetchBootstrap, logout, readHistory } from './api';
+import { ArchiveBar } from './components/ArchiveBar';
 import { ChatList } from './components/ChatList';
 import { CheckingAccess } from './components/CheckingAccess';
 import { ForwardPicker } from './components/ForwardPicker';
@@ -7,16 +8,18 @@ import { LandingPage } from './components/LandingPage';
 import { LoginScreen } from './components/LoginScreen';
 import { MediaViewer } from './components/MediaViewer';
 import { ThreadPane } from './components/ThreadPane';
+import { Toasts } from './components/Toasts';
 import { UserMenu } from './components/UserMenu';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
-import type { Route } from './routes';
-import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate, applyUserStatus } from './state';
+import type { Route, RouteApplyOptions } from './routes';
+import { routeForChat } from './routes';
 import { TelegramLinkProvider } from './telegram-links';
-import type { ChatDto, DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
+import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 import { useAppHeight } from './useAppHeight';
 import { useChatNavigation } from './useChatNavigation';
 import { useComments } from './useComments';
+import { useDialogs } from './useDialogs';
 import { useForwarding } from './useForwarding';
 import { useForwardOrigin } from './useForwardOrigin';
 import { useMediaViewer } from './useMediaViewer';
@@ -28,10 +31,13 @@ export function App() {
   const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
 
   const [me, setMe] = useState<MeDto | null>(null);
-  const [dialogs, setDialogs] = useState<DialogDto[]>([]);
-  const [dialogsLoading, setDialogsLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+  Whether the archive is the screen on show. The route owns it: the archive is
+  a URL of its own, so the browser's back button leaves it like any other view.
+  */
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   /**
   Shows a short informational toast (a bot's callback answer, a clipboard
@@ -54,12 +60,39 @@ export function App() {
   );
 
   /**
+  The chat list: the main chats and the archive, in one list. The controller
+  owns both reads and the live updates, so every lookup of a chat — the
+  router, the thread, the read receipts — finds it in the same place.
+  */
+  const dialogs = useDialogs({ onError: reportError });
+  const {
+    all: allDialogs,
+    main: mainDialogs,
+    archived: archivedDialogs,
+    loading: dialogsLoading,
+    archiveLoading,
+    archivingChatId,
+    ref: dialogsRef,
+    find: findDialog,
+    apply: applyDialogs,
+    load: loadDialogs,
+    loadArchive,
+    applyUpdate,
+    applyRead,
+    setArchived,
+    clear: clearDialogs,
+  } = dialogs;
+
+  /**
   A message the caller sent (or uploaded) was accepted: fold it into the
   dialogs. The thread's own copy is the controller's.
   */
-  const handleSent = useCallback((message: MessageDto): void => {
-    setDialogs((current) => applyNewMessage(current, message, message.chatId));
-  }, []);
+  const handleSent = useCallback(
+    (message: MessageDto): void => {
+      applyUpdate({ type: 'new_message', message }, message.chatId);
+    },
+    [applyUpdate],
+  );
 
   const threads = useThread({ onSent: handleSent, onError: reportError, onNotice: notify });
   const forwarding = useForwarding(handleSent, threads.applyUpdate, notify);
@@ -81,10 +114,10 @@ export function App() {
     (chatId: PeerId, postId: number, comment: MessageDto): void => {
       bumpCommentCount(chatId, postId);
       if (comment.chatId !== chatId) {
-        setDialogs((current) => applyNewMessage(current, comment, null));
+        applyUpdate({ type: 'new_message', message: comment }, null);
       }
     },
-    [bumpCommentCount],
+    [applyUpdate, bumpCommentCount],
   );
 
   const comments = useComments({ onCommentSent: handleCommentSent, onError: reportError, onNotice: notify });
@@ -95,31 +128,29 @@ export function App() {
   const selectedRef = useRef<PeerId | null>(null);
   const selected = threads.thread?.chat ?? null;
   // The open chat's presence comes from the list, which the live updates keep current.
-  const selectedPresence = selected ? (dialogs.find((dialog) => dialog.chat.id === selected.id)?.chat.presence ?? null) : null;
+  const selectedPresence = selected ? (findDialog(selected.id)?.chat.presence ?? null) : null;
+  // Whether the open chat sits in the archive: the thread header offers the
+  // move in the direction the chat is not in.
+  const selectedArchived = selected ? (findDialog(selected.id)?.archived ?? false) : false;
   const authorized = state?.authorized ?? false;
 
-  // `canOpen` and the boot apply run outside render (history events and the
-  // signed-in boot), so they read the newest dialogs through this ref.
-  const dialogsRef = useRef<readonly DialogDto[]>([]);
-  useLayoutEffect(() => {
-    dialogsRef.current = dialogs;
-  }, [dialogs]);
-
-  /**
-  Folds a freshly read chat list in. The ref is set first: boot applies the
-  URL route immediately after this returns, before React has committed the new
-  dialogs.
-  */
-  const applyDialogs = useCallback((next: DialogDto[]): void => {
-    dialogsRef.current = next;
-    setDialogs(next);
-  }, []);
-
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
-  const applyRoute = useChatNavigation({ dialogs: dialogsRef, threads, comments });
+  const navigate = useChatNavigation({ dialogs: dialogsRef, threads, comments });
+  /**
+  The route drives the screen, and the archive is a screen of its own: the
+  sidebar shows the archived chats while the route names it.
+  */
+  const applyRoute = useCallback(
+    (route: Route, options: RouteApplyOptions): Promise<void> => {
+      setArchiveOpen(route.view === 'archived');
+      return navigate(route, options);
+    },
+    [navigate],
+  );
   const canOpen = useCallback(
-    (route: Route): boolean => route.view === 'list' || dialogsRef.current.some((dialog) => dialog.chat.id === route.chatId),
-    [],
+    (route: Route): boolean =>
+      route.view === 'list' || route.view === 'archived' || dialogsRef.current.some((dialog) => dialog.chat.id === route.chatId),
+    [dialogsRef],
   );
   const router = useRouter({
     onRoute: applyRoute,
@@ -136,18 +167,6 @@ export function App() {
   }, [selected]);
 
   // ---- signed-in data: dialogs, live updates, thread ----------------------
-
-  const loadDialogs = useCallback(async (): Promise<void> => {
-    setDialogsLoading(true);
-    try {
-      const result = await fetchDialogs();
-      applyDialogs(result.dialogs);
-    } catch (failure) {
-      reportError(failure);
-    } finally {
-      setDialogsLoading(false);
-    }
-  }, [applyDialogs, reportError]);
 
   const booted = useRef(false);
   useEffect(() => {
@@ -170,12 +189,23 @@ export function App() {
         // The combined read failed; the chat list on its own may still work,
         // and it reports its own failure if it does not.
         await loadDialogs();
-      } finally {
-        setDialogsLoading(false);
       }
+      // A shared link may name a chat in the archive, which the chat list does
+      // not carry: the archive is read before the route gives up on it.
+      const target = router.route();
+      if (target.view === 'chat' && !canOpen(target)) await loadArchive();
       router.boot();
     })();
-  }, [authorized, state?.me, reportError, applyDialogs, loadDialogs, router.boot]);
+  }, [authorized, state?.me, reportError, applyDialogs, loadDialogs, loadArchive, canOpen, router.boot, router.route]);
+
+  /**
+  The archive is read when it is opened, not before: the account's chats are
+  in the main list, and the archive is a screen the reader asks for.
+  */
+  useEffect(() => {
+    if (!archiveOpen) return;
+    void loadArchive();
+  }, [archiveOpen, loadArchive]);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
@@ -183,33 +213,9 @@ export function App() {
       // each folds in what belongs to it and lets everything else pass.
       applyCommentUpdate(update);
       applyThreadUpdate(update);
-      if (update.type === 'new_message') {
-        setDialogs((current) => applyNewMessage(current, update.message, selectedRef.current));
-        // Reading is driven by the view's scroll position: a message pinned to
-        // the bottom of the open thread is reported read from there, and one
-        // arriving while the user is scrolled up stays unread.
-        return;
-      }
-      if (update.type === 'edit_message') {
-        setDialogs((current) => applyEditedMessage(current, update.message));
-        return;
-      }
-      // The two read directions mean different things: inbox reads move the
-      // badge and open position; outbox reads move the double checks on the
-      // account's own messages. The thread folds both in the controller above.
-      if (update.type === 'read') {
-        setDialogs((current) =>
-          update.inbox
-            ? applyReadUpdate(current, update.chatId, update.unread, update.maxId)
-            : applyOutboxReadUpdate(current, update.chatId, update.maxId),
-        );
-        return;
-      }
-      if (update.type === 'user_status') {
-        setDialogs((current) => applyUserStatus(current, update.userId, update.presence));
-      }
+      applyUpdate(update, selectedRef.current);
     },
-    [applyCommentUpdate, applyThreadUpdate],
+    [applyCommentUpdate, applyThreadUpdate, applyUpdate],
   );
 
   const connected = useUpdatesSocket(authorized, handleUpdate, (resync) => {
@@ -234,17 +240,18 @@ export function App() {
   const openChat = useCallback(
     (chat: ChatDto, target?: { postId?: number; commentId?: number }): void => {
       const postId = target?.postId ?? null;
-      const route: Route =
-        postId === null
-          ? { view: 'chat', chatId: chat.id, postId: null }
-          : target?.commentId === undefined
-            ? { view: 'chat', chatId: chat.id, postId }
-            : { view: 'comments', chatId: chat.id, postId };
-      router.navigateTo(route, postId === null ? undefined : { force: true });
+      router.navigateTo(routeForChat(chat.id, postId, target?.commentId), postId === null ? undefined : { force: true });
     },
     [router],
   );
-  const openForwardOrigin = useForwardOrigin(dialogs, openChat);
+  const openForwardOrigin = useForwardOrigin(allDialogs, openChat);
+
+  /**
+  Opens the archive: the screen of the chats the account archived.
+  */
+  const openArchive = useCallback((): void => {
+    router.navigateTo({ view: 'archived' });
+  }, [router]);
 
   /**
   Routes a click on a link inside a message: a chat this client already knows
@@ -256,7 +263,7 @@ export function App() {
     (url: string): boolean => {
       const link = parseTelegramLink(url);
       if (link === null) return false;
-      const chat = link.chat === null ? null : findLinkedChat(dialogs, link.chat);
+      const chat = link.chat === null ? null : findLinkedChat(allDialogs, link.chat);
       if (chat !== null) {
         openChat(chat, {
           ...(link.postId !== null && { postId: link.postId }),
@@ -267,7 +274,7 @@ export function App() {
       launchTelegramApp(link.deepLink, link.webUrl);
       return true;
     },
-    [dialogs, openChat],
+    [allDialogs, openChat],
   );
 
   /**
@@ -278,15 +285,15 @@ export function App() {
   const markRead = useCallback(
     (chatId: PeerId, maxId: number): void => {
       const open = threads.thread && threads.thread.chat.id === chatId ? threads.thread : null;
-      const boundary = open?.readInboxMaxId ?? dialogs.find((dialog) => dialog.chat.id === chatId)?.readInboxMaxId ?? 0;
+      const boundary = open?.readInboxMaxId ?? findDialog(chatId)?.readInboxMaxId ?? 0;
       if (maxId <= boundary) return;
       setReadWatermark(chatId, maxId);
-      setDialogs((current) => applyReadThrough(current, chatId, maxId, open?.messages ?? []));
+      applyRead(chatId, maxId, open?.messages ?? []);
       void readHistory(chatId, maxId).catch(() => {
         // Read receipts are best-effort; the next open retries.
       });
     },
-    [dialogs, setReadWatermark, threads.thread],
+    [applyRead, findDialog, setReadWatermark, threads.thread],
   );
 
   const handleLogout = useCallback(async (): Promise<void> => {
@@ -302,11 +309,22 @@ export function App() {
     closeViewer();
     forwarding.close();
     router.reset();
-    setDialogs([]);
-    setDialogsLoading(true);
+    setArchiveOpen(false);
+    clearDialogs();
     setMe(null);
     reset();
-  }, [clearCommentsPending, clearThreadPending, closeComments, closeThread, closeViewer, forwarding.close, reportError, reset, router]);
+  }, [
+    clearCommentsPending,
+    clearThreadPending,
+    closeComments,
+    closeThread,
+    closeViewer,
+    clearDialogs,
+    forwarding.close,
+    reportError,
+    reset,
+    router,
+  ]);
 
   // The home page has three faces: a public intro until Access admits the
   // browser, the QR login once Access is through but Telegram is not linked,
@@ -327,14 +345,16 @@ export function App() {
     <div className={`app${selected ? ' thread-open' : ''}`}>
       <aside className="sidebar">
         <header className="me">
-          <UserMenu me={me} connected={connected} onSignOut={handleLogout} />
+          <UserMenu me={me} connected={connected} onSignOut={handleLogout} onOpenArchive={openArchive} />
         </header>
+        {archiveOpen ? <ArchiveBar count={archivedDialogs.length} onBack={router.back} /> : null}
         <ChatList
-          dialogs={dialogs}
+          dialogs={archiveOpen ? archivedDialogs : mainDialogs}
           activeChatId={selected?.id ?? null}
-          loading={dialogsLoading}
+          loading={archiveOpen ? archiveLoading : dialogsLoading}
           pending={threads.pending}
           onSelect={openChat}
+          emptyLabel={archiveOpen ? 'No archived chats.' : undefined}
         />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink} onOpenForward={openForwardOrigin}>
@@ -343,6 +363,11 @@ export function App() {
           comments={comments}
           selected={selected}
           presence={selectedPresence}
+          archived={selectedArchived}
+          archiving={archivingChatId !== null && archivingChatId === selected?.id}
+          onSetArchived={(archived) => {
+            if (selected) void setArchived(selected.id, archived);
+          }}
           onBack={router.back}
           onForward={forwarding.open}
           onOpenMedia={openViewer}
@@ -356,22 +381,9 @@ export function App() {
         <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
       ) : null}
       {forwarding.target ? (
-        <ForwardPicker messages={forwarding.target} dialogs={dialogs} onForward={forwarding.forward} onClose={forwarding.close} />
+        <ForwardPicker messages={forwarding.target} dialogs={allDialogs} onForward={forwarding.forward} onClose={forwarding.close} />
       ) : null}
-      {error || notice ? (
-        <div className="toasts">
-          {error ? (
-            <p className="toast" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="toast notice" role="status">
-              {notice}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <Toasts error={error} notice={notice} />
     </div>
   );
 }

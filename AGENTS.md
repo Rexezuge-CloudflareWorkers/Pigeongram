@@ -51,7 +51,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `src/env.d.ts`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
-  reducers, `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
+  reducers, `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
+  and the archive move — `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the first-window read
   (newest messages, or a window around a linked post), `reading.ts` the
@@ -61,9 +62,9 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `/user/state` probe means Access is through, and `state.authorized` then picks QR vs chat list. The intro's sign-in
   link is `/user/login`; the worker redirects it back into the SPA, carrying a validated same-origin `next` so a
   bookmarked chat link survives the Access round-trip. Navigation is pathname-based: `routes.ts` is the pure
-  route grammar (`/`, `/chat/:id`, `/chat/:id/post/:id`, `/chat/:id/post/:id/comments`), `useRouter.ts` owns
-  `location`/`history`/`popstate`, `useChatNavigation.ts` applies routes to the thread and comments controllers, and
-  `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
+  route grammar (`/`, `/archived`, `/chat/:id`, `/chat/:id/post/:id`, `/chat/:id/post/:id/comments`), `useRouter.ts`
+  owns `location`/`history`/`popstate`, `useChatNavigation.ts` applies routes to the thread and comments controllers,
+  and `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
   (t.me URLs and `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the
   context that routes link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread,
   everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer. Styling is
@@ -164,6 +165,14 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   Per-call failures are reported per call, so one broken read never takes the reads beside it down. When a screen needs
   several reads, read them together in one batch (`pages/src/api.ts`: `fetchBootstrap`, `fetchChatScreen`) rather than
   chaining requests — a chained pair is exactly the waterfall the batch exists to remove.
+- **The archive is a peer folder, and a read of its own.** Telegram keeps the archived chats in the peer folder with
+  the id `1`; every other chat is in folder `0`. `getDialogs` reads the chat list without the `archived` flag
+  (`folder_id: 0`) and the archive with it (`folder_id: 1`), and `setArchived` moves a chat between the two through
+  `folders.editPeerFolders` — the API the official clients use for the archive. The two reads stay apart on purpose: one
+  limit over both would cost the chat list the chats the archive holds, and the archive is a screen the reader asks
+  for, not one every list load pays for. On the SPA side the archive is a screen of its own (`/archived`, reached from
+  the account popup), and the chat list and the archive live in **one** list (`pages/src/useDialogs.ts`), so every
+  lookup of a chat — the router, the thread, the read receipts, the forward picker — finds it in the same place.
 - **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
   `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
   in the system and holding the gate for it queued every bridge call behind it. The engine's storage warms up in

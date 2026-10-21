@@ -134,7 +134,16 @@ describe('miniAppDeepLink', () => {
 
 describe('findLinkedChat', () => {
   const dialogs: DialogDto[] = [
-    { chat: chat(2, 'Bob'), lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false },
+    {
+      chat: chat(2, 'Bob'),
+      lastMessage: null,
+      unread: 0,
+      readInboxMaxId: 0,
+      readOutboxMaxId: 0,
+      pinned: false,
+      muted: false,
+      archived: false,
+    },
     {
       chat: chat(markedChatId(1_234_567_890), null),
       lastMessage: null,
@@ -143,8 +152,18 @@ describe('findLinkedChat', () => {
       readOutboxMaxId: 0,
       pinned: false,
       muted: false,
+      archived: false,
     },
-    { chat: chat(4, null), lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false },
+    {
+      chat: chat(4, null),
+      lastMessage: null,
+      unread: 0,
+      readInboxMaxId: 0,
+      readOutboxMaxId: 0,
+      pinned: false,
+      muted: false,
+      archived: false,
+    },
   ];
 
   it('matches a username case-insensitively', () => {

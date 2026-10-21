@@ -21,6 +21,8 @@ const READ_DEBOUNCE_MS = 250;
 export function ThreadView({
   chat,
   presence,
+  archived,
+  archiving,
   messages,
   loading,
   loadingOlder,
@@ -32,6 +34,7 @@ export function ThreadView({
   pressingButtonIds,
   readOutboxMaxId,
   onBack,
+  onSetArchived,
   onLoadOlder,
   onSend,
   onAttach,
@@ -239,6 +242,28 @@ export function ThreadView({
             {chat.username ? ` · @${chat.username}` : ''}
           </span>
         </div>
+        {/* The archive is Telegram's own place for the chats that are put
+            away; the button offers the move in the direction the chat is not
+            in. */}
+        <button
+          type="button"
+          onClick={() => onSetArchived(!archived)}
+          disabled={archiving}
+          aria-busy={archiving}
+          aria-label={archived ? 'Unarchive chat' : 'Archive chat'}
+          title={archived ? 'Unarchive chat' : 'Archive chat'}
+          className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+        >
+          {archived ? (
+            <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.55 5.22l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.15.54L3.46 5.22A1.99 1.99 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.45-1.28zM12 9.5l5.5 5.5H14v2h-4v-2H6.5L12 9.5zM5.12 5l.81-1h12l.94 1H5.12z" />
+            </svg>
+          ) : (
+            <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.18-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
+            </svg>
+          )}
+        </button>
       </header>
       <div
         className="messages"

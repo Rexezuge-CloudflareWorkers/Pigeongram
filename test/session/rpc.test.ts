@@ -115,10 +115,13 @@ describe('getDialogs dispatch', () => {
   function fakeDialogsClient(options: { statuses?: unknown[]; fails?: boolean } = {}): {
     client: TelegramClient;
     calls: string[];
+    reads: unknown[];
   } {
     const calls: string[] = [];
+    const reads: unknown[] = [];
     const client = {
-      iterDialogs: async function* () {
+      iterDialogs: async function* (params?: unknown) {
+        reads.push(params);
         yield { peer: new User(rawUser) };
         yield { peer: new User(rawBot) };
       },
@@ -128,7 +131,7 @@ describe('getDialogs dispatch', () => {
         return options.statuses ?? [];
       },
     } as unknown as TelegramClient;
-    return { client, calls };
+    return { client, calls, reads };
   }
 
   it('overlays the contact presences onto the people in the list', async () => {
@@ -150,6 +153,87 @@ describe('getDialogs dispatch', () => {
 
     expect(result.dialogs).toHaveLength(2);
     expect(result.dialogs[0].chat.presence).toBeNull();
+  });
+
+  it('reads the chat list, not the archive, by default', async () => {
+    const { client, reads } = fakeDialogsClient();
+
+    await rpc(client, 'getDialogs', { limit: 10 });
+
+    expect(reads[0]).toEqual({ limit: 10, archived: 'exclude' });
+  });
+
+  it('reads the archive on its own', async () => {
+    const { client, reads } = fakeDialogsClient();
+
+    await rpc(client, 'getDialogs', { archived: true });
+
+    expect(reads[0]).toEqual({ limit: 100, archived: 'only' });
+  });
+
+  it('rejects a flag that is not a boolean', async () => {
+    const { client, reads } = fakeDialogsClient();
+
+    await expect(rpc(client, 'getDialogs', { archived: 'yes' })).rejects.toThrow('archived must be a boolean');
+    expect(reads).toEqual([]);
+  });
+});
+
+describe('setArchived dispatch', () => {
+  function fakeArchiveClient(): { client: TelegramClient; calls: unknown[] } {
+    const calls: unknown[] = [];
+    const client = {
+      resolvePeer: async (chatId: number) => ({ _: 'inputPeerUser', userId: chatId, accessHash: 7 }),
+      call: async (request: unknown) => {
+        calls.push(request);
+        return { _: 'updates', updates: [], users: [], chats: [], date: 0, seq: 0 };
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('puts a chat into the archive', async () => {
+    const { client, calls } = fakeArchiveClient();
+
+    const result = (await rpc(client, 'setArchived', { chatId: 5, archived: true })) as { chatId: number; archived: boolean };
+
+    expect(result).toEqual({ chatId: 5, archived: true });
+    expect(calls).toEqual([
+      {
+        _: 'folders.editPeerFolders',
+        folderPeers: [{ _: 'inputFolderPeer', peer: { _: 'inputPeerUser', userId: 5, accessHash: 7 }, folderId: 1 }],
+      },
+    ]);
+  });
+
+  it('brings a chat back out of the archive', async () => {
+    const { client, calls } = fakeArchiveClient();
+
+    await rpc(client, 'setArchived', { chatId: 5, archived: false });
+
+    expect(calls[0]).toMatchObject({ folderPeers: [{ folderId: 0 }] });
+  });
+
+  it('rejects a chat that is not a marked peer id', async () => {
+    const { client, calls } = fakeArchiveClient();
+
+    await expect(rpc(client, 'setArchived', { chatId: 0, archived: true })).rejects.toThrow('marked Telegram peer id');
+    expect(calls).toEqual([]);
+  });
+
+  it('rejects a flag that is not a boolean', async () => {
+    const { client, calls } = fakeArchiveClient();
+
+    await expect(rpc(client, 'setArchived', { chatId: 5, archived: 'yes' })).rejects.toThrow('archived must be a boolean');
+    expect(calls).toEqual([]);
+  });
+
+  it('is not a method a batch may carry', async () => {
+    const { client } = fakeArchiveClient();
+
+    await expect(rpc(client, 'batch', { calls: [{ method: 'setArchived', params: { chatId: 5, archived: true } }] })).rejects.toThrow(
+      'batchable read method',
+    );
   });
 });
 

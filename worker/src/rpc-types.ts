@@ -29,7 +29,8 @@ export type RpcMethod =
   | 'getPollResults'
   | 'getComments'
   | 'sendComment'
-  | 'getBotCommands';
+  | 'getBotCommands'
+  | 'setArchived';
 
 /**
 The methods a `batch` call may carry.
@@ -38,7 +39,8 @@ Deliberately the read-only half of {@link RpcMethod}: a batch runs its calls
 concurrently, so a write in it would have no defined completion order, and
 Telegram's own ordering guarantees matter more than the round trip saved.
 `readHistory` is excluded for the same reason it stays a single call — it
-mutates the account's read watermark.
+mutates the account's read watermark. `setArchived` is excluded because it
+moves a chat between the chat list and the archive.
 */
 export type BatchableRpcMethod =
   'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
@@ -71,6 +73,24 @@ export interface RpcBatchOutcome {
 
 export interface GetDialogsParams {
   limit?: number;
+  /**
+   * Reads the archive instead of the chat list: `true` returns the chats in
+   * Telegram's archive (the peer folder 1), `false` (the default) the main
+   * list. The two are separate reads — one limit would otherwise cost the
+   * main list the chats the archive holds.
+   */
+  archived?: boolean;
+}
+
+/**
+Moves a chat into the archive, or back out of it.
+*/
+export interface SetArchivedParams {
+  chatId: PeerId;
+  /**
+   * `true` archives the chat, `false` brings it back into the main list.
+   */
+  archived: boolean;
 }
 
 export interface GetHistoryParams {
@@ -233,6 +253,14 @@ export interface GetMeResult {
 
 export interface GetDialogsResult {
   dialogs: DialogDto[];
+}
+
+/**
+The state a chat was left in: `true` when it is in the archive.
+*/
+export interface SetArchivedResult {
+  chatId: PeerId;
+  archived: boolean;
 }
 
 export interface GetHistoryResult {

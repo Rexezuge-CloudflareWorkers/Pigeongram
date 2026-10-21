@@ -27,6 +27,7 @@ function dialog(chatDto: ChatDto, overrides: Partial<DialogDto> = {}): DialogDto
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+    archived: false,
     ...overrides,
   };
 }
@@ -75,10 +76,27 @@ function renderList(dialogs: DialogDto[]): void {
   render(<ChatList dialogs={dialogs} activeChatId={null} loading={false} onSelect={() => {}} />);
 }
 
+function renderEmpty(emptyLabel?: string): void {
+  render(<ChatList dialogs={[]} activeChatId={null} loading={false} onSelect={() => {}} emptyLabel={emptyLabel} />);
+}
+
 function badgeIn(name: string): Element | null {
   const row = screen.getByText(name).closest('button');
   return row?.querySelector('[data-status="online"]') ?? null;
 }
+
+describe('ChatList empty state', () => {
+  it('says that the account has no chats', () => {
+    renderEmpty();
+    expect(screen.getByText('No chats yet.')).toBeDefined();
+  });
+
+  it('says so in the wording of the archive', () => {
+    // An empty archive is not an account without chats.
+    renderEmpty('No archived chats.');
+    expect(screen.getByText('No archived chats.')).toBeDefined();
+  });
+});
 
 describe('ChatList presence', () => {
   it('marks an online peer with a green badge on the avatar', () => {

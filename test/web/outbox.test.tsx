@@ -43,6 +43,7 @@ function dialog(chat: ChatDto, lastMessage: DialogMessageDto | null): DialogDto 
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+    archived: false,
   };
 }
 

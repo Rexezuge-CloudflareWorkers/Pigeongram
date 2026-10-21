@@ -483,6 +483,12 @@ export interface DialogDto {
   readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
+  /**
+   * Whether the chat sits in the account's archive — Telegram's peer folder 1.
+   * The main list holds the chats in folder 0, and the archive the ones in
+   * folder 1; a chat is in exactly one of them.
+   */
+  archived: boolean;
 }
 
 /**

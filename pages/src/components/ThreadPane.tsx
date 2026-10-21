@@ -20,7 +20,19 @@ interface ThreadPaneProps {
    * The open chat's live presence, kept current by the dialogs.
    */
   presence: PresenceDto | null;
+  /**
+   * Whether the open chat sits in the account's archive.
+   */
+  archived: boolean;
+  /**
+   * Whether the chat's archive move is in flight.
+   */
+  archiving: boolean;
   onBack: () => void;
+  /**
+   * Moves the open chat into the archive, or back out of it.
+   */
+  onSetArchived: (archived: boolean) => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
@@ -32,7 +44,10 @@ export function ThreadPane({
   comments,
   selected,
   presence,
+  archived,
+  archiving,
   onBack,
+  onSetArchived,
   onForward,
   onOpenMedia,
   onReadThrough,
@@ -67,6 +82,8 @@ export function ThreadPane({
     <ThreadView
       chat={selected}
       presence={presence}
+      archived={archived}
+      archiving={archiving}
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}
       loadingOlder={threads.loadingOlder}
@@ -81,6 +98,7 @@ export function ThreadPane({
       focusMessageId={threads.thread?.focusMessageId ?? null}
       positions={threads.positions}
       onBack={onBack}
+      onSetArchived={onSetArchived}
       onLoadOlder={() => void threads.loadOlder()}
       onSend={threads.send}
       onAttach={threads.attach}

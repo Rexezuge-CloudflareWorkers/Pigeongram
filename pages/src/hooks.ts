@@ -164,10 +164,12 @@ export function useLoginFlow(): LoginFlowState {
  * Keeps one `/user/updates` socket attached, reconnecting with capped backoff.
  *
  * `onUpdate` receives live bridge events; `onReady` fires whenever the socket
- * (re)connects, which the app uses to refetch state it may have missed while
- * the socket was down.
+ * (re)connects. Its argument says whether the app should resync the state it
+ * may have missed: the first socket after a sign-in is the boot's own
+ * connection, and the app has just read everything it needs — a later socket
+ * means the connection dropped.
  */
-export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEvent) => void, onReady: () => void): boolean {
+export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEvent) => void, onReady: (resync: boolean) => void): boolean {
   const [connected, setConnected] = useState(false);
   const updateRef = useRef(onUpdate);
   const readyRef = useRef(onReady);
@@ -185,6 +187,9 @@ export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEven
     let socket: WebSocket | null = null;
     let retry = 0;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    // Whether this socket has already said `ready`. The first one is the
+    // boot's own connection; every socket after it is a reconnect.
+    let ready = false;
 
     const connect = (): void => {
       if (stopped) return;
@@ -203,7 +208,11 @@ export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEven
           return;
         }
         if (message.type === 'update') updateRef.current(message.update);
-        else if (message.type === 'ready') readyRef.current();
+        else if (message.type === 'ready') {
+          const resync = ready;
+          ready = true;
+          readyRef.current(resync);
+        }
       });
       current.addEventListener('close', () => {
         setConnected(false);

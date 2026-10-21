@@ -72,6 +72,7 @@ export function ThreadPane({
       loadingOlder={threads.loadingOlder}
       pending={threads.pending}
       error={threads.error}
+      botCommands={threads.botCommands}
       reactingIds={threads.reactingIds}
       votingIds={threads.votingIds}
       pressingButtonIds={threads.pressingButtonIds}

@@ -95,16 +95,63 @@ export async function streamMessageMedia(
 }
 
 /**
- * Streams a peer's profile photo. The version token the SPA carries is only
- * for cache busting — the photo itself is re-resolved here, so an expired
- * `file_reference` can never leak out of the bridge.
+A profile photo, whole.
+*/
+export interface AvatarImage {
+  mime: string;
+  bytes: Uint8Array;
+  /**
+   * The version token that identifies this photo. Telegram changes it when
+   * the photo changes, so it is the cache key — and it comes from the engine,
+   * never from the caller.
+   */
+  version: string;
+}
+
+/**
+ * Reads a peer's profile photo whole, with the version token that identifies
+ * it.
+ *
+ * Avatars are small, so they are buffered rather than streamed: the engine
+ * keeps the bytes, and a repeat request never reaches Telegram again.
  */
-export async function streamAvatar(client: TelegramClient, chatId: number, size: AvatarSize): Promise<MediaDownload> {
+export async function readAvatar(client: TelegramClient, chatId: number, size: AvatarSize): Promise<AvatarImage> {
   const peer = await client.getPeer(chatId).catch(() => null);
   if (!peer) throw new EngineError('Peer not found', 404);
   const photo = peer.photo;
   if (!photo) throw new EngineError('Peer has no profile photo', 404);
-  return fullDownload(client, photo[size], 'image/jpeg', false);
+  const chosen = photo[size];
+  return { mime: 'image/jpeg', bytes: await collect(client.downloadAsIterable(chosen, {})), version: chosen.uniqueFileId };
+}
+
+/**
+ * The version token of a peer's profile photo, or null when the peer has no
+ * photo. It identifies the bytes without reading them, so the engine can
+ * answer from its cache without asking Telegram.
+ */
+export async function readAvatarVersion(client: TelegramClient, chatId: number, size: AvatarSize): Promise<string | null> {
+  const peer = await client.getPeer(chatId).catch(() => null);
+  if (!peer?.photo) return null;
+  return peer.photo[size].uniqueFileId;
+}
+
+/**
+ * Collects a chunk stream into one buffer.
+ */
+async function collect(chunks: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for await (const chunk of chunks) {
+    parts.push(chunk);
+    total += chunk.length;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.length;
+  }
+  return bytes;
 }
 
 /**

@@ -28,6 +28,14 @@ interface Harness {
   alarms: number[];
   sockets: FakeSocket[];
   db: DatabaseSync;
+  /**
+   * The storage preparations the engine ran before its first event.
+   */
+  prepared: number[];
+  /**
+   * The work the engine left running outside the input gate.
+   */
+  backgrounded: number[];
 }
 
 /**
@@ -46,6 +54,8 @@ function createHarness(env: TestEnv = {}): Harness {
   const db = openNodeDatabase();
   const alarms: number[] = [];
   const sockets: FakeSocket[] = [];
+  const prepared: number[] = [];
+  const backgrounded: number[] = [];
   const transactional = createNodeTransactionalStorage(db);
   const storage = {
     sql: transactional.sql,
@@ -60,9 +70,17 @@ function createHarness(env: TestEnv = {}): Harness {
       sockets.push(socket);
     },
     getWebSockets: (): FakeSocket[] => sockets,
+    blockConcurrencyWhile: async <T>(callback: () => Promise<T>): Promise<T> => {
+      prepared.push(1);
+      return callback();
+    },
+    waitUntil: (promise: Promise<unknown>): void => {
+      backgrounded.push(1);
+      void promise;
+    },
   };
   const engine = new SessionEngine(state as unknown as DurableObjectState, env as CloudflareEnv);
-  return { engine, alarms, sockets, db };
+  return { engine, alarms, sockets, db, prepared, backgrounded };
 }
 
 function createSocket(): FakeSocket {
@@ -404,5 +422,14 @@ describe('SessionEngine (updates socket protocol)', () => {
     await engine.webSocketClose(socket as unknown as WebSocket);
     expect(alarms.length).toBe(1);
     expect(sockets).toEqual([socket]);
+  });
+});
+
+describe('SessionEngine (cold start)', () => {
+  it('prepares the storage before the first event is dispatched', () => {
+    // The Durable Object hands out one event at a time, so the migrations the
+    // storage needs are paid once, while the object is still empty.
+    const { prepared } = createHarness();
+    expect(prepared.length).toBe(1);
   });
 });

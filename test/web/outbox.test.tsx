@@ -4,7 +4,7 @@ import type { PendingMessage } from '../../pages/src/outbox';
 import { pendingAsMessage, withPendingDialogs } from '../../pages/src/outbox';
 import type { PendingBody } from '../../pages/src/useOutbox';
 import { useOutbox } from '../../pages/src/useOutbox';
-import type { ChatDto, DialogDto, MessageDto } from '../../pages/src/types';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../pages/src/types';
 
 afterEach(cleanup);
 
@@ -34,7 +34,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
   };
 }
 
-function dialog(chat: ChatDto, lastMessage: MessageDto | null): DialogDto {
+function dialog(chat: ChatDto, lastMessage: DialogMessageDto | null): DialogDto {
   return {
     chat,
     lastMessage,
@@ -43,6 +43,21 @@ function dialog(chat: ChatDto, lastMessage: MessageDto | null): DialogDto {
     readOutboxMaxId: 0,
     pinned: false,
     muted: false,
+  };
+}
+
+/**
+The chat list's view of a message: the list renders a preview, not a thread.
+*/
+function dialogMessage(source: MessageDto): DialogMessageDto {
+  return {
+    id: source.id,
+    date: source.date,
+    text: source.text,
+    media: source.media,
+    poll: source.poll,
+    outgoing: source.outgoing,
+    service: source.service,
   };
 }
 
@@ -70,7 +85,7 @@ function pending(overrides: Partial<PendingMessage> = {}): PendingMessage {
 
 describe('the chat list overlay', () => {
   it('previews a pending send and drops it again when it is discarded', () => {
-    const dialogs = [dialog(bob, message({ id: 10, chatId: 2, text: 'see you' })), dialog(carol, null)];
+    const dialogs = [dialog(bob, dialogMessage(message({ id: 10, chatId: 2, text: 'see you' }))), dialog(carol, null)];
 
     const rows = withPendingDialogs(dialogs, [pending()], 2);
     expect(rows[0].chat.id).toBe(2);

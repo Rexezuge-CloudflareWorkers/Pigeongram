@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { AvatarCache } from '../../worker/src/session/avatar-cache';
 import type { TelegramDriver } from '../../worker/src/session/driver';
 import { EngineError } from '../../worker/src/session/errors';
 import type { MediaDownload } from '../../worker/src/session/media';
@@ -149,17 +150,52 @@ describe('uploadGroupResponse', () => {
 });
 
 describe('avatarResponse', () => {
-  it('resolves the requested size and caches for a day', async () => {
-    const streamAvatar = vi.fn(async () => download({ mime: 'image/jpeg', size: null, length: null }));
-    const driver = { streamAvatar } as unknown as TelegramDriver;
+  /**
+   * A cache the test can inspect: the real one is the engine's SQLite.
+   */
+  function fakeCache(): { cache: AvatarCache; stored: Map<string, string> } {
+    const stored = new Map<string, string>();
+    const cache = {
+      read: (version: string, size: string) => {
+        const bytes = stored.get(`${version}:${size}`);
+        return bytes === undefined ? null : { mime: 'image/jpeg', bytes: new TextEncoder().encode(bytes) };
+      },
+      write: (version: string, size: string, _mime: string, bytes: Uint8Array): void => {
+        stored.set(`${version}:${size}`, new TextDecoder().decode(bytes));
+      },
+    } as unknown as AvatarCache;
+    return { cache, stored };
+  }
+
+  it('serves the cached bytes and keeps them for a day', async () => {
+    const readAvatarVersion = vi.fn(async () => 'version-1');
+    const readAvatar = vi.fn(async () => ({ mime: 'image/jpeg', bytes: new Uint8Array([1, 2, 3]), version: 'version-1' }));
+    const driver = { readAvatarVersion, readAvatar } as unknown as TelegramDriver;
+    const { cache, stored } = fakeCache();
     const { url } = target('/user/avatar?chatId=7&size=big');
 
-    const response = await avatarResponse(driver, url);
+    const response = await avatarResponse(driver, cache, url);
 
-    expect(streamAvatar).toHaveBeenCalledWith(7, 'big');
+    expect(readAvatarVersion).toHaveBeenCalledWith(7, 'big');
+    expect(readAvatar).toHaveBeenCalledWith(7, 'big');
     expect(response.headers.get('content-type')).toBe('image/jpeg');
     expect(response.headers.get('cache-control')).toBe('private, max-age=86400');
-    // No exact size, so no range promises.
-    expect(response.headers.get('accept-ranges')).toBeNull();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    // The bytes are kept, so the next request never reaches Telegram again.
+    expect(stored.has('version-1:big')).toBe(true);
+  });
+
+  it('answers from the cache without asking Telegram for the bytes', async () => {
+    const readAvatarVersion = vi.fn(async () => 'version-1');
+    const readAvatar = vi.fn(async () => ({ mime: 'image/jpeg', bytes: new Uint8Array([1]), version: 'version-1' }));
+    const driver = { readAvatarVersion, readAvatar } as unknown as TelegramDriver;
+    const { cache } = fakeCache();
+    const { url } = target('/user/avatar?chatId=7&size=small');
+    await avatarResponse(driver, cache, url);
+
+    const cached = await avatarResponse(driver, cache, url);
+
+    expect(readAvatar).toHaveBeenCalledTimes(1);
+    expect(cached.headers.get('content-type')).toBe('image/jpeg');
   });
 });

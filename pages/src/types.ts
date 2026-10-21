@@ -444,7 +444,7 @@ export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
 
 export interface DialogDto {
   chat: ChatDto;
-  lastMessage: MessageDto | null;
+  lastMessage: DialogMessageDto | null;
   unread: number;
   /**
   Id of the last read incoming message; incoming messages after it are the
@@ -458,6 +458,25 @@ export interface DialogDto {
   readOutboxMaxId: number;
   pinned: boolean;
   muted: boolean;
+}
+
+/**
+The chat list's view of a dialog's last message.
+
+A trimmed {@link MessageDto}: the list renders a preview, a timestamp and a
+media or poll label, and nothing else.
+*/
+export interface DialogMessageDto {
+  id: number;
+  /**
+  Unix milliseconds.
+  */
+  date: number;
+  text: string;
+  media: MessageMediaDto | null;
+  poll: MessagePollDto | null;
+  outgoing: boolean;
+  service: boolean;
 }
 
 export type UpdateEvent =
@@ -557,6 +576,34 @@ export type RpcMethod =
   | 'getComments'
   | 'sendComment'
   | 'getBotCommands';
+
+/**
+The methods a `batch` call may carry.
+
+Deliberately the read-only half of {@link RpcMethod}: a batch runs its calls
+concurrently, so a write in it would have no defined completion order.
+`readHistory` is excluded for the same reason it stays a single call — it
+mutates the account's read watermark.
+*/
+export type BatchableRpcMethod =
+  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
+
+/**
+One call inside a `batch`.
+*/
+export interface RpcBatchCall {
+  method: BatchableRpcMethod;
+  params?: Record<string, unknown>;
+}
+
+/**
+The outcome of one call inside a `batch`.
+*/
+export interface RpcBatchOutcome {
+  ok: boolean;
+  result?: unknown;
+  error?: string;
+}
 
 export interface GetMeResult {
   me: MeDto;

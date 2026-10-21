@@ -2,7 +2,7 @@ import type { FileLocation } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
 import type { DownloadParams } from '../../worker/src/session/media-stream';
-import { streamAvatar, streamMessageMedia } from '../../worker/src/session/media';
+import { readAvatar, readAvatarVersion, streamMessageMedia } from '../../worker/src/session/media';
 
 /**
  * The window arithmetic of the media downloads: which aligned offset a browser
@@ -142,14 +142,27 @@ describe('streamMessageMedia', () => {
   });
 });
 
-describe('streamAvatar', () => {
-  it('resolves the requested profile photo size', async () => {
-    const photo = { small: { fileSize: 40 }, big: { fileSize: 50 } };
+describe('readAvatar', () => {
+  it('reads the requested profile photo size whole, with its version token', async () => {
+    const photo = { small: { fileSize: 40, uniqueFileId: 'small-1' }, big: { fileSize: 50, uniqueFileId: 'big-1' } };
     const { client, requests } = fakeClient(PHOTO, { photo });
 
-    const download = await streamAvatar(client, 1, 'big');
+    const avatar = await readAvatar(client, 1, 'big');
 
-    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, status: 200 });
-    expect(requests[0]?.fileSize).toBe(50);
+    expect(avatar.mime).toBe('image/jpeg');
+    expect(avatar.version).toBe('big-1');
+    expect(avatar.bytes.byteLength).toBe(SIZE);
+    // The whole photo, not a window of it.
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.offset).toBeUndefined();
+  });
+
+  it('names the photo without reading its bytes', async () => {
+    const photo = { small: { fileSize: 40, uniqueFileId: 'small-1' }, big: { fileSize: 50, uniqueFileId: 'big-1' } };
+    const { client, requests } = fakeClient(PHOTO, { photo });
+
+    expect(await readAvatarVersion(client, 1, 'small')).toBe('small-1');
+    // The version identifies the bytes without fetching them.
+    expect(requests).toHaveLength(0);
   });
 });

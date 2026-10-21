@@ -1,4 +1,5 @@
 import type { TelegramDriver } from './driver';
+import type { AvatarCache } from './avatar-cache';
 import { EngineError } from './errors';
 import type { MediaDownload } from './media';
 import { requirePeerId } from './params';
@@ -24,14 +25,22 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
   return mediaResponse(download, FILE_CACHE_SECONDS);
 }
 
-export async function avatarResponse(driver: TelegramDriver, url: URL): Promise<Response> {
+export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL): Promise<Response> {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const size = url.searchParams.get('size') ?? 'small';
   if (size !== 'small' && size !== 'big') {
     throw new EngineError('size must be small or big', 400);
   }
-  const download = await driver.streamAvatar(chatId, size);
-  return mediaResponse(download, AVATAR_CACHE_SECONDS);
+  // The cache key is the version token the engine resolved, never the `v` the
+  // caller sent: a caller must not be able to name another peer's bytes.
+  const version = await driver.readAvatarVersion(chatId, size);
+  const cached = version === null ? null : cache.read(version, size);
+  if (cached) {
+    return avatarBytes(cached.mime, cached.bytes);
+  }
+  const avatar = await driver.readAvatar(chatId, size);
+  cache.write(avatar.version, size, avatar.mime, avatar.bytes);
+  return avatarBytes(avatar.mime, avatar.bytes);
 }
 
 export async function uploadResponse(driver: TelegramDriver, request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
@@ -84,6 +93,25 @@ function mediaResponse(download: MediaDownload, cacheSeconds: number): Response 
   if (download.size !== null) headers['accept-ranges'] = 'bytes';
   if (download.contentRange !== null) headers['content-range'] = download.contentRange;
   return new Response(download.stream, { status: download.status, headers });
+}
+
+/**
+ * A cached avatar, served whole. The bytes are the ones Telegram sent, so the
+ * browser's own cache can hold them for a day like any other profile photo.
+ */
+function avatarBytes(mime: string, bytes: Uint8Array): Response {
+  // Copied into a plain buffer: the storage may hand back a view over a
+  // shared buffer, which the response body does not take.
+  const body = new Uint8Array(bytes.byteLength);
+  body.set(bytes);
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': mime,
+      'content-length': String(body.byteLength),
+      'cache-control': `private, max-age=${AVATAR_CACHE_SECONDS}`,
+    },
+  });
 }
 
 /**

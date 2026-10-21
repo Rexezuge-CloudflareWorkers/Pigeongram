@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { avatarUrl } from '../api';
 import { initials } from '../format';
 import type { PresenceDto } from '../types';
@@ -6,31 +6,59 @@ import type { PresenceDto } from '../types';
 interface AvatarProps {
   chatId: number;
   /**
-  The DTO's avatar version token; null falls back to initials.
-  */
+   * The DTO's avatar version token; null falls back to initials.
+   */
   photo: string | null;
   title: string;
   kind?: string;
   small?: boolean;
   /**
-  The peer's presence, when it has one. Only a person can be online, so the
-  badge appears for an online user and for nobody else.
-  */
+   * The peer's presence, when it has one. Only a person can be online, so the
+   * badge appears for an online user and for nobody else.
+   */
   presence?: PresenceDto | null;
 }
+
+/**
+How far outside the viewport an avatar starts loading. The chat list asks for
+one avatar per row, and every one of them is a request through the session
+engine — which hands out one request at a time — so a row nobody is looking
+at must not ask for its photo.
+*/
+const LOAD_MARGIN = '300px';
 
 /**
 Profile photo with the initials fallback. A failed load is remembered per
 version token, so a refreshed photo gets a fresh chance.
 
-An online peer carries a green badge on the avatar's corner, the way the
-official clients mark it.
+The image is only requested once the avatar nears the viewport; until then the
+initials stand in. An online peer carries a green badge on the avatar's
+corner, the way the official clients mark it.
 */
 export function Avatar({ chatId, photo, title, kind, small, presence }: AvatarProps) {
   const [failedFor, setFailedFor] = useState<string | null>(null);
-  const showImage = photo !== null && failedFor !== photo;
+  // Without an observer there is no viewport to wait for: ask at once.
+  const [nearby, setNearby] = useState(() => typeof IntersectionObserver === 'undefined');
+  const holder = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const element = holder.current;
+    if (!element || nearby) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.every((entry) => !entry.isIntersecting)) return;
+        setNearby(true);
+        observer.disconnect();
+      },
+      { rootMargin: LOAD_MARGIN },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [nearby]);
+
+  const showImage = photo !== null && failedFor !== photo && nearby;
   const avatar = (
-    <span className={`avatar${small ? ' small' : ''}${kind ? ` kind-${kind}` : ''}`}>
+    <span ref={holder} className={`avatar${small ? ' small' : ''}${kind ? ` kind-${kind}` : ''}`}>
       {showImage ? <img src={avatarUrl(chatId, photo)} alt="" loading="lazy" onError={() => setFailedFor(photo)} /> : initials(title)}
     </span>
   );

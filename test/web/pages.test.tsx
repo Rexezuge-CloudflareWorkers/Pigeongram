@@ -1,7 +1,16 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '@telegram-web-client/pages';
-import type { ChatDto, DialogDto, MessageDto, MessageMarkupDto, MessageMediaDto, MessagePollDto, UpdateEvent } from '../../pages/src/types';
+import type {
+  ChatDto,
+  DialogDto,
+  DialogMessageDto,
+  MessageDto,
+  MessageMarkupDto,
+  MessageMediaDto,
+  MessagePollDto,
+  UpdateEvent,
+} from '../../pages/src/types';
 
 interface FetchCall {
   method: string;
@@ -18,9 +27,11 @@ function json(body: unknown, status = 200): Response {
 
 /**
 Installs a fetch mock routed by path; `cb` returns `undefined` for a miss, and
-may answer with a promise the test resolves later.
+may answer with a promise the test resolves later. The callback also receives
+the recorded calls, so it can add to them — a batched read records the calls it
+carries beside the request that carried them.
 */
-function installFetch(cb: (call: FetchCall) => Response | Promise<Response> | undefined): FetchCall[] {
+function installFetch(cb: (call: FetchCall, calls: FetchCall[]) => Response | Promise<Response> | undefined): FetchCall[] {
   const calls: FetchCall[] = [];
   vi.stubGlobal(
     'fetch',
@@ -30,7 +41,7 @@ function installFetch(cb: (call: FetchCall) => Response | Promise<Response> | un
       const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
       const call: FetchCall = { method: init?.method ?? 'GET', path: url.pathname, body };
       calls.push(call);
-      const response = await cb(call);
+      const response = await cb(call, calls);
       if (!response) throw new Error(`Unhandled request: ${call.method} ${call.path}`);
       return response;
     }),
@@ -157,30 +168,33 @@ class FakeXhr {
   }
 }
 
+/**
+The chat list's view of a message: the list renders a preview, not a thread.
+*/
+function dialogMessage(source: MessageDto): DialogMessageDto {
+  return {
+    id: source.id,
+    date: source.date,
+    text: source.text,
+    media: source.media,
+    poll: source.poll,
+    outgoing: source.outgoing,
+    service: source.service,
+  };
+}
+
 const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 const dialogs: DialogDto[] = [
   {
     chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true, presence: null },
     lastMessage: {
       id: 10,
-      chatId: 2,
-      groupedId: null,
-      senderId: 2,
-      senderName: 'Bob',
-      senderPhoto: null,
-      outgoing: false,
       date: 1_700_000_000_000,
       text: 'see you',
-      entities: [],
-      reactions: [],
-      service: false,
       media: null,
       poll: null,
-      markup: null,
-      reply: null,
-      forward: null,
-      views: null,
-      comments: null,
+      outgoing: false,
+      service: false,
     },
     unread: 1,
     readInboxMaxId: 9,
@@ -298,6 +312,54 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
 }
 
 /**
+Answers a batched read: every call inside it is answered on its own and the
+outcomes come back in order, the way the engine does. Each sub-call is
+recorded as if it had been sent on its own, so a test can still watch what the
+SPA asked for.
+*/
+async function answerBatch(
+  call: FetchCall,
+  answer: (call: FetchCall) => Response | Promise<Response> | undefined,
+  record: (call: FetchCall) => void,
+): Promise<Response> {
+  const subCalls = ((call.body?.params as { calls?: unknown } | undefined)?.calls ?? []) as Array<{
+    method: string;
+    params?: Record<string, unknown>;
+  }>;
+  const results: Array<{ ok: boolean; result?: unknown; error?: string }> = [];
+  for (const sub of subCalls) {
+    const subCall: FetchCall = { method: 'POST', path: call.path, body: { method: sub.method, params: sub.params ?? {} } };
+    record(subCall);
+    const response = await answer(subCall);
+    if (!response) {
+      results.push({ ok: false, error: `Unhandled request: ${sub.method}` });
+      continue;
+    }
+    const payload = (await response.json()) as unknown;
+    results.push(
+      response.ok ? { ok: true, result: payload } : { ok: false, error: (payload as { error?: string } | null)?.error ?? 'failed' },
+    );
+  }
+  return json({ results });
+}
+
+/**
+A fetch callback for the signed-in bridge: it answers the engine's surface and
+expands a batch into the calls it carries, the way the engine does.
+*/
+function bridgeFetch(
+  answer: (call: FetchCall) => Response | undefined,
+  state: () => Response = () => json({ phase: 'authorized', authorized: true, me }),
+): (call: FetchCall) => Response | Promise<Response> | undefined {
+  return (call) => {
+    if (call.path === '/user/state') return state();
+    if (call.path !== '/user/rpc') return;
+    if (call.body?.method === 'batch') return answerBatch(call, answer, () => {});
+    return answer(call);
+  };
+}
+
+/**
 Routes the signed-in bridge surface — state, me, dialogs, per-chat history and
 reads — with an `rpc` escape hatch for test-specific methods.
 */
@@ -308,13 +370,7 @@ function installSignedInFetch(
     rpc?: (call: FetchCall) => Response | Promise<Response> | undefined;
   } = {},
 ): FetchCall[] {
-  return installFetch((call) => {
-    if (call.path === '/user/state') {
-      return json({ phase: 'authorized', authorized: true, me });
-    }
-    if (call.path !== '/user/rpc') {
-      return;
-    }
+  const answer = (call: FetchCall): Response | Promise<Response> | undefined => {
     const params = (call.body?.params ?? {}) as Record<string, unknown>;
     switch (call.body?.method) {
       case 'getMe': {
@@ -336,7 +392,20 @@ function installSignedInFetch(
         return options.rpc?.(call) ?? json({ error: `Unknown RPC method: ${String(call.body?.method)}` }, 404);
       }
     }
+  };
+  const calls = installFetch((call, all) => {
+    if (call.path === '/user/state') {
+      return json({ phase: 'authorized', authorized: true, me });
+    }
+    if (call.path !== '/user/rpc') {
+      return;
+    }
+    if (call.body?.method === 'batch') {
+      return answerBatch(call, answer, (sub) => all.push(sub));
+    }
+    return answer(call);
   });
+  return calls;
 }
 
 /**
@@ -559,8 +628,11 @@ describe('App', () => {
         phase = 'authorized';
         return json({ phase: 'authorized', authorized: true, me });
       }
-      if (call.path === '/user/rpc') {
-        switch (call.body?.method) {
+      if (call.path !== '/user/rpc') {
+        return;
+      }
+      const answer = (sub: FetchCall): Response => {
+        switch (sub.body?.method) {
           case 'getMe': {
             return json({ me });
           }
@@ -571,7 +643,11 @@ describe('App', () => {
             return json({});
           }
         }
+      };
+      if (call.body?.method === 'batch') {
+        return answerBatch(call, answer, () => {});
       }
+      return answer(call);
     });
 
     render(<App />);
@@ -584,7 +660,9 @@ describe('App', () => {
     fireEvent.change(screen.getByPlaceholderText('Login code'), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit code' }));
 
-    expect(await screen.findByText('Bob')).toBeDefined();
+    // The sign-in has to finish before the shell reads anything, so the
+    // boot's own round trips are part of this wait.
+    expect(await screen.findByText('Bob', {}, { timeout: 5000 })).toBeDefined();
   });
 
   describe('browser history', () => {
@@ -670,7 +748,17 @@ describe('App', () => {
         comments: { hasComments: true, count: 2, discussionChatId: -1_000_000_000_030 },
       });
       installSignedInFetch({
-        dialogs: [{ chat: channel, lastMessage: post, unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false }],
+        dialogs: [
+          {
+            chat: channel,
+            lastMessage: dialogMessage(post),
+            unread: 0,
+            readInboxMaxId: 7,
+            readOutboxMaxId: 0,
+            pinned: false,
+            muted: false,
+          },
+        ],
         history: () => json({ messages: [post] }),
         rpc: (call) =>
           call.body?.method === 'getComments'
@@ -720,11 +808,8 @@ describe('App', () => {
   });
 
   it('renders the chat list and opens a thread once authorized', async () => {
-    installFetch((call) => {
-      if (call.path === '/user/state') {
-        return json({ phase: 'authorized', authorized: true, me });
-      }
-      if (call.path === '/user/rpc') {
+    installFetch(
+      bridgeFetch((call) => {
         switch (call.body?.method) {
           case 'getMe': {
             return json({ me });
@@ -742,8 +827,8 @@ describe('App', () => {
             return json({ error: 'Unknown RPC method' }, 404);
           }
         }
-      }
-    });
+      }),
+    );
 
     render(<App />);
 
@@ -751,6 +836,36 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bob'));
     expect(await screen.findByText('oldest')).toBeDefined();
     expect(screen.getAllByText('see you').length).toBeGreaterThan(0);
+  });
+
+  it('reads the account and the chat list in one batched request', async () => {
+    const calls = installSignedInFetch();
+
+    render(<App />);
+    expect(await screen.findByText('Bob')).toBeDefined();
+
+    const batches = calls.filter((call) => call.body?.method === 'batch');
+    expect(batches).toHaveLength(1);
+    const carried = (batches[0].body?.params as { calls?: Array<{ method: string }> }).calls ?? [];
+    expect(carried.map((call) => call.method)).toEqual(['getMe', 'getDialogs']);
+  });
+
+  it('does not read the chat list twice when the updates socket opens', async () => {
+    const calls = installSignedInFetch();
+
+    render(<App />);
+    expect(await screen.findByText('Bob')).toBeDefined();
+
+    // The socket's first `ready` follows the boot's own read, so the list is
+    // not fetched a second time.
+    const socket = FakeWebSocket.instances.at(-1);
+    if (!socket) throw new Error('No updates socket is open');
+    act(() => {
+      socket.emit('message', { data: JSON.stringify({ type: 'ready' }) });
+    });
+
+    const lists = calls.filter((call) => call.body?.method === 'getDialogs');
+    expect(lists).toHaveLength(1);
   });
 
   it('loads the slash-command menu for an open bot chat', async () => {
@@ -954,11 +1069,8 @@ describe('App', () => {
 
   it('toggles a reaction optimistically and posts sendReaction', async () => {
     const sent: unknown[] = [];
-    installFetch((call) => {
-      if (call.path === '/user/state') {
-        return json({ phase: 'authorized', authorized: true, me });
-      }
-      if (call.path === '/user/rpc') {
+    installFetch(
+      bridgeFetch((call) => {
         switch (call.body?.method) {
           case 'getMe': {
             return json({ me });
@@ -980,8 +1092,8 @@ describe('App', () => {
             return json({ error: 'Unknown RPC method' }, 404);
           }
         }
-      }
-    });
+      }),
+    );
 
     render(<App />);
 
@@ -1127,7 +1239,7 @@ describe('App', () => {
     it('previews the question in the chat list', async () => {
       const pollDialog: DialogDto = {
         chat: carol,
-        lastMessage: pollMessage({ id: 30, chatId: 3 }),
+        lastMessage: dialogMessage(pollMessage({ id: 30, chatId: 3 })),
         unread: 0,
         readInboxMaxId: 1,
         readOutboxMaxId: 0,
@@ -1485,10 +1597,11 @@ describe('App', () => {
         expect(document.querySelector('[data-message-id="30"]')?.classList.contains('reply-flash')).toBe(true);
       });
       const jump = calls.find((call) => {
-        const params = call.body?.params as { offsetId?: number } | undefined;
-        return call.body?.method === 'getHistory' && params?.offsetId === 30;
+        const params = call.body?.params as { anchorId?: number } | undefined;
+        return call.body?.method === 'getHistory' && params?.anchorId === 30;
       });
-      expect(jump?.body?.params).toMatchObject({ offsetId: 30, addOffset: -25 });
+      // The jump names the post it wants; the engine reads around it.
+      expect(jump?.body?.params).toMatchObject({ anchorId: 30 });
     });
 
     it('hands an unknown Telegram link to the installed app', async () => {
@@ -2300,7 +2413,7 @@ describe('App', () => {
 
     const channelDialog: DialogDto = {
       chat: channel,
-      lastMessage: post,
+      lastMessage: dialogMessage(post),
       unread: 0,
       readInboxMaxId: 7,
       readOutboxMaxId: 0,
@@ -2787,7 +2900,7 @@ describe('App', () => {
         canSendMessages,
         presence: null,
       };
-      return { chat, lastMessage: post, unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false };
+      return { chat, lastMessage: dialogMessage(post), unread: 0, readInboxMaxId: 7, readOutboxMaxId: 0, pinned: false, muted: false };
     }
 
     it('replaces the composer with a notice in a read-only channel', async () => {

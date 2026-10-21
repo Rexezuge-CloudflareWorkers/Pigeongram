@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react';
 import type { Route, RouteApplyOptions } from './routes';
 import type { DialogDto } from './types';
-import type { CommentsController } from './comments-controller';
-import type { ThreadController } from './thread-controller';
+import type { CommentsController, PrefetchedComments } from './comments-controller';
+import type { OpenThreadResult, ThreadController } from './thread-controller';
 
 /**
  * Applies a `Route` to the thread and comments controllers.
@@ -58,10 +58,15 @@ export function useChatNavigation({
       const reuse = !options.force && open?.chat.id === route.chatId && (route.postId === null || loadedPost);
 
       let page = reuse && open ? open.messages : null;
+      let opened: OpenThreadResult | null = null;
       if (!reuse) {
         comments.close();
-        page = await threads.open(dialog, route.postId === null ? undefined : { postId: route.postId });
+        // One read covers the window, the chat's slash commands and the
+        // post's comments: the engine reads them at the same time, where
+        // separate requests would queue behind each other.
+        opened = await threads.open(dialog, route.postId === null ? undefined : { postId: route.postId });
         if (ticket !== sequence.current) return;
+        page = opened.messages;
       }
 
       const post = page?.find((message) => message.id === route.postId) ?? null;
@@ -77,7 +82,15 @@ export function useChatNavigation({
         options.replaceTo({ view: 'chat', chatId: route.chatId, postId: null });
         return;
       }
-      await comments.open(dialog.chat, post);
+      // The comments came with the window, so the screen does not ask for
+      // them again; an already-open thread has no such read to hand over.
+      const prefetched: PrefetchedComments | undefined =
+        opened === null
+          ? undefined
+          : opened.comments === null
+            ? { ok: false, error: opened.commentsError ?? 'The comments could not be read' }
+            : { ok: true, result: opened.comments };
+      await comments.open(dialog.chat, post, prefetched);
     },
     [comments, threads],
   );

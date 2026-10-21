@@ -1,6 +1,6 @@
 import type { PendingMessage } from './outbox';
 import type { ThreadPositionMemory } from './thread-position';
-import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from './types';
+import type { BotCommandDto, ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from './types';
 import type { UploadRequest } from './upload';
 
 /**
@@ -25,6 +25,12 @@ export interface ThreadViewProps {
    */
   pending: readonly PendingMessage[];
   error: string | null;
+  /**
+   * The slash-command menu of the open chat, empty for a chat without one.
+   * It is read together with the thread's window, so the composer offers the
+   * menu as soon as the thread is there.
+   */
+  botCommands: readonly BotCommandDto[];
   /**
    * Message ids with a reaction request in flight; their chips are disabled.
    */

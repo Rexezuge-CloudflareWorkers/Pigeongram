@@ -3,7 +3,8 @@ import { User } from '@mtcute/core';
 import type { MeDto, MessageDto, UpdateEvent } from '../types';
 import { toMeDto } from './dto';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
-import { streamAvatar, streamMessageMedia } from './media';
+import { readAvatar, readAvatarVersion, streamMessageMedia } from './media';
+import type { AvatarImage } from './media';
 import type { UploadGroupSpec, UploadSpec } from './upload-spec';
 import { sendUploadedMedia, sendUploadedMediaGroup } from './upload';
 import { createMtBundle } from './mtproto/client';
@@ -249,8 +250,18 @@ export class TelegramDriver {
     return streamMessageMedia(this.#ensure().client, chatId, messageId, options);
   }
 
-  async streamAvatar(chatId: number, size: AvatarSize): Promise<MediaDownload> {
-    return streamAvatar(this.#ensure().client, chatId, size);
+  /**
+   * Reads a profile photo whole, with the version token that identifies it.
+   */
+  async readAvatar(chatId: number, size: AvatarSize): Promise<AvatarImage> {
+    return readAvatar(this.#ensure().client, chatId, size);
+  }
+
+  /**
+   * The version token of a profile photo, without reading its bytes.
+   */
+  async readAvatarVersion(chatId: number, size: AvatarSize): Promise<string | null> {
+    return readAvatarVersion(this.#ensure().client, chatId, size);
   }
 
   async sendUpload(spec: UploadSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto> {

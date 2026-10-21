@@ -1,3 +1,4 @@
+import { toDialogMessage } from './dialog-message';
 import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
 
 /**
@@ -16,7 +17,7 @@ export function applyNewMessage(dialogs: DialogDto[], message: MessageDto, activ
   const read = message.outgoing || message.chatId === activeChatId;
   const updated: DialogDto = {
     ...dialog,
-    lastMessage: message,
+    lastMessage: toDialogMessage(message),
     unread: read ? dialog.unread : dialog.unread + 1,
   };
 
@@ -31,7 +32,9 @@ export function applyNewMessage(dialogs: DialogDto[], message: MessageDto, activ
 
 export function applyEditedMessage(dialogs: DialogDto[], message: MessageDto): DialogDto[] {
   return dialogs.map((dialog) =>
-    dialog.chat.id === message.chatId && dialog.lastMessage?.id === message.id ? { ...dialog, lastMessage: message } : dialog,
+    dialog.chat.id === message.chatId && dialog.lastMessage?.id === message.id
+      ? { ...dialog, lastMessage: toDialogMessage(message) }
+      : dialog,
   );
 }
 

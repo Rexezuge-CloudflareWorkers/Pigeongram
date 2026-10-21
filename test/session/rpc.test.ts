@@ -227,6 +227,23 @@ describe('getHistory dispatch', () => {
     await dispatchRpc(client, 'getHistory', { chatId: 1, addOffset: 40 });
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
   });
+
+  it('reads around an anchored post, with the newer context beside it', async () => {
+    const { client, calls } = fakeHistoryClient([[message(30), message(29)]]);
+    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
+
+    expect(result.messages.map((entry) => entry.id)).toEqual([29, 30]);
+    expect(calls).toEqual([{ chatId: 1, params: { limit: 50, offset: { id: 30, date: 0 }, addOffset: -25 } }]);
+  });
+
+  it('falls back to the page that ends at an anchor the window missed', async () => {
+    const { client, calls } = fakeHistoryClient([[message(29)], [message(28), message(27)]]);
+    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
+
+    expect(result.messages.map((entry) => entry.id)).toEqual([27, 28]);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual({ chatId: 1, params: { limit: 50, offset: { id: 31, date: 0 } } });
+  });
 });
 
 describe('forwardMessages dispatch', () => {
@@ -441,5 +458,78 @@ describe('sendMessage dispatch', () => {
       await expect(dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId })).rejects.toThrow('randomId');
     }
     expect(calls).toEqual([]);
+  });
+});
+
+describe('batch dispatch', () => {
+  /**
+   * A fake client whose reads are answered one at a time, so a batch can be
+   * observed to run its calls together.
+   */
+  function fakeBatchClient(): { client: TelegramClient; calls: string[] } {
+    const calls: string[] = [];
+    const client = {
+      getMe: async () => {
+        calls.push('getMe');
+        return new User(rawUser);
+      },
+      iterDialogs: async function* () {
+        calls.push('getDialogs');
+        yield { peer: new User(rawUser) };
+      },
+      call: async (request: { _: string }) => {
+        calls.push(request._);
+        return [];
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('answers every call in the order it was given', async () => {
+    const { client } = fakeBatchClient();
+
+    const result = (await dispatchRpc(client, 'batch', {
+      calls: [{ method: 'getMe' }, { method: 'getDialogs', params: { limit: 10 } }],
+    })) as { results: Array<{ ok: boolean; result?: unknown }> };
+
+    expect(result.results).toHaveLength(2);
+    expect(result.results[0].ok).toBe(true);
+    expect(result.results[0].result).toEqual({ me: expect.objectContaining({ id: 1 }) });
+    expect(result.results[1].ok).toBe(true);
+  });
+
+  it('keeps a failed call from taking the reads beside it down', async () => {
+    const { client } = fakeBatchClient();
+
+    const result = (await dispatchRpc(client, 'batch', {
+      calls: [{ method: 'getHistory', params: { chatId: 0 } }, { method: 'getMe' }],
+    })) as { results: Array<{ ok: boolean; error?: string }> };
+
+    expect(result.results[0].ok).toBe(false);
+    expect(result.results[0].error).toContain('chatId');
+    expect(result.results[1].ok).toBe(true);
+  });
+
+  it('refuses a write, which has no defined order in a batch', async () => {
+    const { client, calls } = fakeBatchClient();
+
+    await expect(dispatchRpc(client, 'batch', { calls: [{ method: 'sendMessage', params: { chatId: 1, text: 'hi' } }] })).rejects.toThrow(
+      'batchable read method',
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses a nested batch', async () => {
+    const { client } = fakeBatchClient();
+
+    await expect(dispatchRpc(client, 'batch', { calls: [{ method: 'batch' }] })).rejects.toThrow('batchable read method');
+  });
+
+  it('refuses an empty batch and one that is too long', async () => {
+    const { client } = fakeBatchClient();
+
+    await expect(dispatchRpc(client, 'batch', { calls: [] })).rejects.toThrow('at least one');
+    const many = Array.from({ length: 9 }, () => ({ method: 'getMe' }));
+    await expect(dispatchRpc(client, 'batch', { calls: many })).rejects.toThrow('at most 8');
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { fetchDialogs, fetchMe, logout, readHistory } from './api';
+import { fetchBootstrap, fetchDialogs, logout, readHistory } from './api';
 import { ChatList } from './components/ChatList';
 import { CheckingAccess } from './components/CheckingAccess';
 import { ForwardPicker } from './components/ForwardPicker';
@@ -105,6 +105,16 @@ export function App() {
     dialogsRef.current = dialogs;
   }, [dialogs]);
 
+  /**
+  Folds a freshly read chat list in. The ref is set first: boot applies the
+  URL route immediately after this returns, before React has committed the new
+  dialogs.
+  */
+  const applyDialogs = useCallback((next: DialogDto[]): void => {
+    dialogsRef.current = next;
+    setDialogs(next);
+  }, []);
+
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
   const applyRoute = useChatNavigation({ dialogs: dialogsRef, threads, comments });
   const canOpen = useCallback(
@@ -131,16 +141,13 @@ export function App() {
     setDialogsLoading(true);
     try {
       const result = await fetchDialogs();
-      // Set the ref first: boot applies the URL route immediately after this
-      // returns, before React has committed the new dialogs.
-      dialogsRef.current = result.dialogs;
-      setDialogs(result.dialogs);
+      applyDialogs(result.dialogs);
     } catch (failure) {
       reportError(failure);
     } finally {
       setDialogsLoading(false);
     }
-  }, [reportError]);
+  }, [applyDialogs, reportError]);
 
   const booted = useRef(false);
   useEffect(() => {
@@ -153,14 +160,22 @@ export function App() {
     void (async () => {
       if (state?.me) setMe(state.me);
       try {
-        setMe((await fetchMe()).me);
-      } catch (failure) {
-        reportError(failure);
+        // The account and the chat list come back in one request: the engine
+        // reads them at the same time, where separate requests would queue
+        // behind each other.
+        const boot = await fetchBootstrap();
+        setMe(boot.me ?? state?.me ?? null);
+        applyDialogs(boot.dialogs);
+      } catch {
+        // The combined read failed; the chat list on its own may still work,
+        // and it reports its own failure if it does not.
+        await loadDialogs();
+      } finally {
+        setDialogsLoading(false);
       }
-      await loadDialogs();
       router.boot();
     })();
-  }, [authorized, state?.me, reportError, loadDialogs, router.boot]);
+  }, [authorized, state?.me, reportError, applyDialogs, loadDialogs, router.boot]);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
@@ -197,8 +212,10 @@ export function App() {
     [applyCommentUpdate, applyThreadUpdate],
   );
 
-  const connected = useUpdatesSocket(authorized, handleUpdate, () => {
-    void loadDialogs();
+  const connected = useUpdatesSocket(authorized, handleUpdate, (resync) => {
+    // The boot read the chat list already; only a dropped connection means
+    // the list may be stale.
+    if (resync) void loadDialogs();
   });
 
   const openViewer = useCallback(

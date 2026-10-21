@@ -142,7 +142,21 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - **Storage is mtcute's `BaseSqliteStorage` over the DO's SQLite.** `session/mtproto/sqlite.ts` adapts `ctx.storage.sql`
   to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
   There is no history backfill — session, update state and small caches only; history and media are fetched live through
-  the bridge.
+  the bridge. The engine's own tables are `engine_wakes` (the wake log), `engine_meta` (the signed-in user's DTO) and
+  `engine_avatars` (the profile-photo bytes, keyed by the version token the engine resolved).
+- **One request is one Durable Object event, and the DO hands out one event at a time.** Two bridge calls therefore cost
+  two round trips in sequence, whatever the browser does — and each one costs a Telegram round trip on the far side.
+  Inside one event mtcute's transport multiplexes, so the lever is **fewer events and more concurrency inside each
+  event**. `POST /user/rpc`'s `batch` method is that mechanism: it runs several **read-only** methods in one request,
+  concurrently, over the one connection. The whitelist is deliberate — a batch runs its calls concurrently, so a write
+  would have no defined completion order, and `readHistory` is excluded because it moves the account's read watermark.
+  Per-call failures are reported per call, so one broken read never takes the reads beside it down. When a screen needs
+  several reads, read them together in one batch (`pages/src/api.ts`: `fetchBootstrap`, `fetchChatScreen`) rather than
+  chaining requests — a chained pair is exactly the waterfall the batch exists to remove.
+- **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
+  `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
+  in the system and holding the gate for it queued every bridge call behind it. The engine's storage warms up in
+  `blockConcurrencyWhile` in the constructor, so the migrations are not on the first request's critical path.
 - **Media routes are gated too.** `<img>`/`<video>`/`<audio>` cannot set headers, so they rely on the same-origin
   Access session cookie the browser sends with every request; Access forwards the assertion for the worker to verify.
   There is no token query parameter. `POST /user/upload` takes the file as the raw request body,
@@ -175,7 +189,9 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   large videos broke next.
 - **Sockets use the hibernation API**, so the DO can sleep while a tab is attached; the wire protocol lives in
   `session/socket-hub.ts`. `WebSocketPair` only exists under workerd, which is why the `/user/updates` accept path has no
-  unit test — it is covered by the local smoke test.
+  unit test — it is covered by the local smoke test. The socket's `hello` answers `ready` and then goes live; the
+  browser's **first** `ready` follows the boot's own read, so it does not read the chat list again — only a reconnect
+  does, because the list may be stale then.
 - **The wasm crypto module is a static import** (`@mtcute/wasm/mtcute.wasm`, instantiated with `initSync`); wrangler's
   default `CompiledWasm` rule bundles it and `wrangler deploy --dry-run` is the check. If a wake's startup CPU ever gets
   tight, move the import behind a dynamic import rather than touching mtcute.

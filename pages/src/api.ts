@@ -1,5 +1,7 @@
 import { ApiError, apiError } from './api-error';
 import type {
+  BotCommandDto,
+  DialogDto,
   EngineStateDto,
   ForwardMessagesResult,
   GetBotCommandsResult,
@@ -8,8 +10,12 @@ import type {
   GetHistoryResult,
   GetMeResult,
   GetPollResultsResult,
+  MeDto,
+  MessageDto,
   PeerId,
   PressCallbackButtonResult,
+  RpcBatchCall,
+  RpcBatchOutcome,
   RpcMethod,
   SearchMessagesResult,
   SendCommentResult,
@@ -104,16 +110,112 @@ export const submitPassword = (password: string): Promise<EngineStateDto> =>
 
 export const logout = (): Promise<{ ok: true }> => request('/user/logout', { method: 'POST' });
 
-export const rpc = <T>(method: RpcMethod, params?: Record<string, unknown>): Promise<T> =>
+export const rpc = <T>(method: RpcMethod | 'batch', params?: Record<string, unknown>): Promise<T> =>
   request<T>('/user/rpc', { method: 'POST', body: JSON.stringify({ method, params }) });
+
+/**
+Runs several read-only calls in one request.
+
+The session engine is a Durable Object, and a Durable Object hands out one
+event at a time: two separate requests would queue behind each other, and
+each Telegram round trip would be paid in turn. One batch is one event, and
+the calls inside it run concurrently over the same Telegram connection.
+
+Only the read-only methods may be batched. A write would have no defined
+completion order, and Telegram's own ordering guarantees matter more than the
+round trip saved.
+*/
+export async function rpcBatch(calls: readonly RpcBatchCall[]): Promise<RpcBatchOutcome[]> {
+  const response = await rpc<{ results: RpcBatchOutcome[] }>('batch', { calls });
+  return response.results;
+}
+
+/**
+The result of one batched call, or a thrown failure.
+*/
+function batchResult<T>(outcome: RpcBatchOutcome | undefined, what: string): T {
+  if (!outcome || !outcome.ok) {
+    throw new ApiError(outcome?.error ?? `The ${what} could not be read`, 500);
+  }
+  return outcome.result as T;
+}
 
 export const fetchDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100 });
 
-export const fetchMe = (): Promise<GetMeResult> => rpc('getMe');
+/**
+The signed-in shell's first read: who the account is and the chat list.
+
+Both come back in one request, and the account's own profile is a failure
+that must not cost the chat list: the shell shows the chat list either way.
+*/
+export async function fetchBootstrap(): Promise<{ me: MeDto | null; dialogs: DialogDto[] }> {
+  const outcomes = await rpcBatch([{ method: 'getMe' }, { method: 'getDialogs', params: { limit: 100 } }]);
+  const me = outcomes[0]?.ok ? (outcomes[0].result as GetMeResult).me : null;
+  const dialogs = batchResult<GetDialogsResult>(outcomes[1], 'chat list').dialogs;
+  return { me, dialogs };
+}
+
+/**
+Everything a chat screen needs, read in one request.
+*/
+export interface ChatScreen {
+  /**
+  The chat's first window.
+  */
+  messages: MessageDto[];
+  /**
+  The chat's slash commands, empty for a chat without one.
+  */
+  commands: BotCommandDto[];
+  /**
+  The post's comments, when a post was named. Null when the read failed —
+  a post without a comments section is not a failure of the window beside it.
+  */
+  comments: GetCommentsResult | null;
+  /**
+  Why the comments could not be read, when they could not.
+  */
+  commentsError: string | null;
+}
+
+/**
+ * Reads a chat screen: the window, the chat's slash commands and — when a
+ * post is named — the post's comment thread.
+ *
+ * The reads are independent, so they travel together: one request, one
+ * Durable Object event, and the Telegram calls inside it run at the same time
+ * over the one connection.
+ */
+export async function fetchChatScreen(
+  chatId: PeerId,
+  postId: number | null = null,
+  options: { limit?: number; anchorId?: number; withCommands?: boolean; commentsLimit?: number } = {},
+): Promise<ChatScreen> {
+  const { withCommands = false, commentsLimit = 50, ...history } = options;
+  const calls: RpcBatchCall[] = [{ method: 'getHistory', params: { chatId, ...history } }];
+  if (withCommands) {
+    calls.push({ method: 'getBotCommands', params: { chatId } });
+  }
+  if (postId !== null) {
+    calls.push({ method: 'getComments', params: { chatId, messageId: postId, limit: commentsLimit } });
+  }
+  const outcomes = await rpcBatch(calls);
+  const messages = batchResult<GetHistoryResult>(outcomes[0], 'chat history').messages;
+  // A chat without a command menu is normal, and a failed lookup is no
+  // worse than an empty one: the composer simply offers no menu.
+  const commands = outcomes[1]?.ok ? (outcomes[1].result as GetBotCommandsResult).commands : [];
+  const commentsOutcome = postId === null ? undefined : outcomes[2];
+  return {
+    messages,
+    commands,
+    comments: commentsOutcome?.ok ? (commentsOutcome.result as GetCommentsResult) : null,
+    commentsError: commentsOutcome === undefined || commentsOutcome.ok ? null : (commentsOutcome.error ?? 'The comments could not be read'),
+  };
+}
 
 export const fetchHistory = (
   chatId: PeerId,
-  options: { limit?: number; offsetId?: number; offsetDate?: number; addOffset?: number } = {},
+  options: { limit?: number; offsetId?: number; offsetDate?: number; addOffset?: number; anchorId?: number } = {},
 ): Promise<GetHistoryResult> => rpc('getHistory', { chatId, ...options });
 
 export const sendMessage = (chatId: PeerId, text: string, replyTo?: number, randomId?: string): Promise<SendMessageResult> =>

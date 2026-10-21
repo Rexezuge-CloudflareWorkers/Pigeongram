@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatBytes, mediaPreview } from '../format';
 import type { UploadKind } from '../types';
-import { canGroupUploads, MAX_UPLOAD_ITEMS, mediaKind } from '../upload';
+import { canGroupUploads, MAX_UPLOAD_ITEMS, mediaKind, previewMime } from '../upload';
 
 /**
 A review step between the file picker and the upload: every selected file is
@@ -230,13 +230,16 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
   // The object URL is derived, not stored: a photo preview is a blob URL the
   // browser owns, and the effect below hands it back when the row unmounts.
   const previewUrl = useMemo(() => {
-    if (kind !== 'photo' && kind !== 'animation') return null;
+    const mime = previewMime(file);
+    if (mime === null) return null;
     try {
-      return URL.createObjectURL(file);
+      // The blob carries the image type we vetted, so the object URL can never
+      // be read as a document.
+      return URL.createObjectURL(new Blob([file], { type: mime }));
     } catch {
       return null;
     }
-  }, [file, kind]);
+  }, [file]);
 
   useEffect(
     () => () => {
@@ -252,10 +255,6 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
       <span className="w-5 shrink-0 text-center text-sm text-muted">{index + 1}</span>
       <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-panel-2 text-xl">
         {previewUrl ? (
-          // The object URL is a blob URL the browser minted from the picked
-          // file, so it can never carry a script: this finding is a false
-          // positive.
-          // codeql[js/xss-through-dom]
           <img src={previewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <span aria-hidden="true">{KIND_ICONS[kind]}</span>

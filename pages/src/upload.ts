@@ -56,6 +56,18 @@ export function mediaKind(file: File): UploadKind {
 }
 
 /**
+ * The MIME type a file may be previewed with, or `null` when it must not be
+ * rendered: only raster images get a thumbnail, and SVG is out because it can
+ * carry script. The preview blob is built with this type, so the object URL
+ * it backs can never be read as a document.
+ */
+export function previewMime(file: File): string | null {
+  const mime = file.type.toLowerCase();
+  if (!mime.startsWith('image/') || mime === 'image/svg+xml') return null;
+  return mime;
+}
+
+/**
  * Whether a selection can be one Telegram album: 2–10 items of one class.
  * Photos, videos and GIFs mix; documents only group with documents. Telegram
  * rejects other combinations, so the dialog disables the option instead of

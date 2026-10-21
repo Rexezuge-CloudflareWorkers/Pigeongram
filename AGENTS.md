@@ -158,7 +158,9 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   streams use `highWaterMark: 0` on purpose — with the default of 1, Web Streams pulls every part at construction, so
   the later files would claim the shared reader before the earlier ones. The composer's upload dialog
   (`pages/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
-  (checked by default when the selection can group) and sends ungrouped files one by one.
+  (checked by default when the selection can group) and sends ungrouped files one by one. Its thumbnail column only
+  previews raster images (`previewMime` in `pages/src/upload.ts`, which keeps SVG out), and the preview blob is built
+  with that MIME type, so the object URL behind it can never be read as a document.
 - **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
   window over `downloadAsIterable` — a 1 MB-block-aligned offset, dropped prefix, local tail cut, and `throttle`
   backpressure so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB

@@ -12,6 +12,7 @@ import type { MtBundle } from './mtproto/client';
 import type { TransactionalStorageLike } from './mtproto/sqlite';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
+import { UnreadAlbumLedger } from './unread-albums';
 import { mapRawUpdate } from './updates';
 
 export interface QrLoginCallbacks {
@@ -56,11 +57,19 @@ export interface PhoneLoginCallbacks {
 export class TelegramDriver {
   #bundle: MtBundle | null = null;
   readonly #listeners = new Set<(event: UpdateEvent | null) => void>();
+  /**
+   * The album ledger: the unread album members the update stream delivered.
+   * It lives here because the driver sees every update and answers every
+   * bridge call, and the two ends have to agree on the unread counts.
+   */
+  readonly #albums: UnreadAlbumLedger;
 
   constructor(
     private readonly env: CloudflareEnv,
     private readonly storage: TransactionalStorageLike,
-  ) {}
+  ) {
+    this.#albums = new UnreadAlbumLedger(storage.sql);
+  }
 
   /**
    * Subscribes to mapped updates. `null` marks a raw update the bridge has no
@@ -83,6 +92,16 @@ export class TelegramDriver {
       } catch {
         // A mapping failure must never break mtcute's update machinery.
         mapped = null;
+      }
+      if (mapped) {
+        try {
+          // The ledger learns the albums from the stream and corrects the
+          // counts the bridge serves. Its failures stay as isolated as the
+          // mapping's: an update must always reach the browser.
+          mapped = this.#albums.apply(mapped);
+        } catch {
+          // Keep the uncorrected event rather than dropping it.
+        }
       }
       for (const listener of this.#listeners) {
         try {
@@ -243,7 +262,7 @@ export class TelegramDriver {
   }
 
   async rpc(method: string, params: unknown): Promise<unknown> {
-    return dispatchRpc(this.#ensure().client, method, params);
+    return dispatchRpc(this.#ensure().client, method, params, this.#albums);
   }
 
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
@@ -282,6 +301,9 @@ export class TelegramDriver {
     try {
       await bundle.client.logOut();
     } finally {
+      // The album ledger described the account that just signed out; its chat
+      // ids mean nothing to whoever signs in next.
+      this.#albums.clear();
       try {
         await bundle.base.destroy();
       } catch {

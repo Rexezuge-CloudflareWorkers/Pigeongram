@@ -850,4 +850,36 @@ describe('toDialogDto', () => {
     expect(dto.readInboxMaxId).toBe(0);
     expect(dto.readOutboxMaxId).toBe(0);
   });
+
+  it('takes the unread count the caller corrected', () => {
+    // Telegram counts every album member; the album ledger corrects the count
+    // so that an album counts once.
+    const raw = {
+      _: 'dialog',
+      peer: { _: 'peerUser', userId: 1 },
+      unreadCount: 3,
+      notifySettings: { _: 'peerNotifySettings', silent: false },
+    } as unknown as tl.RawDialog;
+    expect(toDialogDto(new Dialog(raw, index(), new Map()), 1).unread).toBe(1);
+  });
+
+  it('carries the album membership of the last message', () => {
+    const raw = {
+      _: 'dialog',
+      peer: { _: 'peerUser', userId: 1 },
+      notifySettings: { _: 'peerNotifySettings', silent: false },
+    } as unknown as tl.RawDialog;
+    const last = {
+      _: 'message',
+      id: 13,
+      peerId: { _: 'peerUser', userId: 1 },
+      fromId: { _: 'peerUser', userId: 1 },
+      date: 1_700_000_000,
+      message: 'notes.pdf',
+      out: false,
+      groupedId: Long.fromNumber(77),
+    } as unknown as tl.RawMessage;
+    const dto = toDialogDto(new Dialog(raw, index(), new Map([[1, last]])));
+    expect(dto.lastMessage?.groupedId).toBe('77');
+  });
 });

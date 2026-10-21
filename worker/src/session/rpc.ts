@@ -1,6 +1,6 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
-import type { Message } from '@mtcute/core';
+import type { Dialog, Message } from '@mtcute/core';
 import type { RpcBatchOutcome } from '../rpc-types';
 import type { DialogDto, PresenceDto } from '../types';
 import { readBotCommands } from './bot-commands';
@@ -8,6 +8,8 @@ import { readComments, requireCommentPost, requireDiscussion } from './comments'
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
 import { readContactPresences } from './presence';
+import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
+import type { UnreadAlbumLedger } from './unread-albums';
 import {
   clampInt,
   optionalAnswerIndexes,
@@ -30,8 +32,12 @@ import {
  *
  * Deliberately a whitelist — the bridge never forwards raw MTProto from the
  * browser. Every method resolves peers server-side (marked ids in, DTOs out).
+ *
+ * The album ledger is the engine's answer to Telegram counting every album
+ * member as a message: the badge counts an album once, and the ledger knows
+ * the surplus to subtract from the chat list's counts.
  */
-export async function dispatchRpc(client: TelegramClient, method: string, rawParams: unknown): Promise<unknown> {
+export async function dispatchRpc(client: TelegramClient, method: string, rawParams: unknown, albums: UnreadAlbumLedger): Promise<unknown> {
   const params = requireRecord(rawParams);
   switch (method) {
     case 'batch': {
@@ -43,7 +49,7 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const results = await Promise.all(
         calls.map(async (call) => {
           try {
-            return { ok: true, result: await dispatchRpc(client, call.method, call.params) } satisfies RpcBatchOutcome;
+            return { ok: true, result: await dispatchRpc(client, call.method, call.params, albums) } satisfies RpcBatchOutcome;
           } catch (error) {
             // A failed call is reported on its own: one broken read must not
             // take the reads beside it down with it.
@@ -62,7 +68,7 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const limit = clampInt(params.limit, 1, 200, 100);
       // The chat list and the contact presences are two independent Telegram
       // reads; running them together saves a round trip on every list load.
-      const [dialogs, presences] = await Promise.all([collectDialogs(client, limit), readContactPresences(client)]);
+      const [dialogs, presences] = await Promise.all([collectDialogs(client, limit, albums), readContactPresences(client)]);
       return { dialogs: overlayPresence(dialogs, presences) };
     }
 
@@ -256,13 +262,29 @@ function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, Pre
 
 /**
  * Reads the chat list, one Telegram page at a time.
+ *
+ * The album ledger is reconciled with the account's unread albums first, so
+ * the counts the list carries are the ones the badge shows: an album counts
+ * once, not once per file.
  */
-async function collectDialogs(client: TelegramClient, limit: number): Promise<DialogDto[]> {
-  const dialogs: DialogDto[] = [];
+async function collectDialogs(client: TelegramClient, limit: number, albums: UnreadAlbumLedger): Promise<DialogDto[]> {
+  const dialogs: Dialog[] = [];
   for await (const dialog of client.iterDialogs({ limit })) {
-    dialogs.push(toDialogDto(dialog));
+    dialogs.push(dialog);
   }
-  return dialogs;
+  await reconcileUnreadAlbums(client, dialogs, albums);
+  // The watermark the server reports is the truth about what has been read,
+  // so the ledger drops the members below it. A read that landed while the
+  // ledger was reconciling would otherwise leave its members behind, and the
+  // surplus would be subtracted twice.
+  const known = albums.excessByChat();
+  const watermarks = new Map(dialogs.map((dialog) => [dialog.peer.id, dialog.lastReadIngoing]));
+  for (const chatId of known.keys()) {
+    const watermark = watermarks.get(chatId);
+    if (watermark !== undefined) albums.pruneRead(chatId, watermark);
+  }
+  const excess = albums.excessByChat();
+  return dialogs.map((dialog) => toDialogDto(dialog, albumAwareUnread(dialog.unreadCount ?? 0, excess.get(dialog.peer.id) ?? 0)));
 }
 
 /**

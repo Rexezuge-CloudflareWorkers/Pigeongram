@@ -180,6 +180,7 @@ function dialogMessage(source: MessageDto): DialogMessageDto {
     poll: source.poll,
     outgoing: source.outgoing,
     service: source.service,
+    groupedId: source.groupedId,
   };
 }
 
@@ -195,6 +196,7 @@ const dialogs: DialogDto[] = [
       poll: null,
       outgoing: false,
       service: false,
+      groupedId: null,
     },
     unread: 1,
     readInboxMaxId: 9,

@@ -43,7 +43,7 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
   `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
   domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
-  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`) and the mtcute integration
+  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`, `unread-albums`) and the mtcute integration
   (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
   `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA. `wrangler.template.jsonc` declares the DO
   binding (`SESSION_ENGINE`), the `v1` SQLite migration, `workers_dev: false` and `WAKE_INTERVAL_SECONDS`; the
@@ -142,8 +142,19 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - **Storage is mtcute's `BaseSqliteStorage` over the DO's SQLite.** `session/mtproto/sqlite.ts` adapts `ctx.storage.sql`
   to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
   There is no history backfill — session, update state and small caches only; history and media are fetched live through
-  the bridge. The engine's own tables are `engine_wakes` (the wake log), `engine_meta` (the signed-in user's DTO) and
-  `engine_avatars` (the profile-photo bytes, keyed by the version token the engine resolved).
+  the bridge. The engine's own tables are `engine_wakes` (the wake log), `engine_meta` (the signed-in user's DTO),
+  `engine_avatars` (the profile-photo bytes, keyed by the version token the engine resolved), `engine_unread_albums`
+  (the unread album members per chat) and `engine_unread_state` (the album ledger's reconciliation marker).
+- **An album counts as one unread message.** Telegram counts every album member as a message, so an album of ten files
+  arrives as an unread count of ten. The badge counts the album once, and the **album ledger**
+  (`worker/src/session/unread-albums.ts`) is what makes the two agree: it records the album members the update stream
+  delivered, drops the ones a read covered, and the surplus (the members beyond the first of their album) is
+  subtracted from the count `getDialogs` serves and from the `unread` a `read` update carries. The ledger lives in the
+  DO's SQLite because the engine sleeps between its wakes, and it learns from the update stream, so it costs no
+  Telegram traffic. A fresh sign-in starts with an empty ledger, so the first `getDialogs` reconciles it: it reads the
+  unread range of every chat with unread messages, once per sign-in. On the SPA side, `DialogMessageDto.groupedId`
+  says that a new message continues the album the chat list already counted, and the optimistic read-through
+  subtracts albums rather than messages (`pages/src/groups.ts`).
 - **One request is one Durable Object event, and the DO hands out one event at a time.** Two bridge calls therefore cost
   two round trips in sequence, whatever the browser does — and each one costs a Telegram round trip on the far side.
   Inside one event mtcute's transport multiplexes, so the lever is **fewer events and more concurrency inside each

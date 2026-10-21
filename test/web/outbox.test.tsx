@@ -58,6 +58,7 @@ function dialogMessage(source: MessageDto): DialogMessageDto {
     poll: source.poll,
     outgoing: source.outgoing,
     service: source.service,
+    groupedId: source.groupedId,
   };
 }
 

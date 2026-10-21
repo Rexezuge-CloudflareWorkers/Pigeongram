@@ -2,7 +2,7 @@ import { Long, Message, PeersIndex, Poll, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { dispatchRpc } from '../../worker/src/session/rpc';
+import { rpc } from './rpc-dispatch';
 
 const peers = PeersIndex.from({
   users: [
@@ -136,7 +136,7 @@ describe('getDialogs dispatch', () => {
       statuses: [{ _: 'contactStatus', userId: 1, status: { _: 'userStatusOnline', expires: 0 } }],
     });
 
-    const result = (await dispatchRpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
+    const result = (await rpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
 
     expect(calls).toEqual(['contacts.getStatuses']);
     expect(result.dialogs[0].chat.presence).toEqual({ status: 'online', lastSeenAt: null });
@@ -146,7 +146,7 @@ describe('getDialogs dispatch', () => {
   it('keeps the chat list when the contact statuses are unavailable', async () => {
     const { client } = fakeDialogsClient({ fails: true });
 
-    const result = (await dispatchRpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
+    const result = (await rpc(client, 'getDialogs', {})) as { dialogs: Array<{ chat: { presence: unknown } }> };
 
     expect(result.dialogs).toHaveLength(2);
     expect(result.dialogs[0].chat.presence).toBeNull();
@@ -156,25 +156,25 @@ describe('getDialogs dispatch', () => {
 describe('readHistory dispatch', () => {
   it('reads up to the given watermark', async () => {
     const { client, reads } = fakeClient();
-    await dispatchRpc(client, 'readHistory', { chatId: 2, maxId: 12 });
+    await rpc(client, 'readHistory', { chatId: 2, maxId: 12 });
     expect(reads).toEqual([{ chatId: 2, maxId: 12 }]);
   });
 
   it('reads the whole history when the watermark is omitted', async () => {
     const { client, reads } = fakeClient();
-    await dispatchRpc(client, 'readHistory', { chatId: 2 });
+    await rpc(client, 'readHistory', { chatId: 2 });
     expect(reads).toEqual([{ chatId: 2 }]);
   });
 
   it('reads a zero watermark as the whole history', async () => {
     const { client, reads } = fakeClient();
-    await dispatchRpc(client, 'readHistory', { chatId: 2, maxId: 0 });
+    await rpc(client, 'readHistory', { chatId: 2, maxId: 0 });
     expect(reads).toEqual([{ chatId: 2 }]);
   });
 
   it('rejects a malformed watermark before Telegram is touched', async () => {
     const { client, reads } = fakeClient();
-    await expect(dispatchRpc(client, 'readHistory', { chatId: 2, maxId: -1 })).rejects.toThrow('Expected a non-negative integer');
+    await expect(rpc(client, 'readHistory', { chatId: 2, maxId: -1 })).rejects.toThrow('Expected a non-negative integer');
     expect(reads).toEqual([]);
   });
 });
@@ -182,7 +182,7 @@ describe('readHistory dispatch', () => {
 describe('getHistory dispatch', () => {
   it('returns the window oldest first', async () => {
     const { client, calls } = fakeHistoryClient([[message(12), message(11)]]);
-    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1 })) as { messages: Array<{ id: number }> };
+    const result = (await rpc(client, 'getHistory', { chatId: 1 })) as { messages: Array<{ id: number }> };
     expect(result.messages.map((entry) => entry.id)).toEqual([11, 12]);
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
   });
@@ -192,7 +192,7 @@ describe('getHistory dispatch', () => {
       [message(13, 7), message(12, 7), message(11, 7)],
       [message(10, 7), message(9, 7)],
     ]);
-    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 3 })) as { messages: Array<{ id: number }> };
+    const result = (await rpc(client, 'getHistory', { chatId: 1, limit: 3 })) as { messages: Array<{ id: number }> };
     expect(result.messages.map((entry) => entry.id)).toEqual([9, 10, 11, 12, 13]);
     expect(calls[1]).toEqual({
       chatId: 1,
@@ -205,32 +205,32 @@ describe('getHistory dispatch', () => {
       [message(20, 9), message(19, 9)],
       [message(18, 8), message(17, 8)],
     ]);
-    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 })) as { messages: Array<{ id: number }> };
+    const result = (await rpc(client, 'getHistory', { chatId: 1, limit: 2 })) as { messages: Array<{ id: number }> };
     expect(result.messages.map((entry) => entry.id)).toEqual([19, 20]);
     expect(calls).toHaveLength(2);
   });
 
   it('skips the extra fetch when the oldest message is not grouped', async () => {
     const { client, calls } = fakeHistoryClient([[message(2), message(1)]]);
-    await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 2 });
+    await rpc(client, 'getHistory', { chatId: 1, limit: 2 });
     expect(calls).toHaveLength(1);
   });
 
   it('passes a link jump through: an id alone, skipped towards newer messages', async () => {
     const { client, calls } = fakeHistoryClient([[message(30), message(29)]]);
-    await dispatchRpc(client, 'getHistory', { chatId: 1, limit: 50, offsetId: 1234, addOffset: -25 });
+    await rpc(client, 'getHistory', { chatId: 1, limit: 50, offsetId: 1234, addOffset: -25 });
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50, offset: { id: 1234, date: 0 }, addOffset: -25 } }]);
   });
 
   it('clamps a forward skip away, since the bridge has no forward paging', async () => {
     const { client, calls } = fakeHistoryClient([[message(2), message(1)]]);
-    await dispatchRpc(client, 'getHistory', { chatId: 1, addOffset: 40 });
+    await rpc(client, 'getHistory', { chatId: 1, addOffset: 40 });
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
   });
 
   it('reads around an anchored post, with the newer context beside it', async () => {
     const { client, calls } = fakeHistoryClient([[message(30), message(29)]]);
-    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
+    const result = (await rpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
 
     expect(result.messages.map((entry) => entry.id)).toEqual([29, 30]);
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50, offset: { id: 30, date: 0 }, addOffset: -25 } }]);
@@ -238,7 +238,7 @@ describe('getHistory dispatch', () => {
 
   it('falls back to the page that ends at an anchor the window missed', async () => {
     const { client, calls } = fakeHistoryClient([[message(29)], [message(28), message(27)]]);
-    const result = (await dispatchRpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
+    const result = (await rpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };
 
     expect(result.messages.map((entry) => entry.id)).toEqual([27, 28]);
     expect(calls).toHaveLength(2);
@@ -263,7 +263,7 @@ describe('forwardMessages dispatch', () => {
 
   it('forwards the batch and returns the copies in the destination', async () => {
     const { client, calls } = fakeForwardClient();
-    const result = (await dispatchRpc(client, 'forwardMessages', {
+    const result = (await rpc(client, 'forwardMessages', {
       chatId: 1,
       toChatId: 5,
       messageIds: [12, 13],
@@ -276,9 +276,9 @@ describe('forwardMessages dispatch', () => {
   it('rejects malformed message lists before Telegram is touched', async () => {
     const { client, calls } = fakeForwardClient();
     for (const messageIds of [[], [0], [1, 1], [1.5], Array.from({ length: 101 }, (_, index) => index + 1)]) {
-      await expect(dispatchRpc(client, 'forwardMessages', { chatId: 1, toChatId: 5, messageIds })).rejects.toThrow('messageIds');
+      await expect(rpc(client, 'forwardMessages', { chatId: 1, toChatId: 5, messageIds })).rejects.toThrow('messageIds');
     }
-    await expect(dispatchRpc(client, 'forwardMessages', { chatId: 1, messageIds: [1] })).rejects.toThrow('chatId');
+    await expect(rpc(client, 'forwardMessages', { chatId: 1, messageIds: [1] })).rejects.toThrow('chatId');
     expect(calls).toEqual([]);
   });
 });
@@ -306,7 +306,7 @@ describe('sendVote dispatch', () => {
 
   it('passes the selected answer indexes through and returns the new poll', async () => {
     const { client, votes } = fakeVoteClient();
-    const result = (await dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7, options: [0] })) as {
+    const result = (await rpc(client, 'sendVote', { chatId: 1, messageId: 7, options: [0] })) as {
       poll: { id: string; totalVoters: number | null; answers: unknown[] };
     };
     expect(votes).toEqual([{ chatId: 1, message: 7, options: [0] }]);
@@ -317,14 +317,14 @@ describe('sendVote dispatch', () => {
 
   it('reads a missing selection as a retraction', async () => {
     const { client, votes } = fakeVoteClient();
-    await dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7 });
+    await rpc(client, 'sendVote', { chatId: 1, messageId: 7 });
     expect(votes).toEqual([{ chatId: 1, message: 7, options: null }]);
   });
 
   it('rejects malformed selections before Telegram is touched', async () => {
     const { client, votes } = fakeVoteClient();
     for (const options of [[], 'Tea', [1.5], [-1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]) {
-      await expect(dispatchRpc(client, 'sendVote', { chatId: 1, messageId: 7, options })).rejects.toThrow('options');
+      await expect(rpc(client, 'sendVote', { chatId: 1, messageId: 7, options })).rejects.toThrow('options');
     }
     expect(votes).toEqual([]);
   });
@@ -339,7 +339,7 @@ describe('getPollResults dispatch', () => {
         return poll();
       },
     } as unknown as TelegramClient;
-    const result = (await dispatchRpc(client, 'getPollResults', { chatId: 1, messageId: 7 })) as {
+    const result = (await rpc(client, 'getPollResults', { chatId: 1, messageId: 7 })) as {
       poll: { question: string; totalVoters: number | null };
     };
     expect(calls).toEqual([{ chatId: 1, message: 7 }]);
@@ -358,7 +358,7 @@ describe('getBotCommands dispatch', () => {
       },
     } as unknown as TelegramClient;
 
-    await expect(dispatchRpc(client, 'getBotCommands', { chatId: 5 })).resolves.toEqual({
+    await expect(rpc(client, 'getBotCommands', { chatId: 5 })).resolves.toEqual({
       commands: [{ command: 'start', description: 'Start' }],
     });
     expect(calls).toEqual([5]);
@@ -373,7 +373,7 @@ describe('getBotCommands dispatch', () => {
       },
     } as unknown as TelegramClient;
 
-    await expect(dispatchRpc(client, 'getBotCommands', { chatId: 0 })).rejects.toThrow('chatId');
+    await expect(rpc(client, 'getBotCommands', { chatId: 0 })).rejects.toThrow('chatId');
     expect(calls).toEqual([]);
   });
 });
@@ -395,7 +395,7 @@ describe('pressCallbackButton dispatch', () => {
 
   it('decodes the payload and returns the bot answer', async () => {
     const { client, calls } = fakeCallbackClient({ message: 'Done', alert: true, url: 'https://example.com/next' });
-    await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
+    await expect(rpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
       text: 'Done',
       alert: true,
       url: 'https://example.com/next',
@@ -405,7 +405,7 @@ describe('pressCallbackButton dispatch', () => {
 
   it('maps a silent answer onto nulls and false', async () => {
     const { client } = fakeCallbackClient({});
-    await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
+    await expect(rpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data: 'AQID' })).resolves.toEqual({
       text: null,
       alert: false,
       url: null,
@@ -415,7 +415,7 @@ describe('pressCallbackButton dispatch', () => {
   it('rejects malformed payloads before Telegram is touched', async () => {
     const { client, calls } = fakeCallbackClient({});
     for (const data of [undefined, '***', 'A'.repeat(88)]) {
-      await expect(dispatchRpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data })).rejects.toThrow('data');
+      await expect(rpc(client, 'pressCallbackButton', { chatId: 1, messageId: 7, data })).rejects.toThrow('data');
     }
     expect(calls).toEqual([]);
   });
@@ -438,7 +438,7 @@ describe('sendMessage dispatch', () => {
 
   it('forwards the client random id, so a retry cannot duplicate the message', async () => {
     const { client, calls } = fakeSendClient();
-    await dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId: '123456789' });
+    await rpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId: '123456789' });
 
     expect(calls).toHaveLength(1);
     const params = calls[0].params as { randomId?: Long };
@@ -447,7 +447,7 @@ describe('sendMessage dispatch', () => {
 
   it('omits the random id when the client did not choose one', async () => {
     const { client, calls } = fakeSendClient();
-    await dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi' });
+    await rpc(client, 'sendMessage', { chatId: 1, text: 'hi' });
 
     expect(calls[0].params).toEqual({});
   });
@@ -455,7 +455,7 @@ describe('sendMessage dispatch', () => {
   it('rejects a malformed random id before Telegram is touched', async () => {
     const { client, calls } = fakeSendClient();
     for (const randomId of ['', 'abc', '-1', '0', '1.5', 12, '9223372036854775808']) {
-      await expect(dispatchRpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId })).rejects.toThrow('randomId');
+      await expect(rpc(client, 'sendMessage', { chatId: 1, text: 'hi', randomId })).rejects.toThrow('randomId');
     }
     expect(calls).toEqual([]);
   });
@@ -488,7 +488,7 @@ describe('batch dispatch', () => {
   it('answers every call in the order it was given', async () => {
     const { client } = fakeBatchClient();
 
-    const result = (await dispatchRpc(client, 'batch', {
+    const result = (await rpc(client, 'batch', {
       calls: [{ method: 'getMe' }, { method: 'getDialogs', params: { limit: 10 } }],
     })) as { results: Array<{ ok: boolean; result?: unknown }> };
 
@@ -501,7 +501,7 @@ describe('batch dispatch', () => {
   it('keeps a failed call from taking the reads beside it down', async () => {
     const { client } = fakeBatchClient();
 
-    const result = (await dispatchRpc(client, 'batch', {
+    const result = (await rpc(client, 'batch', {
       calls: [{ method: 'getHistory', params: { chatId: 0 } }, { method: 'getMe' }],
     })) as { results: Array<{ ok: boolean; error?: string }> };
 
@@ -513,7 +513,7 @@ describe('batch dispatch', () => {
   it('refuses a write, which has no defined order in a batch', async () => {
     const { client, calls } = fakeBatchClient();
 
-    await expect(dispatchRpc(client, 'batch', { calls: [{ method: 'sendMessage', params: { chatId: 1, text: 'hi' } }] })).rejects.toThrow(
+    await expect(rpc(client, 'batch', { calls: [{ method: 'sendMessage', params: { chatId: 1, text: 'hi' } }] })).rejects.toThrow(
       'batchable read method',
     );
     expect(calls).toEqual([]);
@@ -522,14 +522,14 @@ describe('batch dispatch', () => {
   it('refuses a nested batch', async () => {
     const { client } = fakeBatchClient();
 
-    await expect(dispatchRpc(client, 'batch', { calls: [{ method: 'batch' }] })).rejects.toThrow('batchable read method');
+    await expect(rpc(client, 'batch', { calls: [{ method: 'batch' }] })).rejects.toThrow('batchable read method');
   });
 
   it('refuses an empty batch and one that is too long', async () => {
     const { client } = fakeBatchClient();
 
-    await expect(dispatchRpc(client, 'batch', { calls: [] })).rejects.toThrow('at least one');
+    await expect(rpc(client, 'batch', { calls: [] })).rejects.toThrow('at least one');
     const many = Array.from({ length: 9 }, () => ({ method: 'getMe' }));
-    await expect(dispatchRpc(client, 'batch', { calls: many })).rejects.toThrow('at most 8');
+    await expect(rpc(client, 'batch', { calls: many })).rejects.toThrow('at most 8');
   });
 });

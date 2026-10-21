@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { albumCaption, groupMessages, isVisualAlbum } from '../../pages/src/groups';
-import type { MessageDto, MessageMediaDto } from '../../pages/src/types';
+import {
+  albumCaption,
+  continuesAlbum,
+  countUnreadGroups,
+  countUnreadGroupsBetween,
+  groupMessages,
+  isVisualAlbum,
+} from '../../pages/src/groups';
+import type { DialogMessageDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
 
 const PHOTO: MessageMediaDto = {
   kind: 'photo',
@@ -70,5 +77,63 @@ describe('isVisualAlbum', () => {
   it('accepts photo, video and animation albums only', () => {
     expect(isVisualAlbum([message({ id: 1, media: PHOTO }), message({ id: 2, media: { ...PHOTO, kind: 'video' } })])).toBe(true);
     expect(isVisualAlbum([message({ id: 1, media: PHOTO }), message({ id: 2, media: DOCUMENT })])).toBe(false);
+  });
+});
+
+/**
+ * The chat list's view of the last message: an album's newest member, or a
+ * message of its own.
+ */
+function dialogMessage(groupedId: string | null): DialogMessageDto {
+  return {
+    id: 1,
+    date: 1_700_000_000_000,
+    text: '',
+    media: null,
+    poll: null,
+    outgoing: false,
+    service: false,
+    groupedId,
+  };
+}
+
+describe('continuesAlbum', () => {
+  it('recognises a message that continues the album the chat list counted', () => {
+    expect(continuesAlbum(message({ id: 2, groupedId: '77' }), dialogMessage('77'))).toBe(true);
+  });
+
+  it('does not join a message that starts an album or stands alone', () => {
+    expect(continuesAlbum(message({ id: 2, groupedId: '77' }), null)).toBe(false);
+    expect(continuesAlbum(message({ id: 2, groupedId: '77' }), dialogMessage('88'))).toBe(false);
+    expect(continuesAlbum(message({ id: 2 }), dialogMessage(null))).toBe(false);
+  });
+});
+
+describe('countUnreadGroups', () => {
+  it('counts an album once, however many of its members are in the set', () => {
+    expect(countUnreadGroups([message({ id: 1, groupedId: '77' }), message({ id: 2, groupedId: '77' })])).toBe(1);
+  });
+
+  it('counts the messages of their own one by one', () => {
+    expect(countUnreadGroups([message({ id: 1 }), message({ id: 2 })])).toBe(2);
+  });
+
+  it('counts the albums and the messages of their own together', () => {
+    expect(countUnreadGroups([message({ id: 1, groupedId: '77' }), message({ id: 2, groupedId: '77' }), message({ id: 3 })])).toBe(2);
+  });
+});
+
+describe('countUnreadGroupsBetween', () => {
+  it('counts the incoming messages of the range, in albums', () => {
+    const messages = [
+      message({ id: 7, groupedId: '77' }),
+      message({ id: 8, groupedId: '77' }),
+      message({ id: 9, outgoing: true }),
+      message({ id: 10 }),
+    ];
+
+    expect(countUnreadGroupsBetween(messages, 6, 10)).toBe(2);
+    // A range that holds nothing unread counts for nothing.
+    expect(countUnreadGroupsBetween(messages, 10, 12)).toBe(0);
   });
 });

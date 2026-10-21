@@ -1,23 +1,17 @@
-import type { UploadKind } from '../types';
 import type { TelegramDriver } from './driver';
 import { EngineError } from './errors';
 import type { MediaDownload } from './media';
 import { requirePeerId } from './params';
-import type { UploadSpec } from './upload';
+import { parseUploadGroupSpec, parseUploadSpec } from './upload-spec';
 
 /**
  * HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
- * `/user/upload`). Kept out of the engine class so it stays about the session,
- * not about query strings and headers.
+ * `/user/upload`, `/user/upload-group`). Kept out of the engine class so it
+ * stays about the session, not about query strings and headers.
  */
 
-const DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
-const MAX_CAPTION_LENGTH = 1024;
-const MAX_FILE_NAME_LENGTH = 255;
-const MAX_MIME_LENGTH = 100;
 const FILE_CACHE_SECONDS = 3600;
 const AVATAR_CACHE_SECONDS = 86_400;
-const UPLOAD_KINDS: ReadonlySet<UploadKind> = new Set(['photo', 'video', 'animation', 'document']);
 
 export async function fileResponse(driver: TelegramDriver, request: Request, url: URL): Promise<Response> {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
@@ -56,6 +50,19 @@ export async function uploadResponse(driver: TelegramDriver, request: Request, u
   }
 }
 
+export async function uploadGroupResponse(driver: TelegramDriver, request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  try {
+    const spec = parseUploadGroupSpec(url, request, env);
+    const body = request.body;
+    if (!body) throw new EngineError('Upload body is required', 400);
+    const messages = await driver.sendUploadGroup(spec, body, request.signal);
+    return Response.json({ messages });
+  } catch (error) {
+    await discardBody(request);
+    throw error;
+  }
+}
+
 /**
  * Cancels the request body, ignoring the many ways a stream can already be
  * gone (client abort, driver failure, a locked reader).
@@ -66,49 +73,6 @@ async function discardBody(request: Request): Promise<void> {
   } catch {
     // Nothing left to drain.
   }
-}
-
-/**
- * Parses and validates the raw-body upload request. Pure so the validation
- * rules are testable without a driver.
- */
-export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv): UploadSpec {
-  const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
-  const kind = parseKind(url.searchParams.get('kind'));
-
-  const size = parseQuantity(url.searchParams.get('size'));
-  if (size === null) throw new EngineError('size query parameter is required', 400);
-  const declared = parseQuantity(request.headers.get('content-length'));
-  if (declared !== null && declared !== size) {
-    throw new EngineError('content-length does not match the size parameter', 400);
-  }
-  const maxBytes = maxUploadBytes(env);
-  if (size > maxBytes) {
-    throw new EngineError(`Uploads are limited to ${formatLimit(maxBytes)}`, 413);
-  }
-
-  const caption = parseCaption(url.searchParams.get('caption'));
-  const commentTo = parseOptionalMessageId(url.searchParams.get('commentTo'), 'commentTo');
-  const replyTo = parseOptionalMessageId(url.searchParams.get('replyTo'), 'replyTo');
-  const fileName = parseFileName(url.searchParams.get('fileName'));
-  const mime = parseMime(url.searchParams.get('mime'));
-  const width = parseQuantity(url.searchParams.get('width'));
-  const height = parseQuantity(url.searchParams.get('height'));
-  const duration = parseQuantity(url.searchParams.get('duration'));
-
-  return {
-    chatId,
-    kind,
-    size,
-    ...(caption !== null && { caption }),
-    ...(commentTo !== null && { commentTo }),
-    ...(replyTo !== null && { replyTo }),
-    ...(fileName !== null && { fileName }),
-    ...(mime !== null && { mime }),
-    ...(width !== null && { width }),
-    ...(height !== null && { height }),
-    ...(duration !== null && { duration }),
-  };
 }
 
 function mediaResponse(download: MediaDownload, cacheSeconds: number): Response {
@@ -148,77 +112,4 @@ function requireMessageId(value: string | null): number {
     throw new EngineError('messageId query parameter is required', 400);
   }
   return messageId;
-}
-
-/**
-A positive message id from the query string, or null when absent/unusable —
-but an explicitly present garbage value is an error, not an omission.
-*/
-function parseOptionalMessageId(value: string | null, name: string): number | null {
-  if (value === null) return null;
-  const messageId = parseNumber(value);
-  if (!Number.isSafeInteger(messageId) || messageId <= 0) {
-    throw new EngineError(`${name} must be a positive message id`, 400);
-  }
-  return messageId;
-}
-
-function parseKind(value: string | null): UploadKind {
-  if (value === null || !UPLOAD_KINDS.has(value as UploadKind)) {
-    throw new EngineError('kind must be photo, video, animation or document', 400);
-  }
-  return value as UploadKind;
-}
-
-/**
- * A positive integer from the query string, or null when absent/unusable.
- */
-function parseQuantity(value: string | null): number | null {
-  if (value === null) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function parseCaption(value: string | null): string | null {
-  const caption = (value ?? '').trim();
-  if (caption.length === 0) return null;
-  if (caption.length > MAX_CAPTION_LENGTH) {
-    throw new EngineError(`caption must be at most ${MAX_CAPTION_LENGTH} characters`, 400);
-  }
-  return caption;
-}
-
-function parseFileName(value: string | null): string | null {
-  // Control characters have no business in a Telegram file name; the browser
-  // sends the original `File.name` here.
-  const name = stripControlCharacters(value ?? '').trim();
-  if (name.length === 0) return null;
-  return name.slice(0, MAX_FILE_NAME_LENGTH);
-}
-
-function stripControlCharacters(value: string): string {
-  let result = '';
-  for (const character of value) {
-    const code = character.codePointAt(0) ?? 0;
-    if (code >= 0x20 && code !== 0x7f) result += character;
-  }
-  return result;
-}
-
-function parseMime(value: string | null): string | null {
-  const mime = (value ?? '').trim();
-  if (mime.length === 0) return null;
-  if (mime.length > MAX_MIME_LENGTH) {
-    throw new EngineError('mime is too long', 400);
-  }
-  return mime;
-}
-
-function maxUploadBytes(env: CloudflareEnv): number {
-  const parsed = Number(env.UPLOAD_MAX_BYTES ?? '');
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_UPLOAD_BYTES;
-}
-
-function formatLimit(bytes: number): string {
-  return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
 }

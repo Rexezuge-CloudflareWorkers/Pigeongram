@@ -1,12 +1,21 @@
-import type { UploadKind } from './types';
+import { uploadFile, uploadGroup } from './api';
+import type { UploadGroupItem } from './api';
+import type { MessageDto, PeerId, UploadKind } from './types';
 
 /**
- * Browser-side upload preparation: choosing the Telegram media kind from the
- * file's MIME type and, when needed, normalising images into the JPEG the
- * photo path expects.
+ * Browser-side upload preparation and batching: choosing the Telegram media
+ * kind from the file's MIME type, normalising images into the JPEG the photo
+ * path expects, and sending a reviewed selection either as one album or as
+ * sequential messages.
  */
 
 const JPEG_QUALITY = 0.9;
+
+/**
+ * Telegram albums hold at most 10 items; the upload dialog enforces the same
+ * bound before the manifest is built.
+ */
+export const MAX_UPLOAD_ITEMS = 10;
 
 export interface PreparedUpload {
   kind: UploadKind;
@@ -18,12 +27,107 @@ export interface PreparedUpload {
   duration?: number;
 }
 
+/**
+ * What the composer's upload dialog hands to a controller: the reviewed files,
+ * the caption that was in the box, the reply target and the group choice.
+ */
+export interface UploadRequest {
+  files: File[];
+  caption: string;
+  replyTo?: number;
+  grouped: boolean;
+}
+
+/**
+ * The bridge coordinates shared by one file and by an album.
+ */
+export interface UploadDestination {
+  chatId: PeerId;
+  commentTo?: number;
+  replyTo?: number;
+}
+
 export function mediaKind(file: File): UploadKind {
   const mime = file.type.toLowerCase();
   if (mime === 'image/gif') return 'animation';
   if (mime.startsWith('image/') && mime !== 'image/svg+xml') return 'photo';
   if (mime.startsWith('video/')) return 'video';
   return 'document';
+}
+
+/**
+ * Whether a selection can be one Telegram album: 2–10 items of one class.
+ * Photos, videos and GIFs mix; documents only group with documents. Telegram
+ * rejects other combinations, so the dialog disables the option instead of
+ * letting the upload fail.
+ */
+export function canGroupUploads(files: readonly File[]): boolean {
+  return files.length >= 2 && files.length <= MAX_UPLOAD_ITEMS && groupableKinds(files.map(mediaKind));
+}
+
+/**
+ * Prepares and sends a reviewed selection. Grouped selections become one album
+ * when the prepared kinds still agree; everything else is sent message by
+ * message, with the caption riding the first item only. `onSent` is called as
+ * each message lands, so a later failure keeps the successes in the UI.
+ */
+export async function sendUploadBatch(
+  destination: UploadDestination,
+  request: UploadRequest,
+  onProgress: (fraction: number | null) => void,
+  onSent: (message: MessageDto) => void,
+): Promise<void> {
+  const prepared: PreparedUpload[] = [];
+  for (const file of request.files) {
+    prepared.push(await prepareUpload(file));
+  }
+  if (prepared.length === 0) return;
+
+  if (request.grouped && prepared.length > 1 && prepared.length <= MAX_UPLOAD_ITEMS && groupableKinds(prepared.map((item) => item.kind))) {
+    const body = new Blob(prepared.map((item) => item.body));
+    const result = await uploadGroup(
+      {
+        ...destination,
+        items: prepared.map(uploadItem),
+        ...(request.caption.length > 0 && { caption: request.caption }),
+      },
+      body,
+      onProgress,
+    );
+    for (const message of result.messages) onSent(message);
+    return;
+  }
+
+  for (const [index, item] of prepared.entries()) {
+    const result = await uploadFile(
+      {
+        ...destination,
+        ...uploadItem(item),
+        ...(index === 0 && request.caption.length > 0 && { caption: request.caption }),
+      },
+      item.body,
+      (fraction) => onProgress((index + fraction) / prepared.length),
+    );
+    onSent(result.message);
+  }
+}
+
+function uploadItem(item: PreparedUpload): UploadGroupItem {
+  return {
+    kind: item.kind,
+    fileName: item.fileName,
+    mime: item.mime,
+    size: item.body.size,
+    ...(item.width !== undefined && { width: item.width }),
+    ...(item.height !== undefined && { height: item.height }),
+    ...(item.duration !== undefined && { duration: item.duration }),
+  };
+}
+
+function groupableKinds(kinds: readonly UploadKind[]): boolean {
+  const visual = kinds.every((kind) => kind === 'photo' || kind === 'video' || kind === 'animation');
+  const documents = kinds.every((kind) => kind === 'document');
+  return visual || documents;
 }
 
 /**

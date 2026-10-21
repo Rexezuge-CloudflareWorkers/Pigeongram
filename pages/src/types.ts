@@ -534,6 +534,13 @@ export interface SendMessageResult {
   message: MessageDto;
 }
 
+export interface SendUploadGroupResult {
+  /**
+  The album's messages, oldest first, as Telegram returned them.
+  */
+  messages: MessageDto[];
+}
+
 export interface ForwardMessagesResult {
   /**
   The forwarded copies, as Telegram returned them in the destination chat.

@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchHistory, fetchPollResults, sendMessage, sendReaction, uploadFile } from './api';
+import { fetchHistory, fetchPollResults, sendMessage, sendReaction } from './api';
 import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
@@ -19,7 +19,8 @@ import { useThreadPositionMemory } from './thread-position';
 import { fetchOpenWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
 import type { DialogDto, MessageButtonDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
-import { prepareUpload } from './upload';
+import { sendUploadBatch } from './upload';
+import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
 import { usePollVoting } from './usePollVoting';
 
@@ -66,7 +67,7 @@ export interface ThreadController {
   close: () => void;
   loadOlder: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
-  attach: (file: File, caption: string, replyTo?: number) => Promise<void>;
+  attach: (request: UploadRequest) => Promise<void>;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
   Casts a vote in a poll message: the indexes name the selected answers, or
@@ -231,32 +232,22 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   );
 
   const attach = useCallback(
-    async (file: File, caption: string, replyTo?: number): Promise<void> => {
+    async (request: UploadRequest): Promise<void> => {
       const chat = thread?.chat;
       if (!chat) return;
       setUploading(true);
       setUploadProgress(null);
       setError(null);
       try {
-        const prepared = await prepareUpload(file);
-        const result = await uploadFile(
-          {
-            chatId: chat.id,
-            kind: prepared.kind,
-            fileName: prepared.fileName,
-            mime: prepared.mime,
-            size: prepared.body.size,
-            ...(caption.length > 0 && { caption }),
-            ...(replyTo !== undefined && { replyTo }),
-            ...(prepared.width !== undefined && { width: prepared.width }),
-            ...(prepared.height !== undefined && { height: prepared.height }),
-            ...(prepared.duration !== undefined && { duration: prepared.duration }),
-          },
-          prepared.body,
+        await sendUploadBatch(
+          { chatId: chat.id, ...(request.replyTo !== undefined && { replyTo: request.replyTo }) },
+          request,
           setUploadProgress,
+          (message) => {
+            setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [message])));
+            onSent(message);
+          },
         );
-        setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, [result.message])));
-        onSent(result.message);
       } catch (failure) {
         setError(failureText(failure));
         throw failure;

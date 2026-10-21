@@ -4,7 +4,7 @@ import { EngineError } from './errors';
 import { errorResponse, readJsonBody } from './http';
 import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
-import { avatarResponse, fileResponse, uploadResponse } from './media-routes';
+import { avatarResponse, fileResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
 import { UpdatesSocketHub } from './socket-hub';
 import { EngineStore } from './stats';
@@ -128,6 +128,11 @@ export class SessionEngine {
       }
       case 'POST /user/upload': {
         const response = await uploadResponse(this.driver, request, url, this.env);
+        this.afterActivity();
+        return response;
+      }
+      case 'POST /user/upload-group': {
+        const response = await uploadGroupResponse(this.driver, request, url, this.env);
         this.afterActivity();
         return response;
       }

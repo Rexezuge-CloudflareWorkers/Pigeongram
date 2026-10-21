@@ -4,6 +4,7 @@ import { groupMessages, messageRowSelector } from '../groups';
 import type { CommentsThread } from '../state';
 import { settleToBottom } from '../thread-position';
 import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
+import type { UploadRequest } from '../upload';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { MessageRow } from './MessageRow';
@@ -33,7 +34,7 @@ interface CommentsViewProps {
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
-  onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
+  onAttach: (request: UploadRequest) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
   Starts forwarding a display group; an album forwards every member.
@@ -115,8 +116,7 @@ export function CommentsView({
   };
 
   const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
-  const attach = (file: File, caption: string, replyTo?: number): Promise<void> =>
-    onAttach(file, caption, replyTo).then(() => setReplyingTo(null));
+  const attach = (request: UploadRequest): Promise<void> => onAttach(request).then(() => setReplyingTo(null));
 
   return (
     <section className="thread comments">

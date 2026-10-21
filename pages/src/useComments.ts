@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchComments, readHistory, sendComment, sendReaction, uploadFile } from './api';
+import { fetchComments, readHistory, sendComment, sendReaction } from './api';
 import type { CommentsController } from './comments-controller';
 import {
   applyCommentEdit,
@@ -13,7 +13,8 @@ import {
 } from './state';
 import type { CommentsThread } from './state';
 import type { ChatDto, GetCommentsResult, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
-import { prepareUpload } from './upload';
+import { sendUploadBatch } from './upload';
+import type { UploadRequest } from './upload';
 import { useCommentsPoll } from './useCommentsPoll';
 import { useMessageButtons } from './useMessageButtons';
 
@@ -216,33 +217,25 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   );
 
   const attach = useCallback(
-    async (file: File, caption: string, replyTo?: number): Promise<void> => {
+    async (request: UploadRequest): Promise<void> => {
       if (!thread) return;
-      const post = { chatId: thread.chat.id, messageId: thread.post.id };
-      const first = thread.discussionChatId === null;
+      const open = thread;
+      const post = { chatId: open.chat.id, messageId: open.post.id };
+      const first = open.discussionChatId === null;
       setUploading(true);
       setUploadProgress(null);
       setError(null);
       try {
-        const prepared = await prepareUpload(file);
-        const result = await uploadFile(
+        await sendUploadBatch(
           {
             chatId: post.chatId,
-            kind: prepared.kind,
-            fileName: prepared.fileName,
-            mime: prepared.mime,
-            size: prepared.body.size,
             commentTo: post.messageId,
-            ...(caption.length > 0 && { caption }),
-            ...(replyTo !== undefined && { replyTo }),
-            ...(prepared.width !== undefined && { width: prepared.width }),
-            ...(prepared.height !== undefined && { height: prepared.height }),
-            ...(prepared.duration !== undefined && { duration: prepared.duration }),
+            ...(request.replyTo !== undefined && { replyTo: request.replyTo }),
           },
-          prepared.body,
+          request,
           setUploadProgress,
+          (comment) => applySentComment(open, comment),
         );
-        applySentComment(thread, result.message);
         if (first) {
           await refresh(post).catch(() => {
             // The upload went out; only the thread coordinates stay unknown.

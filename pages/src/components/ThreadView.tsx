@@ -5,6 +5,7 @@ import { readWatermark } from '../reading';
 import type { ThreadPositionMemory } from '../thread-position';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import type { ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId } from '../types';
+import type { UploadRequest } from '../upload';
 import { useBotCommands } from '../useBotCommands';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
@@ -64,7 +65,7 @@ interface ThreadViewProps {
   onBack: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
-  onAttach: (file: File, caption: string, replyTo?: number) => Promise<void>;
+  onAttach: (request: UploadRequest) => Promise<void>;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
   Starts forwarding a display group; an album forwards every member.
@@ -274,8 +275,7 @@ export function ThreadView({
   };
 
   const send = (text: string, replyTo?: number): Promise<void> => onSend(text, replyTo).then(() => setReplyingTo(null));
-  const attach = (file: File, caption: string, replyTo?: number): Promise<void> =>
-    onAttach(file, caption, replyTo).then(() => setReplyingTo(null));
+  const attach = (request: UploadRequest): Promise<void> => onAttach(request).then(() => setReplyingTo(null));
   const openComments = (message: MessageDto): void => {
     const element = scrollRef.current;
     if (element) positions.remember(readThreadPosition(element, chat.id));

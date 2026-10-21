@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 
 /**
- * Sizes the signed-in shell to the visual viewport, which is the area left
- * above the on-screen keyboard. Neither `100%` nor `dvh` follows that keyboard:
- * mobile browsers keep the layout viewport at its pre-keyboard height and
- * overlay the keyboard on it, so a chat shell ending in a composer would put
- * that composer behind it. The visual height is mirrored into `--app-height`
- * (consumed by `.app`), so the composer stays reachable and the message list
- * shrinks instead.
+ * Sizes the signed-in shell to the area left above the on-screen keyboard.
+ * Neither `100%` nor `dvh` follows that keyboard: mobile browsers may keep the
+ * layout viewport at its pre-keyboard height and overlay the keyboard on it, so
+ * a chat shell ending in a composer would put that composer behind it. Chromium
+ * can instead shrink the layout viewport (`interactive-widget=resizes-content`),
+ * and some of those browsers report the visual height late or a little
+ * differently. The smaller of the two is the area both agree is visible, so the
+ * composer stays reachable whichever viewport the browser updates last.
  *
  * Pinch-zoom also shrinks the visual viewport, but it is not a layout change:
  * the property is dropped then, so a zoomed reader pans the full shell rather
@@ -26,15 +27,25 @@ export function useAppHeight(): void {
         return;
       }
       if (viewport.height <= 0) return;
-      root.style.setProperty('--app-height', `${Math.round(viewport.height)}px`);
+      // Chromium's `resizes-content` already shrank the layout viewport; other
+      // browsers only shrink the visual one. Taking the smaller height keeps
+      // the shell above a keyboard that either viewport fails to account for.
+      const layoutHeight = root.clientHeight;
+      const height = layoutHeight > 0 ? Math.min(layoutHeight, viewport.height) : viewport.height;
+      root.style.setProperty('--app-height', `${Math.round(height)}px`);
     };
 
     // The visual viewport has no observer API: its `resize` event is the only
     // signal that the on-screen keyboard changed the visible area.
     // eslint-disable-next-line unicorn/prefer-observer-apis -- ResizeObserver sees elements, not the visual viewport the keyboard resizes.
     viewport.addEventListener('resize', update);
+    // Chromium can resize only the layout viewport under
+    // `interactive-widget=resizes-content`; observing the root catches that.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(root);
     update();
     return () => {
+      observer?.disconnect();
       viewport.removeEventListener('resize', update);
       root.style.removeProperty('--app-height');
     };

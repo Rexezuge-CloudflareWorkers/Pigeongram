@@ -105,11 +105,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   list (and, for comments, the matching chat) behind the URL entry so browser back stays in the app; every entry carries
   `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
   closes it before leaving the thread.
-- **The signed-in shell follows the visual viewport, not the layout viewport.** `useAppHeight` mirrors
-  `window.visualViewport.height` into `--app-height`, and `.app` consumes it; the mobile keyboard is an overlay, so
-  `height: 100%`/`dvh` alone leave the composer behind it (`interactive-widget=resizes-content` covers Chromium, Safari
-  falls back to the hook). `settleToBottom` re-pins both scroll views on a host resize, so a pinned thread keeps its end
-  above the composer. Don't replace this with a fixed layout-viewport height.
+- **The signed-in shell fits above the keyboard.** `useAppHeight` writes the smaller of
+  `document.documentElement.clientHeight` and `window.visualViewport.height` into `--app-height`, and `.app` consumes
+  it. Chromium's `interactive-widget=resizes-content` shrinks the layout viewport, while an overlay keyboard shrinks
+  only the visual one; taking the minimum keeps the composer above a keyboard that one of them lags in reporting. The
+  hook observes both the root (`ResizeObserver`) and the visual viewport, and `settleToBottom` re-pins both scroll views
+  on the resulting host resize. Don't replace this with a fixed `100%`/`dvh` height.
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Functions
   (`API_WORKER` service binding). The API surface is split by prefix: `/api/*` is public and carries only
   `GET /api/health`; everything account-scoped lives under `/user/*`, where every request verifies the Cloudflare

@@ -15,8 +15,8 @@ browser ──HTTP──▶ Pages (static + /api/* and /user/* proxies in functi
 ```
 
 - One DO instance (`ENGINE_OBJECT_NAME = 'main'`) owns the account. All state is in its SQLite database:
-  mtcute's storage (`BaseSqliteStorage`: auth keys, session, peers, dialogs, reference messages) plus three engine
-  tables (`engine_wakes`, `engine_meta`, `engine_avatars`).
+  mtcute's storage (`BaseSqliteStorage`: auth keys, session, peers, dialogs, reference messages) plus five engine
+  tables (`engine_wakes`, `engine_meta`, `engine_avatars`, `engine_unread_albums`, `engine_unread_state`).
 - The worker is **API-only** and, in production, not publicly reachable: `workers_dev: false`, no route, and the
   Pages project is the only caller (through the `API_WORKER` service binding).
 - Locally the SPA talks to the worker through the Vite proxy (`/api` and `/user` are proxied from 5173 to 8787).
@@ -210,6 +210,9 @@ the bottom, and renders a single check for sent own messages and a double check 
 history — the comments screen's behavior). `ChatDto.presence` carries the peer's online state — see
 [Presence](#presence) below.
 
+`unread` is Telegram's own count **minus the album surplus** — see
+[Albums count once](#albums-count-once) below.
+
 `MessageDto` carries rich text alongside the plain `text`: `entities` (UTF-16 spans — bold/italic/spoiler/
 code blocks, `text_link`/`url`/`mention` links) and `reactions` (emoji aggregates, each with its `count` and
 a `chosen` flag for the current user). `sendReaction` sets the caller's reaction (`emoji` for unicode, or
@@ -287,6 +290,27 @@ matching the update's chat id and reply header against the thread. Reply counts 
 as the last load plus the caller's own sends: this TL layer has no reply-count update, so a comment from
 someone else does not bump the button until the channel thread reloads.
 
+### Albums count once
+
+Telegram counts every album member as a message: an album of ten files arrives as an unread count of ten. The
+badge counts the album once, so the engine keeps the album members it has seen and subtracts the surplus — the
+unread members of an album beyond the first of that album.
+
+The **album ledger** (`worker/src/session/unread-albums.ts`) is that bookkeeping. It lives in the DO's SQLite
+(`engine_unread_albums`, one row per unread album member; `engine_unread_state`, the reconciliation marker) because
+the engine sleeps between its wakes and the album members outlive the connection that delivered them. It learns
+from the update stream, so it costs no Telegram traffic: an incoming album member is recorded, and a read drops
+the members its watermark covered. The ledger's surplus is subtracted from the count `getDialogs` serves and from
+the `unread` a `read` update carries, so the badge and the chat list agree.
+
+A fresh sign-in starts with an empty ledger while the account may already carry unread albums, so the first
+`getDialogs` reconciles: it reads the unread range of every chat with unread messages and records the album
+members in it. That happens once per sign-in — the update stream keeps the ledger current from then on — and a
+read that fails only leaves that chat's count at Telegram's raw one.
+
+The SPA counts the same way: `DialogMessageDto.groupedId` tells it that a new message continues the album the chat
+list already counted, and the optimistic read-through subtracts albums rather than messages.
+
 ### Updates socket protocol
 
 Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
@@ -302,7 +326,8 @@ the answer in, so results stay live without the engine holding per-poll state. `
 so the caller's own vote renders without waiting for the socket.
 The `read` update carries `{chatId, maxId, unread, inbox}`: `inbox` distinguishes the account's own inbox
 from the peer reading the account's messages. Only inbox reads move `unread` and `readInboxMaxId`; outbox
-reads move `readOutboxMaxId`, which is what turns the account's own double checks on.
+reads move `readOutboxMaxId`, which is what turns the account's own double checks on. The `unread` of an inbox
+read is the album-aware count — see [Albums count once](#albums-count-once).
 The `user_status` update carries `{userId, presence}` and says that a peer came online or went offline.
 
 ### Presence

@@ -1,4 +1,5 @@
 import { toDialogMessage } from './dialog-message';
+import { continuesAlbum, countUnreadGroupsBetween } from './groups';
 import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
 
 /**
@@ -18,7 +19,7 @@ export function applyNewMessage(dialogs: DialogDto[], message: MessageDto, activ
   const updated: DialogDto = {
     ...dialog,
     lastMessage: toDialogMessage(message),
-    unread: read ? dialog.unread : dialog.unread + 1,
+    unread: read || continuesAlbum(message, dialog.lastMessage) ? dialog.unread : dialog.unread + 1,
   };
 
   if (updated.pinned) {
@@ -83,7 +84,7 @@ view.
 export function applyReadThrough(dialogs: DialogDto[], chatId: PeerId, maxId: number, messages: readonly MessageDto[]): DialogDto[] {
   return dialogs.map((dialog) => {
     if (dialog.chat.id !== chatId || maxId <= dialog.readInboxMaxId) return dialog;
-    const read = messages.filter((message) => !message.outgoing && message.id > dialog.readInboxMaxId && message.id <= maxId).length;
+    const read = countUnreadGroupsBetween(messages, dialog.readInboxMaxId, maxId);
     return { ...dialog, readInboxMaxId: maxId, unread: Math.max(0, dialog.unread - read) };
   });
 }

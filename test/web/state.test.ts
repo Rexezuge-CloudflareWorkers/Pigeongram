@@ -103,6 +103,7 @@ function dialogMessage(source: MessageDto): DialogMessageDto {
     poll: source.poll,
     outgoing: source.outgoing,
     service: source.service,
+    groupedId: source.groupedId,
   };
 }
 
@@ -120,6 +121,21 @@ describe('chat-list state', () => {
     expect(next[1].unread).toBe(1);
     // The list keeps a preview of the message, not the whole message.
     expect(next[1].lastMessage).toEqual(dialogMessage(incoming));
+  });
+
+  it('counts an album once, however many of its members arrive', () => {
+    const dialogs = [dialog(1)];
+
+    const first = applyNewMessage(dialogs, message({ id: 5, chatId: 1, groupedId: '77' }), null);
+    expect(first[0].unread).toBe(1);
+
+    // The next member continues the album the badge already counts.
+    const second = applyNewMessage(first, message({ id: 6, chatId: 1, groupedId: '77' }), null);
+    expect(second[0].unread).toBe(1);
+
+    // A message of its own is a message of its own.
+    const plain = applyNewMessage(second, message({ id: 7, chatId: 1 }), null);
+    expect(plain[0].unread).toBe(2);
   });
 
   it('keeps pinned chats in place and does not bump the open chat or outgoing messages', () => {
@@ -178,6 +194,29 @@ describe('chat-list state', () => {
     expect(applyReadThrough(through9, 1, 10, messages)[0]).toMatchObject({ readInboxMaxId: 10, unread: 0 });
     // A watermark behind the dialog's own leaves it untouched.
     expect(applyReadThrough(through9, 1, 7, messages)[0]).toBe(through9[0]);
+  });
+
+  it('reads an album as the one unread message it is', () => {
+    // The server counts an album once, so the badge holds one for it.
+    const dialogs = [dialog(1, { unread: 1, readInboxMaxId: 6 })];
+    const album = [
+      message({ id: 7, chatId: 1, groupedId: '77' }),
+      message({ id: 8, chatId: 1, groupedId: '77' }),
+      message({ id: 9, chatId: 1, groupedId: '77' }),
+    ];
+
+    expect(applyReadThrough(dialogs, 1, 9, album)[0]).toMatchObject({ readInboxMaxId: 9, unread: 0 });
+  });
+
+  it('counts an album and a plain message as two unread messages', () => {
+    const dialogs = [dialog(1, { unread: 2, readInboxMaxId: 6 })];
+    const messages = [
+      message({ id: 7, chatId: 1, groupedId: '77' }),
+      message({ id: 8, chatId: 1, groupedId: '77' }),
+      message({ id: 9, chatId: 1 }),
+    ];
+
+    expect(applyReadThrough(dialogs, 1, 9, messages)[0]).toMatchObject({ readInboxMaxId: 9, unread: 0 });
   });
 
   it('finds chat titles by id', () => {

@@ -505,6 +505,12 @@ export interface DialogMessageDto {
   poll: MessagePollDto | null;
   outgoing: boolean;
   service: boolean;
+  /**
+   * Album membership: messages sharing a non-null `groupedId` are one album
+   * and count once towards the unread badge. Decimal string of Telegram's
+   * 64-bit group id.
+   */
+  groupedId: string | null;
 }
 
 /**

@@ -339,11 +339,17 @@ export function toPollDto(poll: Poll): MessagePollDto {
   };
 }
 
-export function toDialogDto(dialog: Dialog): DialogDto {
+/**
+ * Maps a dialog onto the chat list's shape.
+ *
+ * `unread` is Telegram's own count unless the caller corrects it: the badge
+ * counts an album once, and the album ledger knows the surplus to subtract.
+ */
+export function toDialogDto(dialog: Dialog, unread: number = dialog.unreadCount): DialogDto {
   return {
     chat: toChatDto(dialog.peer),
     lastMessage: dialog.lastMessage ? toDialogMessageDto(dialog.lastMessage) : null,
-    unread: dialog.unreadCount,
+    unread,
     // The raw fields are optional even though mtcute's getters are typed as
     // numbers; a dialog that never carried them has read nothing.
     readInboxMaxId: dialog.lastReadIngoing ?? 0,
@@ -367,5 +373,8 @@ export function toDialogMessageDto(message: Message): DialogMessageDto {
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     outgoing: message.isOutgoing,
     service: message.isService,
+    // The album this message belongs to, so the SPA can tell that a message
+    // continues the album the chat list already counted once.
+    groupedId: message.groupedId?.toString() ?? null,
   };
 }

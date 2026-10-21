@@ -18,5 +18,7 @@ export function toDialogMessage(message: MessageDto): DialogMessageDto {
     poll: message.poll,
     outgoing: message.outgoing,
     service: message.service,
+    // The album the message belongs to: the chat list counts an album once.
+    groupedId: message.groupedId,
   };
 }

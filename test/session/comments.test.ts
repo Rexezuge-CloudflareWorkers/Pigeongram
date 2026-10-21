@@ -3,7 +3,7 @@ import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
 import { normalizeReplies, readComments, requireCommentPost, resolveDiscussion } from '../../worker/src/session/comments';
-import { dispatchRpc } from '../../worker/src/session/rpc';
+import { rpc } from './rpc-dispatch';
 import type { GetCommentsResult } from '../../worker/src/rpc-types';
 
 /**
@@ -272,7 +272,7 @@ describe('requireCommentPost', () => {
 describe('dispatchRpc comments methods', () => {
   it('sends a top-level comment through the channel, letting mtcute mirror it', async () => {
     const { client, commented, calls } = fakeClient({});
-    const result = (await dispatchRpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })) as {
+    const result = (await rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })) as {
       message: { id: number };
     };
     expect(commented).toEqual([{ postId: 7, text: 'hi' }]);
@@ -282,7 +282,7 @@ describe('dispatchRpc comments methods', () => {
 
   it('sends a reply to a comment into the linked group', async () => {
     const { client, sent, commented } = fakeClient({});
-    await dispatchRpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hey', replyTo: 5 });
+    await rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hey', replyTo: 5 });
     expect(commented).toEqual([]);
     expect(sent).toEqual([
       {
@@ -295,19 +295,19 @@ describe('dispatchRpc comments methods', () => {
 
   it('refuses to comment on a post without a comments section', async () => {
     const { client } = fakeClient({ post: chatPost() });
-    await expect(dispatchRpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })).rejects.toThrow('comments section');
+    await expect(rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })).rejects.toThrow('comments section');
   });
 
   it('validates the comment text', async () => {
     const { client } = fakeClient({});
-    await expect(dispatchRpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: '  ' })).rejects.toThrow(
+    await expect(rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: '  ' })).rejects.toThrow(
       'text must be a non-empty string',
     );
   });
 
   it('answers getComments with the window, the count and the thread coordinates', async () => {
     const { client } = fakeClient({ page: repliesContainer([rawMessage(12), rawMessage(11)], 50) });
-    const result = (await dispatchRpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 })) as GetCommentsResult;
+    const result = (await rpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 })) as GetCommentsResult;
     expect(result.comments.map((message) => message.id)).toEqual([11, 12]);
     expect(result.count).toBe(50);
     expect(result.discussionChatId).toBe(GROUP_ID);
@@ -318,7 +318,7 @@ describe('dispatchRpc comments methods', () => {
 
   it('answers getComments with null coordinates while no thread exists', async () => {
     const { client } = fakeClient({ discussionResult: discussion(null) });
-    const result = (await dispatchRpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 })) as GetCommentsResult;
+    const result = (await rpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 })) as GetCommentsResult;
     expect(result).toMatchObject({
       comments: [],
       count: 0,

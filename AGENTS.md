@@ -160,7 +160,11 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   (`pages/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
   (checked by default when the selection can group) and sends ungrouped files one by one. Its thumbnail column only
   previews raster images (`previewMime` in `pages/src/upload.ts`, which keeps SVG out), and the preview blob is built
-  with that MIME type, so the object URL behind it can never be read as a document.
+  with that MIME type, so the object URL behind it can never be read as a document. A paste into the composer opens
+  the same review step with the pasted files as the selection (`pages/src/clipboard.ts` reads the clipboard): the
+  draft rides along as the caption, exactly as it does for the file picker. Only a clipboard without text is taken
+  over — a cell copied from a spreadsheet arrives as text _and_ an image of the cell, and there the text is what the
+  user meant to paste, so the browser keeps it.
 - **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
   window over `downloadAsIterable` — a 1 MB-block-aligned offset, dropped prefix, local tail cut, and `throttle`
   backpressure so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB

@@ -20,6 +20,7 @@ function message(overrides: Partial<MessageDto> & { id: number }): MessageDto {
     groupedId: null,
     senderId: 2,
     senderName: 'Bob',
+    senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
     text: '',

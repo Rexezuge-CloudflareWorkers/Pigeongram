@@ -133,6 +133,7 @@ const dialogs: DialogDto[] = [
       groupedId: null,
       senderId: 2,
       senderName: 'Bob',
+      senderPhoto: null,
       outgoing: false,
       date: 1_700_000_000_000,
       text: 'see you',
@@ -162,6 +163,7 @@ const history: MessageDto[] = [
     groupedId: null,
     senderId: 2,
     senderName: 'Bob',
+    senderPhoto: null,
     outgoing: false,
     date: 1_699_999_900_000,
     text: 'oldest',
@@ -182,6 +184,7 @@ const history: MessageDto[] = [
     groupedId: null,
     senderId: 2,
     senderName: 'Bob',
+    senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
     text: 'see you',
@@ -217,6 +220,7 @@ const carolHistory: MessageDto[] = [
     groupedId: null,
     senderId: 3,
     senderName: 'Carol',
+    senderPhoto: null,
     outgoing: false,
     date: 1_699_999_950_000,
     text: 'carol says hi',
@@ -241,6 +245,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     groupedId: null,
     senderId: null,
     senderName: null,
+    senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
     text: `message ${overrides.id}`,
@@ -861,6 +866,56 @@ describe('App', () => {
     const origin = await screen.findByText('↗ Forwarded from News Channel');
     const sender = screen.getByText('Bob', { selector: '.message .sender' });
     expect(origin.nextElementSibling).toBe(sender);
+  });
+
+  it("shows group senders' avatars beside their bubbles", async () => {
+    const team: ChatDto = {
+      id: 4,
+      kind: 'supergroup',
+      title: 'Team',
+      username: null,
+      photo: null,
+      canSendMessages: true,
+      presence: null,
+    };
+    const incoming = message({
+      id: 20,
+      chatId: 4,
+      senderId: 2,
+      senderName: 'Bob',
+      senderPhoto: 'bob-photo',
+      text: 'hello team',
+    });
+    const outgoing = message({
+      id: 21,
+      chatId: 4,
+      senderId: 1,
+      senderName: 'Ada',
+      senderPhoto: 'ada-photo',
+      outgoing: true,
+      text: 'hi Bob',
+    });
+    installSignedInFetch({
+      dialogs: [{ chat: team, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false }],
+      history: () => json({ messages: [incoming, outgoing] }),
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Team'));
+    expect(await within(threadSection()).findByText('hello team')).toBeDefined();
+
+    const incomingLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="20"]')?.closest('.message-line');
+    expect(incomingLine).not.toBeNull();
+    expect(incomingLine?.classList.contains('own')).toBe(false);
+    expect(incomingLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
+      '/user/avatar?chatId=2&size=small&v=bob-photo',
+    );
+
+    const outgoingLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="21"]')?.closest('.message-line');
+    expect(outgoingLine?.classList.contains('own')).toBe(true);
+    expect(outgoingLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
+      '/user/avatar?chatId=1&size=small&v=ada-photo',
+    );
   });
 
   it('toggles a reaction optimistically and posts sendReaction', async () => {
@@ -2444,6 +2499,37 @@ describe('App', () => {
       box.listHeight = 600;
       fireEvent.load(img);
       expect(scrollContainer().scrollTop).toBe(600);
+    });
+
+    it("shows commenters' avatars but not the pinned post's", async () => {
+      const avatarComment = comment({
+        id: ROOT + 1,
+        senderId: 2,
+        senderName: 'Dana',
+        senderPhoto: 'dana-photo',
+        text: 'nice',
+      });
+      installCommentsFetch(
+        () => json({ comments: [avatarComment], count: 1, discussionChatId: GROUP, discussionMessageId: ROOT }),
+        () =>
+          json({
+            messages: [{ ...post, senderId: channel.id, senderName: 'Announcements', senderPhoto: 'channel-photo' }],
+          }),
+      );
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect(await within(threadSection()).findByText('nice')).toBeDefined();
+
+      const commentLine = threadSection().querySelector<HTMLElement>('[data-message-ids~="11"]')?.closest('.message-line');
+      expect(commentLine?.querySelector<HTMLImageElement>(':scope .avatar img')?.getAttribute('src')).toBe(
+        '/user/avatar?chatId=2&size=small&v=dana-photo',
+      );
+      // The pinned post is not a commenter, and its header already carries the
+      // channel's avatar.
+      expect(threadSection().querySelector(':scope .comments-post .avatar')).toBeNull();
     });
 
     it('leaves the comments button off non-channel chats', async () => {

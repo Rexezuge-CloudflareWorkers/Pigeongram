@@ -252,6 +252,10 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
       <span className="w-5 shrink-0 text-center text-sm text-muted">{index + 1}</span>
       <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-panel-2 text-xl">
         {previewUrl ? (
+          // The object URL is a blob URL the browser minted from the picked
+          // file, so it can never carry a script: this finding is a false
+          // positive.
+          // codeql[js/xss-through-dom]
           <img src={previewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <span aria-hidden="true">{KIND_ICONS[kind]}</span>

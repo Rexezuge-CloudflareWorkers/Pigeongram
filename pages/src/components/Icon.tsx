@@ -42,7 +42,8 @@ export type IconName =
   | 'minus'
   | 'north-east'
   | 'slash'
-  | 'send';
+  | 'send'
+  | 'add-reaction';
 
 const PATHS: Record<IconName, string> = {
   'more-vertical':
@@ -80,6 +81,8 @@ const PATHS: Record<IconName, string> = {
   'north-east': 'M9 5v2h6.59L4 18.59 5.41 20 17 8.41V15h2V5z',
   slash: 'M14.4 3H17L9.6 21H7z',
   send: 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z',
+  'add-reaction':
+    'M18 9V7h-2V2.84C14.77 2.3 13.42 2 11.99 2 6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12c0-1.05-.17-2.05-.47-3H18zm-2.5-1c.83 0 1.5.67 1.5 1.5S16.33 11 15.5 11 14 10.33 14 9.5 14.67 8 15.5 8zm-7 0C9.33 8 10 8.67 10 9.5S9.33 11 8.5 11 7 10.33 7 9.5 7.67 8 8.5 8zM12 17.5c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5zM22 3h2v2h-2v2h-2V5h-2V3h2V1h2v2z',
 };
 
 export interface IconProps {

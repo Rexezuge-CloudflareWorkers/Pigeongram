@@ -1,15 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { MessageDto } from '../types';
+import { reactionFor } from '../reactions';
+import type { MessageDto, MessageReactionDto } from '../types';
+import { ReactionPicker } from './ReactionPicker';
 
 /**
 The bubble's context menu, opened by a right-click or (on touch) a long press
-at the gesture's coordinates. Reply hands the message back to the view that
-owns the composer target; Forward hands the whole display group (an album
-forwards every member) to the destination picker; Copy text puts the
-message's plain text on the clipboard. A portal with `position: fixed` keeps
-the menu out of the scroll container's clipping, which is also why it closes
-on any scroll: a menu anchored to a moving message would drift.
+at the gesture's coordinates. The reaction strip sits above the actions: the
+common emoji react directly, and its expand control opens the full picker.
+Reply hands the message back to the view that owns the composer target;
+Forward hands the whole display group (an album forwards every member) to the
+destination picker; Copy text puts the message's plain text on the clipboard.
+A portal with `position: fixed` keeps the menu out of the scroll container's
+clipping, which is also why it closes on any scroll outside itself: a menu
+anchored to a moving message would drift. The picker's own grid scrolls
+without closing the menu.
 
 The parent owns the open/closed state, and every path here closes through
 `onClose`, so a menu cannot outlive its message's layout.
@@ -34,20 +39,31 @@ interface MessageMenuProps {
   Starts forwarding this display group; absent for views that do not forward.
   */
   onForward?: (messages: readonly MessageDto[]) => void;
+  /**
+  Sets (or clears) a reaction on the anchor message; absent for views that do
+  not react (the comments view's post header).
+  */
+  onReact?: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Whether a reaction request is in flight; the picker's emoji are disabled.
+  */
+  reacting?: boolean;
   onClose: () => void;
 }
 
-export function MessageMenu({ messages, x, y, onReply, onForward, onClose }: MessageMenuProps) {
+export function MessageMenu({ messages, x, y, onReply, onForward, onReact, reacting = false, onClose }: MessageMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
+  const [expanded, setExpanded] = useState(false);
   const message = messages[0];
   const canReply = onReply !== undefined && !message.service;
   const canForward = onForward !== undefined && !message.service;
   const canCopy = message.text.length > 0;
+  const canReact = onReact !== undefined && !message.service;
 
   // Clamp the menu into the viewport once its real size is known (the first
-  // paint at the raw cursor keeps the open instant), and focus the first item
-  // so the keyboard can drive it — the Menu key opens the menu focused.
+  // paint at the raw cursor keeps the open instant). Expanding the picker
+  // changes that size, so it is measured again then.
   useLayoutEffect(() => {
     const element = ref.current;
     if (element === null) return;
@@ -57,8 +73,14 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onClose }: Mes
       left: Math.max(margin, Math.min(x, window.innerWidth - width - margin)),
       top: Math.max(margin, Math.min(y, window.innerHeight - height - margin)),
     });
-    element.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-  }, [x, y]);
+  }, [x, y, expanded]);
+
+  // Focus the first control once, so the keyboard can drive the menu — the
+  // Menu key opens it focused. Re-clamping on expand must not steal focus
+  // back from the expand button.
+  useLayoutEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[data-message-menu-item]:not(:disabled)')?.focus();
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -68,23 +90,35 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onClose }: Mes
       if (event.target instanceof Node && ref.current?.contains(event.target)) return;
       onClose();
     };
+    const onScroll = (event: Event): void => {
+      // The all-reactions grid scrolls inside the menu; a scroll anchored to
+      // a moving message outside it closes the menu instead.
+      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
+      onClose();
+    };
     // Capture, so Escape lands before any other key handler acts and a press
     // anywhere (including another bubble's) closes this menu first. The
     // thread scrolls inside its own container, not the window, so that too is
     // caught on the way down.
     addEventListener('keydown', onKeyDown, { capture: true });
     addEventListener('pointerdown', onPointerDown, { capture: true });
-    addEventListener('scroll', onClose, { capture: true });
+    addEventListener('scroll', onScroll, { capture: true });
     addEventListener('resize', onClose);
     return () => {
       removeEventListener('keydown', onKeyDown, { capture: true });
       removeEventListener('pointerdown', onPointerDown, { capture: true });
-      removeEventListener('scroll', onClose, { capture: true });
+      removeEventListener('scroll', onScroll, { capture: true });
       removeEventListener('resize', onClose);
     };
   }, [onClose]);
 
-  if (!canReply && !canForward && !canCopy) return null;
+  if (!canReply && !canForward && !canCopy && !canReact) return null;
+
+  const pickReaction = (emoji: string): void => {
+    if (!onReact) return;
+    onReact(message, reactionFor(message.reactions, emoji));
+    onClose();
+  };
 
   const items: Array<{ label: string; run: () => void }> = [];
   if (canReply) items.push({ label: 'Reply', run: () => onReply?.(message) });
@@ -111,12 +145,22 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onClose }: Mes
         event.preventDefault();
       }}
     >
+      {canReact ? (
+        <ReactionPicker
+          reactions={message.reactions}
+          expanded={expanded}
+          disabled={reacting}
+          onToggle={() => setExpanded((current) => !current)}
+          onPick={pickReaction}
+        />
+      ) : null}
       {items.map((item) => (
         <button
           key={item.label}
           type="button"
           role="menuitem"
           className="message-menu-item"
+          data-message-menu-item
           onClick={() => {
             item.run();
             onClose();
@@ -135,7 +179,7 @@ Cycles focus through the menu's items; the index is taken from the focused
 item, so opening (first item focused) and tabbing in both wrap sensibly.
 */
 function moveFocus(container: HTMLElement, step: number): void {
-  const items = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  const items = [...container.querySelectorAll<HTMLElement>('[data-message-menu-item]:not(:disabled)')];
   if (items.length === 0) return;
   const index = items.indexOf(document.activeElement as HTMLElement);
   items[(index + step + items.length) % items.length].focus();

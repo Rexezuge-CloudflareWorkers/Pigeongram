@@ -1706,6 +1706,75 @@ describe('App', () => {
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
+    it('reacts from the right-click strip and clears the reaction again', async () => {
+      const sent: unknown[] = [];
+      installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'sendReaction') return;
+          sent.push(call.body);
+          return json({ message: null });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      let menu = openMessageMenu(10);
+      const thumbs = within(menu).getByRole('menuitemcheckbox', { name: 'React with 👍' });
+      expect(thumbs.getAttribute('aria-checked')).toBe('false');
+      fireEvent.click(thumbs);
+
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(screen.queryByRole('menu')).toBeNull();
+      await waitFor(() => {
+        expect((screen.getByRole('button', { name: 'React 👍 (2)' }) as HTMLButtonElement).disabled).toBe(false);
+      });
+
+      menu = openMessageMenu(10);
+      const chosen = within(menu).getByRole('menuitemcheckbox', { name: 'React with 👍' });
+      expect(chosen.getAttribute('aria-checked')).toBe('true');
+      fireEvent.click(chosen);
+
+      await waitFor(() => expect(sent).toHaveLength(2));
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'React 👍 (1)' }).getAttribute('aria-pressed')).toBe('false');
+      });
+      expect(sent).toEqual([
+        { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '👍', customEmojiId: null } },
+        { method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: null, customEmojiId: null } },
+      ]);
+    });
+
+    it('expands the strip into the full reaction picker', async () => {
+      const sent: unknown[] = [];
+      installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'sendReaction') return;
+          sent.push(call.body);
+          return json({ message: null });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      const menu = openMessageMenu(10);
+      expect(within(menu).getByRole('menuitem', { name: 'Show all reactions' }).getAttribute('aria-expanded')).toBe('false');
+      expect(within(menu).queryByRole('menuitemcheckbox', { name: 'React with 🦄' })).toBeNull();
+
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Show all reactions' }));
+
+      expect(within(menu).getByRole('menuitem', { name: 'Hide all reactions' }).getAttribute('aria-expanded')).toBe('true');
+      expect(within(menu).getByRole('menuitemcheckbox', { name: 'React with 👍' })).toBeDefined();
+      fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: 'React with 🦄' }));
+
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent).toEqual([{ method: 'sendReaction', params: { chatId: 2, messageId: 10, emoji: '🦄', customEmojiId: null } }]);
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
     it('closes on Escape and on a press outside', async () => {
       installSignedInFetch();
 

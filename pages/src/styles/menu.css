@@ -26,6 +26,109 @@
   outline: none;
 }
 
+/* Reactions lead the menu; the divider keeps the action list readable as a
+   separate group. */
+.message-menu-reactions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.message-menu-quick {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.message-menu-reaction {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 19px;
+  line-height: 1;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.message-menu-reaction:hover:not(:disabled),
+.message-menu-reaction:focus-visible {
+  background: var(--panel-2);
+  outline: none;
+}
+
+.message-menu-reaction.chosen {
+  background: rgba(94, 181, 247, 0.18);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.message-menu-reaction:disabled,
+.message-menu-expand:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.message-menu-expand {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.message-menu-expand:hover:not(:disabled),
+.message-menu-expand:focus-visible {
+  background: var(--panel-2);
+  color: var(--text);
+  outline: none;
+}
+
+/* Eight fixed columns keep the grid predictable at the quick strip's width;
+   the bounded height lets a short viewport scroll the remaining rows instead
+   of pushing the action list off screen. */
+.message-menu-reaction-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+  max-height: min(42vh, 236px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+  scrollbar-width: thin;
+  animation: message-menu-reactions-open 120ms ease-out;
+}
+
+/* The grid's fractional columns are a hair narrower than the strip's fixed
+   cells; let the button fill its cell instead of overflowing it. */
+.message-menu-reaction-grid .message-menu-reaction {
+  width: 100%;
+}
+
+@keyframes message-menu-reactions-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-menu-reaction-grid {
+    animation: none;
+  }
+}
+
 /* Touch: a long press opens the menu, so suppress the native selection it
    would otherwise start on the bubble. */
 @media (pointer: coarse) {

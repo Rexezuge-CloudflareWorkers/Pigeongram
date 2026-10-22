@@ -159,12 +159,12 @@ export function MessageRow({
 
   /**
   Opens the menu at viewport coordinates when the message has actions to
-  offer. Service messages, and messages with nothing to reply to, forward or
-  copy, leave the native menu alone, so a right-click falls back to the
-  browser's.
+  offer. Service messages, and messages with nothing to reply to, forward,
+  react to or copy, leave the native menu alone, so a right-click falls back
+  to the browser's.
   */
   const openMenu = (x: number, y: number): boolean => {
-    if (message.service || (!onReply && !onForward && message.text.length === 0)) return false;
+    if (message.service || (!onReply && !onForward && !onReact && message.text.length === 0)) return false;
     setMenu({ x, y });
     return true;
   };
@@ -283,7 +283,16 @@ export function MessageRow({
         </button>
       ) : null}
       {menu ? (
-        <MessageMenu messages={group} x={menu.x} y={menu.y} onReply={onReply} onForward={onForward} onClose={() => setMenu(null)} />
+        <MessageMenu
+          messages={group}
+          x={menu.x}
+          y={menu.y}
+          onReply={onReply}
+          onForward={onForward}
+          onReact={onReact}
+          reacting={reacting}
+          onClose={() => setMenu(null)}
+        />
       ) : null}
     </div>
   );

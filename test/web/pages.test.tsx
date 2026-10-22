@@ -3250,6 +3250,16 @@ describe('App', () => {
 
       expect(await screen.findByText('oldest')).toBeDefined();
       expect(location.pathname).toBe('/chat/4');
+      // The archive stays in the sidebar while one of its chats is open: the
+      // thread is a detail of the list, not a way out of it.
+      expect(within(sidebar()).getByText('Archived Chats')).toBeDefined();
+      expect(within(sidebar()).getByText('Dave')).toBeDefined();
+      expect(within(sidebar()).queryByText('Bob')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+
+      await waitFor(() => expect(location.pathname).toBe('/archived'));
+      expect(within(sidebar()).getByText('Archived Chats')).toBeDefined();
     });
 
     it('opens an archived chat from a shared link', async () => {
@@ -3262,6 +3272,9 @@ describe('App', () => {
 
       expect(await screen.findByText('oldest')).toBeDefined();
       expect(location.pathname).toBe('/chat/4');
+      // The link named a chat the archive holds, so the sidebar shows that
+      // list beside it rather than the main list it is not in.
+      expect(await within(sidebar()).findByText('Archived Chats')).toBeDefined();
     });
 
     it('archives a chat and takes it out of the chat list', async () => {
@@ -3304,6 +3317,8 @@ describe('App', () => {
       await moveChat('Dave', 'Unarchive chat', 'Unarchive');
 
       await waitFor(() => expect(within(sidebar()).queryByText('Dave')).not.toBeNull());
+      // The chat now lives in the main list, so the sidebar hands back to it.
+      expect(within(sidebar()).queryByText('Archived Chats')).toBeNull();
       const move = calls.find((call) => call.body?.method === 'setArchived');
       expect(move?.body?.params).toEqual({ chatId: 4, archived: false });
       expect(await screen.findByText('Chat Restored')).toBeDefined();

@@ -58,7 +58,7 @@ describe('UserMenu', () => {
     expect(screen.queryByRole('menu', { name: 'Account menu' })).toBeNull();
 
     const menu = openMenu(trigger);
-    const item = within(menu).getByRole('menuitem', { name: 'Archived chats' }) as HTMLButtonElement;
+    const item = within(menu).getByRole('menuitem', { name: 'Archived Chats' }) as HTMLButtonElement;
 
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(within(menu).getByText('@ada')).toBeDefined();
@@ -72,7 +72,7 @@ describe('UserMenu', () => {
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
 
     const menu = openMenu(trigger);
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archived chats' }));
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archived Chats' }));
 
     expect(onOpenArchive).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).toBeNull();

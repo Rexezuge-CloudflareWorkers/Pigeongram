@@ -193,7 +193,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
                   <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.18-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
                   </svg>
-                  <span>Archived chats</span>
+                  <span>Archived Chats</span>
                 </button>
                 {pwa.canInstall ? (
                   <button

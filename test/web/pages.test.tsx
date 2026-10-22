@@ -3290,7 +3290,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
 
-      await moveChat('Bob', 'Archive chat', 'Archive');
+      await moveChat('Bob', 'Archive Chat', 'Archive');
 
       await waitFor(() => expect(within(sidebar()).queryByText('Bob')).toBeNull());
       const move = calls.find((call) => call.body?.method === 'setArchived');
@@ -3314,7 +3314,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Dave'));
       expect(await screen.findByRole('button', { name: 'Menu for Dave' })).toBeDefined();
 
-      await moveChat('Dave', 'Unarchive chat', 'Unarchive');
+      await moveChat('Dave', 'Unarchive Chat', 'Unarchive');
 
       await waitFor(() => expect(within(sidebar()).queryByText('Dave')).not.toBeNull());
       // The chat now lives in the main list, so the sidebar hands back to it.
@@ -3336,7 +3336,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
 
-      await moveChat('Bob', 'Archive chat', 'Archive');
+      await moveChat('Bob', 'Archive Chat', 'Archive');
 
       expect(await within(sidebar()).findByText('Bob')).toBeDefined();
       expect(await screen.findByRole('alert')).toBeDefined();

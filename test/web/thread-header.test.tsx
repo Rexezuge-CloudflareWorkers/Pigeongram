@@ -196,10 +196,10 @@ describe('ThreadHeader', () => {
     renderHeader(chat, { onSetArchived });
 
     // The header itself carries no archive button any more.
-    expect(screen.queryByRole('button', { name: 'Archive chat' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive Chat' })).toBeNull();
 
     const menu = openMenu();
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archive chat' }));
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archive Chat' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Archive this chat?')).toBeDefined();
@@ -210,7 +210,7 @@ describe('ThreadHeader', () => {
 
     // The move runs once the reader confirms it.
     const again = openMenu();
-    fireEvent.click(within(again).getByRole('menuitem', { name: 'Archive chat' }));
+    fireEvent.click(within(again).getByRole('menuitem', { name: 'Archive Chat' }));
 
     const confirmed = await screen.findByRole('dialog');
     fireEvent.click(within(confirmed).getByRole('button', { name: 'Archive' }));
@@ -225,8 +225,8 @@ describe('ThreadHeader', () => {
     renderHeader(chat, { archived: true, onSetArchived });
 
     const menu = openMenu();
-    expect(within(menu).queryByRole('menuitem', { name: 'Archive chat' })).toBeNull();
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Unarchive chat' }));
+    expect(within(menu).queryByRole('menuitem', { name: 'Archive Chat' })).toBeNull();
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Unarchive Chat' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Bring the chat back?')).toBeDefined();

@@ -79,12 +79,12 @@ describe('telegram storage over the DO adapter', () => {
     await storage.driver.load();
 
     // kv writes are write-behind: invisible until save(), then durable.
-    storage.kv.set('key', new Uint8Array([1, 2, 3]));
+    await storage.kv.set('key', new Uint8Array([1, 2, 3]));
     expect(storage.kv.get('key')).toBeNull();
     await storage.driver.save();
     expect(storage.kv.get('key')).toEqual(new Uint8Array([1, 2, 3]));
 
-    storage.authKeys.set(2, new Uint8Array([9, 8, 7]));
+    await storage.authKeys.set(2, new Uint8Array([9, 8, 7]));
     expect(storage.authKeys.get(2)).toEqual(new Uint8Array([9, 8, 7]));
 
     // A second instance over the same database sees the migrated schema and
@@ -93,5 +93,35 @@ describe('telegram storage over the DO adapter', () => {
     reopened.driver.setup(new LogManager('test', platform), platform);
     await reopened.driver.load();
     expect(reopened.kv.get('key')).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it('keeps peer and reference-message caches off SQLite', async () => {
+    const statements: string[] = [];
+    const storage: TransactionalStorageLike = {
+      sql: {
+        exec: (query: string) => {
+          statements.push(query);
+          return { toArray: () => [] };
+        },
+      },
+      transactionSync: (closure) => closure(),
+    };
+    const provider = createTelegramStorage(storage);
+
+    await provider.peers.store({
+      id: 42,
+      accessHash: '1',
+      isMin: false,
+      usernames: ['someone'],
+      updated: Date.now(),
+      complete: new Uint8Array([1, 2, 3]),
+    });
+    await provider.refMessages.store(1, 2, 3);
+
+    expect(provider.peers.getById(42)).toMatchObject({ id: 42 });
+    expect(provider.refMessages.getByPeer(1)).toEqual([2, 3]);
+    // The caches mtcute refills on every response never reach the DO's SQLite:
+    // each indexed row would cost several writes of the Free plan's daily budget.
+    expect(statements).toEqual([]);
   });
 });

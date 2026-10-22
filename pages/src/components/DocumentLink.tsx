@@ -1,6 +1,7 @@
 import { fileUrl } from '../api';
 import { formatBytes } from '../format';
 import type { MessageDto } from '../types';
+import { Icon } from './Icon';
 
 /**
 The fallback for media the browser cannot preview: a named file with its size,
@@ -16,6 +17,7 @@ export function DocumentLink({ message }: { message: MessageDto }) {
       target="_blank"
       rel="noreferrer"
     >
+      <Icon name="download" size={16} />
       <span className="doc-name">{media?.fileName ?? 'File'}</span>
       {media && media.size !== null ? <span className="doc-size">{formatBytes(media.size)}</span> : null}
     </a>

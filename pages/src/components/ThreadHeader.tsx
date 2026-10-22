@@ -149,10 +149,6 @@ export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSe
           >
             {chat.title}
           </button>
-          <span className="muted small">
-            {chat.kind}
-            {username ? ` · @${username}` : ''}
-          </span>
         </div>
         {/* The archive is Telegram's own place for the chats that are put
             away; the button offers the move in the direction the chat is not

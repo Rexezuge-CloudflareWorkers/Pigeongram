@@ -108,15 +108,31 @@ describe('useAppHeight', () => {
     expect(appHeight()).toBe('620px');
   });
 
-  it('rounds a fractional visual height to whole pixels', () => {
+  it('floors a fractional visual height so the cap never sits above it', () => {
     const viewport = new FakeVisualViewport();
     install(viewport);
     render(<Probe />);
 
-    // A keyboard can report a fractional height; the shell takes whole pixels.
+    // A keyboard can report a fractional height; the cap takes whole pixels,
+    // and the only safe direction is down.
     viewport.height = 421.6;
     viewport.dispatchEvent(new Event('resize'));
-    expect(appHeight()).toBe('422px');
+    expect(appHeight()).toBe('421px');
+  });
+
+  it('never publishes a cap above the measured height', () => {
+    const viewport = new FakeVisualViewport();
+    install(viewport);
+    // A maximized desktop window at a fractional scale: `clientHeight` rounds
+    // the viewport up to 901 while the visual viewport still knows the real
+    // 900.6px. The cap is floored from the real height, so it never publishes
+    // the 901 that used to leave the page a fraction of a pixel taller than the
+    // screen and scroll a scrollbar onto it.
+    setLayoutHeight(901);
+    viewport.height = 900.6;
+    render(<Probe />);
+
+    expect(appHeight()).toBe('900px');
   });
 
   it('drops the override while pinch-zoomed and restores it at scale 1', () => {

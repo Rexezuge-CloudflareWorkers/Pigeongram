@@ -132,10 +132,13 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   browser's `online` event).
 - **The signed-in shell fits above the keyboard.** `useAppHeight` writes the smaller of
   `document.documentElement.clientHeight` and `window.visualViewport.height` into `--app-height`, and `.app` consumes
-  it. Chromium's `interactive-widget=resizes-content` shrinks the layout viewport, while an overlay keyboard shrinks
-  only the visual one; taking the minimum keeps the composer above a keyboard that one of them lags in reporting. The
-  hook observes both the root (`ResizeObserver`) and the visual viewport, and `settleToBottom` re-pins both scroll views
-  on the resulting host resize. Don't replace this with a fixed `100%`/`dvh` height.
+  it as a **`max-height` cap** over a plain `height: 100%` — so the value can only shorten the shell. Folding the two
+  back into one `height` lets the cap sit a fraction of a pixel above the viewport (the hook floors rather than rounds,
+  but `clientHeight` is itself rounded), and Chrome draws a scrollbar for that much overflow. Chromium's
+  `interactive-widget=resizes-content` shrinks the layout viewport, while an overlay keyboard shrinks only the visual
+  one; taking the minimum keeps the composer above a keyboard that one of them lags in reporting. The hook observes
+  both the root (`ResizeObserver`) and the visual viewport, and `settleToBottom` re-pins both scroll views on the
+  resulting host resize. Don't replace this with a fixed `100%`/`dvh` height.
 - **Sends are optimistic, but the thread and the dialogs stay server truth.** `pages/src/outbox.ts` (the entry shape and
   the chat-list overlay) and `pages/src/useOutbox.ts` (the bridge round trip) keep pending sends in their own layer: a
   `PendingMessage` renders beside the loaded messages (`components/PendingMessageRow.tsx`) and is folded over the

@@ -10,6 +10,10 @@ import { useEffect } from 'react';
  * differently. The smaller of the two is the area both agree is visible, so the
  * composer stays reachable whichever viewport the browser updates last.
  *
+ * The published value *caps* the shell (`.app`'s `max-height`) rather than
+ * sizing it, so it can only ever shorten it; it is floored to whole pixels so
+ * the cap is never aimed above the area the two viewports agree on.
+ *
  * Pinch-zoom also shrinks the visual viewport, but it is not a layout change:
  * the property is dropped then, so a zoomed reader pans the full shell rather
  * than being handed a smaller copy of it.
@@ -32,7 +36,9 @@ export function useAppHeight(): void {
       // the shell above a keyboard that either viewport fails to account for.
       const layoutHeight = root.clientHeight;
       const height = layoutHeight > 0 ? Math.min(layoutHeight, viewport.height) : viewport.height;
-      root.style.setProperty('--app-height', `${Math.round(height)}px`);
+      // Floored, not rounded: the cap is a whole number of pixels, and the only
+      // safe direction to be off in is down.
+      root.style.setProperty('--app-height', `${Math.floor(height)}px`);
     };
 
     // The visual viewport has no observer API: its `resize` event is the only

@@ -57,6 +57,21 @@ function renderSticker(media: MessageMediaDto): HTMLElement {
   return container;
 }
 
+describe('document links', () => {
+  it('marks a file attachment as a download with the icon before its name', () => {
+    const media: MessageMediaDto = { ...sticker, kind: 'document', fileName: 'notes.pdf', mime: 'application/pdf', size: 3072 };
+    const { container } = render(<MessageMedia message={message(media)} media={media} onOpen={() => {}} />);
+
+    const link = container.querySelector('a.document');
+    expect(link?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10');
+    expect(link?.getAttribute('download')).toBe('notes.pdf');
+    const icon = link?.querySelector('svg[data-icon="download"]');
+    expect(icon).not.toBeNull();
+    expect(link?.firstElementChild).toBe(icon);
+    expect(link?.querySelector('.doc-name')?.textContent).toBe('notes.pdf');
+  });
+});
+
 describe('sticker previews', () => {
   it('keeps a static WebP sticker an image', () => {
     const container = renderSticker({ ...sticker, fileName: 'sticker.webp', mime: 'image/webp' });

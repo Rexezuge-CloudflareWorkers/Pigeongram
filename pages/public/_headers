@@ -1,0 +1,14 @@
+# Cloudflare Pages serves these headers with the static assets. The function
+# plane (`/api/*`, `/user/*`) is not affected by this file.
+
+# The service worker decides which build the browser runs, so it must be
+# re-checked on every load. The hashed assets it points at never change, so
+# they are cached forever.
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

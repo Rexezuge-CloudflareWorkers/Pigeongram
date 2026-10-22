@@ -7,13 +7,15 @@ afterEach(cleanup);
 
 const me: MeDto = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 
+const pwa = { canInstall: false, install: () => {} };
+
 function renderMenu(onSignOut: () => Promise<void> | void = async () => {}): HTMLButtonElement {
-  render(<UserMenu me={me} connected onSignOut={onSignOut} onOpenArchive={() => {}} />);
+  render(<UserMenu me={me} connected pwa={pwa} onSignOut={onSignOut} onOpenArchive={() => {}} />);
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
 function renderStatus(connected: boolean): HTMLButtonElement {
-  render(<UserMenu me={me} connected={connected} onSignOut={async () => {}} onOpenArchive={() => {}} />);
+  render(<UserMenu me={me} connected={connected} pwa={pwa} onSignOut={async () => {}} onOpenArchive={() => {}} />);
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
@@ -66,7 +68,7 @@ describe('UserMenu', () => {
 
   it('opens the archive from the profile menu and closes the menu', () => {
     const onOpenArchive = vi.fn();
-    render(<UserMenu me={me} connected onSignOut={async () => {}} onOpenArchive={onOpenArchive} />);
+    render(<UserMenu me={me} connected pwa={pwa} onSignOut={async () => {}} onOpenArchive={onOpenArchive} />);
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
 
     const menu = openMenu(trigger);
@@ -74,6 +76,25 @@ describe('UserMenu', () => {
 
     expect(onOpenArchive).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('offers the install only while the browser raised the prompt', () => {
+    const install = vi.fn();
+    render(<UserMenu me={me} connected pwa={{ canInstall: true, install }} onSignOut={async () => {}} onOpenArchive={() => {}} />);
+    const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
+
+    const menu = openMenu(trigger);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Install app' }));
+
+    expect(install).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('keeps the install out of the menu when there is no offer', () => {
+    const trigger = renderStatus(true);
+
+    const menu = openMenu(trigger);
+    expect(within(menu).queryByRole('menuitem', { name: 'Install app' })).toBeNull();
   });
 
   it('asks for confirmation and cancels without signing out', () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { PwaState } from '../pwa/usePwa';
 import type { MeDto } from '../types';
 import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -19,6 +20,10 @@ when the menu closes, and the confirmation dialog takes over from there.
 interface UserMenuProps {
   me: MeDto | null;
   connected: boolean;
+  /**
+  The install offer, when the browser raised one.
+  */
+  pwa: PwaState;
   onSignOut: () => Promise<void> | void;
   /**
   Opens the archive: the chats the account archived.
@@ -26,7 +31,7 @@ interface UserMenuProps {
   onOpenArchive: () => void;
 }
 
-export function UserMenu({ me, connected, onSignOut, onOpenArchive }: UserMenuProps) {
+export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -94,6 +99,15 @@ export function UserMenu({ me, connected, onSignOut, onOpenArchive }: UserMenuPr
   const requestArchive = (): void => {
     setMenuOpen(false);
     onOpenArchive();
+  };
+
+  /**
+  Hands the browser's install offer back to it. The offer is spent once, so
+  the row disappears after the reader takes it or dismisses it.
+  */
+  const requestInstall = (): void => {
+    setMenuOpen(false);
+    pwa.install();
   };
 
   const confirmSignOut = useCallback(async (): Promise<void> => {
@@ -181,6 +195,19 @@ export function UserMenu({ me, connected, onSignOut, onOpenArchive }: UserMenuPr
                   </svg>
                   <span>Archived chats</span>
                 </button>
+                {pwa.canInstall ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+                    onClick={requestInstall}
+                  >
+                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
+                    </svg>
+                    <span>Install app</span>
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   role="menuitem"

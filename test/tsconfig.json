@@ -2,7 +2,12 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    // `vite/client` is in the list because the SPA's source is part of this
+    // program: the app reads `import.meta.env.PROD` to decide whether to
+    // register the service worker, and the SPA's own tsconfig declares the
+    // same types.
+    "types": ["node", "vite/client"]
   },
   // `worker-configuration.d.ts` is included because the tests import the worker
   // package, whose source references generated globals like `DurableObjectState`.

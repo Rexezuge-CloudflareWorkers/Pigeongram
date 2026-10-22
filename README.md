@@ -6,11 +6,13 @@ An always-online Telegram web client hosted on Cloudflare:
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
-- **`pages/`** — the frontend. A Vite + React + Tailwind SPA with a three-state home: a public intro page, the Telegram QR login
+- **`pages/`** — the frontend. A Vite + React + Tailwind SPA with a four-state home: a public intro page, the offline
+  screen when there is no network, the Telegram QR login
   once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, online
   presence, pathname deep links). Sends are optimistic: a composed message or file appears in the thread and the chat
   list at once, and the composer stays usable while it is on its way. Files reach a chat from the attach button or
-  from a paste into the message box; both go through the same review step. It talks to the worker through the bridge
+  from a paste into the message box; both go through the same review step. It installs as a progressive web app and
+  boots offline into its shell (see [`docs/pwa.md`](docs/pwa.md)). It talks to the worker through the bridge
   and will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
 - **`functions/`** — the Pages Functions proxying `/api/*` (public health) and `/user/*` (Access-gated user API) to
@@ -30,7 +32,7 @@ deployment's Access configuration (see [Pending owner actions](#pending-owner-ac
 | `functions/` | Pages Functions: `api/[[path]].ts` forwards the public `/api/*` plane and `user/[[path]].ts` the Access-gated `/user/*` plane to the worker through `API_WORKER` (must sit at the repo root) |
 | `test/`      | Vitest suite as a workspace package; `test/web/**` is the SPA half, everything else is the worker half                                                                                       |
 | `scripts/`   | `check-god-files.ts` and `prepare-wrangler-config.ts`, copied from `@rexezuge/tooling` (see `AGENTS.md`)                                                                                     |
-| `docs/`      | [`session-engine.md`](docs/session-engine.md): engine architecture, bridge API, dev, spike + 72 h soak runbook                                                                               |
+| `docs/`      | [`session-engine.md`](docs/session-engine.md): engine architecture, bridge API, dev, spike + 72 h soak runbook; [`pwa.md`](docs/pwa.md): the service worker's rules and the install build    |
 | `.github/`   | CI, CD, mirror/backup, version-stamp, upstream-sync workflows and the two composite actions                                                                                                  |
 
 `wrangler.jsonc` is **materialized to the repo root** by `scripts/prepare-wrangler-config.ts` before dev/deploy — the
@@ -71,6 +73,22 @@ set the bypass on a deployment.
 
 `docs/session-engine.md` documents the engine's two modes (wake and live), the bridge API, the Access JWT gate, and the
 milestone acceptance checklists.
+
+## The progressive web app
+
+The SPA installs as an app and boots without a network:
+
+- **Installable.** The build writes a web app manifest and the icons (the paper-plane mark, drawn from the same
+  geometry as the tab favicon) into the bundle. Chromium offers the install from the address bar, and the account menu
+  offers it too when the browser raises the prompt. iOS reads its touch icon from the document.
+- **Offline shell.** A service worker precaches the build's own files, so the app boots with no network and shows an
+  offline screen; chats, media and history are still read live, by design.
+- **The account plane is never cached.** `/user/*` and `/api/*` always go to the network. `/user/login` in particular
+  has to reach Cloudflare Access, or the sign-in round-trip breaks.
+
+`docs/pwa.md` is the runbook: the worker's rules, how the worker and the icons are built, and how to verify an
+install. The worker is not registered in development — a worker in the dev server would serve a stale shell over Vite's
+own modules.
 
 ## CI and deployment
 

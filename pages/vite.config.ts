@@ -1,6 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineWebViteConfig } from '@rexezuge/tooling/vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { MANIFEST } from './build/pwa/manifest';
+import { pwaIconsPlugin } from './build/pwa/plugin';
 
 /**
  * The SPA's Vite config, on the kit's factory.
@@ -10,7 +13,33 @@ import { defineWebViteConfig } from '@rexezuge/tooling/vite';
  * and serves no embedded shell — the Pages project is the whole front end.
  */
 export default defineWebViteConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // The icons the manifest points at, drawn from the favicon's own geometry.
+    pwaIconsPlugin(),
+    VitePWA({
+      // The worker is ours (`pages/sw/sw.ts`), so the rules that keep the
+      // Cloudflare Access gate intact are readable TypeScript with tests,
+      // not a workbox configuration.
+      strategies: 'injectManifest',
+      srcDir: 'sw',
+      filename: 'sw.ts',
+      // The app registers the worker itself (`pages/src/pwa/register.ts`), so
+      // the plugin does not inject a registration script.
+      injectRegister: null,
+      // A worker in the dev server would serve a stale shell over Vite's own
+      // modules and break hot reloading.
+      devOptions: { enabled: false },
+      manifest: MANIFEST,
+      injectManifest: {
+        // The build's own files: the hashed assets, the shell, the icons and
+        // the manifest. Nothing else is ever precached.
+        globPatterns: ['**/*.{js,css,html,png,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
+    }),
+  ],
   proxy: {
     // The public plane is health only and needs no WebSocket forwarding.
     '/api': { target: 'http://localhost:8787', changeOrigin: true },

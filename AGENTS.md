@@ -19,17 +19,17 @@ measured against. `docs/session-engine.md` is the engine's runbook.
 House toolchain: Node 24 and pnpm 11.2.2 are Volta-managed (`~/.customrc` is sourced by the login shell; `volta run`
 honours the `packageManager` pin). Every command below also works as `volta run pnpm …`.
 
-| Command                           | What it does                                                                            |
-| --------------------------------- | --------------------------------------------------------------------------------------- |
-| `pnpm install`                    | Installs the workspace and runs `postinstall` → `pnpm run typegen`                      |
-| `pnpm run typegen`                | Regenerates `worker-configuration.d.ts` from `worker/wrangler.template.jsonc`           |
-| `pnpm run typecheck`              | `pnpm -r typecheck` (worker, pages, test) + `typecheck:scripts` + `typecheck:functions` |
-| `pnpm run lint`                   | `eslint --fix --quiet .` under `--max-old-space-size=6144`                              |
-| `pnpm run format:check`           | `prettier --check .` (read-only; the CI formatting gate)                                |
-| `pnpm run check:god-files`        | 300-line warn / 400-line hard gate (`--fail-on-hard`), tests and `scripts/` exempt      |
-| `pnpm run test` / `test:coverage` | Vitest, both projects (worker under `node`, SPA under jsdom)                            |
-| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files                                             |
-| `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                         |
+| Command                           | What it does                                                                                                      |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`                    | Installs the workspace and runs `postinstall` → `pnpm run typegen`                                                |
+| `pnpm run typegen`                | Regenerates `worker-configuration.d.ts` from `worker/wrangler.template.jsonc`                                     |
+| `pnpm run typecheck`              | `pnpm -r typecheck` (worker, pages, test) + `typecheck:scripts` + `typecheck:functions` + `typecheck:pages-build` |
+| `pnpm run lint`                   | `eslint --fix --quiet .` under `--max-old-space-size=6144`                                                        |
+| `pnpm run format:check`           | `prettier --check .` (read-only; the CI formatting gate)                                                          |
+| `pnpm run check:god-files`        | 300-line warn / 400-line hard gate (`--fail-on-hard`), tests and `scripts/` exempt                                |
+| `pnpm run test` / `test:coverage` | Vitest, both projects (worker under `node`, SPA under jsdom)                                                      |
+| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files                                                                       |
+| `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                                                   |
 
 Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materialize the config
 (`pnpm exec tsx scripts/prepare-wrangler-config.ts`), then `pnpm exec wrangler dev` (worker, port 8787) and
@@ -56,9 +56,11 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   send/attach/react and forward with a writable-destination picker — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the first-window read
   (newest messages, or a window around a linked post), `reading.ts` the
-  unread-position logic they share, `components/` the screens). The home page has three states: `LandingPage.tsx` is
-  the public intro, `LoginScreen.tsx` the Telegram QR login, and `CheckingAccess.tsx` the Access probe's first paint —
-  `App.tsx` picks among them from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated'`. A successful
+  unread-position logic they share, `components/` the screens). The home page has four states: `LandingPage.tsx` is
+  the public intro, `OfflineScreen.tsx` the no-network screen, `LoginScreen.tsx` the Telegram QR login, and
+  `CheckingAccess.tsx` the Access probe's first paint — `components/HomeScreen.tsx` picks among them from
+  `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already at
+  the god-file limit. A successful
   `/user/state` probe means Access is through, and `state.authorized` then picks QR vs chat list. The intro's sign-in
   link is `/user/login`; the worker redirects it back into the SPA, carrying a validated same-origin `next` so a
   bookmarked chat link survives the Access round-trip. Navigation is pathname-based: `routes.ts` is the pure
@@ -70,12 +72,15 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer. Styling is
   Tailwind v4 through `@tailwindcss/vite`: `src/styles/tailwind.css` imports full Tailwind (preflight included) and
   layers the existing stylesheets under `components`, so legacy rules sit above preflight but below utilities. New UI
-  should use utilities; extend a legacy sheet only for a genuinely shared rule.
+  should use utilities; extend a legacy sheet only for a genuinely shared rule. The installable app sits beside it:
+  `sw/` is the service worker (its own tsconfig, the WebWorker lib), `build/pwa/` is the build-time half (the icons,
+  the manifest, and the local Vite plugin that writes them), `src/pwa/` is the runtime half (the registration and the
+  install prompt), and `public/_headers` carries the cache headers Pages serves with the static assets.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` and `user/[[path]].ts` are pass-throughs to
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
 - `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
-  troubleshooting.
+  troubleshooting. `pwa.md`: the service worker's rules, the install build, the offline state, and how to verify it.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
   the workspace.
@@ -107,6 +112,24 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   list (and, for comments, the matching chat) behind the URL entry so browser back stays in the app; every entry carries
   `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
   closes it before leaving the thread.
+- **The service worker never caches the account plane.** The worker is registered at the root (`/sw.js`, scope `/`), so
+  it sees every request the page makes, and it answers the API plane from the network only: `/user/*` carries the
+  account's data and the Cloudflare Access session, and a cached response would put one account's chats where the next
+  reader could reach them. The rule lives in `pages/sw/routes.ts` as a pure function and is asserted by
+  `test/pwa/routes.test.ts`. The navigation case matters most: `/user/login` is where Access runs its login flow, so a
+  navigation to it must reach the edge — answering it with the precached shell would swallow the redirect and the
+  sign-in would never happen. Every other navigation falls back to the precached `index.html`, which is the document
+  Pages serves for a pathname route anyway.
+- **The worker does not call `skipWaiting`.** A new build's worker waits until the last client of the old one is gone,
+  so the update lands on the next fresh load. Skipping the wait would purge the old hashed assets while an open tab
+  still runs the old JavaScript.
+- **The worker is not registered in development.** `import.meta.env.PROD` gates the registration and
+  `devOptions.enabled` is off: a worker in the dev server would serve a stale shell over Vite's own modules and break
+  hot reloading. The dev server still serves the manifest and the icons, so the document's manifest link is not a 404.
+- **Offline is a state of its own, not a sign-out.** The Access probe and a dead network both fail as a `TypeError`
+  from `fetch`, so the probe asks the public `/api/health` endpoint which of the two it is: it answers when the network
+  is up (the reader is outside the front door) and fails when it is not (the app shows `OfflineScreen` and waits for the
+  browser's `online` event).
 - **The signed-in shell fits above the keyboard.** `useAppHeight` writes the smaller of
   `document.documentElement.clientHeight` and `window.visualViewport.height` into `--app-height`, and `.app` consumes
   it. Chromium's `interactive-widget=resizes-content` shrinks the layout viewport, while an overlay keyboard shrinks
@@ -222,7 +245,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   template would make wrangler infer literal `""` types. Any tsconfig whose program uses them must include that file
   (`test/tsconfig.json` does).
 - **The test partition is a convention:** the SPA suite lives in `test/web/**` (the `defineRepoVitestConfig` web project's
-  shape); everything else in `test/` runs under `node` as the backend half.
+  shape); everything else in `test/` runs under `node` as the backend half. `test/pwa/**` is the third kind: the
+  service worker, the manifest and the icons are SPA code without a DOM, so their tests run under `node` too.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
   filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Unit Tests`, `Build Web App`) are the required-check
   names; keep them stable.

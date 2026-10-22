@@ -24,6 +24,7 @@ const BATCHABLE_METHODS: ReadonlySet<string> = new Set<BatchableRpcMethod>([
   'getPollResults',
   'getComments',
   'getBotCommands',
+  'getProfile',
 ]);
 
 export function requireRecord(value: unknown): Record<string, unknown> {

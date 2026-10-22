@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { pressCallbackButton } from './api';
+import { writeClipboard } from './clipboard';
 import type { MessageButtonDto, MessageDto } from './types';
 
 /**
@@ -29,7 +30,7 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
   const press = useCallback(
     (message: MessageDto, button: MessageButtonDto): void => {
       if (button.kind === 'copy') {
-        void copyToClipboard(button.copyText)
+        void writeClipboard(button.copyText)
           .then(() => onNotice('Copied to clipboard'))
           .catch(onError);
         return;
@@ -60,31 +61,4 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
   );
 
   return { pressingIds, press };
-}
-
-/**
-Writes text with the Clipboard API, falling back to the selection trick on
-browsers where it is unavailable or denied.
-*/
-async function copyToClipboard(text: string): Promise<void> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-  } catch {
-    // Fall through to the legacy path.
-  }
-
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  area.style.position = 'fixed';
-  area.style.opacity = '0';
-  // eslint-disable-next-line unicorn/prefer-dom-node-append -- the Workers `Element.append` overload the test project's types merge in accepts no nodes, so `appendChild` is the form both projects type-check.
-  document.body.appendChild(area);
-  area.select();
-  const copied = document.execCommand('copy');
-  area.remove();
-  if (!copied) throw new Error('Could not copy the text to the clipboard');
 }

@@ -462,6 +462,70 @@ describe('getBotCommands dispatch', () => {
   });
 });
 
+describe('getProfile dispatch', () => {
+  it('returns the profile of a peer', async () => {
+    const calls: number[] = [];
+    const client = {
+      getFullUser: async (chatId: number) => {
+        calls.push(chatId);
+        return {
+          id: 1,
+          isBot: false,
+          displayName: 'Ada Lovelace',
+          username: 'ada',
+          bio: 'Mathematician.',
+          full: {},
+        };
+      },
+    } as unknown as TelegramClient;
+
+    await expect(rpc(client, 'getProfile', { chatId: 1 })).resolves.toEqual({
+      profile: {
+        id: 1,
+        kind: 'user',
+        title: 'Ada Lovelace',
+        username: 'ada',
+        about: 'Mathematician.',
+        photo: null,
+        membersCount: null,
+      },
+    });
+    expect(calls).toEqual([1]);
+  });
+
+  it('rejects a malformed chat id before Telegram is touched', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      getFullUser: async (chatId: number) => {
+        calls.push(chatId);
+        return { full: {} };
+      },
+    } as unknown as TelegramClient;
+
+    await expect(rpc(client, 'getProfile', { chatId: 0 })).rejects.toThrow('chatId');
+    expect(calls).toEqual([]);
+  });
+
+  it('is a method a batch may carry', async () => {
+    const client = {
+      getFullUser: async () => ({
+        id: 1,
+        isBot: false,
+        displayName: 'Ada Lovelace',
+        username: 'ada',
+        bio: '',
+        full: {},
+      }),
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'batch', {
+      calls: [{ method: 'getProfile', params: { chatId: 1 } }],
+    })) as { results: Array<{ ok: boolean; result?: unknown }> };
+
+    expect(result.results[0]?.ok).toBe(true);
+  });
+});
+
 describe('pressCallbackButton dispatch', () => {
   function fakeCallbackClient(answer: Record<string, unknown>): {
     client: TelegramClient;

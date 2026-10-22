@@ -77,6 +77,37 @@ export interface ChatDto {
 }
 
 /**
+A peer's profile: what the chat list does not carry.
+
+The chat summary is a line in a list; the profile is the peer itself. A
+person brings a bio, a group or a channel brings a description and a member
+count, so the fields only one of them has are null for the other.
+*/
+export interface ProfileDto {
+  id: PeerId;
+  kind: ChatKind;
+  /**
+  The display name: a person's name, a chat's title.
+  */
+  title: string;
+  username: string | null;
+  /**
+  The "about" text: a person's bio, a group's or channel's description.
+  */
+  about: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null. It changes
+  when the photo changes and only exists to bust the `/user/avatar` cache.
+  */
+  photo: string | null;
+  /**
+  How many members a group or a channel has; null for a person, and for a
+  basic group, which Telegram does not count.
+  */
+  membersCount: number | null;
+}
+
+/**
 Kinds of rich-text entity the bridge forwards. Mirrors mtcute's
 `MessageEntityKind`; the SPA styles the ones it knows and falls back to plain
 text for the rest.

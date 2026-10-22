@@ -70,6 +70,37 @@ export interface ChatDto {
   presence: PresenceDto | null;
 }
 
+/**
+A peer's profile: what the chat list does not carry.
+
+The chat summary is a line in a list; the profile is the peer itself. A
+person brings a bio, a group or a channel brings a description and a member
+count, so the fields only one of them has are null for the other.
+*/
+export interface ProfileDto {
+  id: PeerId;
+  kind: ChatKind;
+  /**
+  The display name: a person's name, a chat's title.
+  */
+  title: string;
+  username: string | null;
+  /**
+  The "about" text: a person's bio, a group's or channel's description.
+  */
+  about: string | null;
+  /**
+  Opaque token identifying the current profile photo, or null. It changes
+  when the photo changes and only exists to bust the `/user/avatar` cache.
+  */
+  photo: string | null;
+  /**
+  How many members a group or a channel has; null for a person, and for a
+  basic group, which Telegram does not count.
+  */
+  membersCount: number | null;
+}
+
 export type MessageEntityKind =
   | 'bold'
   | 'italic'
@@ -588,7 +619,8 @@ export type RpcMethod =
   | 'getComments'
   | 'sendComment'
   | 'getBotCommands'
-  | 'setArchived';
+  | 'setArchived'
+  | 'getProfile';
 
 /**
 The methods a `batch` call may carry.
@@ -600,7 +632,7 @@ mutates the account's read watermark. `setArchived` is excluded because it
 moves a chat between the chat list and the archive.
 */
 export type BatchableRpcMethod =
-  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
+  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands' | 'getProfile';
 
 /**
 One call inside a `batch`.
@@ -734,4 +766,8 @@ export interface GetBotCommandsResult {
    * commands of their bots, de-duplicated by name.
    */
   commands: BotCommandDto[];
+}
+
+export interface GetProfileResult {
+  profile: ProfileDto;
 }

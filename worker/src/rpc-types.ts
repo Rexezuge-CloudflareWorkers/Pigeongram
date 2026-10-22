@@ -5,7 +5,7 @@
  * god-file cap; the SPA mirrors both in `pages/src/types.ts`.
  */
 
-import type { BotCommandDto, DialogDto, MeDto, MessageDto, MessagePollDto, PeerId } from './types';
+import type { BotCommandDto, DialogDto, MeDto, MessageDto, MessagePollDto, PeerId, ProfileDto } from './types';
 
 export interface RpcRequestDto {
   method: string;
@@ -30,7 +30,8 @@ export type RpcMethod =
   | 'getComments'
   | 'sendComment'
   | 'getBotCommands'
-  | 'setArchived';
+  | 'setArchived'
+  | 'getProfile';
 
 /**
 The methods a `batch` call may carry.
@@ -43,7 +44,7 @@ mutates the account's read watermark. `setArchived` is excluded because it
 moves a chat between the chat list and the archive.
 */
 export type BatchableRpcMethod =
-  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands';
+  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands' | 'getProfile';
 
 /**
 One call inside a `batch`.
@@ -247,6 +248,13 @@ export interface GetBotCommandsParams {
   chatId: PeerId;
 }
 
+export interface GetProfileParams {
+  /**
+   * The marked peer id whose profile is read.
+   */
+  chatId: PeerId;
+}
+
 export interface GetMeResult {
   me: MeDto;
 }
@@ -355,4 +363,8 @@ export interface GetBotCommandsResult {
    * commands of their bots, de-duplicated by name.
    */
   commands: BotCommandDto[];
+}
+
+export interface GetProfileResult {
+  profile: ProfileDto;
 }

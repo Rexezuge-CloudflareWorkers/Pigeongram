@@ -9,6 +9,7 @@ import { readComments, requireCommentPost, requireDiscussion } from './comments'
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
 import { readContactPresences } from './presence';
+import { readProfile } from './profile';
 import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
 import type { UnreadAlbumLedger } from './unread-albums';
 import {
@@ -248,6 +249,11 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const archived = requireBoolean(params.archived, 'archived');
       await setChatArchived(client, chatId, archived);
       return { chatId, archived };
+    }
+
+    case 'getProfile': {
+      const chatId = requirePeerId(params.chatId);
+      return { profile: await readProfile(client, chatId) };
     }
 
     default: {

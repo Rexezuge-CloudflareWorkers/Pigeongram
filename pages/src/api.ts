@@ -10,6 +10,7 @@ import type {
   GetHistoryResult,
   GetMeResult,
   GetPollResultsResult,
+  GetProfileResult,
   MeDto,
   MessageDto,
   PeerId,
@@ -275,6 +276,14 @@ Reads the slash-command menu Telegram offers for a chat: a bot's own commands
 in a private chat, or the aggregate of the group's bots.
 */
 export const fetchBotCommands = (chatId: PeerId): Promise<GetBotCommandsResult> => rpc('getBotCommands', { chatId });
+
+/**
+Reads a peer's profile: the bio of a person, the description and the member
+count of a group or a channel. It is read on demand — the profile is what the
+reader asks for when they open it, and a thread open would otherwise pay for
+a read nobody looks at.
+*/
+export const fetchProfile = (chatId: PeerId): Promise<GetProfileResult> => rpc('getProfile', { chatId });
 
 export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
   rpc('searchMessages', { chatId, query, limit: 50 });

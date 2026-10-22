@@ -13,6 +13,11 @@ interface AvatarProps {
   kind?: string;
   small?: boolean;
   /**
+   * The large variant: the profile photo of a modal, in the size the engine
+   * serves for it. Not combinable with `small`.
+   */
+  big?: boolean;
+  /**
    * The peer's presence, when it has one. Only a person can be online, so the
    * badge appears for an online user and for nobody else.
    */
@@ -35,7 +40,7 @@ The image is only requested once the avatar nears the viewport; until then the
 initials stand in. An online peer carries a green badge on the avatar's
 corner, the way the official clients mark it.
 */
-export function Avatar({ chatId, photo, title, kind, small, presence }: AvatarProps) {
+export function Avatar({ chatId, photo, title, kind, small, big, presence }: AvatarProps) {
   const [failedFor, setFailedFor] = useState<string | null>(null);
   // Without an observer there is no viewport to wait for: ask at once.
   const [nearby, setNearby] = useState(() => typeof IntersectionObserver === 'undefined');
@@ -58,8 +63,12 @@ export function Avatar({ chatId, photo, title, kind, small, presence }: AvatarPr
 
   const showImage = photo !== null && failedFor !== photo && nearby;
   const avatar = (
-    <span ref={holder} className={`avatar${small ? ' small' : ''}${kind ? ` kind-${kind}` : ''}`}>
-      {showImage ? <img src={avatarUrl(chatId, photo)} alt="" loading="lazy" onError={() => setFailedFor(photo)} /> : initials(title)}
+    <span ref={holder} className={`avatar${small ? ' small' : ''}${big ? ' size-28 text-4xl' : ''}${kind ? ` kind-${kind}` : ''}`}>
+      {showImage ? (
+        <img src={avatarUrl(chatId, photo, big ? 'big' : 'small')} alt="" loading="lazy" onError={() => setFailedFor(photo)} />
+      ) : (
+        initials(title)
+      )}
     </span>
   );
   if (presence?.status !== 'online') return avatar;

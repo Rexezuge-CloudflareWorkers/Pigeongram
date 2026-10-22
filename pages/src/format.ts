@@ -1,4 +1,4 @@
-import type { MessageMediaDto, MessagePollDto } from './types';
+import type { MessageMediaDto, MessagePollDto, PresenceDto } from './types';
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
@@ -32,6 +32,34 @@ export function formatDay(timestamp: number, now = Date.now()): string {
 
 export function isSameDay(a: number, b: number): boolean {
   return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+/**
+ * What a presence reads as: `online`, `last seen today at 14:32`, or one of
+ * the coarse states Telegram reports when it hides the exact time. Null when
+ * the peer has no presence at all — a bot, a group, a channel, or a person who
+ * keeps their last seen to themselves.
+ */
+export function formatPresence(presence: PresenceDto | null): string | null {
+  if (!presence) return null;
+  switch (presence.status) {
+    case 'online': {
+      return 'online';
+    }
+    case 'offline': {
+      if (presence.lastSeenAt === null) return 'last seen recently';
+      return `last seen ${formatDay(presence.lastSeenAt).toLowerCase()} at ${formatTime(presence.lastSeenAt)}`;
+    }
+    case 'recently': {
+      return 'last seen recently';
+    }
+    case 'within_week': {
+      return 'last seen within a week';
+    }
+    case 'within_month': {
+      return 'last seen within a month';
+    }
+  }
 }
 
 export function initials(title: string): string {

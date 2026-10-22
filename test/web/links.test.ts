@@ -7,6 +7,7 @@ import {
   markedChatId,
   miniAppDeepLink,
   parseTelegramLink,
+  usernameAppLink,
 } from '../../pages/src/links';
 import type { ChatDto, DialogDto, MessageForwardDto } from '../../pages/src/types';
 
@@ -226,6 +227,15 @@ describe('forwardOriginLink', () => {
   it('returns null for a hidden sender or a basic group', () => {
     expect(forwardOriginLink(forward({ senderId: null, senderName: 'Anonymous' }))).toBeNull();
     expect(forwardOriginLink(forward({ senderId: -42 }))).toBeNull();
+  });
+});
+
+describe('usernameAppLink', () => {
+  it('names the app and the browser address of a public chat', () => {
+    expect(usernameAppLink('durov')).toEqual({
+      deepLink: 'tg://resolve?domain=durov',
+      webUrl: 'https://t.me/durov',
+    });
   });
 });
 

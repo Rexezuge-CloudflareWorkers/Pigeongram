@@ -182,6 +182,18 @@ export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | nu
 }
 
 /**
+ * The address of a public chat, for handing it to the installed app.
+ *
+ * A chat with a handle has two addresses: the deep link the app answers and
+ * the https URL a browser falls back to. A chat without one has neither, so
+ * the caller asks for a handle first.
+ */
+export function usernameAppLink(username: string): { deepLink: string; webUrl: string } {
+  const link = chatLink(username, null, null);
+  return { deepLink: link.deepLink, webUrl: link.webUrl ?? `https://t.me/${username}` };
+}
+
+/**
  * Opens a `tg://` link in the installed app, falling back to the canonical
  * https URL when nothing takes over.
  *

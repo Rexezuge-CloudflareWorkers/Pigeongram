@@ -196,6 +196,13 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   for, not one every list load pays for. On the SPA side the archive is a screen of its own (`/archived`, reached from
   the account popup), and the chat list and the archive live in **one** list (`pages/src/useDialogs.ts`), so every
   lookup of a chat — the router, the thread, the read receipts, the forward picker — finds it in the same place.
+- **The profile popup is a self-contained overlay, not a history layer.** The nav bar of the open chat opens the
+  peer's profile — from its picture, from its name, or from the ⋮ menu's "View Profile" — and the popup closes on
+  Escape, a backdrop press or its close button. It is deliberately **not** a `history.state` layer (only the media
+  viewer is), so Back leaves the thread, as it does for the forward picker. The profile is read on demand
+  (`getProfile`, a read-only method on the batch whitelist) rather than with the chat screen: the reader asks for it
+  by opening it, and a thread open would otherwise pay for a read nobody looks at. The popup lives in the thread header
+  (`pages/src/components/ThreadHeader.tsx`), so `App.tsx` does not grow.
 - **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
   `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
   in the system and holding the gate for it queued every bridge call behind it. The engine's storage warms up in

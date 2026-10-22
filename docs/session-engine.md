@@ -173,6 +173,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
 | `getBotCommands`      | `{chatId}`                                                                        | `{commands: BotCommandDto[]}`                                                               |
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                        |
+| `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                     |
 | `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                        |
 
 `getDialogs`'s `archived` flag reads the archive instead of the chat list: `true` returns the chats in Telegram's
@@ -188,7 +189,8 @@ context beside it) and, when the first read missed it — a deleted post, or one
 page that ends at it instead. The fallback the SPA used to spend a second round trip on now happens server-side.
 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
-`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `getPollResults`, `getComments` and `getBotCommands`; a
+`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `getPollResults`, `getComments`, `getBotCommands` and
+`getProfile`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark, and
 `setArchived` because it moves a chat between the chat list and the archive. Each call reports its own outcome, so
@@ -210,6 +212,12 @@ dialog peer, so the engine looks at the full info instead: a user (`users.getFul
 `botInfo` per bot. The bridge flattens the group list, de-duplicates command names and returns
 `{command, description}` in Telegram's order; an empty list is a normal answer, not an error. The SPA asks for
 this when a bot, group or supergroup thread opens and offers the menu from the composer.
+
+`getProfile` reads what the chat list has no room for: the bio of a person, the description and member count of a
+group or a channel. Like the command menu, the answer is in the peer's full info, so the engine reads the full user
+for a positive id and the full chat for a negative one. A bot's own description stands in for its bio, which a bot
+usually leaves empty. The read is on demand — the SPA asks for it when the reader opens the profile, so a thread open
+pays for nothing. It is on the batch whitelist, because it is a read like the others.
 
 `DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus

@@ -79,7 +79,7 @@ The avatar's version token, or null when there is no usable photo.
 entities without an access hash, so a missing token is the only safe answer
 there — an avatar must never break a dialog or message mapping.
 */
-function photoVersion(peer: User | Chat): string | null {
+export function photoVersion(peer: User | Chat): string | null {
   try {
     return peer.photo?.small.uniqueFileId ?? null;
   } catch {
@@ -87,7 +87,7 @@ function photoVersion(peer: User | Chat): string | null {
   }
 }
 
-function chatKind(chat: Chat): ChatDto['kind'] {
+export function chatKind(chat: Chat): ChatDto['kind'] {
   switch (chat.chatType) {
     case 'group': {
       return 'group';

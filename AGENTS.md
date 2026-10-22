@@ -206,6 +206,17 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   (`getProfile`, a read-only method on the batch whitelist) rather than with the chat screen: the reader asks for it
   by opening it, and a thread open would otherwise pay for a read nobody looks at. The popup lives in the thread header
   (`pages/src/components/ThreadHeader.tsx`), so `App.tsx` does not grow.
+- **A min peer in mtcute's cache turns a valid chat into `PEER_ID_INVALID`.** Telegram's `min` user/channel carries a
+  reduced access hash that only works inside an `inputPeer*FromMessage`, and mtcute's in-memory peer cache hands a
+  cached peer back from `storage.peers.getById` without the `isMin` check its SQLite branch has
+  (`@mtcute/core@0.32.5`, `highlevel/storage/service/peers.js`), so `resolvePeer` can pass a min hash to a regular call.
+  A chat that is a dialog — a full peer in storage — starts failing that way after a min copy of it arrives from a
+  group's or channel's message list, which is why the official app still opens it and a reload sometimes does.
+  `session/peers.ts` is the guard: `withPeerRetry` wraps every peer-addressed bridge call (the batch's per-call dispatch,
+  `driver.rpc`, media streams, uploads) and retries **once** on `PEER_ID_INVALID`/`CHANNEL_INVALID`/`USER_ID_INVALID`,
+  after re-storing the full entity mtcute already holds when the cached input hash differs from it, or refreshing through
+  `resolvePeer(id, true)` when there is no full entity. A rejected peer was never acted on, so the retry is safe for
+  writes too. Do not try to solve this by upgrading mtcute: 0.32.6 has the same cache.
 - **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
   `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
   in the system and holding the gate for it queued every bridge call behind it. The engine's storage warms up in

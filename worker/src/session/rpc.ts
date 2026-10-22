@@ -30,6 +30,7 @@ import {
   requireRecord,
   requireText,
 } from './params';
+import { peerIdsIn, withPeerRetry } from './peers';
 
 /**
  * The curated method surface of `POST /user/rpc`.
@@ -53,7 +54,11 @@ export async function dispatchRpc(client: TelegramClient, method: string, rawPar
       const results = await Promise.all(
         calls.map(async (call) => {
           try {
-            return { ok: true, result: await dispatchRpc(client, call.method, call.params, albums) } satisfies RpcBatchOutcome;
+            // The per-call wrapper is what retries a call whose peer Telegram
+            // rejected; a batch reports failures per call, so the retry cannot
+            // live above it.
+            const result = await withPeerRetry(client, peerIdsIn(call.params), () => dispatchRpc(client, call.method, call.params, albums));
+            return { ok: true, result } satisfies RpcBatchOutcome;
           } catch (error) {
             // A failed call is reported on its own: one broken read must not
             // take the reads beside it down with it.

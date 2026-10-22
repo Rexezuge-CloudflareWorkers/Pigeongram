@@ -10,6 +10,7 @@ import { sendUploadedMedia, sendUploadedMediaGroup } from './upload';
 import { createMtBundle } from './mtproto/client';
 import type { MtBundle } from './mtproto/client';
 import type { TransactionalStorageLike } from './mtproto/sqlite';
+import { peerIdsIn, withPeerRetry } from './peers';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
 import { UnreadAlbumLedger } from './unread-albums';
@@ -262,11 +263,13 @@ export class TelegramDriver {
   }
 
   async rpc(method: string, params: unknown): Promise<unknown> {
-    return dispatchRpc(this.#ensure().client, method, params, this.#albums);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums));
   }
 
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
-    return streamMessageMedia(this.#ensure().client, chatId, messageId, options);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, [chatId], () => streamMessageMedia(client, chatId, messageId, options));
   }
 
   /**
@@ -284,11 +287,13 @@ export class TelegramDriver {
   }
 
   async sendUpload(spec: UploadSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto> {
-    return sendUploadedMedia(this.#ensure().client, spec, body, signal);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, [spec.chatId], () => sendUploadedMedia(client, spec, body, signal));
   }
 
   async sendUploadGroup(spec: UploadGroupSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto[]> {
-    return sendUploadedMediaGroup(this.#ensure().client, spec, body, signal);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, [spec.chatId], () => sendUploadedMediaGroup(client, spec, body, signal));
   }
 
   /**

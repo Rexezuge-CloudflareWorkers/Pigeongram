@@ -3179,7 +3179,7 @@ describe('App', () => {
     */
     async function openArchive(): Promise<void> {
       fireEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }));
-      fireEvent.click(within(screen.getByRole('menu', { name: 'Account menu' })).getByRole('menuitem', { name: 'Archived chats' }));
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Account menu' })).getByRole('menuitem', { name: 'Archived Chats' }));
     }
 
     /**

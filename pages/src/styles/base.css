@@ -193,7 +193,10 @@ button.ghost:hover {
   height: 100%;
   max-height: var(--app-height, none);
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
+  /* The sidebar track is fluid: it starts at its compact width, follows the
+     window at 28vw, and stops at 480px so an ultrawide window gives the extra
+     space to the thread instead of stretching the chat previews. */
+  grid-template-columns: clamp(280px, 28vw, 480px) 1fr;
 }
 
 /* A grid child must not stretch the track past the viewport: unbreakable

@@ -956,7 +956,7 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(await screen.findByText('Bob'));
 
-    expect(await screen.findByText('↗ Forwarded from News Channel')).toBeDefined();
+    expect(await screen.findByText('Forwarded from News Channel')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'News Channel' })).toBeNull();
   });
 
@@ -984,9 +984,9 @@ describe('App', () => {
 
     render(<App />);
     fireEvent.click(await screen.findByText('Bob'));
-    const header = await within(threadSection()).findByText('↗ Forwarded from');
+    const header = await within(threadSection()).findByText('Forwarded from');
     const origin = within(header).getByRole('button', { name: 'Carol' });
-    expect(header.textContent).toBe('↗ Forwarded from Carol');
+    expect(header.textContent).toBe('Forwarded from Carol');
     expect(within(header).getAllByRole('button')).toHaveLength(1);
 
     fireEvent.click(origin);
@@ -1056,7 +1056,7 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(await screen.findByText('Team'));
 
-    const origin = await screen.findByText('↗ Forwarded from News Channel');
+    const origin = await screen.findByText('Forwarded from News Channel');
     const sender = screen.getByText('Bob', { selector: '.message .sender' });
     expect(origin.nextElementSibling).toBe(sender);
   });
@@ -1441,8 +1441,8 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
 
       expect(await screen.findByText('Quiz')).toBeDefined();
-      expect(within(threadSection()).getByText('✓')).toBeDefined();
-      expect(within(threadSection()).getByText('✗')).toBeDefined();
+      expect(within(threadSection()).getByTitle('Correct answer')).toBeDefined();
+      expect(within(threadSection()).getByTitle('Wrong answer')).toBeDefined();
       expect(screen.queryByRole('button', { name: /^Vote for/ })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Retract vote' })).toBeNull();
     });
@@ -2091,24 +2091,26 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
 
-      const ticks = (messageId: number): string | undefined =>
-        threadSection().querySelector(`:scope [data-message-id="${CSS.escape(String(messageId))}"] .ticks`)?.textContent ?? undefined;
+      const ticks = (messageId: number): string | null | undefined =>
+        threadSection()
+          .querySelector(`:scope [data-message-id="${CSS.escape(String(messageId))}"] .ticks`)
+          ?.getAttribute('aria-label');
       // The dialog's outbox watermark covers the first own message only.
-      expect(ticks(10)).toBe('✓✓');
-      expect(ticks(12)).toBe('✓');
+      expect(ticks(10)).toBe('Read');
+      expect(ticks(12)).toBe('Sent');
       // Incoming messages and service rows carry no status.
       expect(threadSection().querySelector(':scope [data-message-id="9"] .ticks')).toBeNull();
 
       deliver({ type: 'read', chatId: 2, maxId: 12, unread: 0, inbox: false });
-      await waitFor(() => expect(ticks(12)).toBe('✓✓'));
-      expect(ticks(10)).toBe('✓✓');
+      await waitFor(() => expect(ticks(12)).toBe('Read'));
+      expect(ticks(10)).toBe('Read');
 
       // The dialog list folded the same update, so reopening keeps it.
       fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
       await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
       fireEvent.click(screen.getByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
-      expect(ticks(12)).toBe('✓✓');
+      expect(ticks(12)).toBe('Read');
     });
   });
 
@@ -2752,7 +2754,8 @@ describe('App', () => {
       const bubble = threadSection().querySelector<HTMLElement>('[data-message-ids="7"]');
       expect(bubble).not.toBeNull();
       const meta = bubble?.querySelector<HTMLElement>(':scope > .meta');
-      expect(meta?.textContent).toContain('👁 1.2K');
+      expect(meta?.textContent).toContain('1.2K');
+      expect(meta?.querySelector('[data-icon="eye"]')).not.toBeNull();
       // The count leads the meta line — the time follows it.
       expect(meta?.firstElementChild?.className).toBe('views');
       // The comments button is the bubble's footer, below the meta line.
@@ -2769,7 +2772,7 @@ describe('App', () => {
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
 
       deliver({ type: 'views', chatId: channel.id, messageId: 7, views: 3456 });
-      expect(await within(threadSection()).findByText('👁 3.5K')).toBeDefined();
+      expect(await within(threadSection()).findByText('3.5K')).toBeDefined();
     });
 
     it('sends a comment and replies to a comment through sendComment', async () => {

@@ -3,6 +3,7 @@ import type { PendingMessage } from '../outbox';
 import { withPendingDialogs } from '../outbox';
 import type { ChatDto, DialogDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
+import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
 interface ChatListProps {
@@ -60,8 +61,8 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                   {dialog.unread > 0 ? (
                     <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span>
                   ) : dialog.pinned ? (
-                    <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-[13px] leading-none text-muted">
-                      📌
+                    <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-muted">
+                      <Icon name="pin" size={14} />
                     </span>
                   ) : null}
                 </span>

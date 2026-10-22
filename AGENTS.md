@@ -60,7 +60,10 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   the public intro, `OfflineScreen.tsx` the no-network screen, `LoginScreen.tsx` the Telegram QR login, and
   `CheckingAccess.tsx` the Access probe's first paint — `components/HomeScreen.tsx` picks among them from
   `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already at
-  the god-file limit. A successful
+  the god-file limit. **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
+  icon is drawn — a filled 24-unit Material set, `currentColor`, `data-icon` for tests, decorative unless given a
+  `label`. A new affordance adds an `IconName`, never another inline `<svg>`, a font glyph or an emoji; emoji are content
+  (Telegram reactions and message text), not chrome. A successful
   `/user/state` probe means Access is through, and `state.authorized` then picks QR vs chat list. The intro's sign-in
   link is `/user/login`; the worker redirects it back into the SPA, carrying a validated same-origin `next` so a
   bookmarked chat link survives the Access round-trip. Navigation is pathname-based: `routes.ts` is the pure

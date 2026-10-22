@@ -1,4 +1,5 @@
 import type { MessageDto, MessagePollDto } from '../types';
+import { Icon } from './Icon';
 
 /**
 A poll message: the question, its answers, and whatever Telegram shared of the
@@ -46,12 +47,12 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
             <span className="poll-answer-text">{answer.text}</span>
             {answer.correct === true ? (
               <span className="poll-mark correct" title="Correct answer">
-                ✓
+                <Icon name="check" size={12} />
               </span>
             ) : null}
             {answer.correct === false && answer.chosen ? (
               <span className="poll-mark wrong" title="Wrong answer">
-                ✗
+                <Icon name="close" size={12} />
               </span>
             ) : null}
             {percent === null ? null : <span className="poll-percent">{percent}%</span>}

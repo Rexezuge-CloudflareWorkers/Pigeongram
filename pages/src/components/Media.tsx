@@ -4,6 +4,7 @@ import { mediaPreview } from '../format';
 import { isVisualAlbum } from '../groups';
 import type { MessageDto, MessageMediaDto } from '../types';
 import { DocumentLink } from './DocumentLink';
+import { Icon } from './Icon';
 import { MessageText } from './MessageText';
 import { StickerMedia } from './Sticker';
 
@@ -62,7 +63,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
             loading="lazy"
           />
           <span className="play" aria-hidden="true">
-            ▶
+            <Icon name="play" size={22} />
           </span>
           {media.duration === null ? null : <span className="duration">{durationLabel(media.duration)}</span>}
         </button>
@@ -145,7 +146,7 @@ function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => voi
       <img src={fileUrl(message.chatId, message.id, { thumb: true })} alt="" loading="lazy" />
       {animated ? (
         <span className="play" aria-hidden="true">
-          ▶
+          <Icon name="play" size={22} />
         </span>
       ) : null}
     </button>

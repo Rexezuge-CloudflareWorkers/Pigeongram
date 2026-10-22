@@ -19,6 +19,15 @@
   box-sizing: border-box;
 }
 
+/* The one icon treatment: inline flow, so an icon beside text aligns with it
+   instead of sitting on the text baseline as a block (Tailwind's preflight
+   makes every `svg` a block). Sizing and colour belong to the call site. */
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+}
+
 html,
 body,
 #root {

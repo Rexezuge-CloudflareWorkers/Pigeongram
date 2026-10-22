@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { formatPresence } from '../format';
 import type { ChatDto, ProfileDto } from '../types';
 import { Avatar } from './Avatar';
+import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
 /**
@@ -116,9 +117,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
           onClick={onClose}
           aria-label="Close the profile"
         >
-          <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-          </svg>
+          <Icon name="close" />
         </button>
 
         <div className="flex flex-col items-center gap-3 text-center">

@@ -1,5 +1,6 @@
 import { useForwardOriginHandler } from '../telegram-links';
 import type { MessageForwardDto } from '../types';
+import { Icon } from './Icon';
 
 /**
  * The "Forwarded from …" line above a bubble's sender.
@@ -12,11 +13,17 @@ export function ForwardOrigin({ forward }: { forward: MessageForwardDto }) {
   const label = forward.senderName ?? 'a hidden user';
   const target = forward.senderId ?? forward.fromChatId;
   if (open === null || target === null) {
-    return <span className="forward-origin">↗ Forwarded from {label}</span>;
+    return (
+      <span className="forward-origin">
+        <Icon name="north-east" size={12} className="mr-1" />
+        Forwarded from {label}
+      </span>
+    );
   }
   return (
     <span className="forward-origin">
-      ↗ Forwarded from{' '}
+      <Icon name="north-east" size={12} className="mr-1" />
+      Forwarded from{' '}
       <button
         type="button"
         className="forward-origin-link"

@@ -1,3 +1,5 @@
+import { Icon } from './Icon';
+
 interface ArchiveBarProps {
   /**
   How many chats the archive holds.
@@ -25,9 +27,7 @@ export function ArchiveBar({ count, onBack }: ArchiveBarProps) {
         aria-label="Back to chats"
         className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-        </svg>
+        <Icon name="arrow-left" />
       </button>
       <strong className="min-w-0 truncate text-sm">Archived Chats</strong>
       <span className="ml-auto shrink-0 text-xs text-muted">{count}</span>

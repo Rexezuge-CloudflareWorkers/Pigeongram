@@ -4,6 +4,7 @@ import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
 import type { MessageDto } from '../types';
 import { usePhotoZoom } from '../usePhotoZoom';
+import { Icon } from './Icon';
 import { isViewableMedia } from './Media';
 import { MessageText } from './MessageText';
 
@@ -147,18 +148,18 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
         {photo ? (
           <div className="media-viewer-tools" role="group" aria-label="Zoom">
             <button type="button" className="media-viewer-tool" aria-label="Zoom out" disabled={!canZoomOut} onClick={zoomOut}>
-              −
+              <Icon name="minus" size={18} />
             </button>
             <button type="button" className="media-viewer-tool percent" aria-label="Reset zoom" disabled={!zoomed} onClick={resetZoom}>
               {percent}%
             </button>
             <button type="button" className="media-viewer-tool" aria-label="Zoom in" disabled={!canZoomIn} onClick={zoomIn}>
-              +
+              <Icon name="plus" size={18} />
             </button>
           </div>
         ) : null}
         <button ref={closeRef} type="button" className="media-viewer-close" aria-label="Close media viewer" onClick={onClose}>
-          ×
+          <Icon name="close" size={24} />
         </button>
       </header>
       <div
@@ -219,7 +220,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
               disabled={index === 0}
               onClick={() => setIndex(index - 1)}
             >
-              ←
+              <Icon name="arrow-left" size={24} />
             </button>
             <button
               type="button"
@@ -228,7 +229,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
               disabled={index === items.length - 1}
               onClick={() => setIndex(index + 1)}
             >
-              →
+              <Icon name="arrow-right" size={24} />
             </button>
           </>
         ) : null}

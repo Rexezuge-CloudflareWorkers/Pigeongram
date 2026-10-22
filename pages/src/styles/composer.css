@@ -16,14 +16,15 @@
 
 .composer .attach,
 .composer .slash {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   padding: 4px;
   color: var(--muted);
 }
 
 .composer .slash {
-  font-weight: 700;
   min-width: 28px;
   border: 1px solid var(--border);
   border-radius: 8px;

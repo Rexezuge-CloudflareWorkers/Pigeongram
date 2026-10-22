@@ -77,7 +77,6 @@
 
 .message .poll-mark {
   position: relative;
-  font-size: 12px;
 }
 
 .message .poll-mark.correct {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DialogDto, MessageDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
+import { Icon } from './Icon';
 
 /**
 The forward destination picker: a portal modal over the app, with the loaded
@@ -92,12 +93,12 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
           </div>
           <button
             type="button"
-            className="rounded-full px-2 text-2xl leading-none text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
             aria-label="Close forward picker"
             disabled={busy}
             onClick={onClose}
           >
-            ×
+            <Icon name="close" />
           </button>
         </header>
         <div className="border-b border-line px-4 py-3">

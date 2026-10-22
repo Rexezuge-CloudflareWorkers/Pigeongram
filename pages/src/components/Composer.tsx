@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { readClipboard } from '../clipboard';
 import type { BotCommandDto, MessageDto } from '../types';
 import type { UploadRequest } from '../upload';
+import { Icon } from './Icon';
 import { ComposerReply } from './ReplyQuote';
 import { UploadDialog } from './UploadDialog';
 
@@ -187,11 +188,11 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             aria-controls={showMenu ? listId : undefined}
             onClick={toggleMenu}
           >
-            /
+            <Icon name="slash" size={18} />
           </button>
         ) : null}
         <button type="button" className="attach" aria-label="Attach files" title="Attach files" onClick={() => fileRef.current?.click()}>
-          📎
+          <Icon name="attach" size={18} />
         </button>
         {showMenu ? (
           <div className="command-menu" id={listId} role="listbox" aria-label="Bot commands">
@@ -264,8 +265,8 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             submit();
           }}
         />
-        <button type="submit" disabled={draft.trim().length === 0}>
-          Send
+        <button type="submit" aria-label="Send" title="Send" disabled={draft.trim().length === 0}>
+          <Icon name="send" size={18} />
         </button>
       </form>
       {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}

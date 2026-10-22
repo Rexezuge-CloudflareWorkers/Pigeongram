@@ -8,6 +8,7 @@ import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types'
 import type { UploadRequest } from '../upload';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
+import { Icon } from './Icon';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
@@ -143,7 +144,7 @@ export function CommentsView({
     <section className="thread comments">
       <header className="thread-head">
         <button type="button" className="back" onClick={onBack} aria-label="Back to the channel">
-          ←
+          <Icon name="arrow-left" />
         </button>
         <Avatar chatId={thread.chat.id} photo={thread.chat.photo} title={thread.chat.title} kind={thread.chat.kind} small />
         <div className="thread-title">

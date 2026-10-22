@@ -3,6 +3,7 @@ import { formatBytes, formatTime } from '../format';
 import type { PendingMessage } from '../outbox';
 import { pendingAsMessage } from '../outbox';
 import type { MessageMediaDto } from '../types';
+import { Icon } from './Icon';
 import { MessageReplyQuote } from './ReplyQuote';
 import { MessageText } from './MessageText';
 import { Spinner } from './Spinner';
@@ -62,7 +63,7 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
   if (source === null || failed || media.kind === 'document' || media.kind === 'audio' || media.kind === 'voice') {
     return (
       <span className="pending-file">
-        📎 {media.fileName ?? 'File'}
+        <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
         {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} files` : ''}
       </span>

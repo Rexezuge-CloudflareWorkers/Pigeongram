@@ -163,7 +163,7 @@ describe('ChatList pin marker', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 
     expect(pinIn('Bob')).not.toBeNull();
-    expect(pinIn('Bob')?.textContent).toBe('📌');
+    expect(pinIn('Bob')?.querySelector('svg[data-icon="pin"]')).not.toBeNull();
     expect(countIn('Bob')).toBeNull();
   });
 

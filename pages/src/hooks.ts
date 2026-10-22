@@ -15,11 +15,30 @@ import type { EngineStateDto, ServerSocketMessage, UpdateEvent } from './types';
 const POLL_INTERVAL_MS = 2500;
 
 /**
-Where the browser stands with Cloudflare Access: being probed, outside the
-front door, or through it. Telegram authorization is a separate question
-(`state.authorized`) and only matters once Access has let the caller in.
+Whether the app can reach its API at all.
+
+The Access probe and a dead network both fail as a `TypeError` from `fetch`:
+the first because the edge redirects to a cross-origin login page that `fetch`
+cannot read, the second because there is no network. `/api/health` is public
+and same-origin, so it answers exactly when the network is up — and the answer
+tells the two apart.
 */
-export type AccessStatus = 'checking' | 'anonymous' | 'authenticated';
+async function canReachApi(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+Where the browser stands with Cloudflare Access: being probed, outside the
+front door, through it, or nowhere at all because the network is gone.
+Telegram authorization is a separate question (`state.authorized`) and only
+matters once Access has let the caller in.
+*/
+export type AccessStatus = 'checking' | 'anonymous' | 'authenticated' | 'offline';
 
 /**
  * The sign-in side of the bridge: probes the Access session, polls the engine
@@ -65,17 +84,27 @@ export function useLoginFlow(): LoginFlowState {
     try {
       next = await getState();
     } catch (failure) {
-      // The intro probe runs before anyone has signed in through Access, and
-      // an Access login redirect is cross-origin: fetch cannot read it and
-      // rejects with a TypeError. Treat any non-bridge failure during the
-      // probe as "anonymous"; real bridge failures (an ApiError other than
-      // 401/403) belong on the checking screen with a retry.
-      if (!(failure instanceof ApiError) || isAuthError(failure)) {
+      if (failure instanceof ApiError) {
+        // The bridge answered: Access rejected the session, so the reader is
+        // outside the front door. The network is up by definition.
+        if (isAuthError(failure)) {
+          setAccess('anonymous');
+          setState(null);
+          return;
+        }
+        reportError(failure);
+        return;
+      }
+      // The fetch itself failed. That is either the edge redirecting to the
+      // Access login page or a network that is not there; the public health
+      // endpoint tells them apart.
+      if (await canReachApi()) {
         setAccess('anonymous');
         setState(null);
         return;
       }
-      reportError(failure);
+      setAccess('offline');
+      setState(null);
       return;
     }
     // A successful probe is proof of the Access session even if the Telegram
@@ -97,7 +126,8 @@ export function useLoginFlow(): LoginFlowState {
 
   useEffect(() => {
     // Nothing to poll without Access; the sign-in button runs the edge flow.
-    if (access === 'anonymous' || authorized) return;
+    // Offline is not polled either: the browser says when the network is back.
+    if (access === 'anonymous' || access === 'offline' || authorized) return;
     let stopped = false;
     const run = async (): Promise<void> => {
       if (stopped) return;
@@ -140,6 +170,16 @@ export function useLoginFlow(): LoginFlowState {
     setError(null);
     void refreshState();
   }, [refreshState]);
+
+  // The offline screen waits for the network instead of polling it: the
+  // browser's own `online` event is the signal that there is something to
+  // probe again.
+  useEffect(() => {
+    if (access !== 'offline') return;
+    const onOnline = (): void => retryAccess();
+    addEventListener('online', onOnline);
+    return () => removeEventListener('online', onOnline);
+  }, [access, retryAccess]);
 
   const reset = useCallback((): void => {
     setState(null);

@@ -475,12 +475,18 @@ function stubScrollIntoView(): ReturnType<typeof vi.fn> {
   return spy;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   FakeWebSocket.instances.length = 0;
   FakeResizeObserver.instances.length = 0;
   vi.stubGlobal('WebSocket', FakeWebSocket);
   vi.stubGlobal('ResizeObserver', FakeResizeObserver);
   stubScrollIntoView();
+  globalThis.history.replaceState(null, '', '/');
+  // A test that closed the media viewer left a history traversal pending:
+  // `history.back()` lands a task later, and it moves the URL back to the chat
+  // the test had opened. The next app would boot straight into that chat, so
+  // the traversal is drained here — before the URL is reset for good.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   globalThis.history.replaceState(null, '', '/');
 });
 
@@ -581,15 +587,29 @@ describe('App', () => {
   });
 
   it('treats an unreadable Access redirect as anonymous', async () => {
-    installFetch(() => {
+    installFetch((call) => {
       // An Access login redirect is cross-origin, so fetch rejects instead of
-      // returning the 302 for the page to read.
+      // returning the 302 for the page to read. The public health plane is not
+      // behind Access, so it still answers — which is how the app tells the
+      // redirect apart from a network that is not there.
+      if (call.path === '/api/health') return json({ status: 'ok' });
       throw new TypeError('Failed to fetch');
     });
 
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+  });
+
+  it('shows the offline screen when the network is gone', async () => {
+    installFetch(() => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'You are offline' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Sign in with Cloudflare Access' })).toBeNull();
   });
 
   it('treats an Access login page as anonymous', async () => {

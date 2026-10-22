@@ -2,16 +2,15 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { fetchBootstrap, logout, readHistory } from './api';
 import { ArchiveBar } from './components/ArchiveBar';
 import { ChatList } from './components/ChatList';
-import { CheckingAccess } from './components/CheckingAccess';
 import { ForwardPicker } from './components/ForwardPicker';
-import { LandingPage } from './components/LandingPage';
-import { LoginScreen } from './components/LoginScreen';
+import { HomeScreen } from './components/HomeScreen';
 import { MediaViewer } from './components/MediaViewer';
 import { ThreadPane } from './components/ThreadPane';
 import { Toasts } from './components/Toasts';
 import { UserMenu } from './components/UserMenu';
 import { useLoginFlow, useUpdatesSocket } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
+import { usePwa } from './pwa/usePwa';
 import type { Route, RouteApplyOptions } from './routes';
 import { routeForChat } from './routes';
 import { TelegramLinkProvider } from './telegram-links';
@@ -29,6 +28,7 @@ import { useThread } from './useThread';
 export function App() {
   useAppHeight();
   const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
+  const pwa = usePwa();
 
   const [me, setMe] = useState<MeDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -326,26 +326,28 @@ export function App() {
     router,
   ]);
 
-  // The home page has three faces: a public intro until Access admits the
-  // browser, the QR login once Access is through but Telegram is not linked,
-  // and the chat list once both are. The probe itself is `access === 'checking'`.
-  if (access === 'anonymous') {
-    return <LandingPage />;
-  }
-
-  if (access === 'checking') {
-    return <CheckingAccess error={error} onRetry={retryAccess} />;
-  }
-
-  if (!authorized) {
-    return <LoginScreen state={state} error={error} onPhone={onPhone} onCode={onCode} onPassword={onPassword} onRetry={onRetry} />;
+  // The home page has four faces — the public intro, the offline screen, the
+  // QR login and the chat list — and the picker lives in `HomeScreen`.
+  if (access !== 'authenticated' || !authorized) {
+    return (
+      <HomeScreen
+        access={access}
+        state={state}
+        error={error}
+        onRetryAccess={retryAccess}
+        onPhone={onPhone}
+        onCode={onCode}
+        onPassword={onPassword}
+        onRetry={onRetry}
+      />
+    );
   }
 
   return (
     <div className={`app${selected ? ' thread-open' : ''}`}>
       <aside className="sidebar">
         <header className="me">
-          <UserMenu me={me} connected={connected} onSignOut={handleLogout} onOpenArchive={openArchive} />
+          <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={handleLogout} onOpenArchive={openArchive} />
         </header>
         {archiveOpen ? <ArchiveBar count={archivedDialogs.length} onBack={router.back} /> : null}
         <ChatList

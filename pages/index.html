@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <!-- The browser chrome's colour: the app's own `--bg`. The installed app
+         paints its title bar with it. -->
+    <meta name="theme-color" content="#0e1621" />
+    <!-- The installable app: Chromium reads the manifest, iOS reads these and
+         the touch icon below. `viewport-fit` stays off on purpose — iOS then
+         letterboxes the app into the safe area instead of sliding it under the
+         notch. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Telegram Web Client</title>
     <!--
       The favicon is inlined as a data URI so the icon travels with the document:
@@ -14,8 +25,12 @@
       The mark is a folded paper plane — the send action this client exists for.
       It is drawn for a 16px tab: two solid fills and no thin strokes, so the fold
       survives the downscale. Colours are `base.css` tokens: `--bg` for the tile,
-      `--accent` for the upper wing and `--badge` for the underside. Nothing
-      asserts that parity, so a palette change can leave this stale.
+      `--accent` for the upper wing and `--badge` for the underside. The install
+      icons draw the same mark from `pages/build/pwa/mark.ts`, and a test asserts
+      that the two palettes still agree.
+
+      The install icons are files rather than data URIs: a manifest icon has to
+      be a real URL, and iOS reads its touch icon from the document.
     -->
     <link
       rel="icon"

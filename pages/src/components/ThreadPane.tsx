@@ -24,15 +24,12 @@ interface ThreadPaneProps {
    * Whether the open chat sits in the account's archive.
    */
   archived: boolean;
-  /**
-   * Whether the chat's archive move is in flight.
-   */
-  archiving: boolean;
   onBack: () => void;
   /**
-   * Moves the open chat into the archive, or back out of it.
+   * Moves the open chat into the archive, or back out of it. The promise
+   * settles when the move is done.
    */
-  onSetArchived: (archived: boolean) => void;
+  onSetArchived: (archived: boolean) => Promise<void>;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
@@ -45,7 +42,6 @@ export function ThreadPane({
   selected,
   presence,
   archived,
-  archiving,
   onBack,
   onSetArchived,
   onForward,
@@ -83,7 +79,6 @@ export function ThreadPane({
       chat={selected}
       presence={presence}
       archived={archived}
-      archiving={archiving}
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}
       loadingOlder={threads.loadingOlder}

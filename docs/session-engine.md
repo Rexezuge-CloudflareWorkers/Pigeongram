@@ -342,8 +342,9 @@ the API the official clients use for the archive, so the move is the one Telegra
 
 On the SPA side the archive is a screen of its own (`/archived`), reached from the account popup in the sidebar. The
 chat list and the archive live in one list (`pages/src/useDialogs.ts`), so every lookup of a chat — the router, the
-thread, the read receipts, the forward picker — finds it in the same place. The thread header carries the move
-itself: an archive button for a chat in the list, an unarchive button for one in the archive.
+thread, the read receipts, the forward picker — finds it in the same place. The thread's ⋮ menu carries the move
+itself: an archive item for a chat in the list, an unarchive item for one in the archive. The item asks first — the
+move is confirmed in a modal — and the outcome is announced in a toast.
 
 ### Updates socket protocol
 

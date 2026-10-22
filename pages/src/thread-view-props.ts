@@ -22,11 +22,6 @@ export interface ThreadViewProps {
    * back, a chat in the list can be put away.
    */
   archived: boolean;
-  /**
-   * Whether the chat's archive move is in flight; the button is disabled
-   * meanwhile.
-   */
-  archiving: boolean;
   messages: MessageDto[];
   loading: boolean;
   loadingOlder: boolean;
@@ -79,9 +74,10 @@ export interface ThreadViewProps {
   positions: ThreadPositionMemory;
   onBack: () => void;
   /**
-   * Moves the open chat into the archive, or back out of it.
+   * Moves the open chat into the archive, or back out of it. The promise
+   * settles when the move is done.
    */
-  onSetArchived: (archived: boolean) => void;
+  onSetArchived: (archived: boolean) => Promise<void>;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;

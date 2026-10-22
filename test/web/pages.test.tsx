@@ -3182,6 +3182,17 @@ describe('App', () => {
       fireEvent.click(within(screen.getByRole('menu', { name: 'Account menu' })).getByRole('menuitem', { name: 'Archived chats' }));
     }
 
+    /**
+    Moves the open chat through the menu and the confirmation that follows it.
+    */
+    async function moveChat(title: string, item: string, confirm: string): Promise<void> {
+      fireEvent.click(screen.getByRole('button', { name: `Menu for ${title}` }));
+      const menu = screen.getByRole('menu', { name: `Menu for ${title}` });
+      fireEvent.click(within(menu).getByRole('menuitem', { name: item }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: confirm }));
+    }
+
     it('reads the archive only when the reader asks for it', async () => {
       const calls = installSignedInFetch({ archivedDialogs: [archivedDialog] });
 
@@ -3264,13 +3275,14 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await screen.findByRole('button', { name: 'Archive chat' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Archive chat' }));
+      await moveChat('Bob', 'Archive chat', 'Archive');
 
       await waitFor(() => expect(within(sidebar()).queryByText('Bob')).toBeNull());
       const move = calls.find((call) => call.body?.method === 'setArchived');
       expect(move?.body?.params).toEqual({ chatId: 2, archived: true });
+      expect(await screen.findByText('Chat Archived')).toBeDefined();
     });
 
     it('puts an archived chat back into the chat list', async () => {
@@ -3287,13 +3299,14 @@ describe('App', () => {
       render(<App />);
       await openArchive();
       fireEvent.click(await screen.findByText('Dave'));
-      expect(await screen.findByRole('button', { name: 'Unarchive chat' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu for Dave' })).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Unarchive chat' }));
+      await moveChat('Dave', 'Unarchive chat', 'Unarchive');
 
       await waitFor(() => expect(within(sidebar()).queryByText('Dave')).not.toBeNull());
       const move = calls.find((call) => call.body?.method === 'setArchived');
       expect(move?.body?.params).toEqual({ chatId: 4, archived: false });
+      expect(await screen.findByText('Chat Restored')).toBeDefined();
     });
 
     it('puts a chat back where it was when the bridge refuses the move', async () => {
@@ -3306,12 +3319,13 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await screen.findByRole('button', { name: 'Archive chat' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Archive chat' }));
+      await moveChat('Bob', 'Archive chat', 'Archive');
 
       expect(await within(sidebar()).findByText('Bob')).toBeDefined();
       expect(await screen.findByRole('alert')).toBeDefined();
+      expect(screen.queryByText('Chat Archived')).toBeNull();
     });
   });
 

@@ -22,7 +22,6 @@ export function ThreadView({
   chat,
   presence,
   archived,
-  archiving,
   messages,
   loading,
   loadingOlder,
@@ -230,14 +229,7 @@ export function ThreadView({
 
   return (
     <section className="thread">
-      <ThreadHeader
-        chat={chat}
-        presence={presence}
-        archived={archived}
-        archiving={archiving}
-        onBack={onBack}
-        onSetArchived={onSetArchived}
-      />
+      <ThreadHeader chat={chat} presence={presence} archived={archived} onBack={onBack} onSetArchived={onSetArchived} />
       <div
         className="messages"
         ref={scrollRef}

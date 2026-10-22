@@ -54,9 +54,18 @@ function installProfileFetch(body?: unknown, status = 200): void {
   );
 }
 
-function renderHeader(peer: ChatDto = chat): void {
+function renderHeader(
+  peer: ChatDto = chat,
+  options: { archived?: boolean; onSetArchived?: (archived: boolean) => Promise<void> } = {},
+): void {
   render(
-    <ThreadHeader chat={peer} presence={peer.presence} archived={false} archiving={false} onBack={() => {}} onSetArchived={() => {}} />,
+    <ThreadHeader
+      chat={peer}
+      presence={peer.presence}
+      archived={options.archived ?? false}
+      onBack={() => {}}
+      onSetArchived={options.onSetArchived ?? (async () => {})}
+    />,
   );
 }
 
@@ -162,7 +171,7 @@ describe('ThreadHeader', () => {
   it('never describes another peer with the profile it read', async () => {
     installProfileFetch();
     const { rerender } = render(
-      <ThreadHeader chat={chat} presence={chat.presence} archived={false} archiving={false} onBack={() => {}} onSetArchived={() => {}} />,
+      <ThreadHeader chat={chat} presence={chat.presence} archived={false} onBack={() => {}} onSetArchived={async () => {}} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Bob' }));
@@ -171,9 +180,7 @@ describe('ThreadHeader', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     const other: ChatDto = { ...chat, id: 3, title: 'Carol', username: 'carol' };
-    rerender(
-      <ThreadHeader chat={other} presence={other.presence} archived={false} archiving={false} onBack={() => {}} onSetArchived={() => {}} />,
-    );
+    rerender(<ThreadHeader chat={other} presence={other.presence} archived={false} onBack={() => {}} onSetArchived={async () => {}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Carol' }));
 
@@ -181,5 +188,51 @@ describe('ThreadHeader', () => {
     expect(within(dialog).queryByText('Ships things.')).toBeNull();
     expect(within(dialog).getByText('Carol')).toBeDefined();
     expect(within(dialog).getByText('@carol')).toBeDefined();
+  });
+
+  it('keeps the archive action in the menu and asks before it moves the chat', async () => {
+    installProfileFetch();
+    const onSetArchived = vi.fn(async () => {});
+    renderHeader(chat, { onSetArchived });
+
+    // The header itself carries no archive button any more.
+    expect(screen.queryByRole('button', { name: 'Archive chat' })).toBeNull();
+
+    const menu = openMenu();
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archive chat' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Archive this chat?')).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(onSetArchived).not.toHaveBeenCalled();
+
+    // The move runs once the reader confirms it.
+    const again = openMenu();
+    fireEvent.click(within(again).getByRole('menuitem', { name: 'Archive chat' }));
+
+    const confirmed = await screen.findByRole('dialog');
+    fireEvent.click(within(confirmed).getByRole('button', { name: 'Archive' }));
+
+    await waitFor(() => expect(onSetArchived).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('offers to bring an archived chat back', async () => {
+    installProfileFetch();
+    const onSetArchived = vi.fn(async () => {});
+    renderHeader(chat, { archived: true, onSetArchived });
+
+    const menu = openMenu();
+    expect(within(menu).queryByRole('menuitem', { name: 'Archive chat' })).toBeNull();
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Unarchive chat' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Bring the chat back?')).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Unarchive' }));
+
+    await waitFor(() => expect(onSetArchived).toHaveBeenCalledWith(false));
   });
 });

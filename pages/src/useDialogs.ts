@@ -28,10 +28,6 @@ export interface DialogsController {
   readonly loading: boolean;
   readonly archiveLoading: boolean;
   /**
-  The chat with an archive move in flight, or null.
-  */
-  readonly archivingChatId: PeerId | null;
-  /**
   The same list, readable before React has committed it: the router applies a
   route right after the boot read resolves, and it must find the chat then.
   */
@@ -75,14 +71,17 @@ export interface DialogsOptions {
   Where a failed read or write is reported.
   */
   onError: (failure: unknown) => void;
+  /**
+  Where the outcome of a successful write is announced.
+  */
+  onNotice: (text: string) => void;
 }
 
-export function useDialogs({ onError }: DialogsOptions): DialogsController {
+export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsController {
   const [main, setMain] = useState<DialogDto[]>([]);
   const [archived, setArchivedList] = useState<DialogDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archivingChatId, setArchivingChatId] = useState<PeerId | null>(null);
 
   // The lists are kept in refs as well: the router applies a route right after
   // the boot read resolves, before React has committed the new list.
@@ -188,7 +187,8 @@ export function useDialogs({ onError }: DialogsOptions): DialogsController {
   Moves a chat into the archive, or back out of it.
 
   The move is optimistic — the chat leaves the list it was in at once — and a
-  failed call puts it back where it was.
+  failed call puts it back where it was. The outcome is announced once the
+  bridge has answered, so a toast never claims a move that did not happen.
   */
   const setArchived = useCallback(
     async (chatId: PeerId, archived: boolean): Promise<void> => {
@@ -197,17 +197,15 @@ export function useDialogs({ onError }: DialogsOptions): DialogsController {
       const before = { main: mainRef.current, archived: archivedRef.current };
       const moved = moveDialog(before.main, before.archived, current, archived);
       commit(moved.main, moved.archived);
-      setArchivingChatId(chatId);
       try {
         await setArchivedRpc(chatId, archived);
+        onNotice(archived ? 'Chat Archived' : 'Chat Restored');
       } catch (failure) {
         commit(before.main, before.archived);
         onError(failure);
-      } finally {
-        setArchivingChatId((pending) => (pending === chatId ? null : pending));
       }
     },
-    [commit, onError],
+    [commit, onError, onNotice],
   );
 
   const find = useCallback((chatId: PeerId): DialogDto | undefined => {
@@ -218,7 +216,6 @@ export function useDialogs({ onError }: DialogsOptions): DialogsController {
     commit([], []);
     setLoading(true);
     setArchiveLoading(false);
-    setArchivingChatId(null);
   }, [commit]);
 
   const all = useMemo(() => [...main, ...archived], [main, archived]);
@@ -229,7 +226,6 @@ export function useDialogs({ onError }: DialogsOptions): DialogsController {
     archived,
     loading,
     archiveLoading,
-    archivingChatId,
     ref,
     find,
     apply,

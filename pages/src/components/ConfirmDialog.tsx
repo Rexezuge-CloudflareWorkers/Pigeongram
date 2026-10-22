@@ -9,7 +9,9 @@ the dialog, Escape and a press on the scrim cancel, and the element that opened
 the dialog gets focus back when it closes.
 
 The parent owns the open/closed state and the busy state; `onConfirm` starts the
-work, and the buttons stay disabled with `busyLabel` while it runs.
+work, and the buttons stay disabled with `busyLabel` while it runs. The confirm
+action wears the `danger` tone by default and the `accent` one when the action
+puts something back rather than taking it away.
 */
 
 interface ConfirmDialogProps {
@@ -17,6 +19,11 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel: string;
   cancelLabel?: string;
+  /**
+  The tone of the confirm action: `danger` for the action that undoes something
+  the reader would have to undo by hand, `accent` for the one that restores it.
+  */
+  tone?: 'danger' | 'accent';
   busy?: boolean;
   busyLabel?: string;
   onConfirm: () => void;
@@ -34,6 +41,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   cancelLabel = 'Cancel',
+  tone = 'danger',
   busy = false,
   busyLabel = 'Working…',
   onConfirm,
@@ -125,7 +133,11 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            className="min-w-[88px] rounded-full bg-danger px-4 py-2 font-semibold text-[#1a0e0e] transition-colors hover:bg-[#ff9a93] focus-visible:bg-[#ff9a93] focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
+            className={
+              tone === 'accent'
+                ? 'min-w-[88px] rounded-full bg-accent px-4 py-2 font-semibold text-[#0b1a1a] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50'
+                : 'min-w-[88px] rounded-full bg-danger px-4 py-2 font-semibold text-[#1a0e0e] transition-colors hover:bg-[#ff9a93] focus-visible:bg-[#ff9a93] focus-visible:outline-none disabled:cursor-default disabled:opacity-50'
+            }
             disabled={busy}
             onClick={onConfirm}
           >

@@ -5,14 +5,16 @@ import { launchTelegramApp, usernameAppLink } from '../links';
 import type { ChatDto, PresenceDto } from '../types';
 import { useProfile } from '../useProfile';
 import { Avatar } from './Avatar';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ProfilePopup } from './ProfilePopup';
 
 /**
  * The nav bar of the open chat: who it is, and what can be done with it.
  *
- * The peer's picture and its name open the profile, and the ⋮ menu beside the
- * archive button holds the actions that are about the chat rather than about
- * the reader — the profile, the handle to copy, and the chat in the app.
+ * The peer's picture and its name open the profile, and the ⋮ menu holds the
+ * actions that are about the chat rather than about the reader — the profile,
+ * the handle to copy, the chat in the app, and the move into or out of the
+ * archive.
  *
  * The menu is a portal with `position: fixed` so the thread cannot clip it.
  * Its position is measured from the trigger once the menu has a size, then
@@ -24,9 +26,12 @@ interface ThreadHeaderProps {
   chat: ChatDto;
   presence: PresenceDto | null;
   archived: boolean;
-  archiving: boolean;
   onBack: () => void;
-  onSetArchived: (archived: boolean) => void;
+  /**
+   * Moves the chat into the archive, or back out of it. The promise settles
+   * when the move is done, so the confirmation can wait for it.
+   */
+  onSetArchived: (archived: boolean) => Promise<void>;
 }
 
 /**
@@ -35,11 +40,13 @@ interface ThreadHeaderProps {
  */
 const COPY_FEEDBACK_MS = 1600;
 
-export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSetArchived }: ThreadHeaderProps) {
+export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }: ThreadHeaderProps) {
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [position, setPosition] = useState({ left: 8, top: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -125,6 +132,25 @@ export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSe
     launchTelegramApp(deepLink, webUrl);
   };
 
+  /**
+   * The menu item asks before it moves: the archive takes the chat out of the
+   * list, and the reader may only have meant to look at the menu.
+   */
+  const requestArchive = (): void => {
+    setMenuOpen(false);
+    setArchiveConfirmOpen(true);
+  };
+
+  const confirmArchive = useCallback(async (): Promise<void> => {
+    setArchiving(true);
+    try {
+      await onSetArchived(!archived);
+      setArchiveConfirmOpen(false);
+    } finally {
+      setArchiving(false);
+    }
+  }, [archived, onSetArchived]);
+
   return (
     <>
       <header className="thread-head">
@@ -150,32 +176,10 @@ export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSe
             {chat.title}
           </button>
         </div>
-        {/* The archive is Telegram's own place for the chats that are put
-            away; the button offers the move in the direction the chat is not
-            in. */}
-        <button
-          type="button"
-          onClick={() => onSetArchived(!archived)}
-          disabled={archiving}
-          aria-busy={archiving}
-          aria-label={archived ? 'Unarchive chat' : 'Archive chat'}
-          title={archived ? 'Unarchive chat' : 'Archive chat'}
-          className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
-        >
-          {archived ? (
-            <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.55 5.22l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.15.54L3.46 5.22A1.99 1.99 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.45-1.28zM12 9.5l5.5 5.5H14v2h-4v-2H6.5L12 9.5zM5.12 5l.81-1h12l.94 1H5.12z" />
-            </svg>
-          ) : (
-            <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.18-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
-            </svg>
-          )}
-        </button>
         <button
           ref={triggerRef}
           type="button"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={() => setMenuOpen((open) => !open)}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
@@ -249,6 +253,27 @@ export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSe
                     <span>Open in Telegram</span>
                   </button>
                 ) : null}
+                <div className="my-1 h-px bg-line" role="separator" />
+                {/* The archive is Telegram's own place for the chats that are
+                    put away; the item offers the move in the direction the
+                    chat is not in, and the move asks first. */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+                  onClick={requestArchive}
+                >
+                  {archived ? (
+                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20.55 5.22l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.15.54L3.46 5.22A1.99 1.99 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.45-1.28zM12 9.5l5.5 5.5H14v2h-4v-2H6.5L12 9.5zM5.12 5l.81-1h12l.94 1H5.12z" />
+                    </svg>
+                  ) : (
+                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
+                    </svg>
+                  )}
+                  <span>{archived ? 'Unarchive chat' : 'Archive chat'}</span>
+                </button>
               </div>
             </div>,
             document.body,
@@ -263,6 +288,24 @@ export function ThreadHeader({ chat, presence, archived, archiving, onBack, onSe
           error={error}
           onClose={closeProfile}
           returnFocus={() => openerRef.current?.focus()}
+        />
+      ) : null}
+
+      {archiveConfirmOpen ? (
+        <ConfirmDialog
+          title={archived ? 'Bring the chat back?' : 'Archive this chat?'}
+          message={
+            archived
+              ? `${chat.title} comes back to the chat list.`
+              : `${chat.title} leaves the chat list and goes to the archive. You can bring it back at any time.`
+          }
+          confirmLabel={archived ? 'Unarchive' : 'Archive'}
+          tone={archived ? 'accent' : 'danger'}
+          busy={archiving}
+          busyLabel={archived ? 'Unarchiving…' : 'Archiving…'}
+          onConfirm={() => void confirmArchive()}
+          onCancel={() => setArchiveConfirmOpen(false)}
+          returnFocus={() => triggerRef.current?.focus()}
         />
       ) : null}
     </>

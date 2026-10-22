@@ -64,14 +64,13 @@ export function App() {
   owns both reads and the live updates, so every lookup of a chat — the
   router, the thread, the read receipts — finds it in the same place.
   */
-  const dialogs = useDialogs({ onError: reportError });
+  const dialogs = useDialogs({ onError: reportError, onNotice: notify });
   const {
     all: allDialogs,
     main: mainDialogs,
     archived: archivedDialogs,
     loading: dialogsLoading,
     archiveLoading,
-    archivingChatId,
     ref: dialogsRef,
     find: findDialog,
     apply: applyDialogs,
@@ -366,9 +365,8 @@ export function App() {
           selected={selected}
           presence={selectedPresence}
           archived={selectedArchived}
-          archiving={archivingChatId !== null && archivingChatId === selected?.id}
-          onSetArchived={(archived) => {
-            if (selected) void setArchived(selected.id, archived);
+          onSetArchived={async (archived) => {
+            if (selected) await setArchived(selected.id, archived);
           }}
           onBack={router.back}
           onForward={forwarding.open}

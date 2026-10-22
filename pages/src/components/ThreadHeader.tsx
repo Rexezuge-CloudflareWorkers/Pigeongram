@@ -6,6 +6,7 @@ import type { ChatDto, PresenceDto } from '../types';
 import { useProfile } from '../useProfile';
 import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Icon } from './Icon';
 import { ProfilePopup } from './ProfilePopup';
 
 /**
@@ -155,7 +156,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
     <>
       <header className="thread-head">
         <button type="button" className="back" onClick={onBack} aria-label="Back to chat list">
-          ←
+          <Icon name="arrow-left" />
         </button>
         {/* The picture and the name are two ways to the same profile, and each
             is a control of its own. */}
@@ -186,9 +187,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
           aria-controls={menuId}
           aria-label={`Menu for ${chat.title}`}
         >
-          <svg className="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-          </svg>
+          <Icon name="more-vertical" />
         </button>
       </header>
 
@@ -222,9 +221,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
                     openProfile(triggerRef.current);
                   }}
                 >
-                  <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                  </svg>
+                  <Icon name="person" className="text-muted" />
                   <span>View Profile</span>
                 </button>
                 {username ? (
@@ -234,9 +231,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
                     className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
                     onClick={() => void copyUsername()}
                   >
-                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
-                    </svg>
+                    <Icon name="copy" className="text-muted" />
                     <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : `Copy @${username}`}</span>
                   </button>
                 ) : null}
@@ -247,9 +242,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
                     className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
                     onClick={openInTelegram}
                   >
-                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
-                    </svg>
+                    <Icon name="open-in-new" className="text-muted" />
                     <span>Open in Telegram</span>
                   </button>
                 ) : null}
@@ -263,15 +256,7 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
                   className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
                   onClick={requestArchive}
                 >
-                  {archived ? (
-                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M20.55 5.22l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.15.54L3.46 5.22A1.99 1.99 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.45-1.28zM12 9.5l5.5 5.5H14v2h-4v-2H6.5L12 9.5zM5.12 5l.81-1h12l.94 1H5.12z" />
-                    </svg>
-                  ) : (
-                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.17-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
-                    </svg>
-                  )}
+                  <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
                   <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
                 </button>
               </div>

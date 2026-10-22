@@ -95,7 +95,6 @@
 }
 
 .thread-head .back {
-  font-size: 20px;
   color: var(--muted);
   padding: 0 6px;
 }
@@ -343,8 +342,5 @@
   font-size: 11px;
 }
 
-/* Sent/single and read/double checks, tucked against the timestamp. */
-.message .meta .ticks {
-  letter-spacing: -0.18em;
-  padding-right: 0.12em;
-}
+/* Sent/single and read/double checks, tucked against the timestamp. The icon
+   is sized by the component; the old glyph's negative letter-spacing is gone. */

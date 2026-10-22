@@ -47,7 +47,6 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  font-size: 26px;
   line-height: 1;
   color: var(--text);
 }
@@ -74,7 +73,6 @@
   place-items: center;
   border-radius: 999px;
   color: var(--text);
-  font-size: 18px;
   line-height: 1;
 }
 
@@ -153,7 +151,6 @@
   place-items: center;
   border-radius: 10px;
   color: var(--text);
-  font-size: 24px;
   background: rgba(14, 22, 33, 0.55);
 }
 

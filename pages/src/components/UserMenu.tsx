@@ -4,6 +4,7 @@ import type { PwaState } from '../pwa/usePwa';
 import type { MeDto } from '../types';
 import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Icon } from './Icon';
 
 /**
 The sidebar's account control. The profile row is the trigger for a
@@ -149,13 +150,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
           <strong className="truncate">{displayName}</strong>
           <span className="text-xs text-muted">{connected ? 'Online' : 'Connecting…'}</span>
         </span>
-        <svg
-          className={`size-4 shrink-0 fill-current text-muted transition-transform${menuOpen ? ' rotate-180' : ''}`}
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41Z" />
-        </svg>
+        <Icon name="chevron-down" size={16} className={`text-muted transition-transform${menuOpen ? ' rotate-180' : ''}`} />
       </button>
 
       {menuOpen
@@ -190,9 +185,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
                   className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
                   onClick={requestArchive}
                 >
-                  <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.98 1.98 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.18-.96-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z" />
-                  </svg>
+                  <Icon name="archive" className="text-muted" />
                   <span>Archived Chats</span>
                 </button>
                 {pwa.canInstall ? (
@@ -202,9 +195,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
                     className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
                     onClick={requestInstall}
                   >
-                    <svg className="size-5 shrink-0 fill-current text-muted" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
-                    </svg>
+                    <Icon name="download" className="text-muted" />
                     <span>Install app</span>
                   </button>
                 ) : null}
@@ -214,9 +205,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
                   className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium text-danger transition-colors hover:bg-danger/10 focus-visible:bg-danger/10 focus-visible:outline-none"
                   onClick={requestSignOut}
                 >
-                  <svg className="size-5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
-                  </svg>
+                  <Icon name="logout" />
                   <span>Sign out</span>
                 </button>
               </div>

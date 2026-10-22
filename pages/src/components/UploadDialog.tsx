@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { formatBytes, mediaPreview } from '../format';
 import type { UploadKind } from '../types';
 import { canGroupUploads, MAX_UPLOAD_ITEMS, mediaKind, previewMime } from '../upload';
+import { Icon } from './Icon';
+import type { IconName } from './Icon';
 
 /**
 A review step between the file picker and the upload: every selected file is
@@ -212,11 +214,11 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
   );
 }
 
-const KIND_ICONS: Record<UploadKind, string> = {
-  photo: '🖼️',
-  video: '🎬',
-  animation: '🎞️',
-  document: '📄',
+const KIND_ICONS: Record<UploadKind, IconName> = {
+  photo: 'image',
+  video: 'video',
+  animation: 'gif',
+  document: 'document',
 };
 
 interface UploadPreviewProps {
@@ -253,12 +255,8 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
   return (
     <li className="flex items-center gap-3 rounded-2xl bg-panel px-3 py-2">
       <span className="w-5 shrink-0 text-center text-sm text-muted">{index + 1}</span>
-      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-panel-2 text-xl">
-        {previewUrl ? (
-          <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span aria-hidden="true">{KIND_ICONS[kind]}</span>
-        )}
+      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-panel-2 text-muted">
+        {previewUrl ? <img src={previewUrl} alt="" className="h-full w-full object-cover" /> : <Icon name={KIND_ICONS[kind]} size={24} />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{file.name || 'file'}</span>
@@ -269,11 +267,11 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
       </span>
       <button
         type="button"
-        className="shrink-0 rounded-full px-2 py-1 text-lg text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:bg-panel-2 focus-visible:text-fg focus-visible:outline-none"
+        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:bg-panel-2 focus-visible:text-fg focus-visible:outline-none"
         aria-label={`Remove ${file.name || 'file'}`}
         onClick={onRemove}
       >
-        ×
+        <Icon name="close" size={18} />
       </button>
     </li>
   );

@@ -5,6 +5,7 @@ import { reactionKey } from '../state';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { ForwardOrigin } from './ForwardOrigin';
+import { Icon } from './Icon';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageButtons } from './MessageButtons';
 import { MessageMenu } from './MessageMenu';
@@ -266,19 +267,19 @@ export function MessageRow({
       <span className="meta">
         {message.views === null ? null : (
           <span className="views" title={`${message.views.toLocaleString()} views`}>
-            👁 {formatCount(message.views)}
+            <Icon name="eye" size={12} /> {formatCount(message.views)}
           </span>
         )}
         {formatTime(message.date)}
         {showStatus ? (
           <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
-            {read ? '✓✓' : '✓'}
+            <Icon name={read ? 'done-all' : 'check'} size={14} />
           </span>
         ) : null}
       </span>
       {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
-        <button type="button" className="comments-button" onClick={() => onOpenComments(message)}>
-          💬 {commentLabel(comments)}
+        <button type="button" className="comments-button inline-flex items-center gap-1.5" onClick={() => onOpenComments(message)}>
+          <Icon name="comment" size={14} /> {commentLabel(comments)}
         </button>
       ) : null}
       {menu ? (

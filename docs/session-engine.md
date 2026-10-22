@@ -344,7 +344,8 @@ On the SPA side the archive is a screen of its own (`/archived`), reached from t
 chat list and the archive live in one list (`pages/src/useDialogs.ts`), so every lookup of a chat — the router, the
 thread, the read receipts, the forward picker — finds it in the same place. The thread's ⋮ menu carries the move
 itself: an archive item for a chat in the list, an unarchive item for one in the archive. The item asks first — the
-move is confirmed in a modal — and the outcome is announced in a toast.
+move is confirmed in a modal — and the outcome is announced in a toast. The sidebar keeps the archive in view while one
+of its chats is open; bringing that chat back out of the archive hands the sidebar to the chat list, where it now lives.
 
 ### Updates socket protocol
 

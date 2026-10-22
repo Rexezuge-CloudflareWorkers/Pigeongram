@@ -34,10 +34,11 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
-  Whether the archive is the screen on show. The route owns it: the archive is
-  a URL of its own, so the browser's back button leaves it like any other view.
+  Whether the sidebar is browsing the archive. The route owns the archive
+  screen (`/archived`), and a chat opened from it keeps the context: the list
+  is the chat's, so reading one of its chats does not leave it behind.
   */
-  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveContext, setArchiveContext] = useState(false);
 
   /**
   Shows a short informational toast (a bot's callback answer, a clipboard
@@ -131,20 +132,29 @@ export function App() {
   // Whether the open chat sits in the archive: the thread header offers the
   // move in the direction the chat is not in.
   const selectedArchived = selected ? (findDialog(selected.id)?.archived ?? false) : false;
+  // What the sidebar lists: the archive while the reader is on its screen or
+  // in one of its chats; a chat brought back out of the archive hands the
+  // sidebar back to the chat list, where the chat now lives.
+  const showArchive = archiveContext && (selected === null || selectedArchived);
   const authorized = state?.authorized ?? false;
 
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
   const navigate = useChatNavigation({ dialogs: dialogsRef, threads, comments });
   /**
   The route drives the screen, and the archive is a screen of its own: the
-  sidebar shows the archived chats while the route names it.
+  sidebar shows the archived chats while the route names it or while the open
+  chat came from it.
   */
   const applyRoute = useCallback(
     (route: Route, options: RouteApplyOptions): Promise<void> => {
-      setArchiveOpen(route.view === 'archived');
+      const target = route.view === 'chat' || route.view === 'comments' ? findDialog(route.chatId) : null;
+      setArchiveContext(route.view === 'archived' || target?.archived === true);
+      // The archive is read when it is opened, not before: the main list is the
+      // account's chats, and the archive is a screen the reader asks for.
+      if (route.view === 'archived') void loadArchive();
       return navigate(route, options);
     },
-    [navigate],
+    [findDialog, loadArchive, navigate],
   );
   const canOpen = useCallback(
     (route: Route): boolean =>
@@ -196,15 +206,6 @@ export function App() {
       router.boot();
     })();
   }, [authorized, state?.me, reportError, applyDialogs, loadDialogs, loadArchive, canOpen, router.boot, router.route]);
-
-  /**
-  The archive is read when it is opened, not before: the account's chats are
-  in the main list, and the archive is a screen the reader asks for.
-  */
-  useEffect(() => {
-    if (!archiveOpen) return;
-    void loadArchive();
-  }, [archiveOpen, loadArchive]);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
@@ -308,7 +309,7 @@ export function App() {
     closeViewer();
     forwarding.close();
     router.reset();
-    setArchiveOpen(false);
+    setArchiveContext(false);
     clearDialogs();
     setMe(null);
     reset();
@@ -348,14 +349,14 @@ export function App() {
         <header className="me">
           <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={handleLogout} onOpenArchive={openArchive} />
         </header>
-        {archiveOpen ? <ArchiveBar count={archivedDialogs.length} onBack={router.back} /> : null}
+        {showArchive ? <ArchiveBar count={archivedDialogs.length} onBack={router.back} /> : null}
         <ChatList
-          dialogs={archiveOpen ? archivedDialogs : mainDialogs}
+          dialogs={showArchive ? archivedDialogs : mainDialogs}
           activeChatId={selected?.id ?? null}
-          loading={archiveOpen ? archiveLoading : dialogsLoading}
+          loading={showArchive ? archiveLoading : dialogsLoading}
           pending={threads.pending}
           onSelect={openChat}
-          emptyLabel={archiveOpen ? 'No archived chats.' : undefined}
+          emptyLabel={showArchive ? 'No archived chats.' : undefined}
         />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink} onOpenForward={openForwardOrigin}>

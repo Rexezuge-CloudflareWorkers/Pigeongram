@@ -1,0 +1,226 @@
+/* The launch splash: the app's mark in motion while the Access probe runs. */
+
+.launch {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  padding: 24px;
+  background: radial-gradient(52% 42% at 50% 42%, rgb(94 181 247 / 12%), transparent 72%), var(--bg);
+}
+
+.launch-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 240px;
+  height: 240px;
+  flex: none;
+}
+
+/* The halo behind the mark: the light the mark sits in, not a second spinner. */
+.launch-halo {
+  position: absolute;
+  inset: 0;
+  width: 250px;
+  height: 250px;
+  margin: auto;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(94 181 247 / 22%), transparent 66%);
+  animation: launch-halo 4.8s ease-in-out infinite;
+}
+
+/* Two arcs on different orbits. The mask keeps the conic gradient to a hairline
+   ring, so the rotation reads as a sweep, not as a filled disc. */
+.launch-orbit {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 50%;
+  background: conic-gradient(from 20deg, transparent 0deg 190deg, rgb(94 181 247 / 60%) 300deg, transparent 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  animation: launch-orbit 5.6s linear infinite;
+}
+
+.launch-orbit-inner {
+  width: 168px;
+  height: 168px;
+}
+
+.launch-orbit-outer {
+  width: 212px;
+  height: 212px;
+  opacity: 0.45;
+  background: conic-gradient(from 180deg, transparent 0deg 230deg, rgb(94 181 247 / 55%) 330deg, transparent 360deg);
+  animation-duration: 8.4s;
+  animation-direction: reverse;
+}
+
+/* The tile is the favicon's 32-unit box at 112px. The radius is the favicon's
+   `rx=7`, as a percentage so the clipping sheen follows it. */
+.launch-mark {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 21.875%;
+  overflow: hidden;
+  box-shadow:
+    0 22px 48px rgb(0 0 0 / 48%),
+    0 0 42px rgb(94 181 247 / 20%);
+  animation: launch-float 4.8s ease-in-out infinite;
+}
+
+.launch-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The plane itself leans into the float, so the tile is not the only thing
+   moving. The box is the plane's own, not the 32-unit tile. */
+.launch-plane {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launch-plane 4.8s ease-in-out infinite;
+}
+
+/* A light pass across the tile, held off most of the cycle so it reads as a
+   glint rather than a barber pole. */
+.launch-sheen {
+  position: absolute;
+  inset: -60%;
+  background: linear-gradient(115deg, transparent 42%, rgb(255 255 255 / 22%) 50%, transparent 58%);
+  transform: translateX(-70%);
+  animation: launch-sheen 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* A failed probe keeps the mark, dimmed and still, and puts the message and the
+   retry under it instead of swapping to a second screen. */
+.launch--error .launch-halo,
+.launch--error .launch-orbit {
+  opacity: 0.22;
+  animation: none;
+}
+
+.launch--error .launch-mark {
+  opacity: 0.6;
+  filter: saturate(0.5);
+  animation: none;
+}
+
+.launch--error .launch-plane {
+  animation: none;
+}
+
+.launch--error .launch-sheen {
+  animation: none;
+  opacity: 0;
+}
+
+.launch-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+  text-align: center;
+  animation: launch-error-in 260ms ease-out both;
+}
+
+.launch-error h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.launch-error .status {
+  overflow-wrap: anywhere;
+}
+
+@keyframes launch-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes launch-halo {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes launch-float {
+  0%,
+  100% {
+    transform: translateY(3px) scale(1);
+  }
+
+  50% {
+    transform: translateY(-6px) scale(1.025);
+  }
+}
+
+@keyframes launch-plane {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  50% {
+    transform: translate(0.5px, -0.8px) rotate(1.8deg);
+  }
+}
+
+@keyframes launch-sheen {
+  0%,
+  35% {
+    transform: translateX(-70%);
+  }
+
+  70%,
+  100% {
+    transform: translateX(70%);
+  }
+}
+
+@keyframes launch-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Motion is the whole point of this screen, so a reader who asks for less gets
+   the mark and its orbits as a still image. The sheen is hidden rather than
+   frozen, because a frozen white streak reads as a rendering fault. */
+@media (prefers-reduced-motion: reduce) {
+  .launch-halo,
+  .launch-orbit,
+  .launch-mark,
+  .launch-plane,
+  .launch-sheen,
+  .launch-error {
+    animation: none;
+  }
+
+  .launch-sheen {
+    display: none;
+  }
+}

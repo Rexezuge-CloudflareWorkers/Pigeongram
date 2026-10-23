@@ -622,14 +622,27 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
   });
 
+  it('keeps the access probe text-free behind the launch animation', () => {
+    // A probe that never answers leaves the launch screen mounted, which is
+    // the state a slow Access round-trip shows.
+    installFetch(() => new Promise<Response>(() => {}));
+
+    render(<App />);
+
+    expect(screen.getByRole('status').textContent).toBe('Checking access…');
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.queryByText('Connecting to the session engine…')).toBeNull();
+  });
+
   it('surfaces a bridge failure on the access probe with a retry', async () => {
     installFetch(() => json({ error: 'Session engine unreachable' }, 503));
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Checking access' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Connection failed' })).toBeDefined();
     expect(screen.getByText('Session engine unreachable')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('shows the QR login when Access is verified but Telegram is not linked', async () => {

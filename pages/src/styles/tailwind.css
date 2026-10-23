@@ -9,6 +9,7 @@
 @import 'tailwindcss';
 
 @import './base.css' layer(components);
+@import './launch.css' layer(components);
 @import './landing.css' layer(components);
 @import './media.css' layer(components);
 @import './album.css' layer(components);

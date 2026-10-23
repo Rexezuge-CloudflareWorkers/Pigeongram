@@ -66,9 +66,10 @@ protocol,registry}`) and the mtcute integration
   peer connection, `ringtone.ts` the synthesised ringtone), with the overlay in `components/CallOverlay.tsx`. The home
   page has four states: `LandingPage.tsx` is
   the public intro, `OfflineScreen.tsx` the no-network screen, `LoginScreen.tsx` the Telegram QR login, and
-  `CheckingAccess.tsx` the Access probe's first paint — `components/HomeScreen.tsx` picks among them from
-  `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already at
-  the god-file limit. **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
+  `LaunchScreen.tsx` the Access probe's first paint — a text-free launch splash drawn from the favicon's paper-plane
+  mark, carrying a failed probe's message and retry on the same screen — `components/HomeScreen.tsx` picks among them
+  from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already
+  at the god-file limit. **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
   icon is drawn — a filled 24-unit Material set, `currentColor`, `data-icon` for tests, decorative unless given a
   `label`. A new affordance adds an `IconName`, never another inline `<svg>`, a font glyph or an emoji; emoji are content
   (Telegram reactions and message text), not chrome. A successful

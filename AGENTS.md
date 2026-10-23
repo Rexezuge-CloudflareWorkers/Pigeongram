@@ -11,8 +11,8 @@ wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect
 while a browser socket is attached it holds the session live and pushes updates. The Pages app (`pages/`) is the Vite +
 React front end (public intro, QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
 and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
-One account, single user, Free-tier-first: the 10 ms CPU per invocation limit is the constraint the session engine is
-measured against. `docs/session-engine.md` is the engine's runbook.
+One account, single user, Free-tier-first: the 10 ms CPU per invocation and the 100,000 rows written/day limits are the
+constraints the session engine is measured against. `docs/session-engine.md` is the engine's runbook.
 
 ## Commands
 
@@ -169,12 +169,22 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips verification only while `ENVIRONMENT !== "production"` and
   belongs in `.dev.vars` only. Do not add an `/api/*` catch-all that forwards to the DO: the public plane must never
   reach the account API.
-- **Storage is mtcute's `BaseSqliteStorage` over the DO's SQLite.** `session/mtproto/sqlite.ts` adapts `ctx.storage.sql`
-  to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); engine-owned tables are prefixed `engine_`.
-  There is no history backfill — session, update state and small caches only; history and media are fetched live through
-  the bridge. The engine's own tables are `engine_wakes` (the wake log), `engine_meta` (the signed-in user's DTO),
-  `engine_avatars` (the profile-photo bytes, keyed by the version token the engine resolved), `engine_unread_albums`
-  (the unread album members per chat) and `engine_unread_state` (the album ledger's reconciliation marker).
+- **Storage is mtcute's storage over the DO's SQLite, but only mtcute's session state is durable.** `session/mtproto/sqlite.ts`
+  adapts `ctx.storage.sql` to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); `key_value` (the
+  update cursor, DC options and salts) and `auth_keys` stay in SQLite, while the peer and reference-message caches are
+  memory-only. Engine-owned tables are prefixed `engine_`. There is no history backfill — session, update state and small
+  caches only; history and media are fetched live through the bridge. The engine's own tables are `engine_wakes` (the
+  wake log), `engine_meta` (the signed-in user's DTO), `engine_avatars` (the profile-photo bytes, keyed by the version
+  token the engine resolved), `engine_unread_albums` (the unread album members per chat) and `engine_unread_state` (the
+  album ledger's reconciliation marker).
+- **The Free plan's write budget is 100,000 rows/day, account-wide, and it is a first-class constraint.** The reset is
+  00:00 UTC; `setAlarm()` is one row written, deletes count, and an indexed row costs one write per index. mtcute
+  refills its peer cache on **every** response (`peers.updatePeersFrom`), so persisting peers would rewrite every peer
+  on each read — the reason `createTelegramStorage` backs `peers`/`refMessages` with mtcute's memory repositories and
+  keeps only `kv`/`authKeys` durable. `SessionLifecycle.arm` reads `getAlarm()` and skips a redundant `setAlarm`;
+  `ensureArmed` on every request repairs a cadence a rejected write left behind; and the wake log, avatar cache and
+  album ledger writes are best-effort, so reads and the update stream keep working when the quota is exhausted. Never
+  add a write to a read path, and never "clean up" tables while the budget is spent — deleting rows is itself a write.
 - **An album counts as one unread message.** Telegram counts every album member as a message, so an album of ten files
   arrives as an unread count of ten. The badge counts the album once, and the **album ledger**
   (`worker/src/session/unread-albums.ts`) is what makes the two agree: it records the album members the update stream

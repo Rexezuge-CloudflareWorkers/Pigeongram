@@ -122,7 +122,13 @@ export class SessionLifecycle {
       ok,
       error,
     };
-    this.host.store.recordWake(record);
+    try {
+      this.host.store.recordWake(record);
+    } catch (failure) {
+      // The wake log is bookkeeping: a rejected write (the Free plan's daily
+      // row budget is exhausted) must not fail the wake that produced it.
+      console.error('[engine] failed to record the wake', failure);
+    }
     if (!this.live) await this.arm(this.wakeIntervalMs());
     return this.host.store.counters();
   }
@@ -154,10 +160,24 @@ export class SessionLifecycle {
   }
 
   /**
-  Detaches the RPC connection shortly after the last bridge call.
+  Repairs a missing alarm without disturbing one that is already scheduled.
+
+  A rejected write (the Free plan's row budget) can leave the object with no
+  alarm at all; the next request then has to restore the cadence, or the
+  engine stays asleep until someone opens the app.
   */
-  afterActivity(): void {
-    void this.arm(this.live ? this.wakeIntervalMs() : IDLE_RELEASE_MS);
+  async ensureArmed(): Promise<void> {
+    await this.armWake();
+  }
+
+  /**
+  Detaches the RPC connection shortly after the last bridge call.
+
+  Awaited by the bridge routes: the storage write has to outlive the event that
+  requested it, or the object may hibernate before the alarm is scheduled.
+  */
+  async afterActivity(): Promise<void> {
+    await this.arm(this.live ? this.wakeIntervalMs() : IDLE_RELEASE_MS);
   }
 
   async afterLogin(): Promise<void> {
@@ -263,6 +283,19 @@ export class SessionLifecycle {
   }
 
   private async arm(delayMs: number): Promise<void> {
-    await this.host.state.storage.setAlarm(Date.now() + Math.max(1000, delayMs));
+    const target = Date.now() + Math.max(1000, delayMs);
+    try {
+      // `setAlarm` is a row write on the Free plan, and a chat-list load makes
+      // one bridge call per avatar. An alarm already at or before the target
+      // fires soon enough; re-setting it would only add writes.
+      const existing = await this.host.state.storage.getAlarm();
+      if (existing !== null && existing <= target) return;
+      await this.host.state.storage.setAlarm(target);
+    } catch (error) {
+      // The cadence is best effort: if the write budget is exhausted, reads
+      // still work, and the next request's `ensureArmed` repairs the alarm
+      // once the quota resets.
+      console.error('[engine] failed to arm the wake alarm', error);
+    }
   }
 }

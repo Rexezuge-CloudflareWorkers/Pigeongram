@@ -7,7 +7,7 @@ import { setChatArchived } from './archive';
 import { readBotCommands } from './bot-commands';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
-import { EngineError } from './errors';
+import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
 import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
@@ -360,6 +360,7 @@ async function readWindow(client: TelegramClient, chatId: number, request: Windo
  */
 function failureText(error: unknown): string {
   if (error instanceof EngineError) return error.message;
+  if (isStorageWriteQuotaError(error)) return STORAGE_WRITE_QUOTA_MESSAGE;
   return error instanceof Error ? error.message : String(error);
 }
 

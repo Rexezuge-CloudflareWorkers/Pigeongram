@@ -14,9 +14,10 @@ browser ──HTTP──▶ Pages (static + /api/* and /user/* proxies in functi
                                                                    MTProto over WSS (mtcute + @mtcute/wasm)
 ```
 
-- One DO instance (`ENGINE_OBJECT_NAME = 'main'`) owns the account. All state is in its SQLite database:
-  mtcute's storage (`BaseSqliteStorage`: auth keys, session, peers, dialogs, reference messages) plus five engine
-  tables (`engine_wakes`, `engine_meta`, `engine_avatars`, `engine_unread_albums`, `engine_unread_state`).
+- One DO instance (`ENGINE_OBJECT_NAME = 'main'`) owns the account. All durable state is in its SQLite database:
+  mtcute's auth keys, update cursor and DC/salt caches, plus five engine tables (`engine_wakes`, `engine_meta`,
+  `engine_avatars`, `engine_unread_albums`, `engine_unread_state`). mtcute's peer and reference-message caches are
+  memory-only — see [Free-tier posture](#free-tier-posture).
 - The worker is **API-only** and, in production, not publicly reachable: `workers_dev: false`, no route, and the
   Pages project is the only caller (through the `API_WORKER` service binding).
 - Locally the SPA talks to the worker through the Vite proxy (`/api` and `/user` are proxied from 5173 to 8787).
@@ -65,10 +66,16 @@ read the list again: the boot has just read it. A reconnect still does, because 
 
 ## Free-tier posture
 
-The Free plan gives 10 ms CPU per invocation (wall time on waits is not CPU). The design keeps every wake small:
+The Free plan gives 10 ms CPU per invocation (wall time on waits is not CPU) and 100,000 rows written per day,
+account-wide (reset 00:00 UTC; `setAlarm` and deletes count, and an indexed row costs one write per index). The design
+keeps every wake small:
 
-- **No history backfill.** `getDifference` updates and reference messages are persisted; no dialogs/messages are
-  fetched into the DO. History and media are served live through the bridge while the session is connected.
+- **No history backfill.** `getDifference` update state is persisted; no dialogs/messages are fetched into the DO.
+  History and media are served live through the bridge while the session is connected.
+- **Read paths do not accumulate writes.** mtcute refills its peer and reference-message caches on every response, so
+  those caches are memory-only; persisting them would rewrite every peer on each `getDialogs`/`getHistory`. Alarms are
+  coalesced (`getAlarm()` before `setAlarm()`), and the wake log, avatar cache and album ledger writes are best-effort
+  so the update stream and the chat list keep working when the row budget is spent.
 - **Chunked crypto, not buffered payloads.** `/user/file`, `/user/avatar` and `/user/upload` stream; uploads are
   chunked and encrypted (AES-IGE) part by part on mtcute's upload pool. Upload CPU grows with the file size, so
   `UPLOAD_MAX_BYTES` is also the CPU-affordability knob — lower it if large uploads exhaust the budget.
@@ -443,7 +450,9 @@ After the spike passes, leave the deployment at the default 300 s cadence for 72
 - Poll `GET /user/stats?days=30` daily (or keep the SPA open and read the soak numbers); watch
   `counters.failedWakes`, `days[].avgMs`, `days[].updates`, and `databaseBytes`.
 - In the Cloudflare dashboard, check the worker's CPU-time metrics and the DO's storage/size metrics against the
-  Free plan; confirm no wake exceeds the per-invocation CPU budget.
+  Free plan; confirm no wake exceeds the per-invocation CPU budget. Also watch the DO namespace's **rows written**
+  against the 100,000/day budget: a cold wake that reads the chat list should move it only by the session's own
+  bookkeeping (the update cursor and the next alarm), not by one row per peer.
 - The soak's job is to prove the cadence, the storage shape, and the CPU profile — a failed wake must be a
   recorded row (`engine_wakes.ok = 0` with `error`), never a silent stop. The engine re-arms after failures.
 

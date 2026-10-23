@@ -39,7 +39,13 @@ export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache,
     return avatarBytes(cached.mime, cached.bytes);
   }
   const avatar = await driver.readAvatar(chatId, size);
-  cache.write(avatar.version, size, avatar.mime, avatar.bytes);
+  try {
+    cache.write(avatar.version, size, avatar.mime, avatar.bytes);
+  } catch (error) {
+    // The cache is an optimization: a rejected write (the Free plan's row
+    // budget) must still serve the bytes that were just downloaded.
+    console.warn('[engine] avatar cache write failed', error);
+  }
   return avatarBytes(avatar.mime, avatar.bytes);
 }
 

@@ -104,6 +104,9 @@ export class SessionEngine {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     try {
+      // A request is the only chance to repair a cadence that a failed alarm
+      // write left behind; an alarm that already exists is left alone.
+      await this.lifecycle.ensureArmed();
       return await this.route(request, url);
     } catch (error) {
       return errorResponse(error);
@@ -141,12 +144,12 @@ export class SessionEngine {
       }
       case 'POST /user/upload': {
         const response = await uploadResponse(this.driver, request, url, this.env);
-        this.lifecycle.afterActivity();
+        await this.lifecycle.afterActivity();
         return response;
       }
       case 'POST /user/upload-group': {
         const response = await uploadGroupResponse(this.driver, request, url, this.env);
-        this.lifecycle.afterActivity();
+        await this.lifecycle.afterActivity();
         return response;
       }
       case 'POST /user/wake': {
@@ -157,12 +160,12 @@ export class SessionEngine {
       }
       case 'GET /user/file': {
         const response = await fileResponse(this.driver, request, url);
-        this.lifecycle.afterActivity();
+        await this.lifecycle.afterActivity();
         return response;
       }
       case 'GET /user/avatar': {
         const response = await avatarResponse(this.driver, this.avatars, url);
-        this.lifecycle.afterActivity();
+        await this.lifecycle.afterActivity();
         return response;
       }
       default: {
@@ -195,7 +198,7 @@ export class SessionEngine {
       throw new EngineError('method must be a non-empty string', 400);
     }
     const result = await this.driver.rpc(method, body.params);
-    this.lifecycle.afterActivity();
+    await this.lifecycle.afterActivity();
     return result;
   }
 

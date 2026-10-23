@@ -43,16 +43,38 @@ const RECONCILED_KEY = 'albums_reconciled';
 const RECONCILE_LIMIT = 100;
 
 export class UnreadAlbumLedger {
+  /**
+   * Whether a rejected ledger write has already been reported. The ledger is an
+   * accounting aid, not session state: once the Free plan's row budget is gone,
+   * its writes are skipped so the update stream and the chat list keep working.
+   */
+  private warned = false;
+
   constructor(private readonly storage: SqlStorageLike) {
-    this.storage.exec(CREATE_MEMBERS);
-    this.storage.exec(CREATE_STATE);
+    // The DDL is best-effort too: the engine is constructed on every wake, and
+    // a spent write budget must not take the whole object down with it.
+    this.write(CREATE_MEMBERS);
+    this.write(CREATE_STATE);
+  }
+
+  /**
+   * Applies one ledger write, reporting the first rejection and ignoring the rest.
+   */
+  private write(query: string, ...bindings: unknown[]): void {
+    try {
+      this.storage.exec(query, ...bindings);
+    } catch (error) {
+      if (this.warned) return;
+      this.warned = true;
+      console.warn('[engine] album ledger write failed', error);
+    }
   }
 
   /**
    * Records an album member the account has not read yet.
    */
   recordIncoming(chatId: number, messageId: number, groupedId: string): void {
-    this.storage.exec(
+    this.write(
       'insert or ignore into engine_unread_albums (chat_id, message_id, grouped_id) values (?, ?, ?)',
       chatId,
       messageId,
@@ -65,7 +87,7 @@ export class UnreadAlbumLedger {
    * the account has read, so everything up to it is no longer unread.
    */
   pruneRead(chatId: number, maxId: number): void {
-    this.storage.exec('delete from engine_unread_albums where chat_id = ? and message_id <= ?', chatId, maxId);
+    this.write('delete from engine_unread_albums where chat_id = ? and message_id <= ?', chatId, maxId);
   }
 
   /**
@@ -106,15 +128,15 @@ export class UnreadAlbumLedger {
    * Marks the ledger as reconciled.
    */
   markReconciled(): void {
-    this.storage.exec('insert or replace into engine_unread_state (key, value) values (?, ?)', RECONCILED_KEY, '1');
+    this.write('insert or replace into engine_unread_state (key, value) values (?, ?)', RECONCILED_KEY, '1');
   }
 
   /**
    * Empties the ledger: the account it described is gone.
    */
   clear(): void {
-    this.storage.exec('delete from engine_unread_albums');
-    this.storage.exec('delete from engine_unread_state where key = ?', RECONCILED_KEY);
+    this.write('delete from engine_unread_albums');
+    this.write('delete from engine_unread_state where key = ?', RECONCILED_KEY);
   }
 
   /**

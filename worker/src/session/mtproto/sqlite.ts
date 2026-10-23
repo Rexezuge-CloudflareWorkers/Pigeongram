@@ -1,5 +1,11 @@
-import { BaseSqliteStorage, BaseSqliteStorageDriver } from '@mtcute/core';
-import type { ISqliteDatabase, ISqliteStatement } from '@mtcute/core';
+import {
+  BaseSqliteStorage,
+  BaseSqliteStorageDriver,
+  MemoryPeersRepository,
+  MemoryRefMessagesRepository,
+  MemoryStorageDriver,
+} from '@mtcute/core';
+import type { ISqliteDatabase, ISqliteStatement, ITelegramStorageProvider } from '@mtcute/core';
 
 /**
 The slice of `SqlStorage` this adapter reads — structural, so tests can fake it.
@@ -86,10 +92,36 @@ export class DoSqliteStorageDriver extends BaseSqliteStorageDriver {
 }
 
 /**
-mtcute's SQLite provider wired to the DO's SQLite.
+The provider `createTelegramStorage` builds. `driver` is narrowed to the
+concrete adapter so the lifecycle mtcute calls (`setup`, `load`, `save`) is
+visible without the optional-call shape of `IStorageDriver`.
 */
-export function createTelegramStorage(storage: TransactionalStorageLike): BaseSqliteStorage {
-  return new BaseSqliteStorage(new DoSqliteStorageDriver(storage));
+export interface TelegramStorageProvider extends ITelegramStorageProvider {
+  readonly driver: DoSqliteStorageDriver;
+}
+
+/**
+mtcute's storage wired to the DO's SQLite.
+
+Only the durable state mtcute needs to resume a session is SQLite: the auth
+keys, the update cursor, and the DC/salt caches in `key_value`. The peer and
+reference-message caches are **memory-only**, because mtcute refills them on
+every response (`peers.updatePeersFrom`) and a cold DO — which every wake is —
+would rewrite every peer on each read. On the Free plan that write traffic is
+the scarce resource (100,000 rows/day, and an indexed row costs more than one);
+a lost cache entry only costs a Telegram read, which is cheap.
+*/
+export function createTelegramStorage(storage: TransactionalStorageLike): TelegramStorageProvider {
+  const driver = new DoSqliteStorageDriver(storage);
+  const durable = new BaseSqliteStorage(driver);
+  const memory = new MemoryStorageDriver();
+  return {
+    driver,
+    kv: durable.kv,
+    authKeys: durable.authKeys,
+    peers: new MemoryPeersRepository(memory),
+    refMessages: new MemoryRefMessagesRepository(memory),
+  };
 }
 
 function normalizeRow(row: Record<string, unknown> | undefined): unknown {

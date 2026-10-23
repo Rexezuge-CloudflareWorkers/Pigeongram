@@ -1,9 +1,8 @@
 import { BaseTelegramClient, TelegramClient } from '@mtcute/core/client.js';
-import type { BaseSqliteStorage } from '@mtcute/core';
 import { WorkerCryptoProvider } from './crypto';
 import { WorkerPlatform } from './platform';
 import { createTelegramStorage } from './sqlite';
-import type { TransactionalStorageLike } from './sqlite';
+import type { TelegramStorageProvider, TransactionalStorageLike } from './sqlite';
 import { WorkersWsTransport } from './transport';
 
 /**
@@ -22,7 +21,7 @@ The mtcute client stack: the low-level client, the high-level facade, storage.
 export interface MtBundle {
   base: BaseTelegramClient;
   client: TelegramClient;
-  storage: BaseSqliteStorage;
+  storage: TelegramStorageProvider;
 }
 
 export function readApiCredentials(env: CloudflareEnv): { apiId: number; apiHash: string } {

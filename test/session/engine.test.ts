@@ -1,6 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
 import { SessionEngine } from '../../worker/src/session/engine';
+import { errorResponse } from '../../worker/src/session/http';
+import { SessionLifecycle } from '../../worker/src/session/lifecycle';
 import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 // The wasm-backed crypto provider cannot initialize under node: its wasm
@@ -60,6 +62,7 @@ function createHarness(env: TestEnv = {}): Harness {
   const storage = {
     sql: transactional.sql,
     transactionSync: transactional.transactionSync,
+    getAlarm: async (): Promise<number | null> => alarms.at(-1) ?? null,
     setAlarm: async (time: number | Date): Promise<void> => {
       alarms.push(typeof time === 'number' ? time : time.getTime());
     },
@@ -431,5 +434,57 @@ describe('SessionEngine (cold start)', () => {
     // storage needs are paid once, while the object is still empty.
     const { prepared } = createHarness();
     expect(prepared.length).toBe(1);
+  });
+});
+
+describe('SessionEngine (alarm budget)', () => {
+  it('arms once for repeated requests and repairs a missing alarm', async () => {
+    const { engine, alarms } = createHarness();
+    await engine.fetch(request('GET', '/user/state'));
+    expect(alarms).toHaveLength(1);
+
+    // A second request must not schedule the same cadence again: `setAlarm`
+    // is a row write on the Free plan.
+    await engine.fetch(request('GET', '/user/state'));
+    expect(alarms).toHaveLength(1);
+
+    // The runtime consumes the alarm before invoking alarm(); an alarm that a
+    // rejected write never scheduled is the state this has to repair.
+    alarms.length = 0;
+    await engine.fetch(request('GET', '/user/state'));
+    expect(alarms).toHaveLength(1);
+  });
+});
+
+describe('SessionEngine (storage write budget)', () => {
+  it('maps the Free-plan write quota to a typed 503', async () => {
+    const response = errorResponse(new Error('Exceeded allowed rows written in Durable Objects free tier'));
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      code: 'storage_write_quota',
+      error: expect.stringContaining('00:00 UTC'),
+    });
+  });
+
+  it('keeps a wake alive when the wake log cannot be written', async () => {
+    const counters = { totalWakes: 0, failedWakes: 0, avgWakeMs: 0, updatesSeen: 0, lastWakeAt: null };
+    const lifecycle = new SessionLifecycle({
+      driver: { isAuthorized: () => Promise.resolve(false) },
+      hub: { broadcast: () => {} },
+      login: { running: false },
+      state: {
+        getWebSockets: (): never[] => [],
+        storage: { getAlarm: () => Promise.resolve(null), setAlarm: () => Promise.resolve() },
+      },
+      store: {
+        recordWake: (): never => {
+          throw new Error('Exceeded allowed rows written in Durable Objects free tier');
+        },
+        counters: () => counters,
+      },
+      env: {},
+    } as unknown as ConstructorParameters<typeof SessionLifecycle>[0]);
+
+    await expect(lifecycle.runWake('manual')).resolves.toEqual(counters);
   });
 });

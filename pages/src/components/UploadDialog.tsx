@@ -116,81 +116,87 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
     >
       <div
         ref={dialogRef}
-        className="flex max-h-[85vh] w-full max-w-[560px] flex-col rounded-3xl border border-line bg-panel-2 shadow-2xl"
+        className="flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-3xl border border-line bg-panel-2 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={hintId}
       >
-        <div className="flex items-baseline justify-between gap-3 px-6 pt-6">
-          <h2 id={titleId} className="text-xl font-semibold">
+        <div className="flex shrink-0 items-baseline justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
+          <h2 id={titleId} className="text-lg font-semibold sm:text-xl">
             Send files
           </h2>
           <span className="text-sm text-muted">
             {files.length} / {MAX_UPLOAD_ITEMS}
           </span>
         </div>
-        <p id={hintId} className="px-6 pt-1 text-sm text-muted">
-          Review the selection, then send the files together as an album or one by one.
-        </p>
 
-        <ul className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto px-6" aria-label="Selected files">
-          {files.map((file, index) => (
-            <UploadPreview
-              key={`${file.name}:${file.size}:${file.lastModified}:${index}`}
-              file={file}
-              index={index}
-              onRemove={() => removeFile(index)}
-            />
-          ))}
-        </ul>
-
-        {notice ? (
-          <p className="px-6 pt-2 text-sm text-danger" role="status">
-            {notice}
+        {/* The middle is the only scroller: the header and the footer stay
+            pinned, so Cancel/Send remain reachable however short the visible
+            viewport is. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+          <p id={hintId} className="pt-1 text-sm text-muted">
+            Review the selection, then send the files together as an album or one by one.
           </p>
-        ) : null}
 
-        <div className="px-6 pt-3">
-          <button
-            type="button"
-            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
-            disabled={files.length >= MAX_UPLOAD_ITEMS}
-            onClick={() => fileRef.current?.click()}
-          >
-            Add files
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            tabIndex={-1}
-            aria-hidden="true"
-            className="hidden"
-            onChange={(event) => {
-              addFiles(event.target.files);
-              event.target.value = '';
-            }}
-          />
-        </div>
+          <ul className="mt-4 space-y-2" aria-label="Selected files">
+            {files.map((file, index) => (
+              <UploadPreview
+                key={`${file.name}:${file.size}:${file.lastModified}:${index}`}
+                file={file}
+                index={index}
+                onRemove={() => removeFile(index)}
+              />
+            ))}
+          </ul>
 
-        <div className="mt-3 px-6">
-          <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
+          {notice ? (
+            <p className="pt-2 text-sm text-danger" role="status">
+              {notice}
+            </p>
+          ) : null}
+
+          <div className="pt-3">
+            <button
+              type="button"
+              className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
+              disabled={files.length >= MAX_UPLOAD_ITEMS}
+              onClick={() => fileRef.current?.click()}
+            >
+              Add files
+            </button>
             <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 shrink-0 accent-accent"
-              checked={grouped && groupable}
-              disabled={!groupable}
-              onChange={(event) => setGrouped(event.target.checked)}
+              ref={fileRef}
+              type="file"
+              multiple
+              tabIndex={-1}
+              aria-hidden="true"
+              className="hidden"
+              onChange={(event) => {
+                addFiles(event.target.files);
+                event.target.value = '';
+              }}
             />
-            <span>
-              <span className="block font-medium">Group Items</span>
-              <span className="block text-sm text-muted">{groupHint(files.length, groupable)}</span>
-            </span>
-          </label>
+          </div>
+
+          <div className="mt-3 pb-1">
+            <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 accent-accent"
+                checked={grouped && groupable}
+                disabled={!groupable}
+                onChange={(event) => setGrouped(event.target.checked)}
+              />
+              <span>
+                <span className="block font-medium">Group Items</span>
+                <span className="block text-sm text-muted">{groupHint(files.length, groupable)}</span>
+              </span>
+            </label>
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-6 pb-6 pt-4">
+        <div className="flex shrink-0 justify-end gap-2 px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
           <button
             ref={cancelRef}
             type="button"

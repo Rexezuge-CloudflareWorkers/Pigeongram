@@ -84,7 +84,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="flex max-h-[min(640px,80vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
+        className="flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">

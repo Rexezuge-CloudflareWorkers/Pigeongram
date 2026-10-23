@@ -186,7 +186,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                        |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                     |
 | `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                          |
-| `requestCall`         | `{chatId, gAHash: string (base64), randomId: string}`                             | `{call: CallDto}`                                                                           |
+| `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                           |
 | `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                        |
 | `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                           |
 | `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                           |
@@ -398,13 +398,13 @@ never comes near this worker.
 **The handshake** is Telegram's own `phone.*` family, and it is the only part that has to interoperate with the
 server:
 
-| Step                | Method                | What it carries                                                             |
-| ------------------- | --------------------- | --------------------------------------------------------------------------- |
-| The caller asks     | `phone.requestCall`   | the caller's commitment: SHA-256 over its Diffie-Hellman value (`g_a_hash`) |
-| The callee answers  | `phone.acceptCall`    | the callee's own public Diffie-Hellman value (`g_b`)                        |
-| The caller confirms | `phone.confirmCall`   | the caller's public value (`g_a`) and the fingerprint of the shared key     |
-| The call ends       | `phone.discardCall`   | why it ended and how long it ran                                            |
-| The call is rated   | `phone.setCallRating` | a score from 1 to 5 and a comment                                           |
+| Step                | Method                | What it carries                                                                       |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| The caller asks     | `phone.requestCall`   | the caller's commitment: SHA-256 over its Diffie-Hellman value (`g_a_hash`, 32 bytes) |
+| The callee answers  | `phone.acceptCall`    | the callee's own public Diffie-Hellman value (`g_b`)                                  |
+| The caller confirms | `phone.confirmCall`   | the caller's public value (`g_a`) and the fingerprint of the shared key               |
+| The call ends       | `phone.discardCall`   | why it ended and how long it ran                                                      |
+| The call is rated   | `phone.setCallRating` | a score from 1 to 5 and a comment                                                     |
 
 `phone.receivedCall` tells the server that somebody is at the phone, so it stops offering the call to the account's
 other devices.

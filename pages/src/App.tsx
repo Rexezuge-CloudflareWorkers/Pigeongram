@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchBootstrap, logout, readHistory } from './api';
+import { useCallHost } from './calls/host';
 import { ArchiveBar } from './components/ArchiveBar';
 import { ChatList } from './components/ChatList';
 import { ForwardPicker } from './components/ForwardPicker';
@@ -8,7 +9,7 @@ import { MediaViewer } from './components/MediaViewer';
 import { ThreadPane } from './components/ThreadPane';
 import { Toasts } from './components/Toasts';
 import { UserMenu } from './components/UserMenu';
-import { useLoginFlow, useUpdatesSocket } from './hooks';
+import { useLoginFlow } from './hooks';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import { usePwa } from './pwa/usePwa';
 import type { Route, RouteApplyOptions } from './routes';
@@ -218,11 +219,13 @@ export function App() {
     [applyCommentUpdate, applyThreadUpdate, applyUpdate],
   );
 
-  const connected = useUpdatesSocket(authorized, handleUpdate, (resync) => {
-    // The boot read the chat list already; only a dropped connection means
-    // the list may be stale.
-    if (resync) void loadDialogs();
-  });
+  /**
+   * The calls own the updates socket: a call's signalling rides it, and a
+   * call arrives as an ordinary bridge event.
+   */
+  const findChat = useCallback((chatId: PeerId) => findDialog(chatId)?.chat ?? null, [findDialog]);
+  const calls = useCallHost({ enabled: authorized, onUpdate: handleUpdate, onResync: loadDialogs, findChat, onError: reportError });
+  const connected = calls.connected;
 
   const openViewer = useCallback(
     (source: 'thread' | 'comments', messageId: number): void => {
@@ -370,6 +373,7 @@ export function App() {
             if (selected) await setArchived(selected.id, archived);
           }}
           onBack={router.back}
+          onCall={() => selected && calls.startCall(selected.id)}
           onForward={forwarding.open}
           onOpenMedia={openViewer}
           onReadThrough={markRead}
@@ -384,6 +388,7 @@ export function App() {
       {forwarding.target ? (
         <ForwardPicker messages={forwarding.target} dialogs={allDialogs} onForward={forwarding.forward} onClose={forwarding.close} />
       ) : null}
+      {calls.overlay}
       <Toasts error={error} notice={notice} />
     </div>
   );

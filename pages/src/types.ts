@@ -6,6 +6,10 @@
  * shared. Keep them in sync when the contract changes.
  */
 
+import type { CallDto } from './call-types';
+
+export type { CallDto, CallConnectionDto, CallProtocolDto, CallState } from './call-types';
+
 export type PeerId = number;
 
 export interface MeDto {
@@ -573,9 +577,41 @@ export type UpdateEvent =
       show (Telegram's "unknown" status).
       */
       presence: PresenceDto | null;
+    }
+  | {
+      type: 'call';
+      /**
+      The call, and where it stands.
+      */
+      call: CallDto;
+    }
+  | {
+      type: 'call_signaling';
+      /**
+      The call the packet belongs to, as its decimal id.
+      */
+      callId: string;
+      /**
+      The opaque packet, base64. It belongs to the two peers: the engine
+      relays it without reading it.
+      */
+      data: string;
     };
 
-export type ClientSocketMessage = { type: 'hello' } | { type: 'ping' };
+export type ClientSocketMessage =
+  | { type: 'hello' }
+  | { type: 'ping' }
+  | {
+      type: 'call_signaling';
+      /**
+      The call the packet belongs to, as its decimal id.
+      */
+      callId: string;
+      /**
+      The opaque packet, base64.
+      */
+      data: string;
+    };
 
 export type ServerSocketMessage =
   { type: 'ready' } | { type: 'pong' } | { type: 'error'; message: string } | { type: 'update'; update: UpdateEvent };
@@ -620,7 +656,14 @@ export type RpcMethod =
   | 'sendComment'
   | 'getBotCommands'
   | 'setArchived'
-  | 'getProfile';
+  | 'getProfile'
+  | 'getCallDhConfig'
+  | 'requestCall'
+  | 'receivedCall'
+  | 'acceptCall'
+  | 'confirmCall'
+  | 'discardCall'
+  | 'rateCall';
 
 /**
 The methods a `batch` call may carry.

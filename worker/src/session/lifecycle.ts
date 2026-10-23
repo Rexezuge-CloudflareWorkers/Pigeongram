@@ -99,7 +99,7 @@ export class SessionLifecycle {
       if (await this.host.driver.isAuthorized()) {
         await this.host.driver.connect();
         await this.host.driver.catchUp(CATCH_UP_TIMEOUT_MS);
-        if (!this.live) await this.host.driver.disconnect();
+        if (!this.live && !this.host.driver.hasActiveCall) await this.host.driver.disconnect();
       } else {
         // Nothing to replay before the account is linked, and an anonymous
         // client has no DC to run against — so the wake stays a no-op and the
@@ -251,6 +251,8 @@ export class SessionLifecycle {
   /**
   Leaves the live session: the connection is dropped and the wake cadence
   resumes. The socket hub calls it when the last browser socket closes.
+
+  A call keeps the connection — see the guard below.
   */
   async stopLive(): Promise<void> {
     this.live = false;
@@ -266,6 +268,15 @@ export class SessionLifecycle {
     // has a timeout), and the disconnect below tears the connection down
     // under it.
     await this.catchUpTask?.catch(() => {});
+    if (this.host.driver.hasActiveCall) {
+      // The connection stays up for the call: the signalling between the two
+      // peers rides it, and the browser that just lost its socket is about to
+      // come back and find the call still up. The wake cadence is re-armed so
+      // the alarm finds the session connected rather than starting a second
+      // one.
+      await this.arm(this.wakeIntervalMs());
+      return;
+    }
     if (!this.host.login.running) {
       try {
         await this.host.driver.disconnect();

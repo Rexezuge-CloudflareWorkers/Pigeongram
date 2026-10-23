@@ -1,6 +1,8 @@
 import { getMarkedPeerId, Long, PeersIndex, RawUpdateInfo } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
+import { encodeBase64 } from '../../worker/src/session/base64';
+import { CallRegistry } from '../../worker/src/session/call-registry';
 import { mapRawUpdate } from '../../worker/src/session/updates';
 
 const rawUser = {
@@ -31,6 +33,15 @@ const rawChannel = {
 } as unknown as tl.RawChannel;
 
 const peers = PeersIndex.from({ users: [rawUser], chats: [rawChannel] });
+
+const callProtocol: tl.TypePhoneCallProtocol = {
+  _: 'phoneCallProtocol',
+  udpP2p: true,
+  udpReflector: true,
+  minLayer: 65,
+  maxLayer: 92,
+  libraryVersions: ['13.0.0'],
+};
 
 function info(update: Record<string, unknown>): RawUpdateInfo {
   return new RawUpdateInfo(update as unknown as tl.TypeUpdate, peers);
@@ -264,5 +275,50 @@ describe('mapRawUpdate', () => {
 
   it('ignores updates the bridge has no event for', () => {
     expect(mapRawUpdate(info({ _: 'updateUserTyping', userId: 1 }))).toBeNull();
+  });
+
+  it('turns a call update into a call event and remembers its access hash', () => {
+    const calls = new CallRegistry();
+    const event = mapRawUpdate(
+      info({
+        _: 'updatePhoneCall',
+        phoneCall: {
+          _: 'phoneCallRequested',
+          id: Long.fromNumber(1000),
+          accessHash: Long.fromNumber(555),
+          date: 1_700_000_000,
+          adminId: 1,
+          participantId: 2,
+          gAHash: new Uint8Array(32).fill(3),
+          protocol: callProtocol,
+        },
+      }),
+      calls,
+    );
+
+    expect(event?.type).toBe('call');
+    const call = (event as { call: { id: string; state: string; gAHash: string | null } }).call;
+    expect(call.id).toBe('1000');
+    expect(call.state).toBe('requested');
+    expect(call.gAHash).toBe(encodeBase64(new Uint8Array(32).fill(3)));
+    // The hash never crosses the bridge, but the engine keeps it: the browser
+    // names the call by its id alone.
+    expect(calls.accessHash('1000')).toBe('555');
+  });
+
+  it('turns a signalling packet into an opaque call_signaling event', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updatePhoneCallSignalingData',
+        phoneCallId: Long.fromNumber(1000),
+        data: new Uint8Array([1, 2, 3]),
+      }),
+    );
+
+    expect(event).toEqual({
+      type: 'call_signaling',
+      callId: '1000',
+      data: encodeBase64(new Uint8Array([1, 2, 3])),
+    });
   });
 });

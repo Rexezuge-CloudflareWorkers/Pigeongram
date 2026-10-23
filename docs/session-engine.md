@@ -84,6 +84,10 @@ keeps every wake small:
 - **Small bundle.** mtcute core is ~470 KB gzip in the worker bundle; the 3 MiB Free limit has plenty of room.
 - **Bounded storage.** The DO's SQLite is the only storage (no D1, no R2). `GET /user/stats` reports
   `databaseBytes` so growth is visible in the soak.
+- **The call's key exchange runs in the browser.** A 2048-bit modular exponentiation costs tens of milliseconds of
+  CPU, and the caller's side needs two of them. That is several times the whole per-invocation budget, so the worker
+  only fetches the public prime and generator (`messages.getDhConfig`) and hands them down; the page does the
+  arithmetic and keeps the shared key. The worker never sees the key.
 
 ## Bridge API
 
@@ -181,6 +185,13 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getBotCommands`      | `{chatId}`                                                                        | `{commands: BotCommandDto[]}`                                                               |
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                        |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                     |
+| `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                          |
+| `requestCall`         | `{chatId, gAHash: string (base64), randomId: string}`                             | `{call: CallDto}`                                                                           |
+| `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                        |
+| `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                           |
+| `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                           |
+| `discardCall`         | `{callId, reason: 'missed'\|'disconnect'\|'hangup'\|'busy', duration, video?}`    | `{}`                                                                                        |
+| `rateCall`            | `{callId, rating: 1..5, comment?}`                                                | `{}`                                                                                        |
 | `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                        |
 
 `getDialogs`'s `archived` flag reads the archive instead of the chat list: `true` returns the chats in Telegram's
@@ -356,9 +367,11 @@ of its chats is open; bringing that chat back out of the archive hands the sideb
 
 ### Updates socket protocol
 
-Client → server: `{"type":"hello"}` (attach; engine goes live) and `{"type":"ping"}` (25 s keepalive).
+Client → server: `{"type":"hello"}` (attach; engine goes live), `{"type":"ping"}` (25 s keepalive) and
+`{"type":"call_signaling","callId":"…","data":"<base64>"}` (a signalling packet on its way to the other peer of a
+call).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…}`, and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read"|"user_status", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read"|"user_status"|"call"|"call_signaling", …}}`.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
 `updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.
@@ -372,6 +385,64 @@ from the peer reading the account's messages. Only inbox reads move `unread` and
 reads move `readOutboxMaxId`, which is what turns the account's own double checks on. The `unread` of an inbox
 read is the album-aware count — see [Albums count once](#albums-count-once).
 The `user_status` update carries `{userId, presence}` and says that a peer came online or went offline.
+The `call` update carries `{call: CallDto}` and says that a call was requested, accepted, confirmed or discarded;
+the `call_signaling` update carries `{callId, data}` and is an opaque packet on its way from the other peer — see
+[Calls](#calls) below.
+
+### Calls
+
+A voice call is three things stacked on top of each other: a **handshake** Telegram's server relays, an
+**encrypted signalling channel** between the two peers, and the **media**, which travels directly between them and
+never comes near this worker.
+
+**The handshake** is Telegram's own `phone.*` family, and it is the only part that has to interoperate with the
+server:
+
+| Step                | Method                | What it carries                                                             |
+| ------------------- | --------------------- | --------------------------------------------------------------------------- |
+| The caller asks     | `phone.requestCall`   | the caller's commitment: SHA-256 over its Diffie-Hellman value (`g_a_hash`) |
+| The callee answers  | `phone.acceptCall`    | the callee's own public Diffie-Hellman value (`g_b`)                        |
+| The caller confirms | `phone.confirmCall`   | the caller's public value (`g_a`) and the fingerprint of the shared key     |
+| The call ends       | `phone.discardCall`   | why it ended and how long it ran                                            |
+| The call is rated   | `phone.setCallRating` | a score from 1 to 5 and a comment                                           |
+
+`phone.receivedCall` tells the server that somebody is at the phone, so it stops offering the call to the account's
+other devices.
+
+The bridge's `call.*` methods are the one documented exception to the rule that the engine resolves peers
+server-side: they carry **opaque bytes** — the Diffie-Hellman values and the signalling packets — because those
+belong to the two peers and not to the bridge. Everything else still holds: a call is addressed by its **id**, and the
+access hash that addresses it never leaves the engine. `CallRegistry` (in the DO's memory) keeps the hash of every
+call the engine has seen and hands it back when a method needs it; a call the engine has never seen is a 404.
+
+The bytes travel as base64 and the 64-bit numbers as decimal strings, because JSON cannot hold either.
+
+**The key exchange** happens in the page, not here. `getCallDhConfig` reads `messages.getDhConfig` and hands the
+prime and the generator down; the browser does the modexp (which does not fit in the Free plan's CPU budget), keeps
+the shared key, and sends only what Telegram's protocol puts on the wire. The worker never sees the key — and it
+does not have to, because the signalling packets are already encrypted with it.
+
+**The signalling channel** is the encrypted envelope Telegram documents for calls: a 32-bit counter in front of each
+message, and a per-message key schedule derived from the shared key. The channel carries the WebRTC handshake — the
+session description and the ICE candidates — which is why the peer connection is authenticated: the description
+arrives inside a channel only the two peers can read, so the DTLS fingerprint it carries cannot have been swapped on
+the way. The packets ride the **updates socket**, not `POST /user/rpc`: a WebSocket message is not a Worker request,
+so a call setup does not spend the Free plan's daily request allowance, and the relay runs outside the Durable
+Object's input gate (`waitUntil`) so an ICE-candidate burst does not queue every other bridge call behind it.
+
+**The media** is a WebRTC peer connection between the two browsers. Telegram's server hands out the relays
+(`phoneCall.connections`); the page turns the WebRTC ones into ICE servers and the browser does the rest — the audio
+is a plain media track, Opus over DTLS-SRTP. **No media ever transits Cloudflare.**
+
+A call also **pins the live session**: the signalling rides the account's connection, so the engine keeps the
+connection up while a call is up, even across a dropped browser socket. Without that, the two peers would lose the
+signalling in the gap before the browser reconnects.
+
+**What is not here yet.** The signalling payload _inside_ the encrypted envelope is this client's own format (a
+version byte and a JSON body — `pages/src/calls/signalling.ts`), so a call between two instances of this client
+works, but a call between this client and Telegram's native clients does not: those speak tgcalls' own message
+format, which is not publicly specified. That, and the exact byte order of the key fingerprint, is
+[Milestone 4](#milestone-4--native-interoperability) below.
 
 ### Presence
 
@@ -455,6 +526,48 @@ After the spike passes, leave the deployment at the default 300 s cadence for 72
   bookkeeping (the update cursor and the next alarm), not by one row per peer.
 - The soak's job is to prove the cadence, the storage shape, and the CPU profile — a failed wake must be a
   recorded row (`engine_wakes.ok = 0` with `error`), never a silent stop. The engine re-arms after failures.
+
+## Milestone 3 — call acceptance
+
+The calls need two accounts and two browsers. Everything below is checked with the deployment behind Access, so the
+second browser signs in through the same gate (a second device, or a private window with another Access identity).
+
+1. **The caller's side.** Open a one-to-one chat, press the ☎ in the thread header and confirm the request. The
+   overlay says "Calling…" and the peer gets an incoming call: the ringtone sounds, the peer's name and picture are
+   on screen, and the fingerprint line is empty until the key exchange is over.
+2. **The handshake.** The peer's overlay offers Answer and Decline. Answering completes the exchange: both sides
+   show the same key fingerprint, and the call goes to "Connecting…" and then to the timer.
+3. **The media.** Both sides hear each other. The caller's clock and the peer's clock agree. The mute button stops
+   the microphone on that side only, and the timer keeps running.
+4. **Ending it.** The hang-up button ends the call on both sides; the overlay says the call ended and then goes
+   away. The caller's duration matches the peer's within a second.
+5. **Declining.** A declined call shows "the call ended" on the callee's side, and the caller sees the same.
+6. **The worker stays out of it.** `wrangler tail` shows the `phone.*` round trips and the signalling relay, and no
+   media bytes anywhere. The worker's CPU time does not move during the call: the key exchange happened in the
+   browser.
+7. **The costs.** `GET /user/stats` shows the extra requests the handshake spent (seven RPC calls and the socket
+   frames), and the daily request allowance is nowhere near its limit after a day of calls.
+8. **A dropped socket.** Kill the browser's network for a few seconds during a call and restore it: the call
+   survives, because a call pins the live session.
+
+## Milestone 4 — native interoperability
+
+Everything above is a call between two instances of this client. Two things are still open before a call reaches
+Telegram's own apps, and both need a real account to settle:
+
+1. **The signalling format.** The payload inside the encrypted envelope is this client's own (a version byte and a
+   JSON body). Telegram's native clients speak tgcalls' message format, which is not publicly specified, so this
+   client cannot produce it yet. The envelope around it — the key schedule, the counter, the replay window — is
+   implemented exactly as documented and is the part a native client would interoperate with.
+2. **The key fingerprint's byte order.** Telegram's documentation says the fingerprint is "the lower 64 bits of
+   SHA1(key)" — the same phrasing MTProto uses for the auth key's identifier, whose bytes are the _first_ eight of
+   the digest read little-endian, while the secret-chat page says "the 64 **last** bits". The two readings differ.
+   This client uses the auth-key convention; a native client may not. The fingerprint is a sanity check between the
+   two peers, so a mismatch shows up as a failed key check rather than as a silent wrong key.
+
+Both are settled by running one browser against Telegram Desktop or a phone, with the fingerprints of both sides
+compared. Until then, the honest statement is: **a call works between two instances of this client, and not yet
+with Telegram's own clients.**
 
 ## Deploy and gate
 

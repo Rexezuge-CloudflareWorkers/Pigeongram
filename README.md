@@ -12,7 +12,9 @@ An always-online Telegram web client hosted on Cloudflare:
   presence, pathname deep links). Sends are optimistic: a composed message or file appears in the thread and the chat
   list at once, and the composer stays usable while it is on its way. Files reach a chat from the attach button or
   from a paste into the message box; both go through the same review step. It installs as a progressive web app and
-  boots offline into its shell (see [`docs/pwa.md`](docs/pwa.md)). It talks to the worker through the bridge
+  boots offline into its shell (see [`docs/pwa.md`](docs/pwa.md)). It can also make **voice calls**: the key
+  exchange runs in the browser, the signalling is encrypted end-to-end and relayed through the worker, and the audio
+  travels directly between the two browsers — never through Cloudflare. It talks to the worker through the bridge
   and will grow into a fork of
   [`telegram-tt`](https://github.com/PBhadoo/telegram-tt) wired to the same bridge.
 - **`functions/`** — the Pages Functions proxying `/api/*` (public health) and `/user/*` (Access-gated user API) to
@@ -178,6 +180,11 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
    `telegram-tt` can be dropped in behind the same contract.
 4. **API routing** — _implemented_: the Pages Functions at repo-root `functions/` proxy `/api/*` (public) and
    `/user/*` (Access-gated) over the `API_WORKER` service binding, keeping the worker off the public internet.
+5. **Voice calls** — _implemented, acceptance pending_: the signalling plane, the call UX and the WebRTC media plane
+   are all in place, and a call between two instances of this client works. A call with Telegram's own clients is not
+   there yet: the payload inside the encrypted signalling envelope is this client's own format, and the byte order of
+   the key fingerprint is ambiguous in Telegram's documentation. Both are spelled out in
+   [`docs/session-engine.md`](docs/session-engine.md#milestone-4--native-interoperability).
 
 `AGENTS.md` records the architecture invariants, the workflow/secret table, and the lessons carried over from the
 sibling repositories.

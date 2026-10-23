@@ -56,7 +56,7 @@ function installProfileFetch(body?: unknown, status = 200): void {
 
 function renderHeader(
   peer: ChatDto = chat,
-  options: { archived?: boolean; onSetArchived?: (archived: boolean) => Promise<void> } = {},
+  options: { archived?: boolean; onSetArchived?: (archived: boolean) => Promise<void>; onCall?: () => void } = {},
 ): void {
   render(
     <ThreadHeader
@@ -65,6 +65,7 @@ function renderHeader(
       archived={options.archived ?? false}
       onBack={() => {}}
       onSetArchived={options.onSetArchived ?? (async () => {})}
+      onCall={options.onCall ?? (() => {})}
     />,
   );
 }
@@ -171,7 +172,14 @@ describe('ThreadHeader', () => {
   it('never describes another peer with the profile it read', async () => {
     installProfileFetch();
     const { rerender } = render(
-      <ThreadHeader chat={chat} presence={chat.presence} archived={false} onBack={() => {}} onSetArchived={async () => {}} />,
+      <ThreadHeader
+        chat={chat}
+        presence={chat.presence}
+        archived={false}
+        onBack={() => {}}
+        onSetArchived={async () => {}}
+        onCall={() => {}}
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Bob' }));
@@ -180,7 +188,16 @@ describe('ThreadHeader', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     const other: ChatDto = { ...chat, id: 3, title: 'Carol', username: 'carol' };
-    rerender(<ThreadHeader chat={other} presence={other.presence} archived={false} onBack={() => {}} onSetArchived={async () => {}} />);
+    rerender(
+      <ThreadHeader
+        chat={other}
+        presence={other.presence}
+        archived={false}
+        onBack={() => {}}
+        onSetArchived={async () => {}}
+        onCall={() => {}}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Carol' }));
 
@@ -188,6 +205,19 @@ describe('ThreadHeader', () => {
     expect(within(dialog).queryByText('Ships things.')).toBeNull();
     expect(within(dialog).getByText('Carol')).toBeDefined();
     expect(within(dialog).getByText('@carol')).toBeDefined();
+  });
+
+  it('offers a voice call for a person and not for a group', () => {
+    const onCall = vi.fn();
+    renderHeader(chat, { onCall });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Call Bob' }));
+    expect(onCall).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    const group: ChatDto = { ...chat, id: 5, kind: 'group', title: 'The Team' };
+    renderHeader(group, { onCall });
+    expect(screen.queryByRole('button', { name: 'Call The Team' })).toBeNull();
   });
 
   it('keeps the archive action in the menu and asks before it moves the chat', async () => {

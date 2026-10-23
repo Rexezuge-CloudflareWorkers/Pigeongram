@@ -1,15 +1,17 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { Dialog, Message } from '@mtcute/core';
-import type { RpcBatchOutcome } from '../rpc-types';
 import type { DialogDto, PresenceDto } from '../types';
 import { setChatArchived } from './archive';
 import { readBotCommands } from './bot-commands';
+import { dispatchCallRpc } from './call-rpc';
+import type { CallRegistry } from './call-registry';
 import { readComments, requireCommentPost, requireDiscussion } from './comments';
 import { toDialogDto, toMeDto, toMessageDto, toPollDto } from './dto';
-import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
+import { EngineError } from './errors';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
+import { dispatchBatch } from './rpc-batch';
 import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
 import type { UnreadAlbumLedger } from './unread-albums';
 import {
@@ -30,7 +32,6 @@ import {
   requireRecord,
   requireText,
 } from './params';
-import { peerIdsIn, withPeerRetry } from './peers';
 
 /**
  * The curated method surface of `POST /user/rpc`.
@@ -41,32 +42,28 @@ import { peerIdsIn, withPeerRetry } from './peers';
  * The album ledger is the engine's answer to Telegram counting every album
  * member as a message: the badge counts an album once, and the ledger knows
  * the surplus to subtract from the chat list's counts.
+ *
+ * The calls surface is the one documented exception: it carries the
+ * Diffie-Hellman values and the signalling packets as opaque bytes, because
+ * those belong to the two peers and not to the bridge. Every peer in every
+ * call method is still resolved server-side — a call is addressed by its id,
+ * and the engine keeps the access hash that addresses it.
  */
-export async function dispatchRpc(client: TelegramClient, method: string, rawParams: unknown, albums: UnreadAlbumLedger): Promise<unknown> {
+export async function dispatchRpc(
+  client: TelegramClient,
+  method: string,
+  rawParams: unknown,
+  albums: UnreadAlbumLedger,
+  registry: CallRegistry,
+): Promise<unknown> {
   const params = requireRecord(rawParams);
+  const callResult = await dispatchCallRpc(client, method, rawParams, registry);
+  if (callResult !== null) return callResult;
   switch (method) {
     case 'batch': {
-      const calls = parseBatchCalls(params.calls);
-      // The calls run concurrently over the one Telegram connection: a batch
-      // is the only way to overlap them, because the Durable Object hands out
-      // one event at a time and separate requests would queue behind each
-      // other instead.
-      const results = await Promise.all(
-        calls.map(async (call) => {
-          try {
-            // The per-call wrapper is what retries a call whose peer Telegram
-            // rejected; a batch reports failures per call, so the retry cannot
-            // live above it.
-            const result = await withPeerRetry(client, peerIdsIn(call.params), () => dispatchRpc(client, call.method, call.params, albums));
-            return { ok: true, result } satisfies RpcBatchOutcome;
-          } catch (error) {
-            // A failed call is reported on its own: one broken read must not
-            // take the reads beside it down with it.
-            return { ok: false, error: failureText(error) } satisfies RpcBatchOutcome;
-          }
-        }),
+      return dispatchBatch(client, parseBatchCalls(params.calls), (inner, innerParams) =>
+        dispatchRpc(client, inner, innerParams, albums, registry),
       );
-      return { results };
     }
 
     case 'getMe': {
@@ -353,15 +350,6 @@ async function readWindow(client: TelegramClient, chatId: number, request: Windo
     ...(request.offsetId !== undefined && { offset: { id: request.offsetId, date: request.offsetDate ?? 0 } }),
     ...(request.addOffset !== 0 && { addOffset: request.addOffset }),
   });
-}
-
-/**
- * The message a failed call reports.
- */
-function failureText(error: unknown): string {
-  if (error instanceof EngineError) return error.message;
-  if (isStorageWriteQuotaError(error)) return STORAGE_WRITE_QUOTA_MESSAGE;
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**

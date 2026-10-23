@@ -1,14 +1,22 @@
 import { getMarkedPeerId, Message, MessageReactions, Poll } from '@mtcute/core';
 import type { RawUpdateInfo } from '@mtcute/core';
 import type { UpdateEvent } from '../types';
+import { encodeBase64 } from './base64';
+import { toCallDto } from './call-dto';
+import type { CallRegistry } from './call-registry';
 import { toMessageDto, toMessageReactionDtos, toPollDto } from './dto';
 import { presenceOf } from './presence';
 
 /**
  * Maps the raw updates the engine cares about onto bridge events.
  * Everything else returns `null` (and is only counted for the soak stats).
+ *
+ * The registry is what remembers a call's access hash: the browser names a
+ * call by its id, and the engine keeps the hash that addresses it. It is
+ * optional because the mapping is also used on its own, where the caller only
+ * wants the event.
  */
-export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
+export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateEvent | null {
   const update = info.update;
   switch (update._) {
     case 'updateNewMessage':
@@ -104,6 +112,18 @@ export function mapRawUpdate(info: RawUpdateInfo): UpdateEvent | null {
         userId: update.userId,
         presence: presenceOf(update.status),
       };
+    }
+    case 'updatePhoneCall': {
+      // A call moved on: it was requested, accepted, confirmed or discarded.
+      // The engine remembers the access hash, so the browser can answer the
+      // call by its id alone.
+      calls?.remember(update.phoneCall);
+      return { type: 'call', call: toCallDto(update.phoneCall) };
+    }
+    case 'updatePhoneCallSignalingData': {
+      // An opaque packet on its way from the other peer. The engine relays it
+      // without reading it: it belongs to the two peers, not to the bridge.
+      return { type: 'call_signaling', callId: update.phoneCallId.toString(), data: encodeBase64(update.data) };
     }
     default: {
       return null;

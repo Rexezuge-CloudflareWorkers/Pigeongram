@@ -8,6 +8,7 @@ import {
   requireCallId,
   requireCallRandomId,
   requireComment,
+  requireDhHash,
   requireDhValue,
   requireDiscardReason,
   requireDuration,
@@ -72,7 +73,7 @@ export async function dispatchCallRpc(client: TelegramClient, method: string, ra
     }
     case 'requestCall': {
       const chatId = requirePeerId(params.chatId);
-      const gAHash = requireDhValue(params.gAHash, 'gAHash');
+      const gAHash = requireDhHash(params.gAHash, 'gAHash');
       const randomId = requireCallRandomId(params.randomId);
       const userId = await client.resolveUser(chatId);
       const result = await client.call({

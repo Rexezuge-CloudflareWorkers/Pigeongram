@@ -17,6 +17,11 @@ import { EngineError } from './errors';
 const DH_VALUE_BYTES = 256;
 
 /**
+ * How long the caller's commitment is: SHA-256 over its public value.
+ */
+const DH_HASH_BYTES = 32;
+
+/**
  * The largest signalling packet the bridge carries.
  *
  * The engine's own guard on the inbound side is the same number, so a
@@ -51,6 +56,20 @@ export function requireDhValue(value: unknown, name: string): Uint8Array {
   const bytes = requireBytes(value, name, DH_VALUE_BYTES);
   if (bytes.length !== DH_VALUE_BYTES) {
     throw new EngineError(`${name} must decode to ${DH_VALUE_BYTES} bytes`, 400);
+  }
+  return bytes;
+}
+
+/**
+ * The caller's commitment: SHA-256 over its Diffie-Hellman value.
+ *
+ * Telegram's `g_a_hash` is the 32-byte digest, not the 256-byte value it
+ * commits to — the value itself only travels on `phone.confirmCall`.
+ */
+export function requireDhHash(value: unknown, name: string): Uint8Array {
+  const bytes = requireBytes(value, name, DH_HASH_BYTES);
+  if (bytes.length !== DH_HASH_BYTES) {
+    throw new EngineError(`${name} must decode to ${DH_HASH_BYTES} bytes`, 400);
   }
   return bytes;
 }

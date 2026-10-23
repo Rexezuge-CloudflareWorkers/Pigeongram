@@ -1,11 +1,13 @@
 import { Long } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
+import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
 import { callAccessHash, discardReasonConstructor, toCallDto } from '../../worker/src/session/call-dto';
 import {
   requireBytes,
   requireCallId,
   requireCallRandomId,
+  requireDhHash,
   requireDhValue,
   requireDiscardReason,
   requireDuration,
@@ -13,6 +15,7 @@ import {
   requireRating,
 } from '../../worker/src/session/call-params';
 import { callProtocol, toCallProtocolDto } from '../../worker/src/session/call-protocol';
+import { dispatchCallRpc } from '../../worker/src/session/call-rpc';
 import { CallRegistry } from '../../worker/src/session/call-registry';
 import { EngineError } from '../../worker/src/session/errors';
 import { encodeBase64 } from '../../worker/src/session/base64';
@@ -206,12 +209,41 @@ describe('the registry of calls', () => {
   });
 });
 
+describe('the requestCall dispatch', () => {
+  it('hands the caller commitment to Telegram as the 32-byte hash', async () => {
+    const requests: unknown[] = [];
+    const client = {
+      resolveUser: async (chatId: number) => ({ _: 'inputUser', userId: chatId, accessHash: Long.fromNumber(1) }),
+      call: async (request: unknown) => {
+        requests.push(request);
+        return { phoneCall: waiting };
+      },
+    } as unknown as TelegramClient;
+    const gAHash = new Uint8Array(32).fill(9);
+
+    await dispatchCallRpc(client, 'requestCall', { chatId: 2, gAHash: encodeBase64(gAHash), randomId: '7' }, new CallRegistry());
+
+    expect(requests).toHaveLength(1);
+    const request = requests[0] as { _: string; gAHash: Uint8Array };
+    expect(request._).toBe('phone.requestCall');
+    expect(request.gAHash).toEqual(gAHash);
+  });
+});
+
 describe('the validation of the call parameters', () => {
   it('requires the Diffie-Hellman values to be 256 bytes', () => {
     expect(requireDhValue(encodeBase64(new Uint8Array(256)), 'gA')).toHaveLength(256);
     expect(() => requireDhValue(encodeBase64(new Uint8Array(255)), 'gA')).toThrow(EngineError);
     expect(() => requireDhValue('not base64!', 'gA')).toThrow(EngineError);
     expect(() => requireDhValue(42, 'gA')).toThrow(EngineError);
+  });
+
+  it('takes the caller commitment as a 32-byte hash, not a Diffie-Hellman value', () => {
+    expect(requireDhHash(encodeBase64(new Uint8Array(32)), 'gAHash')).toHaveLength(32);
+    expect(() => requireDhHash(encodeBase64(new Uint8Array(31)), 'gAHash')).toThrow(EngineError);
+    expect(() => requireDhHash(encodeBase64(new Uint8Array(33)), 'gAHash')).toThrow(EngineError);
+    // The value the commitment hashes is 256 bytes; the commitment is not.
+    expect(() => requireDhHash(encodeBase64(new Uint8Array(256)), 'gAHash')).toThrow(EngineError);
   });
 
   it('requires the call ids to be decimal 64-bit numbers', () => {

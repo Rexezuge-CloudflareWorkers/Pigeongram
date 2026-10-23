@@ -34,6 +34,7 @@ export function ThreadView({
   readOutboxMaxId,
   onBack,
   onSetArchived,
+  onCall,
   onLoadOlder,
   onSend,
   onAttach,
@@ -229,7 +230,7 @@ export function ThreadView({
 
   return (
     <section className="thread">
-      <ThreadHeader chat={chat} presence={presence} archived={archived} onBack={onBack} onSetArchived={onSetArchived} />
+      <ThreadHeader chat={chat} presence={presence} archived={archived} onBack={onBack} onSetArchived={onSetArchived} onCall={onCall} />
       <div
         className="messages"
         ref={scrollRef}

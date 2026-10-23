@@ -33,6 +33,11 @@ interface ThreadHeaderProps {
    * when the move is done, so the confirmation can wait for it.
    */
   onSetArchived: (archived: boolean) => Promise<void>;
+  /**
+   * Starts a voice call to the chat. Only a person can be called, so the
+   * button is offered for a user and for nobody else.
+   */
+  onCall: () => void;
 }
 
 /**
@@ -41,7 +46,7 @@ interface ThreadHeaderProps {
  */
 const COPY_FEEDBACK_MS = 1600;
 
-export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }: ThreadHeaderProps) {
+export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, onCall }: ThreadHeaderProps) {
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -177,10 +182,20 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived }
             {chat.title}
           </button>
         </div>
+        {chat.kind === 'user' ? (
+          <button
+            type="button"
+            className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={onCall}
+            aria-label={`Call ${chat.title}`}
+          >
+            <Icon name="call" />
+          </button>
+        ) : null}
         <button
           ref={triggerRef}
           type="button"
-          className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className={`${chat.kind === 'user' ? '' : 'ml-auto'} inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
           onClick={() => setMenuOpen((open) => !open)}
           aria-haspopup="menu"
           aria-expanded={menuOpen}

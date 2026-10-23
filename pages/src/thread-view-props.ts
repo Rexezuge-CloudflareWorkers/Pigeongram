@@ -78,6 +78,11 @@ export interface ThreadViewProps {
    * settles when the move is done.
    */
   onSetArchived: (archived: boolean) => Promise<void>;
+  /**
+   * Starts a voice call to the open chat. The header only offers it for a
+   * person, so the callback is never asked to call a group.
+   */
+  onCall: () => void;
   onLoadOlder: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;

@@ -1,4 +1,5 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
+import { CallRegistry } from '../../worker/src/session/call-registry';
 import { dispatchRpc } from '../../worker/src/session/rpc';
 import { UnreadAlbumLedger } from '../../worker/src/session/unread-albums';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
@@ -15,6 +16,12 @@ export function albumLedger(): UnreadAlbumLedger {
 
 const albums = albumLedger();
 
+/**
+ * The calls the engine knows about. The registry holds the access hash of
+ * every call it has seen, so a bridge method can address a call by its id.
+ */
+const calls = new CallRegistry();
+
 export function rpc(client: TelegramClient, method: string, params: unknown): Promise<unknown> {
-  return dispatchRpc(client, method, params, albums);
+  return dispatchRpc(client, method, params, albums, calls);
 }

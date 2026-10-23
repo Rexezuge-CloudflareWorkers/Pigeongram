@@ -5,6 +5,8 @@ import { toMeDto } from './dto';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
 import { readAvatar, readAvatarVersion, streamMessageMedia } from './media';
 import type { AvatarImage } from './media';
+import { CallRegistry } from './call-registry';
+import { sendCallSignaling } from './call-rpc';
 import type { UploadGroupSpec, UploadSpec } from './upload-spec';
 import { sendUploadedMedia, sendUploadedMediaGroup } from './upload';
 import { createMtBundle } from './mtproto/client';
@@ -64,12 +66,31 @@ export class TelegramDriver {
    * bridge call, and the two ends have to agree on the unread counts.
    */
   readonly #albums: UnreadAlbumLedger;
+  /**
+   * The calls the engine knows about. It holds the access hash of each one,
+   * so the browser can answer a call by its id and never carries the hash
+   * itself.
+   */
+  readonly #calls = new CallRegistry();
+  /**
+   * Whether a call is up. A call keeps the session alive: its signalling
+   * rides the account's connection, so dropping it mid-call would take the
+   * call with it.
+   */
+  #activeCall = false;
 
   constructor(
     private readonly env: CloudflareEnv,
     private readonly storage: TransactionalStorageLike,
   ) {
     this.#albums = new UnreadAlbumLedger(storage.sql);
+  }
+
+  /**
+   * Whether a call is up.
+   */
+  get hasActiveCall(): boolean {
+    return this.#activeCall;
   }
 
   /**
@@ -89,10 +110,16 @@ export class TelegramDriver {
     bundle.base.onRawUpdate.add((info) => {
       let mapped: UpdateEvent | null = null;
       try {
-        mapped = mapRawUpdate(info);
+        mapped = mapRawUpdate(info, this.#calls);
       } catch {
         // A mapping failure must never break mtcute's update machinery.
         mapped = null;
+      }
+      if (mapped?.type === 'call') {
+        // A call that is neither empty nor discarded is up, and it pins the
+        // session: the signalling between the two peers rides this
+        // connection.
+        this.#activeCall = mapped.call.state !== 'empty' && mapped.call.state !== 'discarded';
       }
       if (mapped) {
         try {
@@ -264,7 +291,14 @@ export class TelegramDriver {
 
   async rpc(method: string, params: unknown): Promise<unknown> {
     const { client } = this.#ensure();
-    return withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums));
+    return withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums, this.#calls));
+  }
+
+  /**
+   * Relays one signalling packet to the other peer of a call.
+   */
+  async sendCallSignaling(callId: string, data: Uint8Array): Promise<void> {
+    await sendCallSignaling(this.#ensure().client, this.#calls, callId, data);
   }
 
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
@@ -307,8 +341,11 @@ export class TelegramDriver {
       await bundle.client.logOut();
     } finally {
       // The album ledger described the account that just signed out; its chat
-      // ids mean nothing to whoever signs in next.
+      // ids mean nothing to whoever signs in next. The same goes for the
+      // calls it knew about.
       this.#albums.clear();
+      this.#calls.clear();
+      this.#activeCall = false;
       try {
         await bundle.base.destroy();
       } catch {

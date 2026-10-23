@@ -43,9 +43,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
   `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
   domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
-  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`, `unread-albums`) and the mtcute integration
+  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`, `unread-albums`, `call-{rpc,dto,params,
+protocol,registry}`) and the mtcute integration
   (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
-  `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA. `wrangler.template.jsonc` declares the DO
+  `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA; the calls' half is `src/call-types.ts`
+  (the call DTOs and the `call.*` method shapes), mirrored as `pages/src/call-types.ts`. `wrangler.template.jsonc`
+  declares the DO
   binding (`SESSION_ENGINE`), the `v1` SQLite migration, `workers_dev: false` and `WAKE_INTERVAL_SECONDS`; the
   deployment-specific `TEAM_DOMAIN`/`POLICY_AUD` come from `WRANGLER_VARS_PATCH_JSON` and are declared in
   `src/env.d.ts`.
@@ -56,7 +59,12 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   send/attach/react and forward with a writable-destination picker — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the first-window read
   (newest messages, or a window around a linked post), `reading.ts` the
-  unread-position logic they share, `components/` the screens). The home page has four states: `LandingPage.tsx` is
+  unread-position logic they share, `components/` the screens). The calls live in `src/calls/` (`dh.ts` the
+  browser-side Diffie-Hellman, `crypto.ts` the packet envelope, `exchange.ts` the key establishment, `peer.ts` the
+  WebRTC peer and the signalling channel, `controller.ts` the call state machine, `session.ts` its reducer,
+  `host.tsx` the hook that joins the calls to the updates socket, `signalling.ts` the payload format, `webrtc.ts` the
+  peer connection, `ringtone.ts` the synthesised ringtone), with the overlay in `components/CallOverlay.tsx`. The home
+  page has four states: `LandingPage.tsx` is
   the public intro, `OfflineScreen.tsx` the no-network screen, `LoginScreen.tsx` the Telegram QR login, and
   `CheckingAccess.tsx` the Access probe's first paint — `components/HomeScreen.tsx` picks among them from
   `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already at
@@ -274,6 +282,33 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
 - **The wasm crypto module is a static import** (`@mtcute/wasm/mtcute.wasm`, instantiated with `initSync`); wrangler's
   default `CompiledWasm` rule bundles it and `wrangler deploy --dry-run` is the check. If a wake's startup CPU ever gets
   tight, move the import behind a dynamic import rather than touching mtcute.
+- **A call's key exchange runs in the page, never in the worker.** A 2048-bit modular exponentiation costs ~29 ms of
+  CPU and the caller's side needs two of them — 5.7× the Free plan's 10 ms per invocation. The worker only reads
+  `messages.getDhConfig` and hands `p`/`g` down; the browser does the arithmetic (`pages/src/calls/dh.ts`) and
+  **keeps the shared key**. The worker never sees it, and must never be given it: the bytes that cross the bridge
+  are only what Telegram's protocol puts on the wire (the commitment, the two public values, the fingerprint).
+- **The call's media never transits Cloudflare.** The audio is a WebRTC peer connection between the two browsers:
+  Telegram's server hands out the relays (`phoneCall.connections`), the page turns the WebRTC ones into ICE servers,
+  and the browser does the rest (Opus over DTLS-SRTP). What crosses Cloudflare is the _signalling_ — the session
+  description and the ICE candidates — and that rides the `phone.sendSignalingData` relay, encrypted with the
+  call's shared key. The envelope is Telegram's documented one (`pages/src/calls/crypto.ts`): the per-message key
+  schedule, the 32-bit counter, the 64-message replay window. The `x` offset is anchored to the **caller**: the
+  caller's packets use the outgoing offsets (0 transport / 128 signalling) and the callee's the incoming ones (8 /
+  136), so both sides agree without negotiating it.
+- **The call's signalling rides the updates socket, not `POST /user/rpc`.** A WebSocket message is not a Worker
+  request, so a call setup does not spend the Free plan's daily request allowance; and the relay runs outside the
+  Durable Object's input gate (`state.waitUntil`), so an ICE-candidate burst does not queue every other bridge call
+  behind it. The `call_signaling` frame is the only client→server frame besides `hello` and `ping`.
+- **A call is addressed by its id, and the access hash stays in the engine.** The bridge's rule is that peers are
+  resolved server-side, and a call is a peer: `CallRegistry` (in the DO's memory) keeps the access hash of every
+  call the engine has seen, and the browser only ever names a call by its id. The `call.*` methods are the one
+  documented exception to the whitelist — they carry **opaque bytes** (the Diffie-Hellman values, the signalling
+  packets), because those belong to the two peers. Everything else still resolves server-side.
+- **A call pins the live session.** The signalling rides the account's Telegram connection, so the engine keeps that
+  connection up while a call is up — even across a dropped browser socket, which would otherwise take the call with
+  it in the gap before the browser reconnects (`session/lifecycle.ts`).
+- **The call overlay is not a history layer.** Like the profile popup, it is a self-contained overlay: Back leaves
+  the thread rather than closing the call. Only the media viewer is a `history.state` layer.
 - **Secrets and deployment-specific Access vars are declared by hand in `worker/src/env.d.ts`.** The generated
   `worker-configuration.d.ts` only knows the bindings and vars in the template, so `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`
   (secrets) and `TEAM_DOMAIN`/`POLICY_AUD`/`ACCESS_DEV_BYPASS` (per-deployment configuration) are augmented there. The
@@ -323,6 +358,15 @@ its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs
 Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's
 point-in-time recovery is the current answer), coverage floors, integration tests, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.
+
+**Voice calls are in place, with one honest gap.** The signalling plane (`phone.*` over the bridge, the call
+registry, the `call`/`call_signaling` updates, the socket relay), the call UX (the overlay, the ringtone, the
+thread header's ☎) and the media plane (the browser-side Diffie-Hellman exchange, the documented packet envelope,
+the WebRTC peer connection) are all implemented. A call **between two instances of this client** works. A call
+**with Telegram's own clients does not yet**, for two reasons, both in `docs/session-engine.md` under _Milestone 4_:
+the payload inside the encrypted signalling envelope is this client's own format (Telegram's native clients speak
+tgcalls' message format, which is not publicly specified), and the byte order of the key fingerprint is ambiguous in
+Telegram's documentation. Both need a real account to settle.
 
 ## Keeping AGENTS.md current
 

@@ -10,7 +10,7 @@ import {
   submitPassword,
   updatesSocketUrl,
 } from './api';
-import type { EngineStateDto, ServerSocketMessage, UpdateEvent } from './types';
+import type { ClientSocketMessage, EngineStateDto, ServerSocketMessage, UpdateEvent } from './types';
 
 const POLL_INTERVAL_MS = 2500;
 
@@ -208,11 +208,21 @@ export function useLoginFlow(): LoginFlowState {
  * may have missed: the first socket after a sign-in is the boot's own
  * connection, and the app has just read everything it needs — a later socket
  * means the connection dropped.
+ *
+ * The returned `send` puts a message on the socket. It exists for the
+ * signalling packets of a call: they ride the socket rather than
+ * `POST /user/rpc`, because a WebSocket message is not a Worker request and a
+ * call setup sends a burst of them.
  */
-export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEvent) => void, onReady: (resync: boolean) => void): boolean {
+export function useUpdatesSocket(
+  enabled: boolean,
+  onUpdate: (update: UpdateEvent) => void,
+  onReady: (resync: boolean) => void,
+): { connected: boolean; send: (message: ClientSocketMessage) => void } {
   const [connected, setConnected] = useState(false);
   const updateRef = useRef(onUpdate);
   const readyRef = useRef(onReady);
+  const socketRef = useRef<WebSocket | null>(null);
 
   // Latest-callback refs, refreshed after each render.
   useEffect(() => {
@@ -235,6 +245,7 @@ export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEven
       if (stopped) return;
       const current = new WebSocket(updatesSocketUrl());
       socket = current;
+      socketRef.current = current;
       current.addEventListener('open', () => {
         retry = 0;
         setConnected(true);
@@ -256,6 +267,7 @@ export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEven
       });
       current.addEventListener('close', () => {
         setConnected(false);
+        if (socketRef.current === current) socketRef.current = null;
         if (stopped) return;
         retry += 1;
         const delay = Math.min(15_000, 500 * 2 ** Math.min(retry, 5));
@@ -285,5 +297,11 @@ export function useUpdatesSocket(enabled: boolean, onUpdate: (update: UpdateEven
     };
   }, [enabled]);
 
-  return enabled && connected;
+  const send = useCallback((message: ClientSocketMessage): void => {
+    const socket = socketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify(message));
+  }, []);
+
+  return { connected: enabled && connected, send };
 }

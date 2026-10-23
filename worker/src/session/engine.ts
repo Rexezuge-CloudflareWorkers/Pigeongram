@@ -46,6 +46,7 @@ export class SessionEngine {
     this.hub = new UpdatesSocketHub(state, {
       ensureLive: () => this.lifecycle.ensureLive(),
       stopLive: () => this.lifecycle.stopLive(),
+      sendCallSignaling: (callId, data) => this.driver.sendCallSignaling(callId, data),
     });
     this.login = new LoginFlow(
       this.driver,

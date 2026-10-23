@@ -30,6 +30,10 @@ interface ThreadPaneProps {
    * settles when the move is done.
    */
   onSetArchived: (archived: boolean) => Promise<void>;
+  /**
+   * Starts a voice call to the open chat.
+   */
+  onCall: () => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
@@ -44,6 +48,7 @@ export function ThreadPane({
   archived,
   onBack,
   onSetArchived,
+  onCall,
   onForward,
   onOpenMedia,
   onReadThrough,
@@ -94,6 +99,7 @@ export function ThreadPane({
       positions={threads.positions}
       onBack={onBack}
       onSetArchived={onSetArchived}
+      onCall={onCall}
       onLoadOlder={() => void threads.loadOlder()}
       onSend={threads.send}
       onAttach={threads.attach}

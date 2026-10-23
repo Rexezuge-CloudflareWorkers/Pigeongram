@@ -31,7 +31,14 @@ export type RpcMethod =
   | 'sendComment'
   | 'getBotCommands'
   | 'setArchived'
-  | 'getProfile';
+  | 'getProfile'
+  | 'getCallDhConfig'
+  | 'requestCall'
+  | 'receivedCall'
+  | 'acceptCall'
+  | 'confirmCall'
+  | 'discardCall'
+  | 'rateCall';
 
 /**
 The methods a `batch` call may carry.

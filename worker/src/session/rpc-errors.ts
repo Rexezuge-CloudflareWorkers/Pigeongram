@@ -8,10 +8,25 @@
  * `FLOOD_WAIT_n` is normalised to `FLOOD_WAIT_%d` with the seconds beside it.
  */
 
+import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
+
 export function rpcErrorText(error: unknown): string | null {
   if (!(error instanceof Error)) return null;
   const text = (error as { text?: unknown }).text;
   return typeof text === 'string' ? text : null;
+}
+
+/**
+ * The message a failed bridge call reports.
+ *
+ * The engine's own failures carry a status and a message; an exhausted write
+ * budget has its own readable form; everything else falls back to the error's
+ * own text.
+ */
+export function failureText(error: unknown): string {
+  if (error instanceof EngineError) return error.message;
+  if (isStorageWriteQuotaError(error)) return STORAGE_WRITE_QUOTA_MESSAGE;
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

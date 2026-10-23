@@ -1,7 +1,7 @@
 import type { AccessStatus } from '../hooks';
 import type { EngineStateDto } from '../types';
-import { CheckingAccess } from './CheckingAccess';
 import { LandingPage } from './LandingPage';
+import { LaunchScreen } from './LaunchScreen';
 import { LoginScreen } from './LoginScreen';
 import { OfflineScreen } from './OfflineScreen';
 
@@ -28,7 +28,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ access, state, error, onRetryAccess, onPhone, onCode, onPassword, onRetry }: HomeScreenProps) {
   if (access === 'checking') {
-    return <CheckingAccess error={error} onRetry={onRetryAccess} />;
+    return <LaunchScreen error={error} onRetry={onRetryAccess} />;
   }
 
   if (access === 'offline') {

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { downloadMedia, isDownloadable } from '../media-download';
 import { reactionFor } from '../reactions';
 import type { MessageDto, MessageReactionDto } from '../types';
 import { ReactionPicker } from './ReactionPicker';
@@ -10,14 +11,16 @@ at the gesture's coordinates. The reaction strip sits above the actions: the
 common emoji react directly, and its expand control opens the full picker.
 Reply hands the message back to the view that owns the composer target;
 Forward hands the whole display group (an album forwards every member) to the
-destination picker; Copy text puts the message's plain text on the clipboard.
-A portal with `position: fixed` keeps the menu out of the scroll container's
-clipping, which is also why it closes on any scroll outside itself: a menu
-anchored to a moving message would drift. The picker's own grid scrolls
-without closing the menu.
+destination picker; Copy text puts the message's plain text on the clipboard;
+Download saves the message's original media. A portal with `position: fixed`
+keeps the menu out of the scroll container's clipping, which is also why it
+closes on any scroll outside itself: a menu anchored to a moving message would
+drift. The picker's own grid scrolls without closing the menu.
 
-The parent owns the open/closed state, and every path here closes through
-`onClose`, so a menu cannot outlive its message's layout.
+An album's menu offers no Download: one click would have to name several
+files, so the viewer's per-item download is the album's path. The parent owns
+the open/closed state, and every path here closes through `onClose`, so a menu
+cannot outlive its message's layout.
 */
 
 interface MessageMenuProps {
@@ -60,6 +63,7 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   const canForward = onForward !== undefined && !message.service;
   const canCopy = message.text.length > 0;
   const canReact = onReact !== undefined && !message.service;
+  const canDownload = messages.length === 1 && isDownloadable(message);
 
   // Clamp the menu into the viewport once its real size is known (the first
   // paint at the raw cursor keeps the open instant). Expanding the picker
@@ -112,7 +116,7 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
     };
   }, [onClose]);
 
-  if (!canReply && !canForward && !canCopy && !canReact) return null;
+  if (!canReply && !canForward && !canCopy && !canReact && !canDownload) return null;
 
   const pickReaction = (emoji: string): void => {
     if (!onReact) return;
@@ -124,6 +128,7 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   if (canReply) items.push({ label: 'Reply', run: () => onReply?.(message) });
   if (canForward) items.push({ label: 'Forward', run: () => onForward?.(messages) });
   if (canCopy) items.push({ label: 'Copy text', run: () => void copyText(message.text) });
+  if (canDownload) items.push({ label: 'Download', run: () => downloadMedia(message) });
 
   return createPortal(
     <div

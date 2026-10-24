@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
+import { downloadFileName } from '../media-download';
 import type { MessageDto } from '../types';
 import { usePhotoZoom } from '../usePhotoZoom';
 import { Icon } from './Icon';
@@ -125,6 +126,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
 
   const title = media.fileName ?? mediaPreview(media.kind);
   const animated = media.kind === 'animation';
+  const downloadName = downloadFileName(current);
 
   return createPortal(
     <div
@@ -145,19 +147,30 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
             </span>
           ) : null}
         </div>
-        {photo ? (
-          <div className="media-viewer-tools" role="group" aria-label="Zoom">
-            <button type="button" className="media-viewer-tool" aria-label="Zoom out" disabled={!canZoomOut} onClick={zoomOut}>
-              <Icon name="minus" size={18} />
-            </button>
-            <button type="button" className="media-viewer-tool percent" aria-label="Reset zoom" disabled={!zoomed} onClick={resetZoom}>
-              {percent}%
-            </button>
-            <button type="button" className="media-viewer-tool" aria-label="Zoom in" disabled={!canZoomIn} onClick={zoomIn}>
-              <Icon name="plus" size={18} />
-            </button>
-          </div>
-        ) : null}
+        <div className="media-viewer-tools">
+          <a
+            className="media-viewer-tool media-viewer-download"
+            href={src}
+            download={downloadName}
+            aria-label="Download original"
+            title="Download original"
+          >
+            <Icon name="download" size={18} />
+          </a>
+          {photo ? (
+            <div className="media-viewer-zoom" role="group" aria-label="Zoom">
+              <button type="button" className="media-viewer-tool" aria-label="Zoom out" disabled={!canZoomOut} onClick={zoomOut}>
+                <Icon name="minus" size={18} />
+              </button>
+              <button type="button" className="media-viewer-tool percent" aria-label="Reset zoom" disabled={!zoomed} onClick={resetZoom}>
+                {percent}%
+              </button>
+              <button type="button" className="media-viewer-tool" aria-label="Zoom in" disabled={!canZoomIn} onClick={zoomIn}>
+                <Icon name="plus" size={18} />
+              </button>
+            </div>
+          ) : null}
+        </div>
         <button ref={closeRef} type="button" className="media-viewer-close" aria-label="Close media viewer" onClick={onClose}>
           <Icon name="close" size={24} />
         </button>
@@ -176,7 +189,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
         }}
       >
         {failed ? (
-          <a className="media-viewer-fallback" href={src} download={media.fileName ?? 'download'} target="_blank" rel="noreferrer">
+          <a className="media-viewer-fallback" href={src} download={downloadName} target="_blank" rel="noreferrer">
             <span>{title}</span>
             {media.size === null ? null : <span className="media-viewer-fallback-size">{formatBytes(media.size)}</span>}
           </a>

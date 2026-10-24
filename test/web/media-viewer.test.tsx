@@ -32,8 +32,8 @@ function message(id: number, media: MessageMediaDto): MessageDto {
 function photo(id: number): MessageDto {
   return message(id, {
     kind: 'photo',
-    fileName: `photo-${id}.jpg`,
-    mime: 'image/jpeg',
+    fileName: null,
+    mime: null,
     size: 2048,
     width: 1200,
     height: 800,
@@ -179,5 +179,37 @@ describe('media viewer photo zoom', () => {
     expect(document.querySelector('video.media-viewer-media')).not.toBeNull();
     expect(document.querySelector('img.media-viewer-photo')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
+    const link = screen.getByRole('link', { name: 'Download original' });
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1');
+    expect(link.getAttribute('download')).toBe('clip.mp4');
+  });
+});
+
+describe('media viewer downloads', () => {
+  it('offers the original photo under a name generated from its message id', () => {
+    renderViewer([photo(7)]);
+
+    const link = screen.getByRole('link', { name: 'Download original' });
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7');
+    expect(link.getAttribute('href')).not.toContain('thumb=1');
+    expect(link.getAttribute('download')).toBe('photo-7.jpg');
+    expect(link.querySelector('svg[data-icon="download"]')).not.toBeNull();
+  });
+
+  it('follows the gallery to the item on screen', () => {
+    renderViewer([photo(1), photo(2)]);
+    fireEvent.click(button('Next media'));
+
+    const link = screen.getByRole('link', { name: 'Download original' });
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2');
+    expect(link.getAttribute('download')).toBe('photo-2.jpg');
+  });
+
+  it('names the failed-preview fallback with the same generated name', () => {
+    const image = renderViewer([photo(3)]);
+    fireEvent.error(image);
+
+    const fallback = document.querySelector('.media-viewer-fallback');
+    expect(fallback?.getAttribute('download')).toBe('photo-3.jpg');
   });
 });

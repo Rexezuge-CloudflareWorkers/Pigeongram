@@ -1,5 +1,6 @@
 import { fileUrl } from '../api';
 import { formatBytes } from '../format';
+import { downloadFileName } from '../media-download';
 import type { MessageDto } from '../types';
 import { Icon } from './Icon';
 
@@ -13,7 +14,7 @@ export function DocumentLink({ message }: { message: MessageDto }) {
     <a
       className="document"
       href={fileUrl(message.chatId, message.id)}
-      download={media?.fileName ?? 'download'}
+      download={downloadFileName(message)}
       target="_blank"
       rel="noreferrer"
     >

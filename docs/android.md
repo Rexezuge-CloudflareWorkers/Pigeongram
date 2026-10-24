@@ -180,6 +180,9 @@ The first build of a new package id has no previous code to beat; the default ru
 - Access is a login wall. Google's reviewers need a way through it; provide test credentials or an Access policy that
   admits the reviewer, or the review may be rejected for requiring an inaccessible login.
 - Use your own app name and iconography. Do not imply that the app is an official Telegram product.
+- The shell supports Android 7.0 (API 24) and newer. `androidbrowserhelper:2.7.4`, the library Bubblewrap `1.27.0`
+  generates, declares API 24 as its minimum, so `android/twa-manifest.template.json` sets `minSdkVersion` to 24;
+  lowering it makes the manifest merger fail the build.
 - Play raises the required target SDK over time. Bubblewrap `1.27.0` targets SDK 36; when Play's requirement moves,
   bump Bubblewrap deliberately, rebuild and re-verify. The workflow also installs the build-tools release Bubblewrap
   pins (`36.1.0`); a Bubblewrap bump moves that pin and the workflow's install list together.

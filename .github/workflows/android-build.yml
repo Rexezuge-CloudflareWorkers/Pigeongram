@@ -86,7 +86,20 @@ jobs:
           fi
 
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          # 36.1.0 is the build-tools release Bubblewrap 1.27.0 pins for
+          # zipalign and apksigner; installing it up front keeps `bubblewrap
+          # build` from fetching it itself.
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
+          # Bubblewrap 1.27.0 predates the cmdline-tools-only SDK layout: its
+          # `doctor` and `build` both require <sdk>/tools or <sdk>/bin, and it
+          # falls back to <sdk>/bin/sdkmanager when it has to install build
+          # tools itself. The runner image ships only cmdline-tools, so expose
+          # that folder at the path Bubblewrap probes.
+          if [ ! -e "$SDK_ROOT/bin" ] && [ ! -e "$SDK_ROOT/tools" ]; then
+            ln -s "$(dirname "$SDKMANAGER")" "$SDK_ROOT/bin"
+          fi
+
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
 
       - name: Install Bubblewrap

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
+import { messageWebLink } from '../links';
 import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearTop, usePrependAnchor } from '../thread-paging';
@@ -300,6 +301,7 @@ export function ThreadView({
                 readOutboxMaxId={readOutboxMaxId}
                 onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
                 onForward={onForward}
+                link={messageWebLink(chat, anchor.id)}
                 onJump={jumpToMessage}
                 onOpenComments={chat.kind === 'channel' ? openComments : undefined}
                 onOpenMedia={onOpenMedia}

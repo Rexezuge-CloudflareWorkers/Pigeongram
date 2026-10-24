@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_LAUNCH_TIMEOUT_MS,
+  commentWebLink,
   findLinkedChat,
   forwardOriginLink,
   launchTelegramApp,
   markedChatId,
+  messageWebLink,
   miniAppDeepLink,
   parseTelegramLink,
   usernameAppLink,
@@ -13,6 +15,13 @@ import type { ChatDto, DialogDto, MessageForwardDto } from '../../pages/src/type
 
 function chat(id: number, username: string | null): ChatDto {
   return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
+}
+
+/**
+A peer of any kind, for the address builders that care about the kind.
+*/
+function peer(id: number, username: string | null, kind: ChatDto['kind'] = 'channel'): ChatDto {
+  return { id, kind, title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
 }
 
 describe('parseTelegramLink', () => {
@@ -176,6 +185,31 @@ describe('findLinkedChat', () => {
     expect(markedChatId(1_234_567_890)).toBe(-1_001_234_567_890);
     expect(findLinkedChat(dialogs, { internalId: 1_234_567_890 })).toBe(dialogs[1].chat);
     expect(findLinkedChat(dialogs, { internalId: 42 })).toBeNull();
+  });
+});
+
+describe('messageWebLink', () => {
+  it('links a public channel post by its username', () => {
+    expect(messageWebLink(peer(-1_000_000_000_020, 'announce'), 7)).toBe('https://t.me/announce/7');
+  });
+
+  it('links a private supergroup post through its raw id', () => {
+    expect(messageWebLink(peer(-1_000_000_000_030, null, 'supergroup'), 42)).toBe('https://t.me/c/30/42');
+  });
+
+  it('has no message link for a user chat or a basic group', () => {
+    expect(messageWebLink(chat(2, 'bob'), 10)).toBeNull();
+    expect(messageWebLink(peer(-3, 'team', 'group'), 10)).toBeNull();
+  });
+});
+
+describe('commentWebLink', () => {
+  it('names the discussion message in the query', () => {
+    expect(commentWebLink(peer(-1_000_000_000_020, 'announce'), 7, 11)).toBe('https://t.me/announce/7?comment=11');
+  });
+
+  it('is null when the channel has no message link', () => {
+    expect(commentWebLink(chat(2, 'bob'), 7, 11)).toBeNull();
   });
 });
 

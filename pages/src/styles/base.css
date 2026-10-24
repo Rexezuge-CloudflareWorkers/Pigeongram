@@ -46,6 +46,20 @@ body {
     sans-serif;
 }
 
+/* No native long-press callout: a right-click is deliberately silent outside
+   the message bubble, and iOS shows its callout for a long press on a link or
+   an image without a `contextmenu` event the page could cancel. Editable fields
+   keep the native affordances, matching the right-click exemption. */
+html {
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+[contenteditable]:not([contenteditable='false']) {
+  -webkit-touch-callout: default;
+}
+
 button {
   font: inherit;
   color: inherit;

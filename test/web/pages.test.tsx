@@ -1804,7 +1804,7 @@ describe('App', () => {
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
-    it('leaves the browser menu on service messages', async () => {
+    it('opens no message menu on service messages', async () => {
       installSignedInFetch({
         history: () => json({ messages: [history[0], message({ id: 14, chatId: 2, service: true, text: 'Bob joined Telegram' })] }),
       });
@@ -1815,8 +1815,8 @@ describe('App', () => {
 
       const row = threadSection().querySelector<HTMLElement>('[data-message-id="14"]');
       if (!row) throw new Error('The service message is not rendered');
-      // Not cancelled, so the browser's own menu (e.g. copy) still opens.
-      expect(fireEvent.contextMenu(row)).toBe(true);
+      // The row has nothing to offer; the global guard cancels the browser's menu.
+      fireEvent.contextMenu(row);
       expect(screen.queryByRole('menu')).toBeNull();
     });
 

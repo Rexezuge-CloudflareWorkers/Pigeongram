@@ -164,8 +164,8 @@ export function MessageRow({
   /**
   Opens the menu at viewport coordinates when the message has actions to
   offer. Service messages, and messages with nothing to reply to, forward,
-  react to, copy or download, leave the native menu alone, so a right-click
-  falls back to the browser's.
+  react to, copy or download, open nothing: the global context-menu guard has
+  already suppressed the browser's own menu, so a right-click there is silent.
   */
   const openMenu = (x: number, y: number): boolean => {
     if (message.service || (!onReply && !onForward && !onReact && message.text.length === 0 && !downloadable)) return false;

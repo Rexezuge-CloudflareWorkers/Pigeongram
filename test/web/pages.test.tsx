@@ -2038,6 +2038,70 @@ describe('App', () => {
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     });
 
+    it('lands on the divider when switching chats scrolls the reused list while it loads', async () => {
+      let release: ((response: Response) => void) | undefined;
+      stubLayout({ listHeight: 600, viewportHeight: 200 });
+      installSignedInFetch({
+        dialogs: [unreadDialog, carolDialog],
+        history: (chatId) =>
+          chatId === 3
+            ? json({ messages: carolHistory })
+            : new Promise<Response>((resolve) => {
+                release = resolve;
+              }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Carol'));
+      expect(await within(threadSection()).findByText('carol says hi')).toBeDefined();
+
+      // Switching chats empties the window. Clearing the previous chat's rows
+      // clamps the reused list, and the browser reports that clamp as a scroll
+      // before Bob's window exists.
+      scrollIntoView.mockClear();
+      fireEvent.click(screen.getByText('Bob'));
+      expect(await within(threadSection()).findByText('Loading messages…')).toBeDefined();
+      scrollContainer().scrollTop = 0;
+      fireEvent.scroll(scrollContainer());
+
+      await act(async () => {
+        release?.(json({ messages: unreadHistory }));
+      });
+      expect(await within(threadSection()).findByText('unread three')).toBeDefined();
+
+      // The divider owns the landing; the loading skeleton's own scroll is not
+      // a reader position to resume.
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    });
+
+    it('does not count the catch-up replay the chat list already counted', async () => {
+      const snapshot: DialogDto = {
+        ...unreadDialog,
+        lastMessage: dialogMessage(unreadHistory[5]),
+        unread: 3,
+        readInboxMaxId: 8,
+      };
+      installSignedInFetch({ dialogs: [snapshot], history: () => json({ messages: unreadHistory }) });
+
+      render(<App />);
+      expect(await screen.findByText('Bob')).toBeDefined();
+      expect(document.querySelector('.badge')?.textContent).toBe('3');
+
+      // The engine's getDifference catch-up runs after the socket's ready and
+      // replays the messages the chat-list read already counted. Counting them
+      // again is what made the badge larger than the official app's.
+      for (let id = 9; id <= 13; id += 1) {
+        deliver({ type: 'new_message', message: unreadMessage(id, `replayed ${String(id)}`, id % 2 === 0) });
+      }
+      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(sidebar().textContent).toContain('unread three');
+
+      // A message that is genuinely new still counts and previews.
+      deliver({ type: 'new_message', message: unreadMessage(14, 'brand new') });
+      expect(document.querySelector('.badge')?.textContent).toBe('4');
+      expect(sidebar().textContent).toContain('brand new');
+    });
+
     it('reads only the incoming messages the viewport covers, as the user scrolls', async () => {
       const reads = installUnreadFetch();
       stubLayout({ listHeight: 300, viewportHeight: 100 });
@@ -2235,7 +2299,7 @@ describe('App', () => {
       fireEvent.scroll(scrollContainer());
       expect(await within(threadSection()).findByText('older 1')).toBeDefined();
       expect(reads).toHaveLength(2);
-      expect(reads[1]).toEqual({ chatId: 2, limit: 50, offsetId: 100, offsetDate: 1_700_000_000_000 });
+      expect(reads[1]).toEqual({ chatId: 2, limit: 50, offsetId: 100, offsetDate: 1_700_000_000 });
       // The prepended page did not move the reader's row: the three older rows
       // (150px) are above it, so the position moved down by exactly that.
       expect(scrollContainer().scrollTop).toBe(150);

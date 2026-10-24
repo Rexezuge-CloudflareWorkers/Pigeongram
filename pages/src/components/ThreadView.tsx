@@ -161,6 +161,14 @@ export function ThreadView({
       positionedFocus.current = null;
       return;
     }
+    // A re-read empties the window before it loads: the scroll position the
+    // browser clamps the reused list to belongs to the skeleton, not to the
+    // window that is about to land, so the next window positions again.
+    if (loading && messages.length === 0) {
+      positionedChat.current = null;
+      positionedFocus.current = null;
+      return;
+    }
     const element = scrollRef.current;
     if (!element) return;
     // A jump to a linked post repositions even inside the open chat: the
@@ -241,6 +249,11 @@ export function ThreadView({
         className="messages"
         ref={scrollRef}
         onScroll={(event) => {
+          // Until this chat's window has landed, the position is the loading
+          // skeleton's own: clearing the previous chat clamps the reused list
+          // through 0, and remembering that would override the unread divider
+          // the open is about to jump to.
+          if (positionedChat.current !== chat.id) return;
           const element = event.currentTarget;
           stickToBottom.current = isAtBottom(element);
           positions.remember(readThreadPosition(element, chat.id));

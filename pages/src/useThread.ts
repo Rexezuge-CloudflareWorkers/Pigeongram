@@ -155,7 +155,12 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     setLoadingOlder(true);
     setError(null);
     try {
-      const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT, offsetId: oldest.id, offsetDate: oldest.date });
+      const result = await fetchHistory(chat.id, {
+        limit: WINDOW_LIMIT,
+        offsetId: oldest.id,
+        // The bridge speaks unix seconds; the DTO carries milliseconds.
+        offsetDate: Math.floor(oldest.date / 1000),
+      });
       setThread((current) =>
         current && current.chat.id === chat.id
           ? {

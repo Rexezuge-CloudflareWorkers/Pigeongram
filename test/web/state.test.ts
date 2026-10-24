@@ -139,6 +139,35 @@ describe('chat-list state', () => {
     expect(plain[0].unread).toBe(2);
   });
 
+  it('ignores a message the dialog already counted', () => {
+    const known = dialog(1, {
+      unread: 2,
+      readInboxMaxId: 9,
+      lastMessage: dialogMessage(message({ id: 10, chatId: 1 })),
+    });
+    const dialogs = [known];
+
+    // The engine's catch-up replays the messages a reconnect missed, and the
+    // chat-list read that booted the screen already counted them. Folding them
+    // again would inflate the badge and rewind the preview.
+    expect(applyNewMessage(dialogs, message({ id: 9, chatId: 1 }), null)).toBe(dialogs);
+    expect(applyNewMessage(dialogs, message({ id: 10, chatId: 1 }), null)).toBe(dialogs);
+
+    // The read watermark is just as final when the preview is behind it.
+    const read = dialog(2, { readInboxMaxId: 12 });
+    expect(applyNewMessage([read], message({ id: 11, chatId: 2 }), null)).toEqual([read]);
+
+    // A pending send is synthetic: its negative id is not a server id, so the
+    // optimistic preview still lands.
+    const pending = applyNewMessage(dialogs, message({ id: -1, chatId: 1, outgoing: true, text: 'sending' }), null);
+    expect(pending[0].lastMessage?.text).toBe('sending');
+
+    // A genuinely newer message still bumps and previews.
+    const next = applyNewMessage(dialogs, message({ id: 11, chatId: 1, text: 'new' }), null);
+    expect(next[0].unread).toBe(3);
+    expect(next[0].lastMessage?.text).toBe('new');
+  });
+
   it('keeps pinned chats in place and does not bump the open chat or outgoing messages', () => {
     const dialogs = [dialog(1, { pinned: true, unread: 2 }), dialog(2)];
     const pinned = applyNewMessage(dialogs, message({ id: 6, chatId: 1 }), null);

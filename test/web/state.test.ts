@@ -263,6 +263,7 @@ describe('thread state', () => {
       readOutboxMaxId: 3,
       unreadDividerId: 2,
       focusMessageId: null,
+      hasMoreOlder: true,
     };
     const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
     expect(foreign).toBe(thread);
@@ -283,6 +284,7 @@ describe('thread state', () => {
       readOutboxMaxId: 0,
       unreadDividerId: null,
       focusMessageId: null,
+      hasMoreOlder: true,
     };
     expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
     expect(updateThread(null, 1, (messages) => messages)).toBeNull();
@@ -371,6 +373,7 @@ describe('poll state', () => {
       readOutboxMaxId: 0,
       unreadDividerId: null,
       focusMessageId: null,
+      hasMoreOlder: true,
     };
     const fresh = { ...POLL, totalVoters: 9 };
     const named = updateThreadPoll(thread, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);

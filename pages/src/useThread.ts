@@ -68,6 +68,9 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
+  // A page in flight, tracked outside React state so a scroll event and the
+  // button cannot both start one before the disabled state paints.
+  const loadingOlderRef = useRef(false);
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -95,6 +98,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
         readOutboxMaxId: dialog.readOutboxMaxId,
         unreadDividerId: null,
         focusMessageId: postId,
+        hasMoreOlder: true,
       });
       setError(null);
       setLoading(true);
@@ -114,6 +118,11 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
                 ...current,
                 messages: mergeMessages(current.messages, screen.messages),
                 unreadDividerId: divider(screen.messages),
+                // A plain read starts at the newest message, so a short window
+                // is the whole history. A jump window is anchored mid-history
+                // and can be short without being the start, so it always has a
+                // page to ask for until one comes back empty.
+                hasMoreOlder: postId === null ? screen.messages.length >= WINDOW_LIMIT : screen.messages.length > 0,
               }
             : current,
         );
@@ -136,20 +145,34 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   }, [positions]);
 
   const loadOlder = useCallback(async (): Promise<void> => {
-    const chat = thread?.chat;
-    const oldest = thread?.messages[0];
-    if (!chat || !oldest) return;
+    // The scroll handler and the button both call this; the in-flight ref is
+    // what keeps a burst of scroll events to one page.
+    const open = threadRef.current;
+    const chat = open?.chat;
+    const oldest = open?.messages[0];
+    if (!open || !chat || !oldest || !open.hasMoreOlder || loadingOlderRef.current) return;
+    loadingOlderRef.current = true;
     setLoadingOlder(true);
     setError(null);
     try {
-      const result = await fetchHistory(chat.id, { limit: 50, offsetId: oldest.id, offsetDate: oldest.date });
-      setThread((current) => updateThread(current, chat.id, (messages) => mergeMessages(messages, result.messages)));
+      const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT, offsetId: oldest.id, offsetDate: oldest.date });
+      setThread((current) =>
+        current && current.chat.id === chat.id
+          ? {
+              ...current,
+              messages: mergeMessages(current.messages, result.messages),
+              // A short page is the oldest one Telegram has.
+              hasMoreOlder: result.messages.length >= WINDOW_LIMIT,
+            }
+          : current,
+      );
     } catch (failure) {
       setError(failureText(failure));
     } finally {
+      loadingOlderRef.current = false;
       setLoadingOlder(false);
     }
-  }, [thread]);
+  }, []);
 
   const setReadWatermark = useCallback((chatId: PeerId, maxId: number): void => {
     setThread((current) =>

@@ -26,6 +26,11 @@ export interface ThreadViewProps {
   loading: boolean;
   loadingOlder: boolean;
   /**
+   * Whether a page older than the loaded window may still exist. When false,
+   * the top of the thread is the start of the chat's history.
+   */
+  hasMoreOlder: boolean;
+  /**
    * Messages still on their way to Telegram, in submission order. The view
    * filters them to the open chat and renders them after the loaded list.
    */

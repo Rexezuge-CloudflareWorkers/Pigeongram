@@ -118,6 +118,9 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Older pages are prepended; the view corrects the scroll position itself
+     (`usePrependAnchor`), so the browser must not also anchor and double it. */
+  overflow-anchor: none;
   padding: 16px clamp(8px, 4vw, 28px);
   display: flex;
   flex-direction: column;

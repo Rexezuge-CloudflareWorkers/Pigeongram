@@ -139,6 +139,11 @@ The workflow:
 4. verifies both signatures against the keystore fingerprint;
 5. uploads `app-release-signed.apk`, `app-release-bundle.aab` and `SHA256SUMS`.
 
+The step logic lives in `scripts/android/`, one script per step (`setup-sdk.ts`, `configure-bubblewrap.ts`,
+`validate-config.ts`, `decode-keystore.ts`, `verify-deployment.ts`, `render-manifest.ts`, `verify-signatures.ts`,
+`write-summary.ts`), so the workflow itself is only the sequence of commands. The rules the scripts enforce are covered
+by `test/android/`.
+
 Download the artifacts from the run and keep them somewhere durable; workflow artifacts expire. Verify the download:
 
 ```bash

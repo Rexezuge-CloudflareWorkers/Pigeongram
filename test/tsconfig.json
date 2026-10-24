@@ -3,6 +3,10 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    // The Android build scripts are imported by `test/android/`, and the script
+    // family imports its siblings with explicit `.ts` extensions so `tsx` runs
+    // them without a build step.
+    "allowImportingTsExtensions": true,
     // `vite/client` is in the list because the SPA's source is part of this
     // program: the app reads `import.meta.env.PROD` to decide whether to
     // register the service worker, and the SPA's own tsconfig declares the

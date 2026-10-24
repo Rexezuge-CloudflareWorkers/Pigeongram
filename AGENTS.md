@@ -86,13 +86,17 @@ protocol,registry}`) and the mtcute integration
   layers the existing stylesheets under `components`, so legacy rules sit above preflight but below utilities. New UI
   should use utilities; extend a legacy sheet only for a genuinely shared rule. The installable app sits beside it:
   `sw/` is the service worker (its own tsconfig, the WebWorker lib), `build/pwa/` is the build-time half (the icons,
-  the manifest, and the local Vite plugin that writes them), `src/pwa/` is the runtime half (the registration and the
-  install prompt), and `public/_headers` carries the cache headers Pages serves with the static assets.
+  the manifest, the assetlinks generator and the local Vite plugins that write them), `src/pwa/` is the runtime half (the
+  registration and the install prompt), and `public/_headers` carries the cache headers Pages serves with the static
+  assets.
+- `android/` — `twa-manifest.template.json`, the deployment-agnostic Trusted Web Activity shell. The generated Gradle
+  project is produced under `android/build/` in CI and is never committed.
 - `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` and `user/[[path]].ts` are pass-throughs to
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
 - `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
   troubleshooting. `pwa.md`: the service worker's rules, the install build, the offline state, and how to verify it.
+  `android.md`: the per-deployment TWA build, signing, Play notes and trust model.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
   the workspace.
@@ -142,6 +146,15 @@ protocol,registry}`) and the mtcute integration
   from `fetch`, so the probe asks the public `/api/health` endpoint which of the two it is: it answers when the network
   is up (the reader is outside the front door) and fails when it is not (the app shows `OfflineScreen` and waits for the
   browser's `online` event).
+- **The Android wrapper is a per-deployment TWA, not a bundled app.** The shell's host, package id and signing key are
+  compiled into the APK, and Chrome only hides the URL bar when the origin serves a Digital Asset Links statement that
+  names the package and the certificate. `pages/build/pwa/assetlinks.ts` generates `/.well-known/assetlinks.json` during
+  the Pages build from `ANDROID_PACKAGE_ID` and `ANDROID_CERT_SHA256` (plus the optional Play certificate); the file is
+  deliberately public and must stay outside the `/user*` Access scope. `android/twa-manifest.template.json` is the only
+  committed Android config; `.github/workflows/android-build.yml` renders it, runs Bubblewrap and uploads APK/AAB
+  artifacts. It is dispatch-only and never publishes an upstream-signed release: each deployment uses its own origin,
+  package id and keystore, and must not install another deployment's build. The workflow verifies the live assetlinks
+  against the keystore before building, so Pages has to be deployed first.
 - **The signed-in shell fits above the keyboard and the browser chrome.** `.app` is `height: 100dvh` capped by
   `--app-height` through a **`max-height`**. `dvh` is the dynamic viewport: it follows Chrome Android's auto-hiding URL
   bar, which the layout viewport (`100%`) deliberately does not (it stays at the URL-bar-shown height), and under
@@ -320,7 +333,8 @@ protocol,registry}`) and the mtcute integration
   (`test/tsconfig.json` does).
 - **The test partition is a convention:** the SPA suite lives in `test/web/**` (the `defineRepoVitestConfig` web project's
   shape); everything else in `test/` runs under `node` as the backend half. `test/pwa/**` is the third kind: the
-  service worker, the manifest and the icons are SPA code without a DOM, so their tests run under `node` too.
+  service worker, the manifest, the icons and the assetlinks generator are SPA code without a DOM, so their tests run
+  under `node` too.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
   filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Unit Tests`, `Build Web App`) are the required-check
   names; keep them stable.
@@ -342,6 +356,7 @@ protocol,registry}`) and the mtcute integration
 | ------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `continuous-integration.yml`   | PR, push to `main`, upstream-sync dispatch | One job per gate — Typecheck, Lint, Format, God Files, Unit Tests (+coverage artifact), Build Web App — with Dependabot auto-merge and upstream-sync deployment dispatch as tails |
 | `continuous-deployment.yml`    | CI success on `main`, manual dispatch      | `deploy-worker` (materialize config → dry-run gate → deploy) and `deploy-pages` (build → ensure project → deploy) in parallel                                                     |
+| `android-build.yml`            | manual dispatch                            | Per-deployment TWA: verifies the live assetlinks, renders the manifest, builds the signed APK/AAB, uploads artifacts only                                                         |
 | `backup-main.yml`              | push to `main`, monthly                    | Mirrors the repo to Azure DevOps / GitLab — opt-in by secrets; skips green when unset                                                                                             |
 | `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                         |
 | `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                     |

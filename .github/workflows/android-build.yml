@@ -1,0 +1,520 @@
+# Android Build — build one deployment's own Trusted Web Activity.
+#
+# This workflow is deliberately manual-dispatch only. A TWA bakes the origin,
+# package id and signing key into the APK, and the Digital Asset Links file ties
+# the package to the certificate, so a build belongs to exactly one deployment.
+# Publishing an upstream-signed APK for everyone would point every installer at
+# the upstream origin and make the upstream key the update authority.
+#
+# Each deployment forks the repository, sets its own variables and secrets, and
+# runs this workflow. The signed APK/AAB are workflow artifacts only; there is
+# intentionally no release upload and no `contents: write`.
+
+name: Android Build
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'versionName (empty: latest tag, or 0.0.0-dev.<run>)'
+        required: false
+        type: string
+      version_code:
+        description: 'versionCode (empty: the workflow run number)'
+        required: false
+        type: string
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      ANDROID_PWA_ORIGIN: ${{ vars.ANDROID_PWA_ORIGIN }}
+      ANDROID_PACKAGE_ID: ${{ vars.ANDROID_PACKAGE_ID }}
+      ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+      ANDROID_PLAY_CERT_SHA256: ${{ vars.ANDROID_PLAY_CERT_SHA256 }}
+      ANDROID_APP_NAME: ${{ vars.ANDROID_APP_NAME || 'Telegram Web Client' }}
+      ANDROID_LAUNCHER_NAME: ${{ vars.ANDROID_LAUNCHER_NAME || 'Telegram Web' }}
+      BUBBLEWRAP_VERSION: '1.27.0'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          # Tags are where the default version name comes from.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The runner image carries the Android SDK, but not necessarily the
+      # platform and build-tools this Bubblewrap release targets.
+      - name: Set up Android SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          if [ ! -d "$SDK_ROOT" ]; then
+            echo "::error title=Android SDK::No Android SDK found at $SDK_ROOT"
+            exit 1
+          fi
+
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "::error title=Android SDK::sdkmanager not found"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Install Bubblewrap
+        run: |
+          set -euo pipefail
+          npm install --global "@bubblewrap/cli@${BUBBLEWRAP_VERSION}"
+          bubblewrap --version
+
+      - name: Configure Bubblewrap
+        run: |
+          set -euo pipefail
+          if [ -z "${JAVA_HOME:-}" ] || [ ! -d "$JAVA_HOME" ]; then
+            echo "::error title=Bubblewrap::JAVA_HOME is not a directory"
+            exit 1
+          fi
+          if [ -z "${ANDROID_SDK_ROOT:-}" ] || [ ! -d "$ANDROID_SDK_ROOT" ]; then
+            echo "::error title=Bubblewrap::ANDROID_SDK_ROOT is not a directory"
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+
+          const directory = path.join(os.homedir(), '.bubblewrap');
+          fs.mkdirSync(directory, { recursive: true });
+          fs.writeFileSync(
+            path.join(directory, 'config.json'),
+            `${JSON.stringify(
+              {
+                jdkPath: process.env.JAVA_HOME,
+                androidSdkPath: process.env.ANDROID_SDK_ROOT,
+              },
+              null,
+              2,
+            )}\n`,
+          );
+          NODE
+
+          bubblewrap doctor
+
+      - name: Validate configuration
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function fail(message) {
+            console.error(`::error title=Android configuration::${message}`);
+            process.exit(1);
+          }
+
+          const required = {
+            ANDROID_PWA_ORIGIN: 'repository variable',
+            ANDROID_PACKAGE_ID: 'repository variable',
+            ANDROID_CERT_SHA256: 'repository variable',
+            ANDROID_KEYSTORE_BASE64: 'repository secret',
+            ANDROID_KEYSTORE_PASSWORD: 'repository secret',
+            ANDROID_KEY_ALIAS: 'repository secret',
+            ANDROID_KEY_PASSWORD: 'repository secret',
+          };
+          const missing = Object.entries(required)
+            .filter(([name]) => !process.env[name]?.trim())
+            .map(([name, kind]) => `${name} (${kind})`);
+          if (missing.length > 0) {
+            fail(`missing ${missing.join(', ')}`);
+          }
+
+          let origin;
+          try {
+            origin = new URL(process.env.ANDROID_PWA_ORIGIN.trim());
+          } catch {
+            fail('ANDROID_PWA_ORIGIN must be an absolute https URL');
+          }
+          if (
+            origin.protocol !== 'https:' ||
+            origin.username ||
+            origin.password ||
+            origin.port ||
+            origin.pathname !== '/' ||
+            origin.search ||
+            origin.hash
+          ) {
+            fail('ANDROID_PWA_ORIGIN must be an https origin with no path, port, query or fragment');
+          }
+
+          const packageId = process.env.ANDROID_PACKAGE_ID.trim();
+          if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/.test(packageId)) {
+            fail('ANDROID_PACKAGE_ID must be a reverse-DNS application id');
+          }
+
+          const appName = process.env.ANDROID_APP_NAME?.trim() ?? '';
+          if (!appName || appName.length > 50) {
+            fail('ANDROID_APP_NAME must be 1-50 characters');
+          }
+          const launcherName = process.env.ANDROID_LAUNCHER_NAME?.trim() ?? '';
+          if (!launcherName || launcherName.length > 12) {
+            fail('ANDROID_LAUNCHER_NAME must be 1-12 characters');
+          }
+
+          let versionName = process.env.INPUT_VERSION_NAME?.trim() ?? '';
+          if (!versionName) {
+            const { execFileSync } = require('node:child_process');
+            try {
+              const tag = execFileSync('git', ['describe', '--tags', '--abbrev=0'], {
+                encoding: 'utf8',
+              }).trim();
+              versionName = tag.replace(/^v/, '');
+            } catch {
+              versionName = `0.0.0-dev.${process.env.GITHUB_RUN_NUMBER}`;
+            }
+          }
+          if (!/^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(versionName)) {
+            fail(
+              'version_name must start with a letter or digit and contain only letters, digits, dot, underscore, plus or hyphen',
+            );
+          }
+
+          const versionCode = (
+            process.env.INPUT_VERSION_CODE?.trim() ||
+            process.env.GITHUB_RUN_NUMBER ||
+            ''
+          ).trim();
+          const numericVersionCode = Number(versionCode);
+          if (
+            !/^[0-9]+$/.test(versionCode) ||
+            !Number.isInteger(numericVersionCode) ||
+            numericVersionCode < 1 ||
+            numericVersionCode > 2_100_000_000
+          ) {
+            fail('version_code must be an integer between 1 and 2100000000');
+          }
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            [
+              `ANDROID_ORIGIN=${origin.origin}`,
+              `ANDROID_HOST=${origin.host}`,
+              `VERSION_NAME=${versionName}`,
+              `VERSION_CODE=${numericVersionCode}`,
+            ].join('\n') + '\n',
+          );
+
+          console.log(`Building ${packageId} ${versionName} (${numericVersionCode}) for ${origin.origin}`);
+          NODE
+
+      - name: Decode the signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE_PATH="$RUNNER_TEMP/android-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
+          if [ ! -s "$KEYSTORE_PATH" ]; then
+            echo "::error title=Android keystore::ANDROID_KEYSTORE_BASE64 did not decode to a file"
+            exit 1
+          fi
+
+          keytool -list -keystore "$KEYSTORE_PATH" \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" >/dev/null
+
+          FINGERPRINT="$(
+            keytool -list -v -keystore "$KEYSTORE_PATH" \
+              -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" \
+              | sed -n 's/^[[:space:]]*SHA256: //p' \
+              | head -n 1 \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+          if [ -z "$FINGERPRINT" ]; then
+            echo "::error title=Android keystore::Could not read the SHA-256 fingerprint"
+            exit 1
+          fi
+
+          EXPECTED_FINGERPRINT="$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          if [ "$FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
+            echo "::error title=Android keystore::ANDROID_CERT_SHA256 does not match the keystore fingerprint"
+            exit 1
+          fi
+
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_FINGERPRINT=$FINGERPRINT" >> "$GITHUB_ENV"
+          echo "Keystore fingerprint: $FINGERPRINT"
+
+      # Everything below is read from the live deployment: the TWA validates
+      # against the deployed origin, and the assetlinks file is generated by the
+      # Pages build, so Pages must be deployed before this workflow is useful.
+      - name: Verify the live deployment
+        run: |
+          set -euo pipefail
+          TMP="$RUNNER_TEMP/android-preflight"
+          mkdir -p "$TMP"
+
+          fetch() {
+            local url="$1"
+            local output="$2"
+            local code
+            code="$(curl --silent --show-error --output "$output" --write-out '%{http_code}' "$url")"
+            if [ "$code" != "200" ]; then
+              echo "::error title=Android preflight::$url returned HTTP $code"
+              exit 1
+            fi
+          }
+
+          fetch "$ANDROID_ORIGIN/" "$TMP/index.html"
+          fetch "$ANDROID_ORIGIN/manifest.webmanifest" "$TMP/manifest.webmanifest"
+          fetch "$ANDROID_ORIGIN/icon-512.png" "$TMP/icon-512.png"
+          fetch "$ANDROID_ORIGIN/icon-maskable-512.png" "$TMP/icon-maskable-512.png"
+          fetch "$ANDROID_ORIGIN/.well-known/assetlinks.json" "$TMP/assetlinks.json"
+
+          node - "$TMP/manifest.webmanifest" <<'NODE'
+          const fs = require('node:fs');
+
+          let manifest;
+          try {
+            manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          } catch {
+            console.error('::error title=Android preflight::The live web manifest is not valid JSON');
+            process.exit(1);
+          }
+          if (typeof manifest.name !== 'string' || manifest.name.length === 0) {
+            console.error('::error title=Android preflight::The live web manifest has no name');
+            process.exit(1);
+          }
+          NODE
+
+          for icon in "$TMP/icon-512.png" "$TMP/icon-maskable-512.png"; do
+            if [ "$(head -c 8 "$icon" | od -An -tx1 | tr -d ' \n')" != "89504e470d0a1a0a" ]; then
+              echo "::error title=Android preflight::$icon is not a PNG"
+              exit 1
+            fi
+          done
+
+          ASSETLINKS_FILE="$TMP/assetlinks.json" node <<'NODE'
+          const fs = require('node:fs');
+
+          let statements;
+          try {
+            statements = JSON.parse(fs.readFileSync(process.env.ASSETLINKS_FILE, 'utf8'));
+          } catch {
+            console.error('::error title=Android preflight::The live assetlinks.json is not valid JSON');
+            process.exit(1);
+          }
+
+          const packageId = process.env.ANDROID_PACKAGE_ID;
+          const fingerprint = process.env.ANDROID_KEYSTORE_FINGERPRINT;
+          const statement = Array.isArray(statements)
+            ? statements.find(
+                (candidate) =>
+                  candidate?.target?.namespace === 'android_app' &&
+                  candidate.target.package_name === packageId,
+              )
+            : undefined;
+          if (!statement) {
+            console.error(
+              `::error title=Android preflight::The live assetlinks.json does not name ${packageId}. Set ANDROID_PACKAGE_ID, redeploy Pages, then retry.`,
+            );
+            process.exit(1);
+          }
+          if (
+            !Array.isArray(statement.relation) ||
+            !statement.relation.includes('delegate_permission/common.handle_all_urls')
+          ) {
+            console.error(
+              '::error title=Android preflight::The live assetlinks statement does not handle all URLs',
+            );
+            process.exit(1);
+          }
+          const fingerprints = statement.target.sha256_cert_fingerprints;
+          if (
+            !Array.isArray(fingerprints) ||
+            !fingerprints.map((value) => String(value).toUpperCase()).includes(fingerprint)
+          ) {
+            console.error(
+              `::error title=Android preflight::The live assetlinks.json does not contain the keystore fingerprint. Set ANDROID_CERT_SHA256 to ${fingerprint}, redeploy Pages, then retry.`,
+            );
+            process.exit(1);
+          }
+
+          // A stale certificate would keep an old key able to sign an update
+          // that Chrome still treats as this app, so reject anything the
+          // deployment does not configure.
+          const expected = new Set([fingerprint]);
+          const playFingerprint = process.env.ANDROID_PLAY_CERT_SHA256?.trim().toUpperCase();
+          if (playFingerprint) {
+            expected.add(playFingerprint);
+          }
+          const normalizedFingerprints = fingerprints.map((value) => String(value).toUpperCase());
+          const missing = [...expected].filter((value) => !normalizedFingerprints.includes(value));
+          if (missing.length > 0) {
+            console.error(
+              `::error title=Android preflight::The live assetlinks.json does not contain every configured certificate fingerprint (missing ${missing.join(', ')}). Set the Android variables, redeploy Pages, then retry.`,
+            );
+            process.exit(1);
+          }
+          const unexpected = normalizedFingerprints.filter((value) => !expected.has(value));
+          if (unexpected.length > 0) {
+            console.error(
+              `::error title=Android preflight::The live assetlinks.json names unexpected certificate fingerprints (${unexpected.join(', ')}). Remove stale keys, redeploy Pages, then retry.`,
+            );
+            process.exit(1);
+          }
+          NODE
+
+      - name: Render the TWA manifest
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const template = JSON.parse(
+            fs.readFileSync(path.join('android', 'twa-manifest.template.json'), 'utf8'),
+          );
+          const origin = process.env.ANDROID_ORIGIN;
+
+          template.packageId = process.env.ANDROID_PACKAGE_ID;
+          template.host = process.env.ANDROID_HOST;
+          template.name = process.env.ANDROID_APP_NAME;
+          template.launcherName = process.env.ANDROID_LAUNCHER_NAME;
+          template.appVersion = process.env.VERSION_NAME;
+          template.appVersionCode = Number(process.env.VERSION_CODE);
+          template.signingKey = {
+            path: process.env.ANDROID_KEYSTORE_PATH,
+            alias: process.env.ANDROID_KEY_ALIAS,
+          };
+          template.iconUrl = `${origin}/icon-512.png`;
+          template.maskableIconUrl = `${origin}/icon-maskable-512.png`;
+          template.webManifestUrl = `${origin}/manifest.webmanifest`;
+          template.fullScopeUrl = `${origin}/`;
+
+          fs.mkdirSync(path.join('android', 'build'), { recursive: true });
+          fs.writeFileSync(
+            path.join('android', 'build', 'twa-manifest.json'),
+            `${JSON.stringify(template, null, 2)}\n`,
+          );
+          NODE
+
+      - name: Build the APK and AAB
+        working-directory: android/build
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # `update` regenerates the project from the rendered manifest and
+          # writes the checksum `build` looks for, so neither command prompts.
+          bubblewrap update --skipVersionUpgrade
+          bubblewrap build --skipPwaValidation
+
+      - name: Verify the signatures
+        working-directory: android/build
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error title=Android build::apksigner not found"
+            exit 1
+          fi
+
+          "$APKSIGNER" verify --verbose --print-certs app-release-signed.apk
+          APK_FINGERPRINT="$(
+            "$APKSIGNER" verify --print-certs app-release-signed.apk \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | head -n 1 \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+          if [ "$APK_FINGERPRINT" != "$ANDROID_KEYSTORE_FINGERPRINT" ]; then
+            echo "::error title=Android build::The APK signer fingerprint does not match the keystore"
+            exit 1
+          fi
+
+          jarsigner -verify app-release-bundle.aab >/dev/null
+          keytool -printcert -jarfile app-release-bundle.aab > "$RUNNER_TEMP/aab-certificate.txt"
+          AAB_FINGERPRINT="$(
+            sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/aab-certificate.txt" \
+              | head -n 1 \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+          if [ "$AAB_FINGERPRINT" != "$ANDROID_KEYSTORE_FINGERPRINT" ]; then
+            echo "::error title=Android build::The AAB signer fingerprint does not match the keystore"
+            exit 1
+          fi
+
+          sha256sum app-release-signed.apk app-release-bundle.aab > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload the Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ env.VERSION_NAME }}-${{ env.ANDROID_PACKAGE_ID }}
+          path: |
+            android/build/app-release-signed.apk
+            android/build/app-release-bundle.aab
+            android/build/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write the build summary
+        run: |
+          {
+            echo '## Android build'
+            echo ''
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| Origin | \`$ANDROID_ORIGIN\` |"
+            echo "| Package id | \`$ANDROID_PACKAGE_ID\` |"
+            echo "| App name | $ANDROID_APP_NAME |"
+            echo "| Version | \`$VERSION_NAME\` ($VERSION_CODE) |"
+            echo "| Certificate SHA-256 | \`$ANDROID_KEYSTORE_FINGERPRINT\` |"
+            echo ''
+            echo 'Download the APK and AAB from this run. This repository does not publish a signed build for another deployment.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the signing material
+        if: always()
+        run: |
+          if [ -n "${ANDROID_KEYSTORE_PATH:-}" ]; then
+            rm -f "$ANDROID_KEYSTORE_PATH"
+          fi

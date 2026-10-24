@@ -102,7 +102,15 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-env
 
+      # The Android values are optional: when they are unset the assetlinks
+      # plugin emits nothing and the Pages build is unchanged. When they are
+      # set, the build writes /.well-known/assetlinks.json for this
+      # deployment's package id and signing certificate.
       - name: Build Frontend
+        env:
+          ANDROID_PACKAGE_ID: ${{ vars.ANDROID_PACKAGE_ID }}
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+          ANDROID_PLAY_CERT_SHA256: ${{ vars.ANDROID_PLAY_CERT_SHA256 }}
         run: pnpm --filter @telegram-web-client/pages build
 
       - name: Configure Pages Service Bindings

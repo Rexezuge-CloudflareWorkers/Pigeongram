@@ -92,6 +92,10 @@ The SPA installs as an app and boots without a network:
 install. The worker is not registered in development — a worker in the dev server would serve a stale shell over Vite's
 own modules.
 
+The same app can be wrapped as a **Trusted Web Activity** for Android. That build is per deployment, because the origin,
+package id and signing key are compiled into the shell. [`docs/android.md`](docs/android.md) is the build and trust
+runbook.
+
 ## CI and deployment
 
 - **Continuous Integration** (`.github/workflows/continuous-integration.yml`) runs on PRs, pushes to `main`, and
@@ -102,6 +106,10 @@ own modules.
   `deploy-worker` and `deploy-pages` in parallel. The worker deploy materializes `wrangler.jsonc`, runs
   `wrangler deploy --dry-run` as a gate, then deploys; the Pages deploy builds the SPA, creates the Pages project if
   absent, and deploys.
+- **Android Build** (`.github/workflows/android-build.yml`) is manual-dispatch only. It builds a signed Trusted Web
+  Activity APK/AAB for the deployment that runs it and uploads them as workflow artifacts. It is deliberately not
+  release-triggered: the origin, package id and signing key are deployment-specific, so each deployment runs it in its
+  own fork. The runbook is [`docs/android.md`](docs/android.md).
 - **Backup Main Branch** (`.github/workflows/backup-main.yml`) mirrors `main` to Azure DevOps and/or GitLab after every
   push and on a monthly schedule. Both destinations are opt-in by secret; with neither configured the workflow skips
   green.
@@ -113,14 +121,17 @@ re-login, not history.
 
 ### Repository settings (set before merging the first scaffold PR)
 
-| Kind                | Name                                                                     | Purpose                                                  |
-| ------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
-| Secret              | `CLOUDFLARE_API_TOKEN`                                                   | Workers Scripts:Edit + Pages:Edit, scoped to the account |
-| Secret              | `CLOUDFLARE_ACCOUNT_ID`                                                  | Cloudflare account id                                    |
-| Secret (optional)   | `BACKUP_REPO_AZURE_DEVOPS_SSH_KEY` / `BACKUP_REPO_AZURE_DEVOPS_REPO_URL` | Mirrors `main` to Azure DevOps (backup workflow)         |
-| Secret (optional)   | `BACKUP_REPO_GITLAB_SSH_KEY` / `BACKUP_REPO_GITLAB_REPO_URL`             | Mirrors `main` to GitLab (backup workflow)               |
-| Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                          | Overrides the default `telegram-web-client-web`          |
-| Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`    | Per-environment wrangler overrides                       |
+| Kind                | Name                                                                                                   | Purpose                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Secret              | `CLOUDFLARE_API_TOKEN`                                                                                 | Workers Scripts:Edit + Pages:Edit, scoped to the account |
+| Secret              | `CLOUDFLARE_ACCOUNT_ID`                                                                                | Cloudflare account id                                    |
+| Secret (optional)   | `BACKUP_REPO_AZURE_DEVOPS_SSH_KEY` / `BACKUP_REPO_AZURE_DEVOPS_REPO_URL`                               | Mirrors `main` to Azure DevOps (backup workflow)         |
+| Secret (optional)   | `BACKUP_REPO_GITLAB_SSH_KEY` / `BACKUP_REPO_GITLAB_REPO_URL`                                           | Mirrors `main` to GitLab (backup workflow)               |
+| Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                                                        | Overrides the default `telegram-web-client-web`          |
+| Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`                                  | Per-environment wrangler overrides                       |
+| Variable (optional) | `ANDROID_PWA_ORIGIN` / `ANDROID_PACKAGE_ID` / `ANDROID_CERT_SHA256`                                    | Per-deployment Android build; unset means no TWA         |
+| Variable (optional) | `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME` / `ANDROID_PLAY_CERT_SHA256`                              | Android presentation and Play signing overrides          |
+| Secret (optional)   | `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | The deployment's own Android signing key                 |
 
 The worker's `/user/*` routes verify Cloudflare Access, so a real deployment must supply both halves of the verifier
 through `WRANGLER_VARS_PATCH_JSON` (or the dashboard's vars):
@@ -134,6 +145,12 @@ through `WRANGLER_VARS_PATCH_JSON` (or the dashboard's vars):
 Additional settings**). The values are public configuration, not secrets. When they are missing, `/user/*` answers
 `503 {"code":"access_config"}` rather than serving the session unauthenticated. `GET /api/health` stays public.
 Account routes moved from `/api/*` to `/user/*`; an old `/api/state`, `/api/rpc`, or media URL now returns `404`.
+
+The Android variables and secrets are also per deployment, not shared. Each deployer chooses a unique package id,
+generates their own keystore and runs the Android Build workflow in their fork; the repository never publishes a signed
+APK for another deployment. `ANDROID_PACKAGE_ID` and `ANDROID_CERT_SHA256` also drive the Pages build's generated
+`/.well-known/assetlinks.json`, so deploy Pages before running the Android build. The exact order and the trust model are
+in [`docs/android.md`](docs/android.md).
 
 Also: enable **Allow auto-merge** (the Dependabot job depends on it), and after the first CI run set branch protection
 on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Build Web App**.
@@ -167,6 +184,8 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
    the team domain, then set `TEAM_DOMAIN`/`POLICY_AUD` as above.
 3. **M1 acceptance + 72 h soak** — follow `docs/session-engine.md`; the runbook lists the exact checks and what to
    watch during the soak.
+4. **Android app (optional)** — follow [`docs/android.md`](docs/android.md): choose a package id and keystore, set the
+   variables and secrets, deploy Pages so the assetlinks file is live, then run the Android Build workflow.
 
 ## Where this is going
 

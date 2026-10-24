@@ -9,6 +9,19 @@ node_modules/
 worker-configuration.d.ts
 wrangler.jsonc
 
+# Rendered by the Android workflow from a template; formatting generated Gradle
+# files is not a review anyone should do.
+android/build/
+
+# A keystore should never be in the checkout, but if one is, Prettier must not
+# try to parse it (or print it).
+*.jks
+*.jks.*
+*.keystore
+*.keystore.*
+*.p12
+*.pfx
+
 # Machine-generated. Reformatting the lockfile produces a diff no human reads and
 # no reviewer should approve by reflex.
 pnpm-lock.yaml

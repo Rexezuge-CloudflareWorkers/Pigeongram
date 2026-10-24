@@ -364,6 +364,8 @@ thread, the read receipts, the forward picker — finds it in the same place. Th
 itself: an archive item for a chat in the list, an unarchive item for one in the archive. The item asks first — the
 move is confirmed in a modal — and the outcome is announced in a toast. The sidebar keeps the archive in view while one
 of its chats is open; bringing that chat back out of the archive hands the sidebar to the chat list, where it now lives.
+The archive bar's back leaves the archive for the chat list on the same rule: while a chat is open it only changes the
+sidebar, and the open thread stays.
 
 ### Updates socket protocol
 

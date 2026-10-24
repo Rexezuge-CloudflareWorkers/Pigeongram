@@ -3545,6 +3545,24 @@ describe('App', () => {
       expect(within(sidebar()).getByText('Archived Chats')).toBeDefined();
     });
 
+    it('hands the sidebar back to the chat list without closing the open chat', async () => {
+      installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+      await openArchive();
+      fireEvent.click(await screen.findByText('Dave'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Back to chats' }));
+
+      // The bar only leaves the archive list: the open message view is the
+      // route's, so only the sidebar changes and the thread stays.
+      await waitFor(() => expect(within(sidebar()).queryByText('Archived Chats')).toBeNull());
+      expect(within(sidebar()).getByText('Bob')).toBeDefined();
+      expect(within(threadSection()).getByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/4');
+    });
+
     it('opens an archived chat from a shared link', async () => {
       // The chat list does not carry the archived chats, so the link makes the
       // app read the archive before it gives up on the chat.

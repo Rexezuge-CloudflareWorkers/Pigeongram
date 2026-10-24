@@ -240,7 +240,8 @@ protocol,registry}`) and the mtcute integration
   the account popup), and the chat list and the archive live in **one** list (`pages/src/useDialogs.ts`), so every
   lookup of a chat — the router, the thread, the read receipts, the forward picker — finds it in the same place. A chat
   opened from the archive keeps the archive list in the sidebar; bringing the open chat back out of the archive hands
-  the sidebar back to the chat list, where the chat now lives.
+  the sidebar back to the chat list, where the chat now lives. The archive bar's back leaves that list for the chat
+  list too: while one of its chats is open it changes only the sidebar, so the open thread stays.
 - **The profile popup is a self-contained overlay, not a history layer.** The nav bar of the open chat opens the
   peer's profile — from its picture, from its name, or from the ⋮ menu's "View Profile" — and the popup closes on
   Escape, a backdrop press or its close button. It is deliberately **not** a `history.state` layer (only the media

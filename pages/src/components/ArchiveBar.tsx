@@ -6,7 +6,9 @@ interface ArchiveBarProps {
   */
   count: number;
   /**
-  Leaves the archive for the chat list.
+  Leaves the archive list for the chat list. The app decides what that means:
+  on the archive screen it is a step back in history, while an archived chat
+  open beside the list only changes the sidebar, so the thread stays.
   */
   onBack: () => void;
 }

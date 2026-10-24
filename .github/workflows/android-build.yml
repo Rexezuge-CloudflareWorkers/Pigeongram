@@ -93,8 +93,10 @@ jobs:
         run: |
           set -euo pipefail
           npm install --global "@bubblewrap/cli@${BUBBLEWRAP_VERSION}"
-          bubblewrap --version
 
+      # Bubblewrap loads (and, when missing, prompts for) its JDK/SDK
+      # configuration before it runs *any* command, including `--version`.
+      # Nothing may invoke it before this step writes the config.
       - name: Configure Bubblewrap
         run: |
           set -euo pipefail
@@ -127,6 +129,7 @@ jobs:
           );
           NODE
 
+          bubblewrap --version
           bubblewrap doctor
 
       - name: Validate configuration

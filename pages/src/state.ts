@@ -3,18 +3,19 @@ import { continuesAlbum, countUnreadGroupsBetween } from './groups';
 import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
 
 /**
- * Pure list surgery for the SPA's chat and message state. Kept in its own
- * module so it can be unit-tested without rendering anything.
+ * Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.
  */
 
 /**
-Applies a live `new_message` update: unread bump, last-message, reorder.
+Applies a live `new_message`; a message the dialog already shows or has read is
+old news, and a pending send's synthetic negative id is always new.
 */
 export function applyNewMessage(dialogs: DialogDto[], message: MessageDto, activeChatId: PeerId | null): DialogDto[] {
   const index = dialogs.findIndex((dialog) => dialog.chat.id === message.chatId);
   if (index === -1) return dialogs;
-
   const dialog = dialogs[index];
+  if (message.id > 0 && message.id <= Math.max(dialog.lastMessage?.id ?? 0, dialog.readInboxMaxId)) return dialogs;
+
   const read = message.outgoing || message.chatId === activeChatId;
   const updated: DialogDto = {
     ...dialog,

@@ -20,7 +20,7 @@ export interface BuildSummary {
 }
 
 function cell(value: string): string {
-  return value.replace(/\|/g, '\\|');
+  return value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
 }
 
 /**

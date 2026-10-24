@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fuman/net": "0.0.22",
+    "@fuman/net": "0.0.23",
     "@mtcute/core": "0.32.5",
     "@mtcute/wasm": "0.32.0",
     "hono": "^4.13.13",

@@ -65,6 +65,12 @@
   flex-shrink: 0;
 }
 
+.media-viewer-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .media-viewer-tool {
   min-width: 36px;
   height: 36px;
@@ -74,6 +80,7 @@
   border-radius: 999px;
   color: var(--text);
   line-height: 1;
+  text-decoration: none;
 }
 
 .media-viewer-tool.percent {

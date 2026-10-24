@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
+import { isDownloadable } from '../media-download';
 import { reactionKey } from '../state';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
@@ -140,6 +141,9 @@ export function MessageRow({
   // Telegram attaches an album's keyboard to one of its members, not
   // necessarily the first; that member is also the callback's target.
   const buttonMessage = group.find((entry) => entry.markup !== null) ?? null;
+  // An album downloads per item from the viewer; a single media message can
+  // download straight from its menu.
+  const downloadable = group.length === 1 && isDownloadable(message);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
 
@@ -160,11 +164,11 @@ export function MessageRow({
   /**
   Opens the menu at viewport coordinates when the message has actions to
   offer. Service messages, and messages with nothing to reply to, forward,
-  react to or copy, leave the native menu alone, so a right-click falls back
-  to the browser's.
+  react to, copy or download, leave the native menu alone, so a right-click
+  falls back to the browser's.
   */
   const openMenu = (x: number, y: number): boolean => {
-    if (message.service || (!onReply && !onForward && !onReact && message.text.length === 0)) return false;
+    if (message.service || (!onReply && !onForward && !onReact && message.text.length === 0 && !downloadable)) return false;
     setMenu({ x, y });
     return true;
   };

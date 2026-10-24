@@ -2520,8 +2520,35 @@ describe('App', () => {
       expect(image.getAttribute('src')).toContain('/user/file?chatId=2&messageId=10');
       expect(image.getAttribute('src')).not.toContain('thumb=1');
 
+      const download = within(dialog).getByRole('link', { name: 'Download original' });
+      expect(download.getAttribute('href')).toContain('/user/file?chatId=2&messageId=10');
+      expect(download.getAttribute('href')).not.toContain('thumb=1');
+      expect(download.getAttribute('download')).toBe('photo-10.jpg');
+
       fireEvent.keyDown(document, { key: 'Escape' });
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it('downloads a single media message from its context menu', async () => {
+      installSignedInFetch({ history: () => json({ messages: [message({ id: 20, chatId: 2, text: '', media: photo })] }) });
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByRole('button', { name: 'Open photo' })).toBeDefined();
+
+      const menu = openMessageMenu(20);
+      const item = within(menu).getByRole('menuitem', { name: 'Download' });
+      const clicked: HTMLAnchorElement[] = [];
+      const spy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        clicked.push(this);
+      });
+      try {
+        fireEvent.click(item);
+        expect(clicked[0]?.getAttribute('href')).toContain('/user/file?chatId=2&messageId=20');
+        expect(clicked[0]?.getAttribute('href')).not.toContain('thumb=1');
+        expect(clicked[0]?.getAttribute('download')).toBe('photo-20.jpg');
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it('opens an album at the clicked item and navigates it', async () => {

@@ -107,6 +107,9 @@ protocol,registry}`) and the mtcute integration
   2. `prepare-wrangler-config.ts` — `provisionWranglerResources({})`, because this worker has no KV cache binding and must
      not have the family default (`CACHE`) added to its config.
      On a `@rexezuge/tooling` bump, diff and re-sync these files.
+- `scripts/android/` — this repository's own, **not** a kit copy: one entrypoint per Android Build workflow step, with
+  each step's rules exported for `test/android/`. Leave this directory out of the tooling re-sync; `docs/android.md`
+  names the entrypoints.
 
 ### Load-bearing details
 

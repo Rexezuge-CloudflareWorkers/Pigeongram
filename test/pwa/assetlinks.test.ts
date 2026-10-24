@@ -23,7 +23,7 @@ function runAssetLinksPlugin(): EmittedAsset[] {
   const emitted: EmittedAsset[] = [];
   const hook = pwaAssetLinksPlugin().generateBundle;
   if (typeof hook !== 'function') {
-    throw new Error('pwaAssetLinksPlugin has no generateBundle hook');
+    throw new TypeError('pwaAssetLinksPlugin has no generateBundle hook');
   }
   (hook as GenerateBundleHook).call({ emitFile: (file) => emitted.push(file) }, {}, {}, false);
   return emitted;

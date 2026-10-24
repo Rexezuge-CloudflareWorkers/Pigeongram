@@ -31,7 +31,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://__HOST__/",
-  "minSdkVersion": 23,
+  "minSdkVersion": 24,
   "orientation": "any",
   "fingerprints": [],
   "additionalTrustedOrigins": [],

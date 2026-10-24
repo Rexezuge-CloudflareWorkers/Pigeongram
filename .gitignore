@@ -10,6 +10,16 @@ coverage/
 *.log
 *.tsbuildinfo
 
+# The Android TWA project is rendered from android/twa-manifest.template.json in
+# CI. Only the template belongs in the repository; the keystore never does.
+android/build/
+*.jks
+*.jks.*
+*.keystore
+*.keystore.*
+*.p12
+*.pfx
+
 # Node heap-crash dumps. `eslint` without the NODE_OPTIONS bump in the `lint`
 # script dies with a heap-limit crash and leaves one of these behind, sized in
 # gigabytes.

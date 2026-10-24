@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineWebViteConfig } from '@rexezuge/tooling/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { pwaAssetLinksPlugin } from './build/pwa/assetlinks-plugin';
 import { MANIFEST } from './build/pwa/manifest';
 import { pwaIconsPlugin } from './build/pwa/plugin';
 
@@ -18,6 +19,9 @@ export default defineWebViteConfig({
     tailwindcss(),
     // The icons the manifest points at, drawn from the favicon's own geometry.
     pwaIconsPlugin(),
+    // The Digital Asset Links statement for this deployment's Android build.
+    // It is emitted only when the deployment supplies the Android variables.
+    pwaAssetLinksPlugin(),
     VitePWA({
       // The worker is ours (`pages/sw/sw.ts`), so the rules that keep the
       // Cloudflare Access gate intact are readable TypeScript with tests,

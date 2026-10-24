@@ -108,6 +108,19 @@ describe('useAppHeight', () => {
     expect(appHeight()).toBe('620px');
   });
 
+  it('re-measures when the visual viewport is panned, not resized', () => {
+    const viewport = new FakeVisualViewport();
+    install(viewport);
+    render(<Probe />);
+
+    // A browser can move the visual viewport (scroll) instead of resizing it,
+    // for instance to reveal the focused composer; the cap must still follow
+    // the visible height.
+    viewport.height = 640;
+    viewport.dispatchEvent(new Event('scroll'));
+    expect(appHeight()).toBe('640px');
+  });
+
   it('floors a fractional visual height so the cap never sits above it', () => {
     const viewport = new FakeVisualViewport();
     install(viewport);
@@ -167,6 +180,8 @@ describe('useAppHeight', () => {
 
     viewport.height = 300;
     viewport.dispatchEvent(new Event('resize'));
+    expect(appHeight()).toBe('');
+    viewport.dispatchEvent(new Event('scroll'));
     expect(appHeight()).toBe('');
   });
 });

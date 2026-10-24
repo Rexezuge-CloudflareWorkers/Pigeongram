@@ -183,14 +183,17 @@ button.ghost:hover {
 
 /* ---- signed-in shell ---------------------------------------------------- */
 
-/* The shell is the layout viewport (`100%`); `useAppHeight`'s `--app-height`
-   caps it, so a mobile keyboard shortens it instead of covering the composer.
-   The value is a cap and not the height on purpose: a height a fraction of a
-   pixel too large made the document scrollable and put a scrollbar on a
-   desktop, while a cap that is too large simply does nothing. Do not fold the
-   two back into one `height`. */
+/* The shell is the dynamic viewport (`100dvh`), which follows the browser's
+   auto-hiding chrome — Chrome on Android deliberately keeps the layout
+   viewport (`100%`) at the URL-bar-shown height. `useAppHeight`'s
+   `--app-height` caps it for what `dvh` misses: an overlaid keyboard (iOS
+   Safari) does not shrink it. The value is a cap and not the height on
+   purpose: a height a fraction of a pixel too large made the document
+   scrollable and put a scrollbar on a desktop, while a cap that is too large
+   simply does nothing. Do not fold the two back into one `height`. */
 .app {
   height: 100%;
+  height: 100dvh;
   max-height: var(--app-height, none);
   display: grid;
   /* The sidebar track is fluid: it starts at its compact width, follows the

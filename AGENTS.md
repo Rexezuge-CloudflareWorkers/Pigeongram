@@ -142,15 +142,17 @@ protocol,registry}`) and the mtcute integration
   from `fetch`, so the probe asks the public `/api/health` endpoint which of the two it is: it answers when the network
   is up (the reader is outside the front door) and fails when it is not (the app shows `OfflineScreen` and waits for the
   browser's `online` event).
-- **The signed-in shell fits above the keyboard.** `useAppHeight` writes the smaller of
-  `document.documentElement.clientHeight` and `window.visualViewport.height` into `--app-height`, and `.app` consumes
-  it as a **`max-height` cap** over a plain `height: 100%` — so the value can only shorten the shell. Folding the two
-  back into one `height` lets the cap sit a fraction of a pixel above the viewport (the hook floors rather than rounds,
-  but `clientHeight` is itself rounded), and Chrome draws a scrollbar for that much overflow. Chromium's
-  `interactive-widget=resizes-content` shrinks the layout viewport, while an overlay keyboard shrinks only the visual
-  one; taking the minimum keeps the composer above a keyboard that one of them lags in reporting. The hook observes
-  both the root (`ResizeObserver`) and the visual viewport, and `settleToBottom` re-pins both scroll views on the
-  resulting host resize. Don't replace this with a fixed `100%`/`dvh` height.
+- **The signed-in shell fits above the keyboard and the browser chrome.** `.app` is `height: 100dvh` capped by
+  `--app-height` through a **`max-height`**. `dvh` is the dynamic viewport: it follows Chrome Android's auto-hiding URL
+  bar, which the layout viewport (`100%`) deliberately does not (it stays at the URL-bar-shown height), and under
+  `interactive-widget=resizes-content` the keyboard shrinks it too. `useAppHeight` writes the smaller of
+  `document.documentElement.clientHeight` and `window.visualViewport.height` into the cap for the case `dvh` misses — an
+  overlaid keyboard (iOS Safari) does not shrink it. Taking the minimum keeps the composer above a keyboard that one
+  viewport lags in reporting, and the cap can only shorten the shell: folding the two back into one `height` lets the
+  cap sit a fraction of a pixel above the viewport (the hook floors rather than rounds, but `clientHeight` is itself
+  rounded), and Chrome draws a scrollbar for that much overflow. The hook observes the root (`ResizeObserver`) and both
+  the visual viewport's `resize` and `scroll` events, and `settleToBottom` re-pins both scroll views on the resulting
+  host resize. Don't go back to `height: 100%` (the URL bar is then missed), and don't drop the cap either.
 - **Sends are optimistic, but the thread and the dialogs stay server truth.** `pages/src/outbox.ts` (the entry shape and
   the chat-list overlay) and `pages/src/useOutbox.ts` (the bridge round trip) keep pending sends in their own layer: a
   `PendingMessage` renders beside the loaded messages (`components/PendingMessageRow.tsx`) and is folded over the

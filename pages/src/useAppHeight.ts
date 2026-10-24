@@ -1,14 +1,16 @@
 import { useEffect } from 'react';
 
 /**
- * Sizes the signed-in shell to the area left above the on-screen keyboard.
- * Neither `100%` nor `dvh` follows that keyboard: mobile browsers may keep the
- * layout viewport at its pre-keyboard height and overlay the keyboard on it, so
- * a chat shell ending in a composer would put that composer behind it. Chromium
- * can instead shrink the layout viewport (`interactive-widget=resizes-content`),
- * and some of those browsers report the visual height late or a little
- * differently. The smaller of the two is the area both agree is visible, so the
- * composer stays reachable whichever viewport the browser updates last.
+ * Caps the signed-in shell at the area left above the on-screen keyboard.
+ * `dvh` already carries the browser's own auto-hiding chrome (see `.app` in
+ * `base.css`) and, under Chromium's `resizes-content`, the keyboard too. What
+ * it cannot cover is a keyboard that only shrinks the visual viewport (iOS
+ * Safari): `dvh` stays at its full height while the composer sits behind the
+ * keyboard. Mobile browsers may also keep the layout viewport at its
+ * pre-keyboard height and overlay the keyboard on it, and some report the
+ * visual height late or a little differently. The smaller of the layout and
+ * visual heights is the area both agree is visible, so the composer stays
+ * reachable whichever viewport the browser updates last.
  *
  * The published value *caps* the shell (`.app`'s `max-height`) rather than
  * sizing it, so it can only ever shorten it; it is floored to whole pixels so
@@ -41,10 +43,15 @@ export function useAppHeight(): void {
       root.style.setProperty('--app-height', `${Math.floor(height)}px`);
     };
 
-    // The visual viewport has no observer API: its `resize` event is the only
-    // signal that the on-screen keyboard changed the visible area.
+    // The visual viewport has no observer API: its `resize` event is the main
+    // signal that the on-screen keyboard changed the visible area. A browser
+    // can also report the change as a pan (a `scroll`, as when it moves the
+    // viewport to reveal the focused composer), so both re-measure. The update
+    // is idempotent, so the extra event costs one style write at most.
     // eslint-disable-next-line unicorn/prefer-observer-apis -- ResizeObserver sees elements, not the visual viewport the keyboard resizes.
     viewport.addEventListener('resize', update);
+    // eslint-disable-next-line unicorn/prefer-observer-apis -- ResizeObserver does not observe a pan of the visual viewport.
+    viewport.addEventListener('scroll', update);
     // Chromium can resize only the layout viewport under
     // `interactive-widget=resizes-content`; observing the root catches that.
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
@@ -53,6 +60,7 @@ export function useAppHeight(): void {
     return () => {
       observer?.disconnect();
       viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
       root.style.removeProperty('--app-height');
     };
   }, []);

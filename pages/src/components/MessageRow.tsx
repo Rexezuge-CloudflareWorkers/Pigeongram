@@ -91,6 +91,11 @@ export interface MessageRowProps {
   Starts forwarding this display group; an album forwards every member.
   */
   onForward?: (messages: readonly MessageDto[]) => void;
+  /**
+  The group's shareable Telegram link, or null when the chat has none (a user
+  chat or a basic group). The menu offers Copy Link only with one.
+  */
+  link?: string | null;
   onJump?: (messageId: number) => void;
   /**
   Opens the message's comments thread; only rendered when the caller decides
@@ -119,6 +124,7 @@ export function MessageRow({
   readOutboxMaxId = 0,
   onReply,
   onForward,
+  link = null,
   onJump,
   onOpenComments,
   onOpenMedia,
@@ -164,11 +170,14 @@ export function MessageRow({
   /**
   Opens the menu at viewport coordinates when the message has actions to
   offer. Service messages, and messages with nothing to reply to, forward,
-  react to, copy or download, open nothing: the global context-menu guard has
-  already suppressed the browser's own menu, so a right-click there is silent.
+  react to, copy, link or download, open nothing: the global context-menu guard
+  has already suppressed the browser's own menu, so a right-click there is
+  silent.
   */
+  const hasActions =
+    onReply !== undefined || onForward !== undefined || onReact !== undefined || message.text.length > 0 || downloadable || link !== null;
   const openMenu = (x: number, y: number): boolean => {
-    if (message.service || (!onReply && !onForward && !onReact && message.text.length === 0 && !downloadable)) return false;
+    if (message.service || !hasActions) return false;
     setMenu({ x, y });
     return true;
   };
@@ -295,6 +304,7 @@ export function MessageRow({
           onForward={onForward}
           onReact={onReact}
           reacting={reacting}
+          link={link}
           onClose={() => setMenu(null)}
         />
       ) : null}

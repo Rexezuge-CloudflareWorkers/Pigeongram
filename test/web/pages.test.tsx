@@ -1713,9 +1713,64 @@ describe('App', () => {
       expect(menu.style.left).toBe('40px');
       expect(menu.style.top).toBe('60px');
       expect(within(menu).getByRole('menuitem', { name: 'Reply' })).toBeDefined();
+      // Every action carries its icon from the shared set.
+      expect(within(menu).getByRole('menuitem', { name: 'Reply' }).querySelector('svg[data-icon="reply"]')).not.toBeNull();
+      expect(within(menu).getByRole('menuitem', { name: 'Forward' }).querySelector('svg[data-icon="forward"]')).not.toBeNull();
+      expect(within(menu).getByRole('menuitem', { name: 'Copy Text' }).querySelector('svg[data-icon="copy"]')).not.toBeNull();
+      // A user chat has no Telegram message link.
+      expect(within(menu).queryByRole('menuitem', { name: 'Copy Link' })).toBeNull();
 
-      clickMenuItem('Copy text');
+      clickMenuItem('Copy Text');
       expect(clipboard.writeText).toHaveBeenCalledWith('see you');
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('copies a channel post link from the menu', async () => {
+      const channel: ChatDto = {
+        id: -1_000_000_000_020,
+        kind: 'channel',
+        title: 'Announcements',
+        username: 'announce',
+        photo: null,
+        canSendMessages: false,
+        presence: null,
+      };
+      const photo: MessageMediaDto = {
+        kind: 'photo',
+        fileName: null,
+        mime: null,
+        size: 100,
+        width: 100,
+        height: 100,
+        duration: null,
+      };
+      const post = message({ id: 7, chatId: channel.id, text: 'hello', media: photo });
+      installSignedInFetch({
+        dialogs: [
+          {
+            chat: channel,
+            lastMessage: dialogMessage(post),
+            unread: 0,
+            readInboxMaxId: 7,
+            readOutboxMaxId: 0,
+            pinned: false,
+            muted: false,
+            archived: false,
+          },
+        ],
+        history: () => json({ messages: [post] }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('hello')).toBeDefined();
+
+      const menu = openMessageMenu(7);
+      expect(within(menu).getByRole('menuitem', { name: 'Copy Link' }).querySelector('svg[data-icon="link"]')).not.toBeNull();
+      expect(within(menu).getByRole('menuitem', { name: 'Download' }).querySelector('svg[data-icon="download"]')).not.toBeNull();
+
+      clickMenuItem('Copy Link');
+      expect(clipboard.writeText).toHaveBeenCalledWith('https://t.me/announce/7');
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
@@ -2794,6 +2849,30 @@ describe('App', () => {
       expect(screen.getByPlaceholderText('Comment')).toBeDefined();
       expect(calls).toHaveLength(1);
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
+    });
+
+    it('copies a comment link that names the channel post', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+      try {
+        installCommentsFetch((call) => {
+          if (call.body?.method !== 'getComments') return;
+          return json({ comments: commentList, count: 2, discussionChatId: GROUP, discussionMessageId: ROOT });
+        });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Announcements'));
+        expect(await screen.findByText('A new feature shipped')).toBeDefined();
+        openComments();
+        expect(await screen.findByText('Comments')).toBeDefined();
+
+        openMessageMenu(ROOT + 1);
+        clickMenuItem('Copy Link');
+        expect(writeText).toHaveBeenCalledWith('https://t.me/announce/7?comment=11');
+        expect(screen.queryByRole('menu')).toBeNull();
+      } finally {
+        Reflect.deleteProperty(navigator, 'clipboard');
+      }
     });
 
     it('returns to the channel where it was left when comments close', async () => {

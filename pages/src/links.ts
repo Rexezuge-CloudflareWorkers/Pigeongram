@@ -154,6 +154,29 @@ export function markedChatId(internalId: number): number {
 }
 
 /**
+ * The shareable address of one message, or null when Telegram has none: a
+ * user chat and a basic group cannot be addressed at a message. A public
+ * supergroup or channel links by username; a private one by its raw id, the
+ * `t.me/c` form the official clients copy.
+ */
+export function messageWebLink(chat: ChatDto, messageId: number): string | null {
+  if (chat.kind !== 'supergroup' && chat.kind !== 'channel') return null;
+  if (chat.username !== null) return `https://t.me/${chat.username}/${String(messageId)}`;
+  const internalId = -chat.id - 1_000_000_000_000;
+  if (internalId <= 0) return null;
+  return `https://t.me/c/${String(internalId)}/${String(messageId)}`;
+}
+
+/**
+ * The address of one comment: the channel post it hangs under, with the
+ * discussion-group message named in the `comment` query.
+ */
+export function commentWebLink(chat: ChatDto, postId: number, commentId: number): string | null {
+  const post = messageWebLink(chat, postId);
+  return post === null ? null : `${post}?comment=${String(commentId)}`;
+}
+
+/**
  * The deep link that opens a forwarded message's origin in the installed app.
  *
  * A public username is the most reliable target; otherwise the marked id is

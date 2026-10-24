@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
+import { commentWebLink, messageWebLink } from '../links';
 import type { PendingMessage } from '../outbox';
 import type { CommentsThread } from '../state';
 import { isNearTop, usePrependAnchor } from '../thread-paging';
@@ -178,6 +179,7 @@ export function CommentsView({
           <MessageRow
             group={[thread.post]}
             chat={thread.chat}
+            link={messageWebLink(thread.chat, thread.post.id)}
             original={null}
             showQuote={false}
             showAvatar={false}
@@ -209,6 +211,7 @@ export function CommentsView({
               <MessageRow
                 group={group}
                 chat={thread.chat}
+                link={commentWebLink(thread.chat, thread.post.id, anchor.id)}
                 showAvatar
                 original={
                   anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null

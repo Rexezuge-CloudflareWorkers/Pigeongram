@@ -474,14 +474,29 @@ jobs:
             exit 1
           fi
 
-          "$APKSIGNER" verify --verbose --print-certs app-release-signed.apk
-          APK_FINGERPRINT="$(
-            "$APKSIGNER" verify --print-certs app-release-signed.apk \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              | head -n 1 \
+          # Newer build-tools label the digest per signing scheme
+          # ("V3.0 Signer: certificate SHA-256 digest"), while older ones
+          # print "Signer #1 ...". Match the suffix, and drop separators:
+          # apksigner prints a bare digest, keytool colon-separated groups.
+          APKSIGNER_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs app-release-signed.apk)"
+          printf '%s\n' "$APKSIGNER_OUTPUT"
+          EXPECTED_FINGERPRINT="$(
+            printf '%s' "$ANDROID_KEYSTORE_FINGERPRINT" \
+              | tr -d '[:space:]:' \
               | tr '[:lower:]' '[:upper:]'
           )"
-          if [ "$APK_FINGERPRINT" != "$ANDROID_KEYSTORE_FINGERPRINT" ]; then
+          APK_FINGERPRINT="$(
+            printf '%s\n' "$APKSIGNER_OUTPUT" \
+              | sed -n 's/^.*certificate SHA-256 digest: //p' \
+              | head -n 1 \
+              | tr -d '[:space:]:' \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+          if [ -z "$APK_FINGERPRINT" ]; then
+            echo "::error title=Android build::Could not read the APK signer fingerprint"
+            exit 1
+          fi
+          if [ "$APK_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
             echo "::error title=Android build::The APK signer fingerprint does not match the keystore"
             exit 1
           fi
@@ -491,9 +506,10 @@ jobs:
           AAB_FINGERPRINT="$(
             sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/aab-certificate.txt" \
               | head -n 1 \
+              | tr -d '[:space:]:' \
               | tr '[:lower:]' '[:upper:]'
           )"
-          if [ "$AAB_FINGERPRINT" != "$ANDROID_KEYSTORE_FINGERPRINT" ]; then
+          if [ "$AAB_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
             echo "::error title=Android build::The AAB signer fingerprint does not match the keystore"
             exit 1
           fi

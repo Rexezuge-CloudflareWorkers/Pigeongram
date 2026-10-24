@@ -256,6 +256,8 @@ export function App() {
     router.navigateTo({ view: 'archived' });
   }, [router]);
 
+  const leaveArchive = useCallback((): void => (router.route().view === 'archived' ? router.back() : setArchiveContext(false)), [router]);
+
   /**
   Routes a click on a link inside a message: a chat this client already knows
   opens in the thread (a linked post lands on that post), any other Telegram
@@ -352,7 +354,7 @@ export function App() {
         <header className="me">
           <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={handleLogout} onOpenArchive={openArchive} />
         </header>
-        {showArchive ? <ArchiveBar count={archivedDialogs.length} onBack={router.back} /> : null}
+        {showArchive ? <ArchiveBar count={archivedDialogs.length} onBack={leaveArchive} /> : null}
         <ChatList
           dialogs={showArchive ? archivedDialogs : mainDialogs}
           activeChatId={selected?.id ?? null}

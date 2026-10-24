@@ -66,14 +66,10 @@ describe('useSuppressNativeContextMenu', () => {
   });
 
   it('restores the browser menu when the app unmounts', () => {
-    const element = document.createElement('div');
-    document.body.append(element);
     const { unmount } = render(<Guarded />);
 
-    expect(fireEvent.contextMenu(element)).toBe(false);
+    expect(fireEvent.contextMenu(document.body)).toBe(false);
     unmount();
-    expect(fireEvent.contextMenu(element)).toBe(true);
-
-    element.remove();
+    expect(fireEvent.contextMenu(document.body)).toBe(true);
   });
 });

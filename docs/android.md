@@ -181,7 +181,8 @@ The first build of a new package id has no previous code to beat; the default ru
   admits the reviewer, or the review may be rejected for requiring an inaccessible login.
 - Use your own app name and iconography. Do not imply that the app is an official Telegram product.
 - Play raises the required target SDK over time. Bubblewrap `1.27.0` targets SDK 36; when Play's requirement moves,
-  bump Bubblewrap deliberately, rebuild and re-verify.
+  bump Bubblewrap deliberately, rebuild and re-verify. The workflow also installs the build-tools release Bubblewrap
+  pins (`36.1.0`); a Bubblewrap bump moves that pin and the workflow's install list together.
 - Notification delegation is disabled (`enableNotifications: false`). The web app does not use web push; if that changes,
   enabling delegation also changes the native manifest and requires a rebuild.
 
@@ -216,6 +217,11 @@ gating the asset. The workflow's preflight names the URL and status.
 **Bubblewrap prompts for paths or passwords.** In CI the workflow writes `~/.bubblewrap/config.json` and sets
 `BUBBLEWRAP_KEYSTORE_PASSWORD` / `BUBBLEWRAP_KEY_PASSWORD`. Locally, run `bubblewrap doctor` and `bubblewrap updateConfig`
 once.
+
+**`doctor` says the `androidSdkPath` is not correct.** Bubblewrap `1.27.0` still validates the pre-`cmdline-tools` SDK
+layout and requires `<sdk>/tools` or `<sdk>/bin` to exist, even though modern SDKs ship neither. The workflow exposes
+`cmdline-tools/latest/bin` as `<sdk>/bin` before writing the config, which also gives Bubblewrap the `sdkmanager` fallback
+it expects. Do the same locally, or point it at an SDK root that already has one of those folders.
 
 **The AAB will not install with `adb install`.** That is expected; AABs are for Play. Use the APK for device testing, or
 `bundletool` to generate APKs from the bundle.

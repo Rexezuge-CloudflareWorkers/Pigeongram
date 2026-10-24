@@ -371,7 +371,7 @@ function installSignedInFetch(
   options: {
     dialogs?: DialogDto[];
     archivedDialogs?: DialogDto[];
-    history?: (chatId: number) => Response | Promise<Response>;
+    history?: (chatId: number, params: Record<string, unknown>) => Response | Promise<Response>;
     rpc?: (call: FetchCall) => Response | Promise<Response> | undefined;
   } = {},
 ): FetchCall[] {
@@ -389,7 +389,7 @@ function installSignedInFetch(
         return json({ dialogs: options.dialogs ?? dialogs });
       }
       case 'getHistory': {
-        return options.history ? options.history(Number(params.chatId)) : json({ messages: history });
+        return options.history ? options.history(Number(params.chatId), params) : json({ messages: history });
       }
       case 'readHistory': {
         return options.rpc?.(call) ?? json({});
@@ -2196,6 +2196,59 @@ describe('App', () => {
     });
   });
 
+  describe('older history paging', () => {
+    /**
+    A full opening window (ids 100–149) and an older page behind it.
+    */
+    const recent = Array.from({ length: 50 }, (_, index) => message({ id: 100 + index, chatId: 2, text: `recent ${String(index + 1)}` }));
+    const older = Array.from({ length: 3 }, (_, index) => message({ id: 97 + index, chatId: 2, text: `older ${String(index + 1)}` }));
+    /**
+    Bob's dialog with the whole window read, so the thread opens at the bottom.
+    */
+    const readDialog: DialogDto = { ...dialogs[0], unread: 0, readInboxMaxId: 149 };
+
+    it('loads the next older page as the reader approaches the top', async () => {
+      const reads: Array<Record<string, unknown>> = [];
+      const box = stubLayout({ listHeight: 2500, viewportHeight: 500 });
+      installSignedInFetch({
+        dialogs: [readDialog],
+        history: (_chatId, params) => {
+          reads.push(params);
+          if (params.offsetId === undefined) return json({ messages: recent });
+          // The older page lands above the viewport; the list grows by its rows.
+          box.listHeight += older.length * 50;
+          return json({ messages: older });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('recent 50')).toBeDefined();
+      expect(scrollContainer().scrollTop).toBe(2500);
+
+      // Pinned to the bottom is not "near the top": no page is read.
+      fireEvent.scroll(scrollContainer());
+      expect(reads).toHaveLength(1);
+
+      // One viewport before the top, the next page is read and merged.
+      scrollContainer().scrollTop = 0;
+      fireEvent.scroll(scrollContainer());
+      expect(await within(threadSection()).findByText('older 1')).toBeDefined();
+      expect(reads).toHaveLength(2);
+      expect(reads[1]).toEqual({ chatId: 2, limit: 50, offsetId: 100, offsetDate: 1_700_000_000_000 });
+      // The prepended page did not move the reader's row: the three older rows
+      // (150px) are above it, so the position moved down by exactly that.
+      expect(scrollContainer().scrollTop).toBe(150);
+
+      // The short page was the start of history, so the button and further
+      // reads are gone.
+      expect(screen.queryByRole('button', { name: 'Load older messages' })).toBeNull();
+      scrollContainer().scrollTop = 0;
+      fireEvent.scroll(scrollContainer());
+      expect(reads).toHaveLength(2);
+    });
+  });
+
   describe('media settling', () => {
     const photo: MessageMediaDto = {
       kind: 'photo',
@@ -2947,6 +3000,60 @@ describe('App', () => {
       });
       // The thread start is loaded, so the button goes away.
       expect(screen.queryByRole('button', { name: 'Load older comments' })).toBeNull();
+    });
+
+    it('loads the next older page as the reader approaches the top', async () => {
+      const calls: FetchCall[] = [];
+      const box = stubLayout({ listHeight: 2000, viewportHeight: 500 });
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        calls.push(call);
+        return calls.length === 1
+          ? json({
+              comments: commentList,
+              count: 3,
+              discussionChatId: GROUP,
+              discussionMessageId: ROOT,
+              nextOffsetId: ROOT + 1,
+              nextOffsetDate: 1_700_000_000,
+            })
+          : json({
+              comments: [comment({ id: ROOT - 1, text: 'first ever', reply: replyHeader(ROOT) })],
+              count: 3,
+              discussionChatId: GROUP,
+              discussionMessageId: ROOT,
+            });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'Load older comments' })).toBeDefined();
+
+      // The screen opens at the bottom; only a scroll toward the top asks for
+      // the next page.
+      fireEvent.scroll(scrollContainer());
+      expect(calls).toHaveLength(1);
+
+      scrollContainer().scrollTop = 0;
+      box.listHeight += 50;
+      fireEvent.scroll(scrollContainer());
+      expect(await within(threadSection()).findByText('first ever')).toBeDefined();
+      expect(calls).toHaveLength(2);
+      expect(calls[1].body).toEqual({
+        method: 'getComments',
+        params: { chatId: channel.id, messageId: 7, limit: 50, offsetId: ROOT + 1, offsetDate: 1_700_000_000 },
+      });
+      // The prepended comment keeps the viewport on the comment it showed.
+      expect(scrollContainer().scrollTop).toBe(50);
+
+      // The cursor is gone, so there is no button and no further read.
+      expect(screen.queryByRole('button', { name: 'Load older comments' })).toBeNull();
+      scrollContainer().scrollTop = 0;
+      fireEvent.scroll(scrollContainer());
+      expect(calls).toHaveLength(2);
     });
 
     it('merges live comments from the discussion group only', async () => {

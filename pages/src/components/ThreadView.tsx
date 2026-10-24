@@ -3,6 +3,7 @@ import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
+import { isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
 import type { ChatDto, MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
@@ -25,6 +26,7 @@ export function ThreadView({
   messages,
   loading,
   loadingOlder,
+  hasMoreOlder,
   pending,
   error,
   botCommands,
@@ -62,6 +64,10 @@ export function ThreadView({
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
+
+  // Older pages are prepended above the viewport; keep the row the reader was
+  // looking at where it was instead of letting the new content push it down.
+  usePrependAnchor(scrollRef, chat === null ? -1 : chat.id, messages[0]?.id ?? null, messages.length);
 
   // The caller is refreshed every render (the `hooks.ts` pattern), so a read
   // the debounce flushes still reaches it; the chat id captured with the
@@ -239,9 +245,12 @@ export function ThreadView({
           stickToBottom.current = isAtBottom(element);
           positions.remember(readThreadPosition(element, chat.id));
           reportVisible(element);
+          // Read the next older page before the reader reaches the end of the
+          // loaded window; the controller serializes the requests.
+          if (hasMoreOlder && !loadingOlder && isNearTop(element)) onLoadOlder();
         }}
       >
-        {messages.length > 0 ? (
+        {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (
           <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
             {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older messages'}
           </button>

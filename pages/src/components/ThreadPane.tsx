@@ -87,6 +87,7 @@ export function ThreadPane({
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}
       loadingOlder={threads.loadingOlder}
+      hasMoreOlder={threads.thread?.hasMoreOlder ?? false}
       pending={threads.pending}
       error={threads.error}
       botCommands={threads.botCommands}

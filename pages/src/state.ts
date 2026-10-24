@@ -150,6 +150,10 @@ export interface ChatThread {
   chat was opened normally.
   */
   focusMessageId: number | null;
+  /**
+  Whether history older than the loaded window may still exist.
+  */
+  hasMoreOlder: boolean;
 }
 
 /**

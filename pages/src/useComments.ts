@@ -82,6 +82,9 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   useLayoutEffect(() => {
     threadRef.current = thread;
   }, [thread]);
+  // A page in flight, tracked outside React state so a scroll event and the
+  // button cannot both start one before the disabled state paints.
+  const loadingOlderRef = useRef(false);
 
   const { applyPoll, refreshPoll, votingIds, vote } = useCommentsPoll(threadRef, setThread, onError);
   const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
@@ -156,9 +159,11 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   }, []);
 
   const loadOlder = useCallback(async (): Promise<void> => {
-    const oldest = thread?.nextOffset;
-    if (!thread || !oldest) return;
-    const post = { chatId: thread.chat.id, messageId: thread.post.id };
+    const open = threadRef.current;
+    const oldest = open?.nextOffset;
+    if (!open || !oldest || loadingOlderRef.current) return;
+    const post = { chatId: open.chat.id, messageId: open.post.id };
+    loadingOlderRef.current = true;
     setLoadingOlder(true);
     setError(null);
     try {
@@ -178,9 +183,10 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     } catch (failure) {
       setError(failureText(failure));
     } finally {
+      loadingOlderRef.current = false;
       setLoadingOlder(false);
     }
-  }, [thread]);
+  }, []);
 
   /**
   Folds a sent comment into the open window and hands it to the caller for the

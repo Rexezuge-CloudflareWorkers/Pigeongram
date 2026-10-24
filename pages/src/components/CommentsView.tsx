@@ -3,6 +3,7 @@ import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import type { PendingMessage } from '../outbox';
 import type { CommentsThread } from '../state';
+import { isNearTop, usePrependAnchor } from '../thread-paging';
 import { settleToBottom } from '../thread-position';
 import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
 import type { UploadRequest } from '../upload';
@@ -93,6 +94,16 @@ export function CommentsView({
   // another post's thread invalidates a stale banner without an effect.
   const [replyingTo, setReplyingTo] = useState<{ postId: number; message: MessageDto } | null>(null);
 
+  // Older comments are prepended above the viewport; keep the reader's row in
+  // place. The post block above the list never changes, so only the first
+  // comment's id matters.
+  usePrependAnchor(
+    scrollRef,
+    `${String(thread.chat.id)}:${String(thread.post.id)}`,
+    thread.comments[0]?.id ?? null,
+    thread.comments.length,
+  );
+
   const comments = thread.comments;
   const lastId = comments.at(-1)?.id ?? 0;
   // The controller scopes comment sends by post; another post's pending
@@ -158,6 +169,9 @@ export function CommentsView({
         onScroll={(event) => {
           const element = event.currentTarget;
           stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+          // Read the next older page before the reader reaches the end of the
+          // loaded window; the controller serializes the requests.
+          if (thread.nextOffset !== null && !loadingOlder && isNearTop(element)) onLoadOlder();
         }}
       >
         <div className="comments-post">

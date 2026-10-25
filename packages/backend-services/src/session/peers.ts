@@ -1,4 +1,5 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
+import { log } from './log';
 import { rpcErrorText } from './rpc-errors';
 
 /**
@@ -89,7 +90,7 @@ export async function withPeerRetry<T>(client: TelegramClient, peerIds: readonly
     return await run();
   } catch (error) {
     if (peerIds.length === 0 || !isPeerRejected(error)) throw error;
-    console.warn('[engine] peer rejected, refreshing', { peerIds, error: rpcErrorText(error) });
+    log.warn('peer.refreshing', { peerIds, error: rpcErrorText(error) });
     await Promise.all(peerIds.map((peerId) => refreshPeer(client, peerId)));
     return run();
   }

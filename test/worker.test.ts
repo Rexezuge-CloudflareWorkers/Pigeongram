@@ -133,7 +133,10 @@ describe('worker entry', () => {
     // The test env has no SESSION_ENGINE binding; reaching this 503 means the
     // request passed the Access gate.
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('Session engine unreachable') as string });
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Session engine unreachable') as string,
+      code: 'unavailable',
+    });
   });
 
   it('rejects an expired Access assertion', async () => {

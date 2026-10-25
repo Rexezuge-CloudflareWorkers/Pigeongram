@@ -1,6 +1,8 @@
 import type { TelegramDriver } from './driver';
 import type { AvatarCache } from './avatar-cache';
+import type { UploadConfig } from './config';
 import { EngineError } from './errors';
+import { log } from './log';
 import type { MediaDownload } from './media';
 import { requirePeerId } from './params';
 import { parseUploadGroupSpec, parseUploadSpec } from './upload-spec';
@@ -44,14 +46,14 @@ export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache,
   } catch (error) {
     // The cache is an optimization: a rejected write (the Free plan's row
     // budget) must still serve the bytes that were just downloaded.
-    console.warn('[engine] avatar cache write failed', error);
+    log.warn('avatar.cache_write_failed', { error });
   }
   return avatarBytes(avatar.mime, avatar.bytes);
 }
 
-export async function uploadResponse(driver: TelegramDriver, request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+export async function uploadResponse(driver: TelegramDriver, request: Request, url: URL, config: UploadConfig): Promise<Response> {
   try {
-    const spec = parseUploadSpec(url, request, env);
+    const spec = parseUploadSpec(url, request, config);
     const body = request.body;
     if (!body) throw new EngineError('Upload body is required', 400);
     const message = await driver.sendUpload(spec, body, request.signal);
@@ -65,9 +67,9 @@ export async function uploadResponse(driver: TelegramDriver, request: Request, u
   }
 }
 
-export async function uploadGroupResponse(driver: TelegramDriver, request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+export async function uploadGroupResponse(driver: TelegramDriver, request: Request, url: URL, config: UploadConfig): Promise<Response> {
   try {
-    const spec = parseUploadGroupSpec(url, request, env);
+    const spec = parseUploadGroupSpec(url, request, config);
     const body = request.body;
     if (!body) throw new EngineError('Upload body is required', 400);
     const messages = await driver.sendUploadGroup(spec, body, request.signal);

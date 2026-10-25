@@ -1,5 +1,6 @@
 import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
+import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
 import { windowedStream } from './media-stream';
 
@@ -11,21 +12,6 @@ import { windowedStream } from './media-stream';
  * around. Uploads live in `upload.ts`; both stream through mtcute without
  * buffering the payload in the isolate.
  */
-
-/**
- * Byte alignment for Telegram's ranged downloads.
- *
- * `upload.getFile` only asks for a 4 KB-aligned `offset`, but mtcute's
- * `downloadAsIterable` fetches `partSize`-sized chunks (128 KB–1 MB) from that
- * offset without the `precise` flag, and Telegram requires every part to stay
- * inside one 1 MB block (`offset / 1MB == (offset + limit - 1) / 1MB`). A
- * merely 4 KB-aligned offset can sit a few bytes before a block boundary, so
- * the first chunk crosses it and Telegram answers `LIMIT_INVALID` — which is
- * what killed deep seeks into large videos (`bytes=259981312-` is 64 KB before
- * the 248th block). Starting on a 1 MB block keeps every chunk inside its
- * block; the prefix up to the requested start is dropped from the stream.
- */
-const DOWNLOAD_ALIGNMENT = 1024 * 1024;
 
 export type AvatarSize = 'small' | 'big';
 
@@ -60,7 +46,7 @@ export interface MessageMediaOptions {
  *
  * `thumb: true` resolves the best thumbnail of the media instead — the poster
  * for a video or the preview of a photo. A `range` produces a partial
- * response from the closest 4 KB-aligned offset, which is what lets `<video>`
+ * response from the closest block-aligned offset, which is what lets `<video>`
  * seek without downloading the whole file (`media-stream.ts` cuts the window
  * itself, for the reason documented there).
  */
@@ -69,6 +55,7 @@ export async function streamMessageMedia(
   chatId: number,
   messageId: number,
   options: MessageMediaOptions = {},
+  mediaWindowBytes = MEDIA_WINDOW_BYTES,
 ): Promise<MediaDownload> {
   const [message] = await client.getMessages(chatId, [messageId]);
   if (!message) throw new EngineError('Message not found', 404);
@@ -91,7 +78,7 @@ export async function streamMessageMedia(
   if (photo || !options.range) {
     return fullDownload(client, media, mime, !photo);
   }
-  return rangedDownload(client, media, mime, options.range);
+  return rangedDownload(client, media, mime, options.range, mediaWindowBytes);
 }
 
 /**
@@ -177,6 +164,7 @@ function rangedDownload(
   location: FileLocation,
   mime: string,
   range: { start: number; end: number | null },
+  mediaWindowBytes: number,
 ): MediaDownload {
   const size = location.fileSize ?? null;
   if (size === null) {
@@ -190,9 +178,9 @@ function rangedDownload(
     throw new EngineError('Requested range is outside the file', 416);
   }
 
-  // Telegram parts must not straddle a 1 MB block, so start at the closest
+  // Telegram parts must not straddle a part block, so start at the closest
   // block below the request and drop the extra prefix bytes from the stream.
-  const aligned = range.start - (range.start % DOWNLOAD_ALIGNMENT);
+  const aligned = range.start - (range.start % mediaWindowBytes);
   const length = end - range.start + 1;
   return {
     stream: windowedStream(client, location, { offset: aligned, drop: range.start - aligned, length }),

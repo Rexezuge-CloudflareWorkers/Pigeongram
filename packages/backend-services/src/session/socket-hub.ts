@@ -1,6 +1,7 @@
 import type { ClientSocketMessage, ServerSocketMessage } from '../types';
 import { decodeBase64 } from './base64';
 import { MAX_SIGNALING_BYTES } from './call-params';
+import { log } from './log';
 
 /**
  * The largest client frame the hub will parse. Signalling packets are capped
@@ -124,7 +125,7 @@ export class UpdatesSocketHub {
       return;
     }
     const work = this.host.sendCallSignaling(callId, bytes).catch((error) => {
-      console.error('[engine] call signalling failed', error);
+      log.error('call.signaling_failed', { error });
     });
     const holder = this.state as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
     if (typeof holder.waitUntil === 'function') {

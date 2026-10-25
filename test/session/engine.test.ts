@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '../../packages/backend-services/src/types';
 import { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
+import { readEngineConfig } from '../../packages/backend-services/src/session/config';
 import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
 import { SessionEngine } from '../../packages/backend-services/src/session/engine';
 import { errorResponse } from '../../packages/backend-services/src/session/http';
@@ -202,7 +203,7 @@ describe('SessionEngine (request handling)', () => {
     const { engine } = createHarness();
     const response = await engine.fetch(request('GET', '/user/nope'));
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: 'Not found' });
+    await expect(response.json()).resolves.toEqual({ error: 'Not found', code: 'not_found' });
   });
 
   it('400s a non-JSON body', async () => {
@@ -521,7 +522,7 @@ describe('SessionEngine (storage write budget)', () => {
         },
         counters: () => counters,
       },
-      env: {},
+      config: readEngineConfig({}),
     } as unknown as ConstructorParameters<typeof SessionLifecycle>[0]);
 
     await expect(lifecycle.runWake('manual')).resolves.toEqual(counters);
@@ -724,12 +725,12 @@ describe('SessionEngine (route table over the seams)', () => {
     for (const [method, path] of wrongVerbs) {
       const response = await engine.fetch(request(method, path));
       expect(response.status, `${method} ${path}`).toBe(405);
-      await expect(response.json()).resolves.toEqual({ error: 'Method not allowed' });
+      await expect(response.json()).resolves.toEqual({ error: 'Method not allowed', code: 'validation' });
     }
 
     const missing = await engine.fetch(request('GET', '/user/nope'));
     expect(missing.status).toBe(404);
-    await expect(missing.json()).resolves.toEqual({ error: 'Not found' });
+    await expect(missing.json()).resolves.toEqual({ error: 'Not found', code: 'not_found' });
   });
 
   it('completes a QR login when the write budget refuses the snapshot', async () => {

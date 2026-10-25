@@ -1,6 +1,8 @@
 import type { ConnectionState } from '@mtcute/core';
 import { User } from '@mtcute/core';
 import type { MeDto, MessageDto, UpdateEvent } from '../types';
+import type { EngineConfig } from './config';
+import { readEngineConfig } from './config';
 import { toMeDto } from './dto';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
 import { readAvatar, readAvatarVersion, streamMessageMedia } from './media';
@@ -89,6 +91,7 @@ export class TelegramDriver {
     private readonly env: CloudflareEnv,
     private readonly storage: TransactionalStorageLike,
     private readonly createBundle: MtBundleFactory = createMtBundle,
+    private readonly config: EngineConfig = readEngineConfig(env),
   ) {
     this.#albums = new UnreadAlbumLedger(storage.sql);
   }
@@ -310,7 +313,7 @@ export class TelegramDriver {
 
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
     const { client } = this.#ensure();
-    return withPeerRetry(client, [chatId], () => streamMessageMedia(client, chatId, messageId, options));
+    return withPeerRetry(client, [chatId], () => streamMessageMedia(client, chatId, messageId, options, this.config.mediaWindowBytes));
   }
 
   /**

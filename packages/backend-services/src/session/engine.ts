@@ -1,11 +1,14 @@
 import type { EngineStateDto, MeDto, UpdateEvent } from '../types';
 import { AvatarCache } from './avatar-cache';
+import type { EngineConfig } from './config';
+import { readEngineConfig } from './config';
 import { TelegramDriver } from './driver';
 import { EngineError } from './errors';
 import { errorResponse, readJsonBody } from './http';
 import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
 import { SessionLifecycle } from './lifecycle';
+import { log } from './log';
 import { avatarResponse, fileResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
 import { UpdatesSocketHub } from './socket-hub';
@@ -65,6 +68,7 @@ export interface EngineDeps {
  * `rpc-methods.ts`.
  */
 export class SessionEngine {
+  private readonly config: EngineConfig;
   private readonly store: EngineStore;
   private readonly avatars: AvatarCache;
   private readonly driver: TelegramDriver;
@@ -76,13 +80,14 @@ export class SessionEngine {
 
   constructor(
     private readonly state: DurableObjectState,
-    private readonly env: CloudflareEnv,
+    env: CloudflareEnv,
     deps: EngineDeps = {},
   ) {
     const now = deps.now ?? (() => Date.now());
+    this.config = readEngineConfig(env);
     this.store = deps.store ?? new EngineStore(state.storage.sql);
     this.avatars = deps.avatars ?? new AvatarCache(state.storage.sql, now);
-    this.driver = deps.driver ?? new TelegramDriver(env, state.storage);
+    this.driver = deps.driver ?? new TelegramDriver(env, state.storage, undefined, this.config);
     this.me = readStoredMe(this.store);
     this.hub = new UpdatesSocketHub(state, {
       ensureLive: () => this.lifecycle.ensureLive(),
@@ -97,7 +102,7 @@ export class SessionEngine {
         void this.afterLogin();
       },
       (error) => {
-        console.error('[engine] login failed', error);
+        log.error('login.failed', { error });
       },
     );
     this.loginApi = new LoginApi(this.login, () => this.stateSnapshot());
@@ -107,7 +112,7 @@ export class SessionEngine {
       login: this.login,
       state,
       store: this.store,
-      env,
+      config: this.config,
       now,
     });
     this.driver.onEvent((event) => {
@@ -137,7 +142,7 @@ export class SessionEngine {
       } catch (error) {
         // A rejected block resets the object, and a missing credential is a
         // configuration answer, not a crash: the first bridge call reports it.
-        console.error('[engine] storage preparation failed', error);
+        log.error('storage.prepare_failed', { error });
       }
     });
   }
@@ -186,12 +191,12 @@ export class SessionEngine {
         return Response.json(await this.rpc(request));
       }
       case 'POST /user/upload': {
-        const response = await uploadResponse(this.driver, request, url, this.env);
+        const response = await uploadResponse(this.driver, request, url, this.config);
         await this.lifecycle.afterActivity();
         return response;
       }
       case 'POST /user/upload-group': {
-        const response = await uploadGroupResponse(this.driver, request, url, this.env);
+        const response = await uploadGroupResponse(this.driver, request, url, this.config);
         await this.lifecycle.afterActivity();
         return response;
       }
@@ -213,9 +218,9 @@ export class SessionEngine {
       }
       default: {
         if (ENGINE_PATHS.has(url.pathname)) {
-          return Response.json({ error: 'Method not allowed' }, { status: 405 });
+          throw new EngineError('Method not allowed', 405);
         }
-        return Response.json({ error: 'Not found' }, { status: 404 });
+        throw new EngineError('Not found', 404);
       }
     }
   }
@@ -282,7 +287,7 @@ export class SessionEngine {
     try {
       this.store.writeMeta(key, value);
     } catch (error) {
-      console.warn(`[engine] failed to persist ${key}`, error);
+      log.warn('meta.write_failed', { key, error });
     }
   }
 
@@ -329,7 +334,7 @@ function readStoredMe(store: EngineStore): MeDto | null {
     // A corrupt snapshot is not worth a delete (deletes are writes on the
     // Free plan): the next `/user/state` reads the account from Telegram and
     // writes a fresh one.
-    console.warn('[engine] stored profile snapshot is corrupt', error);
+    log.warn('profile.snapshot_corrupt', { error });
     return null;
   }
 }

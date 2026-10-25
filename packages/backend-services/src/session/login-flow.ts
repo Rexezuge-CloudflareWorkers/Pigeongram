@@ -1,6 +1,7 @@
 import type { LoginPhase, MeDto } from '../types';
 import type { TelegramDriver } from './driver';
 import { EngineError } from './errors';
+import { log } from './log';
 import { describeLoginFailure } from './rpc-errors';
 
 export interface LoginSnapshot {
@@ -139,7 +140,7 @@ export class LoginFlow {
           // Printed so a failed attempt is diagnosable from the engine log:
           // this line means Telegram accepted the code the phone sent, and
           // anything after it is our side of the bridge.
-          console.log('[engine] login: QR code accepted by a client');
+          log.info('login.qr_accepted');
           if (this.#phase === 'qr') this.#phase = 'scanned';
         },
         waitForPassword: () => {

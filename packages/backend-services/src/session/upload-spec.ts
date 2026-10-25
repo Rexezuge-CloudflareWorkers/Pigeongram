@@ -1,5 +1,6 @@
 import { Long } from '@mtcute/core';
 import type { UploadKind } from '../types';
+import type { UploadConfig } from './config';
 import { EngineError } from './errors';
 import { optionalRandomId } from './params';
 
@@ -62,7 +63,6 @@ export interface UploadGroupSpec {
   replyTo?: number;
 }
 
-const DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 const MAX_CAPTION_LENGTH = 1024;
 const MAX_FILE_NAME_LENGTH = 255;
 const MAX_MIME_LENGTH = 100;
@@ -71,14 +71,14 @@ const MAX_GROUP_ITEMS = 10;
 const MANIFEST_MAX_LENGTH = 16 * 1024;
 const UPLOAD_KINDS: ReadonlySet<UploadKind> = new Set(['photo', 'video', 'animation', 'document']);
 
-export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv): UploadSpec {
+export function parseUploadSpec(url: URL, request: Request, config: UploadConfig): UploadSpec {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const kind = parseKind(url.searchParams.get('kind'));
 
   const size = parseQuantity(url.searchParams.get('size'));
   if (size === null) throw new EngineError('size query parameter is required', 400);
   checkDeclaredLength(request, size);
-  checkMaxSize(size, env);
+  checkMaxSize(size, config);
 
   const caption = parseCaption(url.searchParams.get('caption'));
   const commentTo = parseOptionalMessageId(url.searchParams.get('commentTo'), 'commentTo');
@@ -106,7 +106,7 @@ export function parseUploadSpec(url: URL, request: Request, env: CloudflareEnv):
   };
 }
 
-export function parseUploadGroupSpec(url: URL, request: Request, env: CloudflareEnv): UploadGroupSpec {
+export function parseUploadGroupSpec(url: URL, request: Request, config: UploadConfig): UploadGroupSpec {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const items = parseManifest(url.searchParams.get('manifest'));
   const total = items.reduce((sum, item) => sum + item.size, 0);
@@ -114,7 +114,7 @@ export function parseUploadGroupSpec(url: URL, request: Request, env: Cloudflare
     throw new EngineError('manifest item sizes are not usable', 400);
   }
   checkDeclaredLength(request, total);
-  checkMaxSize(total, env, ' in total');
+  checkMaxSize(total, config, ' in total');
 
   const caption = parseCaption(url.searchParams.get('caption'));
   const commentTo = parseOptionalMessageId(url.searchParams.get('commentTo'), 'commentTo');
@@ -252,16 +252,10 @@ function checkDeclaredLength(request: Request, size: number): void {
   }
 }
 
-function checkMaxSize(size: number, env: CloudflareEnv, suffix = ''): void {
-  const maxBytes = maxUploadBytes(env);
-  if (size > maxBytes) {
-    throw new EngineError(`Uploads are limited to ${formatLimit(maxBytes)}${suffix}`, 413);
+function checkMaxSize(size: number, config: UploadConfig, suffix = ''): void {
+  if (size > config.maxUploadBytes) {
+    throw new EngineError(`Uploads are limited to ${formatLimit(config.maxUploadBytes)}${suffix}`, 413);
   }
-}
-
-function maxUploadBytes(env: CloudflareEnv): number {
-  const parsed = Number(env.UPLOAD_MAX_BYTES ?? '');
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_UPLOAD_BYTES;
 }
 
 function formatLimit(bytes: number): string {

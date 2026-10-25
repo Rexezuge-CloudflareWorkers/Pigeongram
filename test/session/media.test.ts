@@ -117,6 +117,15 @@ describe('streamMessageMedia', () => {
     await expect(body(download)).resolves.toEqual(bytesAt(start, 100));
   });
 
+  it('aligns to the media window it is given', async () => {
+    const { client, requests } = fakeClient(VIDEO);
+
+    const download = await streamMessageMedia(client, 1, 2, { range: { start: 5000, end: 5099 } }, 4096);
+
+    expect(requests[0]?.offset).toBe(4096);
+    await expect(body(download)).resolves.toEqual(bytesAt(5000, 100));
+  });
+
   it('rejects a range that starts past the file', async () => {
     const { client } = fakeClient(VIDEO);
     await expect(streamMessageMedia(client, 1, 2, { range: { start: SIZE, end: null } })).rejects.toThrow('outside the file');

@@ -16,7 +16,7 @@ function request(query: string, body = 'abcdef', headers: Record<string, string>
   return { url, request: new Request(url, { method: 'POST', body, headers }) };
 }
 
-const env = { UPLOAD_MAX_BYTES: '100' } as unknown as CloudflareEnv;
+const config = { maxUploadBytes: 100 };
 
 function item(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return { kind: 'document', size: 3, fileName: 'note.txt', mime: 'text/plain', ...overrides };
@@ -25,7 +25,7 @@ function item(overrides: Record<string, unknown> = {}): Record<string, unknown> 
 describe('parseUploadGroupSpec', () => {
   it('decodes an unpadded base64url manifest and keeps each item', () => {
     const { url, request: body } = request(`chatId=42&manifest=${encode([item(), item({ fileName: 'other.txt' })])}`);
-    const spec = parseUploadGroupSpec(url, body, env);
+    const spec = parseUploadGroupSpec(url, body, config);
 
     expect(spec.chatId).toBe(42);
     expect(spec.items).toEqual([
@@ -37,14 +37,14 @@ describe('parseUploadGroupSpec', () => {
   it('accepts a padded base64 manifest as well', () => {
     const padded = Buffer.from(JSON.stringify([item(), item()])).toString('base64');
     const { url, request: body } = request(`chatId=1&manifest=${padded}`);
-    const spec = parseUploadGroupSpec(url, body, env);
+    const spec = parseUploadGroupSpec(url, body, config);
 
     expect(spec.items).toHaveLength(2);
   });
 
   it('keeps captions and optional coordinates', () => {
     const { url, request: body } = request(`chatId=-100&manifest=${encode([item(), item()])}&caption=Album&commentTo=9&replyTo=11`);
-    const spec = parseUploadGroupSpec(url, body, env);
+    const spec = parseUploadGroupSpec(url, body, config);
 
     expect(spec).toMatchObject({ chatId: -100, caption: 'Album', commentTo: 9, replyTo: 11 });
   });
@@ -52,20 +52,20 @@ describe('parseUploadGroupSpec', () => {
   it('accepts visual media together but not a document mixed with one', () => {
     const visualMedia = [item({ kind: 'photo' }), item({ kind: 'video' }), item({ kind: 'animation' })];
     const visual = request(`chatId=1&manifest=${encode(visualMedia)}`);
-    expect(() => parseUploadGroupSpec(visual.url, visual.request, env)).not.toThrow();
+    expect(() => parseUploadGroupSpec(visual.url, visual.request, config)).not.toThrow();
 
     const mixedMedia = [item({ kind: 'document' }), item({ kind: 'photo' })];
     const mixed = request(`chatId=1&manifest=${encode(mixedMedia)}`);
-    expect(() => parseUploadGroupSpec(mixed.url, mixed.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(mixed.url, mixed.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
   });
 
   it('caps an album at the route and item limits', () => {
     const one = request(`chatId=1&manifest=${encode([item()])}`);
-    expect(() => parseUploadGroupSpec(one.url, one.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(one.url, one.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
 
     const eleven = Array.from({ length: 11 }, () => item({ size: 1 }));
     const capped = request(`chatId=1&manifest=${encode(eleven)}`);
-    expect(() => parseUploadGroupSpec(capped.url, capped.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(capped.url, capped.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
   });
 
   it('rejects malformed manifests and item fields', () => {
@@ -81,15 +81,15 @@ describe('parseUploadGroupSpec', () => {
     for (const manifest of cases) {
       const value = typeof manifest === 'string' ? manifest : encode(manifest);
       const { url, request: body } = request(`chatId=1&manifest=${value}`);
-      expect(() => parseUploadGroupSpec(url, body, env), String(manifest)).toThrowError(expect.objectContaining({ status: 400 }));
+      expect(() => parseUploadGroupSpec(url, body, config), String(manifest)).toThrowError(expect.objectContaining({ status: 400 }));
     }
   });
 
   it('requires the manifest and validates the total against the upload cap', () => {
     const missing = request('chatId=1');
-    expect(() => parseUploadGroupSpec(missing.url, missing.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(missing.url, missing.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
 
-    const capped = { UPLOAD_MAX_BYTES: '5' } as unknown as CloudflareEnv;
+    const capped = { maxUploadBytes: 5 };
     const tooLarge = request(`chatId=1&manifest=${encode([item({ size: 3 }), item({ size: 3 })])}`);
     expect(() => parseUploadGroupSpec(tooLarge.url, tooLarge.request, capped)).toThrowError(expect.objectContaining({ status: 413 }));
   });
@@ -98,15 +98,15 @@ describe('parseUploadGroupSpec', () => {
     const { url, request: body } = request(`chatId=1&manifest=${encode([item(), item()])}`, 'abcdef', {
       'content-length': '5',
     });
-    expect(() => parseUploadGroupSpec(url, body, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(url, body, config)).toThrowError(expect.objectContaining({ status: 400 }));
   });
 
   it('rejects a caption over the Telegram limit and unusable coordinates', () => {
     const longCaption = request(`chatId=1&manifest=${encode([item(), item()])}&caption=${'x'.repeat(1025)}`);
-    expect(() => parseUploadGroupSpec(longCaption.url, longCaption.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(longCaption.url, longCaption.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
 
     const badReply = request(`chatId=1&manifest=${encode([item(), item()])}&replyTo=0`);
-    expect(() => parseUploadGroupSpec(badReply.url, badReply.request, env)).toThrowError(expect.objectContaining({ status: 400 }));
+    expect(() => parseUploadGroupSpec(badReply.url, badReply.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
   });
 });
 
@@ -118,7 +118,7 @@ describe('parseUploadSpec random id', () => {
 
   it('keeps the client-chosen random id, so a retry is idempotent', () => {
     const { url, request: body } = single('chatId=1&kind=document&size=6&randomId=123456789');
-    const spec = parseUploadSpec(url, body, env);
+    const spec = parseUploadSpec(url, body, config);
 
     expect(spec.randomId?.toString()).toBe('123456789');
   });
@@ -126,7 +126,7 @@ describe('parseUploadSpec random id', () => {
   it('rejects a random id that is not a positive 64-bit integer', () => {
     for (const randomId of ['nope', '0', '-1', '1.5', '9223372036854775808']) {
       const { url, request: body } = single(`chatId=1&kind=document&size=6&randomId=${randomId}`);
-      expect(() => parseUploadSpec(url, body, env), randomId).toThrowError(expect.objectContaining({ status: 400 }));
+      expect(() => parseUploadSpec(url, body, config), randomId).toThrowError(expect.objectContaining({ status: 400 }));
     }
   });
 });

@@ -112,7 +112,7 @@ export const submitPassword = (password: string): Promise<EngineStateDto> =>
 
 export const logout = (): Promise<{ ok: true }> => request('/user/logout', { method: 'POST' });
 
-export const rpc = <T>(method: RpcMethod | 'batch', params?: Record<string, unknown>): Promise<T> =>
+export const rpc = <T>(method: RpcMethod, params?: Record<string, unknown>): Promise<T> =>
   request<T>('/user/rpc', { method: 'POST', body: JSON.stringify({ method, params }) });
 
 /**

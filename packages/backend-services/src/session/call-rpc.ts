@@ -1,6 +1,6 @@
-import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
+import type { TelegramClient } from '@mtcute/core/client.js';
 import type { CallRpcMethod, CallResult, GetCallDhConfigResult } from '../call-types';
 import { encodeBase64 } from './base64';
 import { discardReasonConstructor, toCallDto } from './call-dto';
@@ -18,7 +18,8 @@ import {
 import { callProtocol } from './call-protocol';
 import type { CallRegistry } from './call-registry';
 import { EngineError } from './errors';
-import { requirePeerId, requireRecord } from './params';
+import { requirePeerId } from './params';
+import type { PartialMethodTable } from './rpc-methods';
 
 /**
  * The calls half of the bridge.
@@ -43,40 +44,28 @@ import { requirePeerId, requireRecord } from './params';
 const DH_RANDOM_LENGTH = 256;
 
 /**
- * Whether a method belongs to the calls surface.
- */
-export function isCallRpcMethod(method: string): method is CallRpcMethod {
-  return (
-    method === 'getCallDhConfig' ||
-    method === 'requestCall' ||
-    method === 'receivedCall' ||
-    method === 'acceptCall' ||
-    method === 'confirmCall' ||
-    method === 'discardCall' ||
-    method === 'rateCall'
-  );
-}
-
-/**
- * Runs one calls method.
+ * The calls surface, as one entry per method.
  *
- * The result is `null` when the method is not a calls method at all, so the
- * bridge's own dispatcher can pass the call through without a second lookup.
- * A method that returns nothing of its own answers with an empty object.
+ * The registry spreads this table in with the rest of the bridge's methods, so
+ * a call method is no longer a special case in the dispatcher: it is an
+ * ordinary entry that happens to be a write. The table's type covers every
+ * member of {@link CallRpcMethod}, so adding one to the contract fails the
+ * build until it is classified here.
  */
-export async function dispatchCallRpc(client: TelegramClient, method: string, rawParams: unknown, calls: CallRegistry): Promise<unknown> {
-  if (!isCallRpcMethod(method)) return null;
-  const params = requireRecord(rawParams);
-  switch (method) {
-    case 'getCallDhConfig': {
-      return readDhConfig(client);
-    }
-    case 'requestCall': {
+export const callRpcMethods = {
+  getCallDhConfig: {
+    readOnly: false,
+    run: async (context) => readDhConfig(context.client),
+  },
+
+  requestCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const chatId = requirePeerId(params.chatId);
       const gAHash = requireDhHash(params.gAHash, 'gAHash');
       const randomId = requireCallRandomId(params.randomId);
-      const userId = await client.resolveUser(chatId);
-      const result = await client.call({
+      const userId = await context.client.resolveUser(chatId);
+      const result = await context.client.call({
         _: 'phone.requestCall',
         video: false,
         userId,
@@ -84,73 +73,88 @@ export async function dispatchCallRpc(client: TelegramClient, method: string, ra
         gAHash,
         protocol: callProtocol(),
       });
-      return remember(calls, result.phoneCall);
-    }
-    case 'receivedCall': {
+      return remember(context.calls, result.phoneCall);
+    },
+  },
+
+  receivedCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const callId = requireCallId(params.callId);
-      await client.call({ _: 'phone.receivedCall', peer: inputPhoneCall(callId, calls) });
+      await context.client.call({ _: 'phone.receivedCall', peer: inputPhoneCall(callId, context.calls) });
       return {};
-    }
-    case 'acceptCall': {
+    },
+  },
+
+  acceptCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const callId = requireCallId(params.callId);
       const gB = requireDhValue(params.gB, 'gB');
-      const result = await client.call({
+      const result = await context.client.call({
         _: 'phone.acceptCall',
-        peer: inputPhoneCall(callId, calls),
+        peer: inputPhoneCall(callId, context.calls),
         gB,
         protocol: callProtocol(),
       });
-      return remember(calls, result.phoneCall);
-    }
-    case 'confirmCall': {
+      return remember(context.calls, result.phoneCall);
+    },
+  },
+
+  confirmCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const callId = requireCallId(params.callId);
       const gA = requireDhValue(params.gA, 'gA');
       const keyFingerprint = requireFingerprint(params.keyFingerprint);
-      const result = await client.call({
+      const result = await context.client.call({
         _: 'phone.confirmCall',
-        peer: inputPhoneCall(callId, calls),
+        peer: inputPhoneCall(callId, context.calls),
         gA,
         keyFingerprint,
         protocol: callProtocol(),
       });
-      return remember(calls, result.phoneCall);
-    }
-    case 'discardCall': {
+      return remember(context.calls, result.phoneCall);
+    },
+  },
+
+  discardCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const callId = requireCallId(params.callId);
       const reason = requireDiscardReason(params.reason);
       const duration = requireDuration(params.duration);
       const video = params.video === true;
-      await client.call({
+      await context.client.call({
         _: 'phone.discardCall',
         video,
-        peer: inputPhoneCall(callId, calls),
+        peer: inputPhoneCall(callId, context.calls),
         duration,
         reason: { _: discardReasonConstructor(reason) } as tl.TypePhoneCallDiscardReason,
         connectionId: Long.ZERO,
       });
-      calls.forget(callId.toString());
+      context.calls.forget(callId.toString());
       return {};
-    }
-    case 'rateCall': {
+    },
+  },
+
+  rateCall: {
+    readOnly: false,
+    run: async (context, params) => {
       const callId = requireCallId(params.callId);
       const rating = requireRating(params.rating);
       const comment = params.comment === undefined ? '' : requireComment(params.comment);
-      await client.call({
+      await context.client.call({
         _: 'phone.setCallRating',
-        peer: inputPhoneCall(callId, calls),
+        peer: inputPhoneCall(callId, context.calls),
         rating,
         comment,
       });
-      calls.forget(callId.toString());
+      context.calls.forget(callId.toString());
       return {};
-    }
-    default: {
-      // Every method of the union is handled above. The branch is here for
-      // the compiler, and for a method added to the union without a case.
-      throw new EngineError('Unknown call method', 404);
-    }
-  }
-}
+    },
+  },
+} as const satisfies PartialMethodTable<CallRpcMethod>;
 
 /**
  * Relays one signalling packet to the other peer.

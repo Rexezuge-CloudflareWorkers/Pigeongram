@@ -18,12 +18,51 @@ Name of the single Durable Object instance that owns the account.
 export const ENGINE_OBJECT_NAME = 'main';
 
 /**
+ * The paths the engine serves. A request whose path is here but whose method
+ * is not is a 405, not a 404: the resource exists and the verb is wrong.
+ */
+const ENGINE_PATHS: ReadonlySet<string> = new Set([
+  '/user/updates',
+  '/user/state',
+  '/user/login/qr',
+  '/user/login/phone',
+  '/user/login/code',
+  '/user/login/password',
+  '/user/login/cancel',
+  '/user/logout',
+  '/user/rpc',
+  '/user/upload',
+  '/user/upload-group',
+  '/user/wake',
+  '/user/stats',
+  '/user/file',
+  '/user/avatar',
+]);
+
+/**
+ * The collaborators a test may replace. Production builds them from the DO's
+ * storage and the environment, exactly as before; the seams exist so the
+ * route table, the quota failures and the clock can be exercised without a
+ * real Telegram session.
+ */
+export interface EngineDeps {
+  driver?: TelegramDriver;
+  store?: EngineStore;
+  avatars?: AvatarCache;
+  /**
+   * The engine's clock. Defaults to `Date.now`; the wake cadence and the
+   * avatar cache's ordering read it.
+   */
+  now?: () => number;
+}
+
+/**
  * The session engine: one Durable Object instance owns one Telegram account.
  *
  * The class is the Durable Object's HTTP surface and the owner of the
  * account's state; the wake and live lifecycle — the two modes the mtcute
  * client runs in — lives in `lifecycle.ts`, and the bridge's methods live in
- * `rpc.ts`.
+ * `rpc-methods.ts`.
  */
 export class SessionEngine {
   private readonly store: EngineStore;
@@ -38,10 +77,12 @@ export class SessionEngine {
   constructor(
     private readonly state: DurableObjectState,
     private readonly env: CloudflareEnv,
+    deps: EngineDeps = {},
   ) {
-    this.store = new EngineStore(state.storage.sql);
-    this.avatars = new AvatarCache(state.storage.sql);
-    this.driver = new TelegramDriver(env, state.storage);
+    const now = deps.now ?? (() => Date.now());
+    this.store = deps.store ?? new EngineStore(state.storage.sql);
+    this.avatars = deps.avatars ?? new AvatarCache(state.storage.sql, now);
+    this.driver = deps.driver ?? new TelegramDriver(env, state.storage);
     this.me = readStoredMe(this.store);
     this.hub = new UpdatesSocketHub(state, {
       ensureLive: () => this.lifecycle.ensureLive(),
@@ -67,6 +108,7 @@ export class SessionEngine {
       state,
       store: this.store,
       env,
+      now,
     });
     this.driver.onEvent((event) => {
       this.handleEvent(event);
@@ -170,6 +212,9 @@ export class SessionEngine {
         return response;
       }
       default: {
+        if (ENGINE_PATHS.has(url.pathname)) {
+          return Response.json({ error: 'Method not allowed' }, { status: 405 });
+        }
         return Response.json({ error: 'Not found' }, { status: 404 });
       }
     }

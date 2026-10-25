@@ -40,4 +40,20 @@ describe('AvatarCache', () => {
 
     expect(Array.from(store.read('version-1', 'small')?.bytes ?? [])).toEqual([2, 3]);
   });
+
+  it('evicts the oldest avatar once the entry cap is exceeded', () => {
+    let clock = 0;
+    const store = new AvatarCache(createNodeSqlStorage(openNodeDatabase()), () => clock++);
+    // The cap is 512 entries; the injected clock makes the write order the
+    // eviction order, so the first entry is the one that goes.
+    for (let index = 0; index < 512; index++) {
+      store.write(`version-${index}`, 'small', 'image/jpeg', new Uint8Array([1]));
+    }
+
+    store.write('version-512', 'small', 'image/jpeg', new Uint8Array([1]));
+
+    expect(store.read('version-0', 'small')).toBeNull();
+    expect(store.read('version-1', 'small')).not.toBeNull();
+    expect(store.read('version-512', 'small')).not.toBeNull();
+  });
 });

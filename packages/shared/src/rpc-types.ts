@@ -38,7 +38,9 @@ export type RpcMethod =
   | 'acceptCall'
   | 'confirmCall'
   | 'discardCall'
-  | 'rateCall';
+  | 'rateCall'
+  // The meta-method: several reads in one request.
+  | 'batch';
 
 /**
 The methods a `batch` call may carry.

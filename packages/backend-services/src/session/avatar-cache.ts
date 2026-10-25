@@ -55,7 +55,14 @@ export interface CachedAvatar {
 The cached avatars, keyed by the version token Telegram gives a photo.
 */
 export class AvatarCache {
-  constructor(private readonly storage: SqlStorageLike) {
+  constructor(
+    private readonly storage: SqlStorageLike,
+    /**
+     * The clock the eviction order reads. Injectable so a test can decide
+     * which entries are oldest instead of sleeping through the ordering.
+     */
+    private readonly now: () => number = Date.now,
+  ) {
     this.storage.exec(CREATE_AVATARS);
   }
 
@@ -85,7 +92,7 @@ export class AvatarCache {
    * over its bounds.
    */
   write(version: string, size: string, mime: string, bytes: Uint8Array): void {
-    this.storage.exec(INSERT_AVATAR, version, size, mime, bytes, Date.now());
+    this.storage.exec(INSERT_AVATAR, version, size, mime, bytes, this.now());
     const totals = this.storage.exec(COUNT_AVATARS).toArray()[0];
     const entries = Number(totals?.total ?? 0);
     const bytes_ = Number(totals?.bytes ?? 0);

@@ -1,9 +1,13 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '../../packages/backend-services/src/types';
+import { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
+import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
 import { SessionEngine } from '../../packages/backend-services/src/session/engine';
 import { errorResponse } from '../../packages/backend-services/src/session/http';
 import { SessionLifecycle } from '../../packages/backend-services/src/session/lifecycle';
-import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
+import type { EngineStore, StatsDto } from '../../packages/backend-services/src/session/stats';
+import { createNodeSqlStorage, createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 // The wasm-backed crypto provider cannot initialize under node: its wasm
 // import is an instantiated namespace there, not the buffer `initSync`
@@ -521,5 +525,247 @@ describe('SessionEngine (storage write budget)', () => {
     } as unknown as ConstructorParameters<typeof SessionLifecycle>[0]);
 
     await expect(lifecycle.runWake('manual')).resolves.toEqual(counters);
+  });
+});
+
+const ME: MeDto = {
+  id: 1,
+  firstName: 'Ada',
+  lastName: null,
+  username: 'ada',
+  phone: null,
+  photo: null,
+};
+
+/**
+ * The engine over injected collaborators.
+ *
+ * `EngineDeps` is the seam the route table needed: every route can be driven
+ * to a decision without wasm, a Telegram connection or a real account, and the
+ * quota failures can be produced by the store instead of by exhausting a
+ * budget.
+ */
+function createSeamedHarness(options: { authorized?: boolean; me?: MeDto; store?: ReturnType<typeof fakeStore> } = {}) {
+  const alarms: number[] = [];
+  const driver = fakeDriver(options);
+  const store = options.store ?? fakeStore();
+  const avatars = new AvatarCache(createNodeSqlStorage(openNodeDatabase()));
+  const state = {
+    storage: {
+      sql: createNodeSqlStorage(openNodeDatabase()),
+      transactionSync: <T>(closure: () => T): T => closure(),
+      getAlarm: async (): Promise<number | null> => alarms.at(-1) ?? null,
+      setAlarm: async (time: number | Date): Promise<void> => {
+        alarms.push(typeof time === 'number' ? time : time.getTime());
+      },
+    },
+    acceptWebSocket: (): void => {},
+    getWebSockets: (): never[] => [],
+    blockConcurrencyWhile: async <T>(callback: () => Promise<T>): Promise<T> => callback(),
+    waitUntil: (): void => {},
+  };
+  const engine = new SessionEngine(state as unknown as DurableObjectState, {} as CloudflareEnv, {
+    driver: driver as unknown as TelegramDriver,
+    store: store as unknown as EngineStore,
+    avatars,
+  });
+  return { engine, driver, store, avatars, alarms };
+}
+
+function fakeDriver(options: { authorized?: boolean; me?: MeDto } = {}) {
+  return {
+    onEvent: vi.fn(() => () => {}),
+    prepare: vi.fn(async () => {}),
+    isAuthorized: vi.fn(async () => options.authorized === true),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
+    catchUp: vi.fn(async () => {}),
+    rpc: vi.fn(async () => ({ echoed: true })),
+    sendCallSignaling: vi.fn(async () => {}),
+    streamMessageMedia: vi.fn(async () => ({
+      stream: new ReadableStream<Uint8Array>({
+        start(controller): void {
+          controller.enqueue(new TextEncoder().encode('data'));
+          controller.close();
+        },
+      }),
+      mime: 'image/jpeg',
+      size: 4,
+      length: 4,
+      status: 200 as const,
+      contentRange: null,
+    })),
+    readAvatar: vi.fn(async () => ({ mime: 'image/jpeg', bytes: new Uint8Array([1, 2]), version: 'v1' })),
+    readAvatarVersion: vi.fn(async (): Promise<string | null> => null),
+    sendUpload: vi.fn(async () => ({ id: 7 })),
+    sendUploadGroup: vi.fn(async () => [{ id: 7 }, { id: 8 }]),
+    logout: vi.fn(async () => {}),
+    signInQr: vi.fn(async (callbacks: { onUrl(url: string, expiresMs: number): void }) => {
+      callbacks.onUrl('https://qr.example/token', Date.now() + 1000);
+      return options.me ?? ME;
+    }),
+    signInPhone: vi.fn(),
+    hasActiveCall: false,
+  };
+}
+
+function fakeStore() {
+  const counters = { totalWakes: 0, failedWakes: 0, avgWakeMs: 0, updatesSeen: 0, lastWakeAt: null };
+  return {
+    readMeta: vi.fn((): string | null => null),
+    writeMeta: vi.fn(),
+    recordWake: vi.fn(),
+    counters: vi.fn(() => counters),
+    stats: vi.fn((): StatsDto => ({ counters, days: [], databaseBytes: null })),
+  };
+}
+
+describe('SessionEngine (route table over the seams)', () => {
+  it('serves the state from the injected store', async () => {
+    const { engine, driver } = createSeamedHarness({ authorized: true });
+
+    const response = await engine.fetch(request('GET', '/user/state'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ phase: 'authorized', authorized: true, me: null });
+    expect(driver.isAuthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates the RPC route and arms the wake cadence', async () => {
+    const { engine, driver, alarms } = createSeamedHarness();
+
+    const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getMe', params: { chatId: 2 } }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ echoed: true });
+    expect(driver.rpc).toHaveBeenCalledWith('getMe', { chatId: 2 });
+    expect(alarms.length).toBeGreaterThan(0);
+  });
+
+  it('serves the stats route from the injected store', async () => {
+    const { engine, store } = createSeamedHarness();
+
+    const response = await engine.fetch(request('GET', '/user/stats?days=3'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ counters: { totalWakes: 0 } });
+    expect(store.stats).toHaveBeenCalledWith(3);
+  });
+
+  it('runs a wake through the injected driver', async () => {
+    const { engine, driver } = createSeamedHarness();
+
+    const response = await engine.fetch(request('POST', '/user/wake'));
+
+    expect(response.status).toBe(200);
+    expect(driver.isAuthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('streams a ranged file', async () => {
+    const { engine, driver } = createSeamedHarness();
+    const ranged = new Request('https://session-engine.internal/user/file?chatId=2&messageId=3', {
+      headers: { range: 'bytes=0-3' },
+    });
+
+    const response = await engine.fetch(ranged);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+    expect(await response.text()).toBe('data');
+    expect(driver.streamMessageMedia).toHaveBeenCalledWith(2, 3, { range: { start: 0, end: 3 } });
+  });
+
+  it('serves an avatar and then answers the repeat from the cache', async () => {
+    const { engine, driver } = createSeamedHarness();
+
+    const first = await engine.fetch(request('GET', '/user/avatar?chatId=2&size=small'));
+    expect(new Uint8Array(await first.arrayBuffer())).toEqual(new Uint8Array([1, 2]));
+    expect(driver.readAvatar).toHaveBeenCalledTimes(1);
+
+    driver.readAvatarVersion.mockResolvedValue('v1');
+    const second = await engine.fetch(request('GET', '/user/avatar?chatId=2&size=small'));
+
+    expect(new Uint8Array(await second.arrayBuffer())).toEqual(new Uint8Array([1, 2]));
+    expect(driver.readAvatar).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a single upload through the injected driver', async () => {
+    const { engine, driver } = createSeamedHarness();
+
+    const response = await engine.fetch(uploadRequest('chatId=2&kind=document&size=4', 'abcd'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ message: { id: 7 } });
+    expect(driver.sendUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts an album upload through the injected driver', async () => {
+    const { engine, driver } = createSeamedHarness();
+    const manifest = groupManifest([
+      { kind: 'document', size: 1 },
+      { kind: 'document', size: 1 },
+    ]);
+
+    const response = await engine.fetch(uploadGroupRequest(`chatId=2&manifest=${manifest}`, 'xx'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ messages: [{ id: 7 }, { id: 8 }] });
+    expect(driver.sendUploadGroup).toHaveBeenCalledTimes(1);
+  });
+
+  it('405s a known path with the wrong verb, and 404s an unknown path', async () => {
+    const { engine } = createSeamedHarness();
+    const wrongVerbs: Array<[string, string]> = [
+      ['GET', '/user/rpc'],
+      ['POST', '/user/state'],
+      ['DELETE', '/user/updates'],
+      ['GET', '/user/logout'],
+    ];
+    for (const [method, path] of wrongVerbs) {
+      const response = await engine.fetch(request(method, path));
+      expect(response.status, `${method} ${path}`).toBe(405);
+      await expect(response.json()).resolves.toEqual({ error: 'Method not allowed' });
+    }
+
+    const missing = await engine.fetch(request('GET', '/user/nope'));
+    expect(missing.status).toBe(404);
+    await expect(missing.json()).resolves.toEqual({ error: 'Not found' });
+  });
+
+  it('completes a QR login when the write budget refuses the snapshot', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = fakeStore();
+    store.writeMeta.mockImplementation(() => {
+      throw new Error('Exceeded allowed rows written in Durable Objects free tier');
+    });
+    const { engine, driver } = createSeamedHarness({ authorized: true, me: ME, store });
+
+    const response = await engine.fetch(request('POST', '/user/login/qr'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ phase: 'authorized', authorized: true, me: ME });
+    expect(driver.signInQr).toHaveBeenCalledTimes(1);
+    expect(store.writeMeta).toHaveBeenCalledWith('me', JSON.stringify(ME));
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('completes a logout when the write budget refuses the snapshot delete', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = fakeStore();
+    store.writeMeta.mockImplementation(() => {
+      throw new Error('Exceeded allowed rows written in Durable Objects free tier');
+    });
+    const { engine, driver, alarms } = createSeamedHarness({ store });
+
+    const response = await engine.fetch(request('POST', '/user/logout'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(driver.logout).toHaveBeenCalledTimes(1);
+    expect(store.writeMeta).toHaveBeenCalledWith('me', null);
+    expect(alarms.length).toBeGreaterThan(0);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

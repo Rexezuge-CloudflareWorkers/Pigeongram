@@ -1,6 +1,6 @@
 import type { PendingMessage } from './outbox';
 import type { CommentsThread } from './state';
-import type { ChatDto, GetCommentsResult, MessageButtonDto, MessageDto, MessageReactionDto, UpdateEvent } from './types';
+import type { ChatDto, GetCommentsResult, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import type { UploadRequest } from './upload';
 
 /**
@@ -13,6 +13,13 @@ The comments a caller already read, so the controller does not read them
 again: the outcome of the read, whether it worked or not.
 */
 export type PrefetchedComments = { ok: true; result: GetCommentsResult } | { ok: false; error: string };
+
+/**
+ * A channel post addressed the way the comments bridge does: the channel's id
+ * and the post's message id. Shared by the controller and its send half.
+ */
+export type PostKey = { chatId: PeerId; messageId: number };
+
 export interface CommentsController {
   /**
   The open thread, or null while the comments screen is closed.

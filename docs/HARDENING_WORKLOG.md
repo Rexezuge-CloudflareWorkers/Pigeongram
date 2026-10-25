@@ -6,7 +6,7 @@ without re-running the analysis that produced it.
 
 | Field           | Value                                                               |
 | --------------- | ------------------------------------------------------------------- |
-| Status          | PR 1 (W1), PR 2 (W2) and PR 3–4 (W3) complete — W4 headroom next    |
+| Status          | PR 1 (W1), PR 2 (W2), PR 3–4 (W3) and W4 complete — W5/W6 next      |
 | Branch          | `refactor/family-hardening` (work branches per PR, see §6)          |
 | Baseline commit | `a67c5db` (merge of #100, `main`)                                   |
 | Started         | 2026-10-25                                                          |
@@ -176,7 +176,9 @@ These are copied from AGENTS.md where they constrain the work; read the original
    `DialogDto.lastMessage`.
 10. **Calls:** DH and media stay in the page; the worker never sees the shared key; signalling rides the updates socket;
     the call overlay and the profile popup are not history layers.
-11. **God files:** 400-line hard cap, `types.ts` only allowlisted. `App.tsx` is at 399 — do not add a line to it.
+11. **God files:** 400-line hard cap, `types.ts` only allowlisted. **Superseded by W4:** `App.tsx` is 40 lines, the
+    signed-in plane is `SignedInShell` (304) and its routing `useSignedInNavigation` (191); the cap still holds for all
+    of them.
 12. **DO migration `v1` is a one-way door.** This pass adds no storage and changes no class/binding names.
 13. **`wrangler.jsonc` and `worker-configuration.d.ts` are generated** and never committed.
 
@@ -359,11 +361,24 @@ Three files are at or near the hard cap, so the next feature cannot land without
 | `pages/src/calls/controller.ts` | 380   | shrinks to the adapter in §5.3.3                                                                         |
 | `worker/src/session/rpc.ts`     | 380   | registry split in §5.3.1                                                                                 |
 
-- [ ] Delete `pages/src/outbox.ts:189` `pendingForThread` (no references).
-- [ ] Delete or wire `pages/src/api.ts:285` `fetchBotCommands` (see §3.2 / W7).
-- [ ] Unexport `ACCESS_LOGIN_PATH`, `rpcBatch`, `ChatScreen` — all are module-internal.
-- [ ] Add a "no speculative exports" line to AGENTS.md rather than adding `knip` (it false-positives on the mirrored
+- [x] Delete `pages/src/outbox.ts:189` `pendingForThread` (no references).
+- [x] Delete or wire `pages/src/api.ts:285` `fetchBotCommands` (see §3.2 / W7) — deleted; W7 stays optional and would
+      arrive through the comments read, not as a standalone export.
+- [x] Unexport `ACCESS_LOGIN_PATH`, `rpcBatch`, `ChatScreen` — all are module-internal.
+- [x] Add a "no speculative exports" line to AGENTS.md rather than adding `knip` (it false-positives on the mirrored
       contract modules).
+
+**Landed with W4 (2026-10-25):** `App.tsx` 399 → **40** lines: it keeps the login flow, `usePwa` (registered on every
+screen, the public intro included) and the `HomeScreen` picker, and renders `components/SignedInShell.tsx` (**304**). The
+shell owns the account plane (dialogs, threads, comments, forwarding, calls, the boot read and sign-out) and the sidebar;
+its routing — the route the URL names, the archive screen, the viewer layer, links and read receipts — is
+`useSignedInNavigation.ts` (**191**), so the shell stays well under the hard cap. `api.ts` 393 → **149** lines with the
+calls in `api/request.ts` (60), `api/chats.ts` (42), `api/threads.ts` (173) and `api/uploads.ts` (21), all re-exported
+from the barrel so no import moved; `rpcBatch`, `ChatScreen` and `ACCESS_LOGIN_PATH` are module-internal now, and
+`fetchBotCommands` is gone. `useComments.ts` 389 → **207** lines, with `useCommentsSend.ts` (214) owning the outbox and
+reactions and `useCommentsUpdates.ts` (60) the live fold; `PostKey` moved to `comments-controller.ts`. `calls/controller.ts`
+(84) and `rpc.ts` (53) had already shrunk in W3. Coverage held: **lines 90.26%, statements 87.74%, branches 82.25%,
+functions 87.53%** (80 files, 1009 tests).
 
 ### 5.5 W5 — Config, error taxonomy, logging (P2, ~1 day)
 
@@ -458,18 +473,24 @@ Open questions (none blocking PR 1):
 - Should `getBotCommands` gain `messageId` (W7 B), or is the thread menu enough (A)? Default: B, droppable.
 - Should `fetchBotCommands` survive as an exported API for future screens? Default: no — the batch covers it.
 
+Resolved with W4:
+
+- `fetchBotCommands` is deleted. W7 (B) is still open and optional; if it lands, the commands arrive on the comments
+  read (`GetCommentsResult.commands`), so no standalone export comes back.
+
 ## 9. Progress log
 
 Append one entry per landed PR. Keep it terse: date · branch/commit · what changed · gate result · notes.
 
-| Date       | Ref                                           | What                                                                                                                                                                                                                                                                                                                                     | Gate                                                       |
-| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| 2026-10-25 | `a67c5db`                                     | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                                                                                                                             | `pnpm run checks` green                                    |
-| 2026-10-25 | `docs/hardening-worklog`                      | This worklog; decisions recorded                                                                                                                                                                                                                                                                                                         | `format:check` + review                                    |
-| 2026-10-25 | `refactor/family-hardening`                   | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests)                                                                                                             | `pnpm run checks` green                                    |
-| 2026-10-25 | `refactor/family-hardening`                   | W2 coverage pass: UI, call, upload, DTO and RPC tests added; flat 80% floor reached at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%** (74 files, 929 tests); four 80% thresholds added to `vitest.config.mts` and the failure path verified                                                                      | `pnpm run checks` green                                    |
-| 2026-10-25 | `refactor/family-hardening` (`f01d61f`, PR 3) | W3.1–3.2: one `RPC_METHODS` table with a type-derived batch whitelist, `rpc.ts` reduced to the dispatcher, domain handlers split; `TelegramDriver`, `EngineDeps`, `now`, `WorkersWsTransport` and `CallPeer`/`Ringtone` seams; W2 rows for registry, driver, transport, crypto and the route table landed                                | `pnpm run checks` green; `wrangler deploy --dry-run` clean |
-| 2026-10-25 | `refactor/family-hardening` (`16c09ba`, PR 4) | W3.3–3.4: `CallOrchestrator` (live record, key exchange, ordering guards) with `useCalls` as its reducer adapter; `useAnchoredMenu` shared by the message, thread and account menus; ordering/focus parity tests added. Coverage after W3: **lines 90.22%, statements 87.68%, branches 82.32%, functions 87.32%** (80 files, 1009 tests) | `pnpm run checks` green                                    |
+| Date       | Ref                                           | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Gate                                                       |
+| ---------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 2026-10-25 | `a67c5db`                                     | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `pnpm run checks` green                                    |
+| 2026-10-25 | `docs/hardening-worklog`                      | This worklog; decisions recorded                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `format:check` + review                                    |
+| 2026-10-25 | `refactor/family-hardening`                   | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests)                                                                                                                                                                                                                                                                                                                                                                  | `pnpm run checks` green                                    |
+| 2026-10-25 | `refactor/family-hardening`                   | W2 coverage pass: UI, call, upload, DTO and RPC tests added; flat 80% floor reached at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%** (74 files, 929 tests); four 80% thresholds added to `vitest.config.mts` and the failure path verified                                                                                                                                                                                                                                                                                                                           | `pnpm run checks` green                                    |
+| 2026-10-25 | `refactor/family-hardening` (`f01d61f`, PR 3) | W3.1–3.2: one `RPC_METHODS` table with a type-derived batch whitelist, `rpc.ts` reduced to the dispatcher, domain handlers split; `TelegramDriver`, `EngineDeps`, `now`, `WorkersWsTransport` and `CallPeer`/`Ringtone` seams; W2 rows for registry, driver, transport, crypto and the route table landed                                                                                                                                                                                                                                                                                     | `pnpm run checks` green; `wrangler deploy --dry-run` clean |
+| 2026-10-25 | `refactor/family-hardening` (`16c09ba`, PR 4) | W3.3–3.4: `CallOrchestrator` (live record, key exchange, ordering guards) with `useCalls` as its reducer adapter; `useAnchoredMenu` shared by the message, thread and account menus; ordering/focus parity tests added. Coverage after W3: **lines 90.22%, statements 87.68%, branches 82.32%, functions 87.32%** (80 files, 1009 tests)                                                                                                                                                                                                                                                      | `pnpm run checks` green                                    |
+| 2026-10-25 | `refactor/web/god-file-headroom`              | W4: `App.tsx` 399 → 40 lines, rendering `SignedInShell` (304) with its routing in `useSignedInNavigation` (191); `api.ts` 393 → 149, split into `api/{request,chats,threads,uploads}` behind the same barrel; `useComments.ts` 389 → 207, split into `useCommentsSend` (214) and `useCommentsUpdates` (60); `pendingForThread` and `fetchBotCommands` deleted; `ACCESS_LOGIN_PATH`, `rpcBatch` and `ChatScreen` unexported; AGENTS.md carries the no-speculative-exports rule. Coverage held at **lines 90.26%, statements 87.74%, branches 82.25%, functions 87.53%** (80 files, 1009 tests) | `pnpm run checks` green; god-files 17 soft warns, 0 hard   |
 
 Template:
 
@@ -550,6 +571,9 @@ SPA (paths relative to `pages/src/`):
 The broader sweep found ~146 unreferenced exports, almost all type-only members of the mirrored contract modules
 (`types.ts`, `rpc-types.ts`, `call-types.ts`). Those are not dead code; do not delete them.
 
+W4 executed every action above: `fetchBotCommands` and `pendingForThread` are deleted, and `ACCESS_LOGIN_PATH`,
+`rpcBatch` and `ChatScreen` are module-internal (the batch helper moved into `api/request.ts`, where its callers live).
+
 ## Appendix C — conventions worth knowing before editing
 
 - **Error bodies:** `EngineError` → `{error}` with its status; `EngineConfigError` → 503; quota →
@@ -564,6 +588,7 @@ The broader sweep found ~146 unreferenced exports, almost all type-only members 
   `UploadBodySplitter`, streams use `highWaterMark: 0`.
 - **Tests:** `test/web/**` is jsdom, everything else `node`; the SPA's fakes live at the top of `pages.test.tsx`
   (`FakeWebSocket`, fetch stubs) — reuse them rather than inventing a second harness.
-- **God files:** `App.tsx` is at 399 lines. A one-line addition fails the gate; do the split first.
+- **God files:** the 400-line hard cap still applies. After W4 `App.tsx` is 40 lines, `SignedInShell` 304 and
+  `useSignedInNavigation` 191 — split a file before it reaches the cap, not after.
 - **Docs:** `docs/session-engine.md` is the engine runbook; `docs/pwa.md` and `docs/android.md` cover the other planes.
   This file is the only work log.

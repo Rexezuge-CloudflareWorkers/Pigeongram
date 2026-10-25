@@ -1,29 +1,21 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchComments, readHistory, sendComment, sendReaction } from './api';
-import type { CommentsController, PrefetchedComments } from './comments-controller';
-import {
-  applyCommentEdit,
-  applyCommentMessage,
-  applyCommentReactions,
-  applyReactionUpdate,
-  isThreadComment,
-  mergeMessages,
-  toggleReaction,
-  updateCommentsThread,
-} from './state';
+import { fetchComments, readHistory } from './api';
+import type { CommentsController, PostKey, PrefetchedComments } from './comments-controller';
+import { mergeMessages, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
-import type { ChatDto, GetCommentsResult, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
-import { sendUploadBatch } from './upload';
-import type { UploadRequest } from './upload';
+import type { ChatDto, GetCommentsResult, MessageDto, PeerId } from './types';
 import { useCommentsPoll } from './useCommentsPoll';
+import { useCommentsSend } from './useCommentsSend';
+import { useCommentsUpdates } from './useCommentsUpdates';
 import { useMessageButtons } from './useMessageButtons';
-import { useOutbox } from './useOutbox';
 
 /**
 The comments screen's controller: the open channel-post thread with its loaded
-window and cursor, the send/attach/react actions and the folding of live
-updates. A hook rather than state inside `App` so both stay readable (and under
-the god-file cap) and the comments flow can be understood on its own.
+window and cursor, the reads and pages, and the two halves that act on it —
+`useCommentsSend` owns the sends and reactions, `useCommentsUpdates` folds the
+live updates in. A hook rather than state inside `App` so both stay readable
+(and under the god-file cap) and the comments flow can be understood on its
+own.
 */
 
 /**
@@ -42,11 +34,6 @@ function commentsCursor(result: GetCommentsResult): { id: number; date: number }
 function failureText(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
-
-/**
-A channel post addressed the way the comments bridge does.
-*/
-type PostKey = { chatId: PeerId; messageId: number };
 
 interface UseCommentsOptions {
   /**
@@ -72,8 +59,6 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
-  const outbox = useOutbox({ onError });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread; a layout effect runs with the commit, so no
@@ -188,187 +173,20 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     }
   }, []);
 
-  /**
-  Folds a sent comment into the open window and hands it to the caller for the
-  channel thread and the dialogs. The merge de-duplicates by id and the count
-  only bumps when the comment is genuinely new: the socket may re-deliver it
-  after the send response already merged it.
-  */
-  const applySentComment = useCallback(
-    (open: CommentsThread, comment: MessageDto): void => {
-      const post = { chatId: open.chat.id, messageId: open.post.id };
-      setThread((current) =>
-        updateCommentsThread(current, post, (candidate) => {
-          if (candidate.comments.some((loaded) => loaded.id === comment.id)) return candidate;
-          return { ...candidate, comments: mergeMessages(candidate.comments, [comment]), count: candidate.count + 1 };
-        }),
-      );
-      onCommentSent(open.chat.id, open.post.id, comment);
-    },
-    [onCommentSent],
-  );
-
-  const send = useCallback(
-    (text: string, replyTo?: number): Promise<void> => {
-      const open = thread;
-      if (!open) return Promise.resolve();
-      const post = { chatId: open.chat.id, messageId: open.post.id };
-      // The first comment creates the discussion thread, so the send response
-      // cannot carry the group's coordinates; a re-read settles them.
-      const first = open.discussionChatId === null;
-      const replyPreview = replyTo === undefined ? null : (open.comments.find((comment) => comment.id === replyTo) ?? null);
-      outbox.send({
-        chatId: open.discussionChatId ?? open.chat.id,
-        scope: `${String(post.chatId)}:${String(post.messageId)}`,
-        text,
-        ...(replyTo !== undefined && { replyTo }),
-        replyPreview,
-        deliver: (body, randomIds) => {
-          if (body.kind !== 'text') throw new Error('The outbox delivered a file body for a text comment');
-          return sendComment(post.chatId, post.messageId, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
-        },
-        onSettled: (messages) => {
-          for (const comment of messages) applySentComment(open, comment);
-          if (first) {
-            void refresh(post).catch(() => {
-              // The comment went out; only the thread coordinates stay unknown.
-            });
-          }
-        },
-      });
-      return Promise.resolve();
-    },
-    [thread, applySentComment, refresh, outbox],
-  );
-
-  const attach = useCallback(
-    (request: UploadRequest): Promise<void> => {
-      const open = thread;
-      if (!open) return Promise.resolve();
-      const post = { chatId: open.chat.id, messageId: open.post.id };
-      const first = open.discussionChatId === null;
-      const replyPreview = request.replyTo === undefined ? null : (open.comments.find((comment) => comment.id === request.replyTo) ?? null);
-      outbox.attach({
-        chatId: open.discussionChatId ?? open.chat.id,
-        scope: `${String(post.chatId)}:${String(post.messageId)}`,
-        request,
-        replyPreview,
-        deliver: (body, randomIds, onProgress) => {
-          if (body.kind !== 'file') throw new Error('The outbox delivered a text body for an attachment');
-          const comments: MessageDto[] = [];
-          return sendUploadBatch(
-            {
-              chatId: post.chatId,
-              commentTo: post.messageId,
-              ...(request.replyTo !== undefined && { replyTo: request.replyTo }),
-            },
-            body.request,
-            (fraction) => onProgress(fraction ?? 0),
-            (comment) => {
-              comments.push(comment);
-            },
-            randomIds,
-          ).then(() => comments);
-        },
-        onSettled: (messages) => {
-          for (const comment of messages) applySentComment(open, comment);
-          if (first) {
-            void refresh(post).catch(() => {
-              // The upload went out; only the thread coordinates stay unknown.
-            });
-          }
-        },
-      });
-      return Promise.resolve();
-    },
-    [thread, applySentComment, refresh, outbox],
-  );
-
-  const react = useCallback(
-    (message: MessageDto, reaction: MessageReactionDto): void => {
-      if (!thread || reactingIds.has(message.id)) return;
-      if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
-      const post = { chatId: thread.chat.id, messageId: thread.post.id };
-      const before = message.reactions;
-      const after = toggleReaction(before, reaction);
-      const apply = (list: MessageReactionDto[]): void => {
-        setThread((current) =>
-          updateCommentsThread(current, post, (open) => ({
-            ...open,
-            comments: applyReactionUpdate(open.comments, message.chatId, message.id, list),
-          })),
-        );
-      };
-      apply(after);
-      setReactingIds((current) => new Set(current).add(message.id));
-      const target = reaction.chosen
-        ? null
-        : reaction.emoji === null
-          ? { customEmojiId: reaction.customEmojiId as string }
-          : { emoji: reaction.emoji };
-      void sendReaction(message.chatId, message.id, target)
-        .then((result) => {
-          if (result.message) apply(result.message.reactions);
-        })
-        .catch((failure: unknown) => {
-          apply(before);
-          onError(failure);
-        })
-        .finally(() => {
-          setReactingIds((current) => {
-            const next = new Set(current);
-            next.delete(message.id);
-            return next;
-          });
-        });
-    },
-    [thread, reactingIds, onError],
-  );
-
-  const applyUpdate = useCallback(
-    (update: UpdateEvent): void => {
-      if (update.type === 'new_message') {
-        const open = threadRef.current;
-        if (open && isThreadComment(open, update.message)) {
-          void readHistory(update.message.chatId).catch(() => {
-            // Read receipts are best-effort; the next open retries.
-          });
-        }
-        setThread((current) => applyCommentMessage(current, update.message));
-        return;
-      }
-      if (update.type === 'edit_message') {
-        setThread((current) => applyCommentEdit(current, update.message));
-        return;
-      }
-      if (update.type === 'reactions') {
-        setThread((current) => applyCommentReactions(current, update.chatId, update.messageId, update.reactions));
-        return;
-      }
-      if (update.type === 'views') {
-        // The pinned post header is the screen's only message with views; the
-        // guard drops a view update that belongs to another post.
-        setThread((current) =>
-          updateCommentsThread(current, { chatId: update.chatId, messageId: update.messageId }, (open) => ({
-            ...open,
-            post: { ...open.post, views: update.views },
-          })),
-        );
-        return;
-      }
-      if (update.type === 'poll') {
-        if (update.poll === null) refreshPoll(update);
-        else applyPoll(update, update.poll);
-      }
-    },
-    [applyPoll, refreshPoll],
-  );
+  const { pending, reactingIds, send, attach, react, retryPending, discardPending, clearPending } = useCommentsSend({
+    thread,
+    setThread,
+    refresh,
+    onCommentSent,
+    onError,
+  });
+  const applyUpdate = useCommentsUpdates(threadRef, setThread, { applyPoll, refreshPoll });
 
   return {
     thread,
     loading,
     loadingOlder,
-    pending: outbox.pending,
+    pending,
     error,
     reactingIds,
     votingIds,
@@ -378,9 +196,9 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     loadOlder,
     send,
     attach,
-    retryPending: outbox.retry,
-    discardPending: outbox.discard,
-    clearPending: outbox.clear,
+    retryPending,
+    discardPending,
+    clearPending,
     react,
     vote,
     pressButton,

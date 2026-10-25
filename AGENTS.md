@@ -54,10 +54,12 @@ protocol,registry}`) and the mtcute integration
   deployment-specific `TEAM_DOMAIN`/`POLICY_AUD` come from `WRANGLER_VARS_PATCH_JSON` and are declared in
   `src/env.d.ts`.
 - `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
-  (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, `state.ts` the chat-list
+  (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, whose domain calls live in `api/`
+  and are re-exported from the barrel, `state.ts` the chat-list
   reducers, `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
   and the archive move — `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
-  send/attach/react and forward with a writable-destination picker — `outbox.ts`/`useOutbox.ts` the optimistic send
+  send/attach/react and forward with a writable-destination picker; the comments controller's write half is
+  `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread
   watermark with its read context) and the forward-paging rule, `thread-state.ts` the loaded-range cursors and the
   live/sent/edit folds, `useThreadPaging.ts` the older/newer reads, `thread-paging.ts` the scroll-driven older read
@@ -71,8 +73,10 @@ protocol,registry}`) and the mtcute integration
   the public intro, `OfflineScreen.tsx` the no-network screen, `LoginScreen.tsx` the Telegram QR login, and
   `LaunchScreen.tsx` the Access probe's first paint — a text-free launch splash drawn from the favicon's paper-plane
   mark, carrying a failed probe's message and retry on the same screen — `components/HomeScreen.tsx` picks among them
-  from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`, because `App.tsx` is already
-  at the god-file limit. **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
+  from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`. `App.tsx` is only that picker
+  (the login flow, `usePwa` and the height cap); the signed-in plane is `components/SignedInShell.tsx`, whose routing —
+  the route, the archive screen, the viewer layer, links and read receipts — is `useSignedInNavigation.ts`.
+  **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
   icon is drawn — a filled 24-unit Material set, `currentColor`, `data-icon` for tests, decorative unless given a
   `label`. A new affordance adds an `IconName`, never another inline `<svg>`, a font glyph or an emoji; emoji are content
   (Telegram reactions and message text), not chrome. A successful
@@ -262,7 +266,7 @@ protocol,registry}`) and the mtcute integration
   viewer is), so Back leaves the thread, as it does for the forward picker. The profile is read on demand
   (`getProfile`, a read-only method on the batch whitelist) rather than with the chat screen: the reader asks for it
   by opening it, and a thread open would otherwise pay for a read nobody looks at. The popup lives in the thread header
-  (`pages/src/components/ThreadHeader.tsx`), so `App.tsx` does not grow.
+  (`pages/src/components/ThreadHeader.tsx`), so the signed-in shell does not grow.
 - **A min peer in mtcute's cache turns a valid chat into `PEER_ID_INVALID`.** Telegram's `min` user/channel carries a
   reduced access hash that only works inside an `inputPeer*FromMessage`, and mtcute's in-memory peer cache hands a
   cached peer back from `storage.peers.getById` without the `isMin` check its SQLite branch has
@@ -362,6 +366,9 @@ protocol,registry}`) and the mtcute integration
   `worker/src/types.ts` and `pages/src/types.ts` from the hard cap: each is one mirrored contract (the SPA copy must stay
   in sync by hand), so splitting one is a mirror-wide refactor rather than a per-file fix. The `rpc-types.ts` split from
   `types.ts` was the last such split; anything else over 400 is split before it lands.
+- **No speculative exports.** An export exists because a caller outside its module uses it: a helper only its own module
+  calls stays private, and an unreferenced symbol is deleted rather than kept for a later screen. `knip` is not the guard
+  here, because it false-positives on the mirrored contract modules — their exports are the contract, not dead code.
 - **No `backup-d1.yml`.** The family's database backup exports D1, which this repo does not have; the DO's SQLite is
   covered by Cloudflare's point-in-time recovery, and it holds only the mtcute session, update state and small caches.
   The README's CI section says so where a reader would look for the workflow.

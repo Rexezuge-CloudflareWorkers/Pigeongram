@@ -25,6 +25,7 @@ export interface ThreadViewProps {
   messages: MessageDto[];
   loading: boolean;
   loadingOlder: boolean;
+  loadingNewer: boolean;
   /**
    * Whether a page older than the loaded window may still exist. When false,
    * the top of the thread is the start of the chat's history.
@@ -73,6 +74,12 @@ export interface ThreadViewProps {
    */
   focusMessageId: number | null;
   /**
+   * Whether the loaded range reaches the chat's newest known message. False
+   * while an unread backlog or an older linked post leaves messages beyond the
+   * window: the view holds the pin back and offers "Load newer messages".
+   */
+  atLatest: boolean;
+  /**
    * The open thread's remembered place, so returning from the comments screen
    * lands where the reader left instead of at the divider or the bottom.
    */
@@ -89,6 +96,10 @@ export interface ThreadViewProps {
    */
   onCall: () => void;
   onLoadOlder: () => void;
+  /**
+   * Reads the page after the loaded window, towards the chat's newest message.
+   */
+  onLoadNewer: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onRetryPending: (key: string) => void;

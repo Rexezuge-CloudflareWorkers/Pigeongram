@@ -1,5 +1,5 @@
 import { applyNewMessage } from './state';
-import type { ChatThread } from './state';
+import type { ChatThread } from './thread-state';
 import type { DialogDto, MessageDto, MessageMediaDto, MessageReplyDto, PeerId } from './types';
 import { mediaKind } from './upload';
 

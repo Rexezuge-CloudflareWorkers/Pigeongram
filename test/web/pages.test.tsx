@@ -2313,6 +2313,111 @@ describe('App', () => {
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
       expect(ticks(12)).toBe('Read');
     });
+
+    describe('large backlog', () => {
+      const watermark = 1000;
+
+      function backlogMessage(id: number, text = `message ${id}`): MessageDto {
+        return message({ id, chatId: 2, senderName: 'Bob', text });
+      }
+
+      function backlogDialog(lastMessageId: number): DialogDto {
+        return {
+          ...dialogs[0],
+          lastMessage: dialogMessage(backlogMessage(lastMessageId)),
+          unread: 300,
+          readInboxMaxId: watermark,
+        };
+      }
+
+      function page(from: number, to: number): MessageDto[] {
+        return Array.from({ length: to - from + 1 }, (_, index) => {
+          const id = from + index;
+          return backlogMessage(id, id === 1001 ? 'first unread' : `message ${id}`);
+        });
+      }
+
+      /**
+      Answers the unread window and the page after it. The first window starts
+      a little above the watermark and reaches into the backlog.
+      */
+      function installBacklogFetch(lastMessageId: number, pages: Record<number, MessageDto[]>): FetchCall[] {
+        return installSignedInFetch({
+          dialogs: [backlogDialog(lastMessageId)],
+          history: (_chatId, params) => json({ messages: pages[Number(params.offsetId)] ?? [] }),
+        });
+      }
+
+      it('opens at the first unread instead of reading the newest page', async () => {
+        const calls = installBacklogFetch(1090, { 1000: page(991, 1040), 1040: page(1041, 1090) });
+        stubLayout({ listHeight: 2500, viewportHeight: 100 });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Bob'));
+        expect(await within(threadSection()).findByText('first unread')).toBeDefined();
+
+        const opened = calls.find((call) => call.body?.method === 'getHistory');
+        expect(opened?.body?.params).toMatchObject({ chatId: 2, limit: 50, offsetId: watermark, addOffset: -40 });
+        expect(opened?.body?.params).not.toHaveProperty('anchorId');
+
+        const divider = threadSection().querySelector('[data-unread-divider]');
+        expect(divider?.textContent).toBe('Unread Messages');
+        expect((divider?.nextElementSibling as HTMLElement | null)?.dataset.messageId).toBe('1001');
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+
+        // The stubbed jump leaves the list at the top, where only read context
+        // is on screen: opening must not receipt the backlog it has not shown.
+        expect(calls.filter((call) => call.body?.method === 'readHistory')).toHaveLength(0);
+
+        // Scrolling to the divider receipts the unread rows in view, not the
+        // whole loaded page.
+        scrollContainer().scrollTop = 500;
+        fireEvent.scroll(scrollContainer());
+        await waitFor(() => {
+          expect(calls.filter((call) => call.body?.method === 'readHistory').map((call) => call.body?.params)).toEqual([
+            { chatId: 2, maxId: 1002 },
+          ]);
+        });
+      });
+
+      it('pages forward to the newest message and stops offering newer pages', async () => {
+        const calls = installBacklogFetch(1090, { 1000: page(991, 1040), 1040: page(1041, 1090) });
+        stubLayout({ listHeight: 2500, viewportHeight: 100 });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Bob'));
+        expect(await within(threadSection()).findByText('first unread')).toBeDefined();
+        const newer = within(threadSection()).getByRole('button', { name: 'Load newer messages' });
+
+        fireEvent.click(newer);
+        expect(await within(threadSection()).findByText('message 1090')).toBeDefined();
+        expect(calls.filter((call) => call.body?.method === 'getHistory').map((call) => call.body?.params)).toContainEqual({
+          chatId: 2,
+          limit: 50,
+          offsetId: 1040,
+          addOffset: -50,
+        });
+        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+      });
+
+      it('holds a live message until forward paging reaches it', async () => {
+        installBacklogFetch(1089, { 1000: page(991, 1040), 1040: [...page(1041, 1089), backlogMessage(1090, 'live newest')] });
+        stubLayout({ listHeight: 2500, viewportHeight: 100 });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Bob'));
+        expect(await within(threadSection()).findByText('first unread')).toBeDefined();
+
+        // The range is still behind, so the live message waits: appending it
+        // here would put it after a gap the reader has not paged through.
+        deliver({ type: 'new_message', message: backlogMessage(1090, 'live newest') });
+        expect(within(threadSection()).queryByText('live newest')).toBeNull();
+
+        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Load newer messages' }));
+        expect(await within(threadSection()).findByText('live newest')).toBeDefined();
+        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+      });
+    });
   });
 
   describe('older history paging', () => {
@@ -3437,6 +3542,32 @@ describe('App', () => {
 
       expect(await within(threadSection()).findByText('oldest')).toBeDefined();
       expect(within(threadSection()).getByText('racing in')).toBeDefined();
+    });
+
+    it('keeps a live message when the opening window is empty', async () => {
+      let resolveHistory: ((messages: MessageDto[]) => void) | undefined;
+      installSignedInFetch({
+        dialogs: bobAndCarol,
+        history: () =>
+          new Promise<Response>((resolve) => {
+            resolveHistory = (messages) => resolve(json({ messages }));
+          }),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+
+      deliver({ type: 'new_message', message: message({ id: 11, chatId: 2, senderName: 'Bob', text: 'racing in' }) });
+      expect(await within(threadSection()).findByText('racing in')).toBeDefined();
+
+      await act(async () => {
+        resolveHistory?.([]);
+      });
+
+      // There is no window to be behind, so the live message is the thread
+      // rather than being dropped with the empty response.
+      expect(within(threadSection()).getByText('racing in')).toBeDefined();
+      expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
     });
 
     it('drops a history response for a chat the user has left', async () => {

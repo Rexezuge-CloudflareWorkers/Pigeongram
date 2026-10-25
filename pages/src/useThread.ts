@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchChatScreen, fetchHistory, fetchPollResults, sendMessage, sendReaction } from './api';
+import { fetchChatScreen, fetchPollResults, sendMessage, sendReaction } from './api';
 import { firstUnread } from './reading';
 import {
   applyCommentCountDelta,
@@ -8,15 +8,16 @@ import {
   applyViewsUpdate,
   findPollMessage,
   mergeMessages,
-  replaceMessage,
   toggleReaction,
   updateThread,
   updateThreadPoll,
 } from './state';
-import type { ChatThread, PollUpdateTarget } from './state';
+import type { PollUpdateTarget } from './state';
 import type { ThreadController, OpenThreadResult } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
-import { supportsCommands, WINDOW_LIMIT } from './thread-window';
+import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages } from './thread-state';
+import type { ChatThread } from './thread-state';
+import { supportsCommands, unreadWindow, WINDOW_LIMIT } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
 import type { BotCommandDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { sendUploadBatch } from './upload';
@@ -24,6 +25,7 @@ import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
 import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
+import { useThreadPaging } from './useThreadPaging';
 
 /**
 The chat thread's controller: the open chat with its loaded window, the read
@@ -62,15 +64,11 @@ const NO_COMMANDS: readonly BotCommandDto[] = [];
 export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
   const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
-  // A page in flight, tracked outside React state so a scroll event and the
-  // button cannot both start one before the disabled state paints.
-  const loadingOlderRef = useRef(false);
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -79,6 +77,8 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   useLayoutEffect(() => {
     threadRef.current = thread;
   }, [thread]);
+
+  const { loadingOlder, loadingNewer, loadOlder, loadNewer } = useThreadPaging({ threadRef, setThread, setError });
 
   const open = useCallback(
     async (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
@@ -99,30 +99,52 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
         unreadDividerId: null,
         focusMessageId: postId,
         hasMoreOlder: true,
+        windowEndId: null,
+        latestMessageId: dialog.lastMessage?.id ?? null,
       });
       setError(null);
       setLoading(true);
       try {
+        // A chat with unread messages opens at where reading stopped, not at
+        // the newest page: the watermark anchors a window that reaches a little
+        // way back for context and the rest of the page towards the unread
+        // side. A large backlog can still extend past that page; forward paging
+        // continues from the window's end.
+        const unread = postId === null && dialog.unread > 0 ? unreadWindow(dialog.readInboxMaxId) : null;
         // The window, the chat's slash commands and — when a post is named —
         // its comments are one request: the engine reads them at the same
         // time, where separate requests would queue behind each other.
         const screen = await fetchChatScreen(chat.id, postId, {
           limit: WINDOW_LIMIT,
           ...(postId !== null && { anchorId: postId }),
+          ...(unread !== null && unread),
           withCommands: supportsCommands(chat.kind),
         });
         setBotCommands(screen.commands);
+        const screenEnd = screen.messages.at(-1)?.id ?? null;
+        // A live message can arrive while the window is in flight. If the
+        // window was at the newest message when it was requested, those
+        // messages continue it and are kept; otherwise they sit beyond the
+        // backlog and wait for forward paging. An own send is the reader's own
+        // action and stays either way, with the gap left for paging to fill;
+        // an empty window has no range to be behind, so its messages stay too.
+        const openedLatest = dialog.lastMessage?.id ?? null;
+        const reachedAtOpen = screenEnd !== null && (openedLatest === null || screenEnd >= openedLatest);
         setThread((current) =>
           current && current.chat.id === chat.id
             ? {
                 ...current,
-                messages: mergeMessages(current.messages, screen.messages),
+                messages: mergeMessages(
+                  screen.messages,
+                  current.messages.filter((message) => reachedAtOpen || screenEnd === null || message.outgoing || message.id <= screenEnd),
+                ),
                 unreadDividerId: divider(screen.messages),
                 // A plain read starts at the newest message, so a short window
                 // is the whole history. A jump window is anchored mid-history
                 // and can be short without being the start, so it always has a
                 // page to ask for until one comes back empty.
                 hasMoreOlder: postId === null ? screen.messages.length >= WINDOW_LIMIT : screen.messages.length > 0,
+                windowEndId: reachedAtOpen ? Math.max(screenEnd ?? 0, current.latestMessageId ?? 0) : screenEnd,
               }
             : current,
         );
@@ -143,41 +165,6 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     setError(null);
     setBotCommands(NO_COMMANDS);
   }, [positions]);
-
-  const loadOlder = useCallback(async (): Promise<void> => {
-    // The scroll handler and the button both call this; the in-flight ref is
-    // what keeps a burst of scroll events to one page.
-    const open = threadRef.current;
-    const chat = open?.chat;
-    const oldest = open?.messages[0];
-    if (!open || !chat || !oldest || !open.hasMoreOlder || loadingOlderRef.current) return;
-    loadingOlderRef.current = true;
-    setLoadingOlder(true);
-    setError(null);
-    try {
-      const result = await fetchHistory(chat.id, {
-        limit: WINDOW_LIMIT,
-        offsetId: oldest.id,
-        // The bridge speaks unix seconds; the DTO carries milliseconds.
-        offsetDate: Math.floor(oldest.date / 1000),
-      });
-      setThread((current) =>
-        current && current.chat.id === chat.id
-          ? {
-              ...current,
-              messages: mergeMessages(current.messages, result.messages),
-              // A short page is the oldest one Telegram has.
-              hasMoreOlder: result.messages.length >= WINDOW_LIMIT,
-            }
-          : current,
-      );
-    } catch (failure) {
-      setError(failureText(failure));
-    } finally {
-      loadingOlderRef.current = false;
-      setLoadingOlder(false);
-    }
-  }, []);
 
   const setReadWatermark = useCallback((chatId: PeerId, maxId: number): void => {
     setThread((current) =>
@@ -205,7 +192,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
           return sendMessage(chat.id, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
         },
         onSettled: (messages) => {
-          setThread((current) => updateThread(current, chat.id, (list) => mergeMessages(list, messages)));
+          setThread((current) => applyThreadSentMessages(current, chat.id, messages));
           const last = messages.at(-1);
           if (last) onSent(last);
         },
@@ -240,7 +227,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
           ).then(() => messages);
         },
         onSettled: (messages) => {
-          setThread((current) => updateThread(current, chat.id, (list) => mergeMessages(list, messages)));
+          setThread((current) => applyThreadSentMessages(current, chat.id, messages));
           const last = messages.at(-1);
           if (last) onSent(last);
         },
@@ -324,11 +311,11 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
 
   const applyUpdate = useCallback((update: UpdateEvent): void => {
     if (update.type === 'new_message') {
-      setThread((current) => updateThread(current, update.message.chatId, (messages) => mergeMessages(messages, [update.message])));
+      setThread((current) => applyThreadNewMessage(current, update.message));
       return;
     }
     if (update.type === 'edit_message') {
-      setThread((current) => updateThread(current, update.message.chatId, (messages) => replaceMessage(messages, update.message)));
+      setThread((current) => applyThreadEdit(current, update.message));
       return;
     }
     if (update.type === 'reactions') {
@@ -357,6 +344,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     thread,
     loading,
     loadingOlder,
+    loadingNewer,
     pending: outbox.pending,
     error,
     botCommands,
@@ -366,6 +354,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     open,
     close,
     loadOlder,
+    loadNewer,
     send,
     attach,
     retryPending: outbox.retry,

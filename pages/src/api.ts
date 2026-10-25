@@ -203,7 +203,14 @@ export interface ChatScreen {
 export async function fetchChatScreen(
   chatId: PeerId,
   postId: number | null = null,
-  options: { limit?: number; anchorId?: number; withCommands?: boolean; commentsLimit?: number } = {},
+  options: {
+    limit?: number;
+    offsetId?: number;
+    addOffset?: number;
+    anchorId?: number;
+    withCommands?: boolean;
+    commentsLimit?: number;
+  } = {},
 ): Promise<ChatScreen> {
   const { withCommands = false, commentsLimit = 50, ...history } = options;
   const calls: RpcBatchCall[] = [{ method: 'getHistory', params: { chatId, ...history } }];

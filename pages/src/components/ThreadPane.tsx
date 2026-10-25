@@ -1,5 +1,6 @@
 import type { CommentsController } from '../comments-controller';
 import type { ThreadController } from '../thread-controller';
+import { threadReachesLatest } from '../thread-state';
 import type { ChatDto, MessageDto, PeerId, PresenceDto } from '../types';
 import { CommentsView } from './CommentsView';
 import { ThreadView } from './ThreadView';
@@ -87,6 +88,7 @@ export function ThreadPane({
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}
       loadingOlder={threads.loadingOlder}
+      loadingNewer={threads.loadingNewer}
       hasMoreOlder={threads.thread?.hasMoreOlder ?? false}
       pending={threads.pending}
       error={threads.error}
@@ -97,11 +99,13 @@ export function ThreadPane({
       readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
       unreadDividerId={threads.thread?.unreadDividerId ?? null}
       focusMessageId={threads.thread?.focusMessageId ?? null}
+      atLatest={threads.thread === null || threadReachesLatest(threads.thread)}
       positions={threads.positions}
       onBack={onBack}
       onSetArchived={onSetArchived}
       onCall={onCall}
       onLoadOlder={() => void threads.loadOlder()}
+      onLoadNewer={() => void threads.loadNewer()}
       onSend={threads.send}
       onAttach={threads.attach}
       onRetryPending={threads.retryPending}

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { writeClipboard } from '../clipboard';
 import { launchTelegramApp, usernameAppLink } from '../links';
 import type { ChatDto, PresenceDto } from '../types';
@@ -8,6 +7,7 @@ import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import { ProfilePopup } from './ProfilePopup';
+import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
 /**
  * The nav bar of the open chat: who it is, and what can be done with it.
@@ -57,21 +57,26 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const [position, setPosition] = useState({ left: 8, top: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const menuId = useId();
   const username = chat.username;
 
-  const closeMenu = useCallback((): void => {
-    setMenuOpen(false);
-    triggerRef.current?.focus();
-  }, []);
-
   const closeProfile = useCallback((): void => {
     setProfileOpen(false);
   }, []);
+
+  const { menuRef, position, onKeyDown } = useAnchoredMenu({
+    open: menuOpen,
+    onClose: () => setMenuOpen(false),
+    anchor: () => {
+      const trigger = triggerRef.current;
+      return trigger ? { kind: 'trigger', rect: trigger.getBoundingClientRect() } : null;
+    },
+    align: 'end',
+    trigger: triggerRef,
+    returnFocus: () => triggerRef.current?.focus(),
+  });
 
   // The profile belongs to the chat that was open when it was asked for, so a
   // chat the reader has moved on from must not be described by it.
@@ -80,45 +85,6 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
     setProfileOpen(true);
     read(chat.id);
   };
-
-  // Measure after the menu mounts: the first paint is already at the trigger's
-  // coordinates, and the layout effect settles the final clamped position
-  // before the browser paints. Focusing the first item keeps the menu
-  // keyboard-driven from the moment it opens.
-  useLayoutEffect(() => {
-    if (!menuOpen) return;
-    const trigger = triggerRef.current;
-    const menu = menuRef.current;
-    if (trigger === null || menu === null) return;
-    const triggerRect = trigger.getBoundingClientRect();
-    const { width, height } = menu.getBoundingClientRect();
-    const margin = 8;
-    setPosition({
-      left: Math.max(margin, Math.min(triggerRect.right - width, window.innerWidth - width - margin)),
-      top: Math.max(margin, Math.min(triggerRect.bottom + margin, window.innerHeight - height - margin)),
-    });
-    menu.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      closeMenu();
-    };
-    const onResize = (): void => {
-      // The anchor may have moved out from under the menu; close rather than
-      // leave it pointing at the wrong place.
-      closeMenu();
-    };
-    addEventListener('keydown', onKeyDown, { capture: true });
-    addEventListener('resize', onResize);
-    return () => {
-      removeEventListener('keydown', onKeyDown, { capture: true });
-      removeEventListener('resize', onResize);
-    };
-  }, [closeMenu, menuOpen]);
 
   useEffect(() => {
     if (copyState === 'idle') return;
@@ -211,79 +177,64 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
         </button>
       </header>
 
-      {menuOpen
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) closeMenu();
-              }}
+      {menuOpen ? (
+        <AnchoredMenu
+          menuRef={menuRef}
+          position={position}
+          onKeyDown={onKeyDown}
+          id={menuId}
+          className="fixed z-50 w-[220px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-panel-2 p-2 shadow-2xl"
+          label={`Menu for ${chat.title}`}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+            onClick={() => {
+              setMenuOpen(false);
+              openProfile(triggerRef.current);
+            }}
+          >
+            <Icon name="person" className="text-muted" />
+            <span>View Profile</span>
+          </button>
+          {username ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+              onClick={() => void copyUsername()}
             >
-              <div
-                ref={menuRef}
-                id={menuId}
-                className="fixed z-50 w-[220px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-panel-2 p-2 shadow-2xl"
-                role="menu"
-                aria-label={`Menu for ${chat.title}`}
-                style={{ left: position.left, top: position.top }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-                  event.preventDefault();
-                  moveMenuFocus(event.currentTarget, event.key === 'ArrowDown' ? 1 : -1);
-                }}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openProfile(triggerRef.current);
-                  }}
-                >
-                  <Icon name="person" className="text-muted" />
-                  <span>View Profile</span>
-                </button>
-                {username ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-                    onClick={() => void copyUsername()}
-                  >
-                    <Icon name="copy" className="text-muted" />
-                    <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : `Copy @${username}`}</span>
-                  </button>
-                ) : null}
-                {username ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-                    onClick={openInTelegram}
-                  >
-                    <Icon name="open-in-new" className="text-muted" />
-                    <span>Open in Telegram</span>
-                  </button>
-                ) : null}
-                <div className="my-1 h-px bg-line" role="separator" />
-                {/* The archive is Telegram's own place for the chats that are
-                    put away; the item offers the move in the direction the
-                    chat is not in, and the move asks first. */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-                  onClick={requestArchive}
-                >
-                  <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
-                  <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
-                </button>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+              <Icon name="copy" className="text-muted" />
+              <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : `Copy @${username}`}</span>
+            </button>
+          ) : null}
+          {username ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+              onClick={openInTelegram}
+            >
+              <Icon name="open-in-new" className="text-muted" />
+              <span>Open in Telegram</span>
+            </button>
+          ) : null}
+          <div className="my-1 h-px bg-line" role="separator" />
+          {/* The archive is Telegram's own place for the chats that are
+              put away; the item offers the move in the direction the
+              chat is not in, and the move asks first. */}
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+            onClick={requestArchive}
+          >
+            <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
+            <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
+          </button>
+        </AnchoredMenu>
+      ) : null}
 
       {profileOpen ? (
         <ProfilePopup
@@ -315,15 +266,4 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
       ) : null}
     </>
   );
-}
-
-/**
- * Cycles focus through the menu's items; the index is taken from the focused
- * item, so opening (first item focused) and tabbing in both wrap sensibly.
- */
-function moveMenuFocus(container: HTMLElement, step: number): void {
-  const items = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-  if (items.length === 0) return;
-  const index = items.indexOf(document.activeElement as HTMLElement);
-  items[(index + step + items.length) % items.length].focus();
 }

@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { downloadMedia, isDownloadable } from '../media-download';
 import { reactionFor } from '../reactions';
 import type { MessageDto, MessageReactionDto } from '../types';
 import { Icon, type IconName } from './Icon';
 import { ReactionPicker } from './ReactionPicker';
+import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
 /**
 The bubble's context menu, opened by a right-click or (on touch) a long press
@@ -63,9 +63,16 @@ interface MessageMenuProps {
 }
 
 export function MessageMenu({ messages, x, y, onReply, onForward, onReact, reacting = false, link = null, onClose }: MessageMenuProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ left: x, top: y });
   const [expanded, setExpanded] = useState(false);
+  const { menuRef, position, onKeyDown } = useAnchoredMenu({
+    open: true,
+    onClose,
+    anchor: () => ({ kind: 'point', x, y }),
+    itemSelector: '[data-message-menu-item]:not(:disabled)',
+    // Expanding the picker changes the menu's size, so the clamp is measured
+    // again then.
+    remeasureOn: expanded,
+  });
   const message = messages[0];
   const canReply = onReply !== undefined && !message.service;
   const canForward = onForward !== undefined && !message.service;
@@ -73,57 +80,6 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   const canCopyLink = link !== null;
   const canReact = onReact !== undefined && !message.service;
   const canDownload = messages.length === 1 && isDownloadable(message);
-
-  // Clamp the menu into the viewport once its real size is known (the first
-  // paint at the raw cursor keeps the open instant). Expanding the picker
-  // changes that size, so it is measured again then.
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (element === null) return;
-    const { width, height } = element.getBoundingClientRect();
-    const margin = 8;
-    setPosition({
-      left: Math.max(margin, Math.min(x, window.innerWidth - width - margin)),
-      top: Math.max(margin, Math.min(y, window.innerHeight - height - margin)),
-    });
-  }, [x, y, expanded]);
-
-  // Focus the first control once, so the keyboard can drive the menu — the
-  // Menu key opens it focused. Re-clamping on expand must not steal focus
-  // back from the expand button.
-  useLayoutEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[data-message-menu-item]:not(:disabled)')?.focus();
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
-    };
-    const onPointerDown = (event: PointerEvent): void => {
-      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
-      onClose();
-    };
-    const onScroll = (event: Event): void => {
-      // The all-reactions grid scrolls inside the menu; a scroll anchored to
-      // a moving message outside it closes the menu instead.
-      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
-      onClose();
-    };
-    // Capture, so Escape lands before any other key handler acts and a press
-    // anywhere (including another bubble's) closes this menu first. The
-    // thread scrolls inside its own container, not the window, so that too is
-    // caught on the way down.
-    addEventListener('keydown', onKeyDown, { capture: true });
-    addEventListener('pointerdown', onPointerDown, { capture: true });
-    addEventListener('scroll', onScroll, { capture: true });
-    addEventListener('resize', onClose);
-    return () => {
-      removeEventListener('keydown', onKeyDown, { capture: true });
-      removeEventListener('pointerdown', onPointerDown, { capture: true });
-      removeEventListener('scroll', onScroll, { capture: true });
-      removeEventListener('resize', onClose);
-    };
-  }, [onClose]);
 
   if (!canReply && !canForward && !canCopy && !canCopyLink && !canReact && !canDownload) return null;
 
@@ -140,24 +96,18 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   if (link !== null) items.push({ label: 'Copy Link', icon: 'link', run: () => void copyToClipboard(link) });
   if (canDownload) items.push({ label: 'Download', icon: 'download', run: () => downloadMedia(message) });
 
-  return createPortal(
-    <div
-      ref={ref}
+  return (
+    <AnchoredMenu
+      menuRef={menuRef}
+      position={position}
+      onKeyDown={onKeyDown}
       className="message-menu"
-      role="menu"
-      aria-label="Message actions"
-      style={{ left: position.left, top: position.top }}
+      label="Message actions"
       onContextMenu={(event) => {
         // A right-click inside the open menu must not reopen it through the
         // bubble's handler (portal events bubble up the React tree).
         event.preventDefault();
         event.stopPropagation();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowDown') moveFocus(event.currentTarget, 1);
-        else if (event.key === 'ArrowUp') moveFocus(event.currentTarget, -1);
-        else return;
-        event.preventDefault();
       }}
     >
       {canReact ? (
@@ -185,20 +135,8 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
           <span>{item.label}</span>
         </button>
       ))}
-    </div>,
-    document.body,
+    </AnchoredMenu>
   );
-}
-
-/**
-Cycles focus through the menu's items; the index is taken from the focused
-item, so opening (first item focused) and tabbing in both wrap sensibly.
-*/
-function moveFocus(container: HTMLElement, step: number): void {
-  const items = [...container.querySelectorAll<HTMLElement>('[data-message-menu-item]:not(:disabled)')];
-  if (items.length === 0) return;
-  const index = items.indexOf(document.activeElement as HTMLElement);
-  items[(index + step + items.length) % items.length].focus();
 }
 
 /**

@@ -1,12 +1,9 @@
 import type { TelegramDriver } from './driver';
+import type { EngineConfig } from './config';
 import type { LoginFlow } from './login-flow';
 import type { UpdatesSocketHub } from './socket-hub';
 import type { EngineStore, WakeCountersDto, WakeRecord } from './stats';
-
-/**
-Default cadence of the wake alarm, in seconds (overridable by var).
-*/
-export const DEFAULT_WAKE_INTERVAL_SECONDS = 300;
+import { log } from './log';
 
 /**
 How long a wake may spend catching up before it disconnects anyway.
@@ -36,7 +33,11 @@ export interface LifecycleHost {
   login: LoginFlow;
   state: DurableObjectState;
   store: EngineStore;
-  env: CloudflareEnv;
+  /**
+   * The parsed cadence and bounds. Read once by the engine, so a malformed var
+   * cannot change the cadence between two alarms.
+   */
+  config: EngineConfig;
   /**
    * The clock the alarm cadence and the wake log read. Defaults to
    * `Date.now`, so the host stays as it was; a test passes a clock it owns.
@@ -118,7 +119,7 @@ export class SessionLifecycle {
         // Nothing to replay before the account is linked, and an anonymous
         // client has no DC to run against — so the wake stays a no-op and the
         // alarm cadence remains observable through the wake log.
-        console.info('[engine] wake skipped: not signed in');
+        log.info('wake.skipped', { reason: 'not_signed_in' });
       }
     } catch (failure) {
       ok = false;
@@ -141,9 +142,9 @@ export class SessionLifecycle {
     } catch (failure) {
       // The wake log is bookkeeping: a rejected write (the Free plan's daily
       // row budget is exhausted) must not fail the wake that produced it.
-      console.error('[engine] failed to record the wake', failure);
+      log.error('wake.record_failed', { error: failure });
     }
-    if (!this.live) await this.arm(this.wakeIntervalMs());
+    if (!this.live) await this.arm(this.host.config.wakeIntervalMs);
     return this.host.store.counters();
   }
 
@@ -170,7 +171,7 @@ export class SessionLifecycle {
   Re-arms the wake cadence.
   */
   async armWake(): Promise<void> {
-    await this.arm(this.wakeIntervalMs());
+    await this.arm(this.host.config.wakeIntervalMs);
   }
 
   /**
@@ -191,7 +192,7 @@ export class SessionLifecycle {
   requested it, or the object may hibernate before the alarm is scheduled.
   */
   async afterActivity(): Promise<void> {
-    await this.arm(this.live ? this.wakeIntervalMs() : IDLE_RELEASE_MS);
+    await this.arm(this.live ? this.host.config.wakeIntervalMs : IDLE_RELEASE_MS);
   }
 
   async afterLogin(): Promise<void> {
@@ -200,7 +201,7 @@ export class SessionLifecycle {
     } catch {
       // The session is already persisted; the next wake reconnects.
     }
-    await this.arm(this.wakeIntervalMs());
+    await this.arm(this.host.config.wakeIntervalMs);
   }
 
   private async startLive(): Promise<void> {
@@ -210,7 +211,7 @@ export class SessionLifecycle {
         // An unsigned-in client must never reach the updates loop: without a
         // DC it fails fast, and mtcute restarts that loop without backoff.
         this.live = false;
-        console.info('[engine] live session refused: not signed in');
+        log.info('live.refused', { reason: 'not_signed_in' });
         this.host.hub.broadcast({ type: 'error', message: 'Not signed in' });
         return;
       }
@@ -226,10 +227,10 @@ export class SessionLifecycle {
       // rides the same connection.
       this.catchUpTask = this.host.driver.catchUp(CATCH_UP_TIMEOUT_MS);
       this.background(this.catchUpTask);
-      await this.arm(this.wakeIntervalMs());
+      await this.arm(this.host.config.wakeIntervalMs);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('[engine] live session failed', error);
+      log.error('live.failed', { error });
       this.live = false;
       if (!this.host.login.running) {
         try {
@@ -239,7 +240,7 @@ export class SessionLifecycle {
         }
       }
       this.host.hub.broadcast({ type: 'error', message });
-      await this.arm(this.wakeIntervalMs());
+      await this.arm(this.host.config.wakeIntervalMs);
     }
   }
 
@@ -252,7 +253,7 @@ export class SessionLifecycle {
    */
   private background(work: Promise<unknown>): void {
     const settled = work.catch((error) => {
-      console.error('[engine] background work failed', error);
+      log.error('background.failed', { error });
     });
     const holder = this.host.state as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
     if (typeof holder.waitUntil === 'function') {
@@ -300,7 +301,7 @@ export class SessionLifecycle {
       // come back and find the call still up. The wake cadence is re-armed so
       // the alarm finds the session connected rather than starting a second
       // one.
-      await this.arm(this.wakeIntervalMs());
+      await this.arm(this.host.config.wakeIntervalMs);
       return;
     }
     if (!this.host.login.running) {
@@ -310,13 +311,7 @@ export class SessionLifecycle {
         // The connection is already broken; the next wake rebuilds it.
       }
     }
-    await this.arm(this.wakeIntervalMs());
-  }
-
-  private wakeIntervalMs(): number {
-    const parsed = Number(this.host.env.WAKE_INTERVAL_SECONDS ?? '');
-    const seconds = Number.isFinite(parsed) && parsed >= 30 ? parsed : DEFAULT_WAKE_INTERVAL_SECONDS;
-    return Math.round(seconds * 1000);
+    await this.arm(this.host.config.wakeIntervalMs);
   }
 
   private now(): number {
@@ -336,7 +331,7 @@ export class SessionLifecycle {
       // The cadence is best effort: if the write budget is exhausted, reads
       // still work, and the next request's `ensureArmed` repairs the alarm
       // once the quota resets.
-      console.error('[engine] failed to arm the wake alarm', error);
+      log.error('alarm.arm_failed', { error });
     }
   }
 }

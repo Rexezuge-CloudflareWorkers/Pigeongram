@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { ENGINE_OBJECT_NAME } from '@pigeongram/backend-services';
+import { readEngineConfig } from '@pigeongram/backend-services/session/config';
 import { errorResponse } from '@pigeongram/backend-services/session/http';
+import { log } from '@pigeongram/backend-services/session/log';
 import { parseUploadGroupSpec, parseUploadSpec } from '@pigeongram/backend-services/session/upload-spec';
 import { requireAccess } from './access';
 
@@ -77,7 +79,7 @@ function safeReturnPath(request: Request): string {
  */
 app.post('/user/upload', async (c, next) => {
   try {
-    parseUploadSpec(new URL(c.req.url), c.req.raw, c.env);
+    parseUploadSpec(new URL(c.req.url), c.req.raw, readEngineConfig(c.env));
   } catch (error) {
     return errorResponse(error);
   }
@@ -86,7 +88,7 @@ app.post('/user/upload', async (c, next) => {
 
 app.post('/user/upload-group', async (c, next) => {
   try {
-    parseUploadGroupSpec(new URL(c.req.url), c.req.raw, c.env);
+    parseUploadGroupSpec(new URL(c.req.url), c.req.raw, readEngineConfig(c.env));
   } catch (error) {
     return errorResponse(error);
   }
@@ -107,9 +109,9 @@ app.all('/user/*', async (c) => {
     await discardRequestBody(c.req.raw);
     return response;
   } catch (error) {
-    console.error('[worker] session engine unreachable', error);
+    log.error('worker.engine_unreachable', { error });
     const message = error instanceof Error ? error.message : String(error);
-    return c.json({ error: `Session engine unreachable: ${message}` }, 503);
+    return c.json({ error: `Session engine unreachable: ${message}`, code: 'unavailable' }, 503);
   }
 });
 

@@ -44,7 +44,7 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
   `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
   domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
-  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `socket-hub`, `unread-albums`, `call-{rpc,dto,params,
+  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `config`, `log`, `socket-hub`, `unread-albums`, `call-{rpc,dto,params,
 protocol,registry}`) and the mtcute integration
   (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
   `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA; the calls' half is `src/call-types.ts`
@@ -141,6 +141,13 @@ protocol,registry}`) and the mtcute integration
 - **The DO stub is a plain class**, not `extends DurableObject` — that import cannot resolve under Vitest's runtime
   without `@cloudflare/vitest-pool-workers`, and a DO class does not need to extend it. Keep it that way until real DO
   tests exist.
+- **Bridge failures carry a stable code, and the engine logs one JSON line per event.** `EngineError` derives a coarse
+  `code` from its status (`validation`, `not_found`, `conflict`, `access`, `upstream`, `unavailable`, `internal`) and a
+  call site may name a more specific one; `errorResponse` sends `{error, code}` still additively, `EngineConfigError` is
+  `config`, and an exhausted write budget keeps `storage_write_quota`. The SPA's `ApiError.code` reads it. `session/log.ts`
+  writes `{level, event, …fields}` through the matching console method, so Workers Logs and tests query fields instead of
+  prose; `session/config.ts` reads `WAKE_INTERVAL_SECONDS`, `UPLOAD_MAX_BYTES` and the media window once per engine (and
+  once per upload pre-flight at the edge). Do not parse an env bound inside a request handler again.
 - **The worker is API-only.** No `assets`, no `spa-shell` embedding, no open-next workarounds, and no D1 — the session
   engine's storage is the Durable Object's SQLite. The UI lives on Pages.
 - **The SPA relies on the Pages default fallback for pathname routes.** There is deliberately no top-level `404.html`:

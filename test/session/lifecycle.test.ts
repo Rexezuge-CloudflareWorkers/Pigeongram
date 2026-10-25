@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readEngineConfig } from '../../packages/backend-services/src/session/config';
 import { SessionLifecycle, STOP_CATCH_UP_TIMEOUT_MS } from '../../packages/backend-services/src/session/lifecycle';
 import type { LifecycleHost } from '../../packages/backend-services/src/session/lifecycle';
 
@@ -79,7 +80,7 @@ function harness(options: HarnessOptions = {}): Harness {
     login,
     state,
     store,
-    env: { WAKE_INTERVAL_SECONDS: options.wakeIntervalSeconds ?? '300' },
+    config: readEngineConfig({ WAKE_INTERVAL_SECONDS: options.wakeIntervalSeconds ?? '300' }),
     now: options.now,
   } as unknown as LifecycleHost;
   return { lifecycle: new SessionLifecycle(host), driver, login, hub, alarms, waitUntil };
@@ -215,6 +216,11 @@ describe('SessionLifecycle wake cadence', () => {
     await expect(lifecycle.armWake()).resolves.toBeUndefined();
 
     expect(alarms).toEqual([]);
-    expect(logged).toHaveBeenCalledWith('[engine] failed to arm the wake alarm', expect.any(Error));
+    const line = JSON.parse(logged.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(line).toMatchObject({
+      level: 'error',
+      event: 'alarm.arm_failed',
+      error: { name: 'Error', message: 'storage write quota exceeded' },
+    });
   });
 });

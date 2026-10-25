@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { log } from '@pigeongram/backend-services/session/log';
 
 /**
  * Cloudflare Access verification for the `/user/*` surface.
@@ -80,19 +81,19 @@ function rejection(error: string, code: 'access' | 'access_config', status: 401 
 export async function requireAccess(request: Request, env: CloudflareEnv): Promise<Response | null> {
   if (env.ACCESS_DEV_BYPASS === 'true') {
     if (env.ENVIRONMENT === 'production') {
-      console.error('[access] ACCESS_DEV_BYPASS is set in production; refusing to skip JWT verification');
+      log.error('access.bypass_in_production');
       return rejection('ACCESS_DEV_BYPASS must not be enabled in production', 'access_config', 503);
     }
     if (!warnedAboutBypass) {
       warnedAboutBypass = true;
-      console.warn('[access] ACCESS_DEV_BYPASS is enabled; Cloudflare Access JWT verification is skipped');
+      log.warn('access.bypass_enabled');
     }
     return null;
   }
 
   const config = accessConfig(env);
   if (!config) {
-    console.error('[access] TEAM_DOMAIN and POLICY_AUD must name the Cloudflare Access application');
+    log.error('access.config_missing');
     return rejection('Cloudflare Access verification is not configured', 'access_config', 503);
   }
 
@@ -111,7 +112,7 @@ export async function requireAccess(request: Request, env: CloudflareEnv): Promi
   } catch (error) {
     // The jose message can name the expected issuer/audience or describe the
     // cert fetch; log it for the operator, but keep the client answer generic.
-    console.warn('[access] Cloudflare Access JWT rejected:', error instanceof Error ? error.message : String(error));
+    log.warn('access.token_rejected', { error: error instanceof Error ? error.message : String(error) });
     return rejection('Cloudflare Access token is invalid', 'access', 401);
   }
 }

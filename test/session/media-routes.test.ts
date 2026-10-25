@@ -122,7 +122,7 @@ describe('uploadGroupResponse', () => {
     const { url } = target(`/user/upload-group?chatId=1&manifest=${manifest}`);
     const upload = new Request(url, { method: 'POST', body: 'abcde', headers: { 'content-type': 'application/octet-stream' } });
 
-    const response = await uploadGroupResponse(driver, upload, url, {} as CloudflareEnv);
+    const response = await uploadGroupResponse(driver, upload, url, { maxUploadBytes: 100 });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ messages: [{ id: 2 }, { id: 1 }] });
@@ -144,7 +144,7 @@ describe('uploadGroupResponse', () => {
     const { url } = target('/user/upload-group?chatId=1&manifest=!!!');
     const upload = new Request(url, { method: 'POST', body: 'x' });
 
-    await expect(uploadGroupResponse(driver, upload, url, {} as CloudflareEnv)).rejects.toMatchObject({ status: 400 });
+    await expect(uploadGroupResponse(driver, upload, url, { maxUploadBytes: 100 })).rejects.toMatchObject({ status: 400 });
     expect(sendUploadGroup).not.toHaveBeenCalled();
   });
 });

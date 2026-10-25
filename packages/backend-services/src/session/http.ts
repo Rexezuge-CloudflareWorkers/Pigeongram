@@ -1,5 +1,6 @@
 import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
 import { EngineConfigError } from '@pigeongram/provider-clients/mtproto/client';
+import { log } from './log';
 
 /**
  * HTTP plumbing shared by the engine's bridge routes: request bodies in,
@@ -64,18 +65,18 @@ Maps engine errors onto the bridge's JSON error responses.
 */
 export function errorResponse(error: unknown): Response {
   if (error instanceof EngineError) {
-    return Response.json({ error: error.message }, { status: error.status });
+    return Response.json({ error: error.message, code: error.code }, { status: error.status });
   }
   if (error instanceof EngineConfigError) {
-    return Response.json({ error: error.message }, { status: 503 });
+    return Response.json({ error: error.message, code: 'config' }, { status: 503 });
   }
   if (isStorageWriteQuotaError(error)) {
     // The account is over the Free plan's daily row budget. Reads keep
     // working, so the failure gets its own code instead of a generic 500.
-    console.warn('[engine] storage write quota exhausted');
+    log.warn('storage.quota_exhausted');
     return Response.json({ code: 'storage_write_quota', error: STORAGE_WRITE_QUOTA_MESSAGE }, { status: 503 });
   }
-  console.error('[engine] request failed', error);
+  log.error('request.failed', { error });
   const message = error instanceof Error ? error.message : String(error);
-  return Response.json({ error: message }, { status: 500 });
+  return Response.json({ error: message, code: 'internal' }, { status: 500 });
 }

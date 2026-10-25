@@ -70,16 +70,37 @@ describe('readJsonBody', () => {
 });
 
 describe('errorResponse', () => {
-  it('keeps an engine error status', async () => {
+  it('keeps an engine error status and derives its code', async () => {
     const response = errorResponse(new EngineError('bad input', 409));
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: 'bad input' });
+    await expect(response.json()).resolves.toEqual({ error: 'bad input', code: 'conflict' });
+  });
+
+  it('classifies statuses a caller can act on', async () => {
+    const cases: Array<[number, string]> = [
+      [400, 'validation'],
+      [404, 'not_found'],
+      [403, 'access'],
+      [502, 'upstream'],
+      [503, 'unavailable'],
+      [500, 'internal'],
+    ];
+    for (const [status, code] of cases) {
+      const response = errorResponse(new EngineError('failure', status));
+      await expect(response.json(), String(status)).resolves.toMatchObject({ code });
+    }
+  });
+
+  it('lets a call site name a more specific code', async () => {
+    const response = errorResponse(new EngineError('over budget', 503, 'storage_write_quota'));
+
+    await expect(response.json()).resolves.toEqual({ error: 'over budget', code: 'storage_write_quota' });
   });
 
   it('maps a configuration failure to 503', async () => {
     const response = errorResponse(new EngineConfigError('TELEGRAM_API_ID is missing'));
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ error: 'TELEGRAM_API_ID is missing' });
+    await expect(response.json()).resolves.toEqual({ error: 'TELEGRAM_API_ID is missing', code: 'config' });
   });
 
   it('gives the write quota its own code', async () => {
@@ -91,6 +112,6 @@ describe('errorResponse', () => {
   it('turns anything else into a 500', async () => {
     const response = errorResponse(new Error('boom'));
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: 'boom' });
+    await expect(response.json()).resolves.toEqual({ error: 'boom', code: 'internal' });
   });
 });

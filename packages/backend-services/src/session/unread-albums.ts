@@ -2,6 +2,7 @@ import type { Dialog } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { UpdateEvent } from '../types';
 import type { SqlStorageLike } from '@pigeongram/provider-clients/mtproto/sqlite';
+import { log } from './log';
 
 /**
  * The album ledger: which of a chat's unread messages are album members.
@@ -66,7 +67,7 @@ export class UnreadAlbumLedger {
     } catch (error) {
       if (this.warned) return;
       this.warned = true;
-      console.warn('[engine] album ledger write failed', error);
+      log.warn('albums.ledger_write_failed', { error });
     }
   }
 
@@ -204,6 +205,6 @@ async function reconcileChat(client: TelegramClient, dialog: Dialog, ledger: Unr
       ledger.recordIncoming(chatId, message.id, groupedId);
     }
   } catch (error) {
-    console.warn('[engine] album reconciliation failed', error);
+    log.warn('albums.reconcile_failed', { error });
   }
 }

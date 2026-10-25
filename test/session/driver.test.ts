@@ -1,6 +1,7 @@
 import { Long, PeersIndex, RawUpdateInfo } from '@mtcute/core';
 import type { tl, User } from '@mtcute/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MEDIA_WINDOW_BYTES } from '../../packages/backend-services/src/session/config';
 import { TelegramDriver } from '../../packages/backend-services/src/session/driver';
 import { EngineError } from '../../packages/backend-services/src/session/errors';
 import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
@@ -347,7 +348,7 @@ describe('TelegramDriver', () => {
     await expect(harness.driver.sendUpload(spec, body)).resolves.toBe(message);
     await expect(harness.driver.sendUploadGroup(group, body)).resolves.toBe(messages);
 
-    expect(media.streamMessageMedia).toHaveBeenCalledWith(harness.client, 2, 3, { thumb: true });
+    expect(media.streamMessageMedia).toHaveBeenCalledWith(harness.client, 2, 3, { thumb: true }, MEDIA_WINDOW_BYTES);
     expect(media.readAvatar).toHaveBeenCalledWith(harness.client, 2, 'small');
     expect(media.readAvatarVersion).toHaveBeenCalledWith(harness.client, 2, 'big');
     expect(upload.sendUploadedMedia).toHaveBeenCalledWith(harness.client, spec, body, undefined);

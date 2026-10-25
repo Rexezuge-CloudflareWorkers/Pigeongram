@@ -1,3 +1,5 @@
+import type { Branding } from '../../branding';
+
 /**
  * The web app manifest: what the browser needs to install the client as an
  * app rather than a bookmark.
@@ -32,22 +34,30 @@ export interface PwaManifest {
   icons: ManifestIcon[];
 }
 
-export const MANIFEST: PwaManifest = {
-  name: 'Telegram Web Client',
-  short_name: 'Telegram Web',
-  description: 'A single-account Telegram client that stays online at the edge.',
-  start_url: '/',
-  scope: '/',
-  id: '/',
-  display: 'standalone',
-  orientation: 'any',
-  // The app's own chrome: `base.css`'s `--bg`.
-  theme_color: '#0e1621',
-  background_color: '#0e1621',
-  categories: ['social', 'productivity'],
-  icons: [
-    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-  ],
-};
+/**
+ * Builds the manifest for one deployment's branding.
+ *
+ * The name and short name come from `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`
+ * (`pages/branding.ts`); the rest of the manifest is the same everywhere.
+ */
+export function createManifest(branding: Branding): PwaManifest {
+  return {
+    name: branding.name,
+    short_name: branding.shortName,
+    description: `${branding.name} is an independent, single-account Telegram client that stays online at the edge.`,
+    start_url: '/',
+    scope: '/',
+    id: '/',
+    display: 'standalone',
+    orientation: 'any',
+    // The app's own chrome: `base.css`'s `--bg`.
+    theme_color: '#0e1621',
+    background_color: '#0e1621',
+    categories: ['social', 'productivity'],
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  };
+}

@@ -1,4 +1,5 @@
 import { accessLoginUrl } from '../api';
+import { APP_NAME } from '../app-name';
 
 /**
  * The public home page, shown before Cloudflare Access authenticates the
@@ -11,7 +12,7 @@ export function LandingPage() {
   return (
     <main className="landing">
       <section className="landing-hero">
-        <p className="eyebrow">Telegram Web Client</p>
+        <p className="eyebrow">{APP_NAME}</p>
         <h1>Your Telegram, on Cloudflare Workers</h1>
         <p className="lead">
           A single-account client that stays online at the edge: a Durable Object keeps the Telegram session warm, and this page streams

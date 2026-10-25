@@ -2,8 +2,10 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineWebViteConfig } from '@rexezuge/tooling/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readBranding } from './branding';
 import { pwaAssetLinksPlugin } from './build/pwa/assetlinks-plugin';
-import { MANIFEST } from './build/pwa/manifest';
+import { pwaBrandingPlugin } from './build/pwa/branding-plugin';
+import { createManifest } from './build/pwa/manifest';
 import { pwaIconsPlugin } from './build/pwa/plugin';
 
 /**
@@ -13,12 +15,16 @@ import { pwaIconsPlugin } from './build/pwa/plugin';
  * 8787). `spaShell` is deliberately not passed: this repo's worker is API-only
  * and serves no embedded shell — the Pages project is the whole front end.
  */
+const branding = readBranding(process.env);
+
 export default defineWebViteConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // The product name in the document title (`VITE_APP_NAME`).
+    pwaBrandingPlugin(branding),
     // The icons the manifest points at, drawn from the favicon's own geometry.
-    pwaIconsPlugin(),
+    pwaIconsPlugin(branding),
     // The Digital Asset Links statement for this deployment's Android build.
     // It is emitted only when the deployment supplies the Android variables.
     pwaAssetLinksPlugin(),
@@ -35,7 +41,7 @@ export default defineWebViteConfig({
       // A worker in the dev server would serve a stale shell over Vite's own
       // modules and break hot reloading.
       devOptions: { enabled: false },
-      manifest: MANIFEST,
+      manifest: createManifest(branding),
       injectManifest: {
         // The build's own files: the hashed assets, the shell, the icons and
         // the manifest. Nothing else is ever precached.

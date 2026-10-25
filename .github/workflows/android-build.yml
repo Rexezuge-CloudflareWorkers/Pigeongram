@@ -46,8 +46,11 @@ jobs:
       ANDROID_PACKAGE_ID: ${{ vars.ANDROID_PACKAGE_ID }}
       ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
       ANDROID_PLAY_CERT_SHA256: ${{ vars.ANDROID_PLAY_CERT_SHA256 }}
-      ANDROID_APP_NAME: ${{ vars.ANDROID_APP_NAME || 'Telegram Web Client' }}
-      ANDROID_LAUNCHER_NAME: ${{ vars.ANDROID_LAUNCHER_NAME || 'Telegram Web' }}
+      # The web brand first, so a fork sets `VITE_APP_NAME` once. The Android
+      # variables stay the per-shell override; the launcher name is what Android
+      # shows under the icon and is best kept to 12 characters or fewer.
+      ANDROID_APP_NAME: ${{ vars.ANDROID_APP_NAME || vars.VITE_APP_NAME || 'Pigeongram' }}
+      ANDROID_LAUNCHER_NAME: ${{ vars.ANDROID_LAUNCHER_NAME || vars.VITE_APP_SHORT_NAME || vars.VITE_APP_NAME || 'Pigeongram' }}
       BUBBLEWRAP_VERSION: '1.27.0'
 
     steps:

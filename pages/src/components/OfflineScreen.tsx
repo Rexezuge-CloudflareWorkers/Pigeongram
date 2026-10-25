@@ -1,3 +1,5 @@
+import { APP_NAME } from '../app-name';
+
 /**
  * The screen shown when the client cannot reach the server at all.
  *
@@ -14,7 +16,7 @@ export function OfflineScreen({ onRetry }: OfflineScreenProps) {
   return (
     <main className="landing">
       <section className="landing-hero">
-        <p className="eyebrow">Telegram Web Client</p>
+        <p className="eyebrow">{APP_NAME}</p>
         <h1>You are offline</h1>
         <p className="lead">
           The client cannot reach the server, so it cannot read your chats. It reconnects on its own as soon as the network is back.

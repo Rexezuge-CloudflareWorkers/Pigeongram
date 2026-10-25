@@ -14,7 +14,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>Telegram Web Client</title>
+    <!-- The product name, resolved at build time from `VITE_APP_NAME` by
+         `build/pwa/branding-plugin.ts`; the default is Pigeongram. -->
+    <title>%APP_NAME%</title>
     <!--
       The favicon is inlined as a data URI so the icon travels with the document:
       there is no `pages/public/` asset to add, no extra request for the browser to

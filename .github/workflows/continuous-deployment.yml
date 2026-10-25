@@ -108,6 +108,12 @@ jobs:
       # deployment's package id and signing certificate.
       - name: Build Frontend
         env:
+          # The product name in the tab title, the install manifest and the
+          # intro. A fork sets the repository variables once; the defaults are
+          # the upstream brand. Keep the short name reasonably short — launchers
+          # truncate it.
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'Pigeongram' }}
+          VITE_APP_SHORT_NAME: ${{ vars.VITE_APP_SHORT_NAME || vars.VITE_APP_NAME || 'Pigeongram' }}
           ANDROID_PACKAGE_ID: ${{ vars.ANDROID_PACKAGE_ID }}
           ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
           ANDROID_PLAY_CERT_SHA256: ${{ vars.ANDROID_PLAY_CERT_SHA256 }}

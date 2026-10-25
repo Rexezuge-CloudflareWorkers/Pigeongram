@@ -6,7 +6,7 @@ without re-running the analysis that produced it.
 
 | Field           | Value                                                               |
 | --------------- | ------------------------------------------------------------------- |
-| Status          | PR 1 (W1) and PR 2 (W2) complete — W3 seams next                    |
+| Status          | PR 1 (W1), PR 2 (W2) and PR 3–4 (W3) complete — W4 headroom next    |
 | Branch          | `refactor/family-hardening` (work branches per PR, see §6)          |
 | Baseline commit | `a67c5db` (merge of #100, `main`)                                   |
 | Started         | 2026-10-25                                                          |
@@ -336,6 +336,17 @@ machine. `calls/session.ts` (the reducer) stays as-is — it is already tested.
 
 - Escape + outside-scroll-close. Extract once, **after** the context-menu tests exist, and prove parity with them.
 
+**Landed with PR 3–4 (2026-10-25):** `rpc-methods.ts` is the one table — a mapped type over `RpcMethod`, with the
+read-only set derived and type-checked against `BatchableRpcMethod` in both directions — and `rpc.ts` is only the
+envelope/dispatcher. The domain entries live in `rpc-dialogs.ts`, `rpc-messages.ts` and `call-rpc.ts`; media stays on
+its HTTP routes (`media-routes.ts`/`media-stream.ts`), so no `rpc-media.ts` was needed. The seams are `TelegramDriver`'s
+bundle factory, `EngineDeps` (with the 405 route table), the `now` ports on `SessionLifecycle`/`AvatarCache`,
+`WorkersWsTransport`'s connect, and `CallPeer`/`Ringtone`'s factories. `CallOrchestrator` owns the live record, the
+key exchange and the guard flags; `useCalls` is its reducer adapter. `useAnchoredMenu` is shared by `MessageMenu`,
+`ThreadHeader` and `UserMenu`. The W2 rows that waited for these seams landed with them: `rpc-registry`, `driver`,
+`transport`, `mtproto-crypto`, `call-orchestrator`, `anchored-menu`, the full engine route table (404/405) and the
+quota-exhausted login/logout cases.
+
 ### 5.4 W4 — Readability and god-file headroom (P1, ~1 day)
 
 Three files are at or near the hard cap, so the next feature cannot land without a split:
@@ -451,12 +462,14 @@ Open questions (none blocking PR 1):
 
 Append one entry per landed PR. Keep it terse: date · branch/commit · what changed · gate result · notes.
 
-| Date       | Ref                         | What                                                                                                                                                                                                                                                                | Gate                    |
-| ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| 2026-10-25 | `a67c5db`                   | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                                                        | `pnpm run checks` green |
-| 2026-10-25 | `docs/hardening-worklog`    | This worklog; decisions recorded                                                                                                                                                                                                                                    | `format:check` + review |
-| 2026-10-25 | `refactor/family-hardening` | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests)                                        | `pnpm run checks` green |
-| 2026-10-25 | `refactor/family-hardening` | W2 coverage pass: UI, call, upload, DTO and RPC tests added; flat 80% floor reached at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%** (74 files, 929 tests); four 80% thresholds added to `vitest.config.mts` and the failure path verified | `pnpm run checks` green |
+| Date       | Ref                                           | What                                                                                                                                                                                                                                                                                                                                     | Gate                                                       |
+| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 2026-10-25 | `a67c5db`                                     | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                                                                                                                             | `pnpm run checks` green                                    |
+| 2026-10-25 | `docs/hardening-worklog`                      | This worklog; decisions recorded                                                                                                                                                                                                                                                                                                         | `format:check` + review                                    |
+| 2026-10-25 | `refactor/family-hardening`                   | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests)                                                                                                             | `pnpm run checks` green                                    |
+| 2026-10-25 | `refactor/family-hardening`                   | W2 coverage pass: UI, call, upload, DTO and RPC tests added; flat 80% floor reached at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%** (74 files, 929 tests); four 80% thresholds added to `vitest.config.mts` and the failure path verified                                                                      | `pnpm run checks` green                                    |
+| 2026-10-25 | `refactor/family-hardening` (`f01d61f`, PR 3) | W3.1–3.2: one `RPC_METHODS` table with a type-derived batch whitelist, `rpc.ts` reduced to the dispatcher, domain handlers split; `TelegramDriver`, `EngineDeps`, `now`, `WorkersWsTransport` and `CallPeer`/`Ringtone` seams; W2 rows for registry, driver, transport, crypto and the route table landed                                | `pnpm run checks` green; `wrangler deploy --dry-run` clean |
+| 2026-10-25 | `refactor/family-hardening` (`16c09ba`, PR 4) | W3.3–3.4: `CallOrchestrator` (live record, key exchange, ordering guards) with `useCalls` as its reducer adapter; `useAnchoredMenu` shared by the message, thread and account menus; ordering/focus parity tests added. Coverage after W3: **lines 90.22%, statements 87.68%, branches 82.32%, functions 87.32%** (80 files, 1009 tests) | `pnpm run checks` green                                    |
 
 Template:
 

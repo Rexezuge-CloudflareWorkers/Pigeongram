@@ -99,7 +99,8 @@ protocol,registry}`) and the mtcute integration
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
 - `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
   troubleshooting. `pwa.md`: the service worker's rules, the install build, the offline state, and how to verify it.
-  `android.md`: the per-deployment TWA build, signing, Play notes and trust model.
+  `android.md`: the per-deployment TWA build, signing, Play notes and trust model. `hardening-worklog.md`: the in-flight
+  hardening plan, its verified defects, the owner decisions and its progress log — read it before starting hardening work.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
   the workspace.

@@ -5,34 +5,13 @@ import { acceptCall as acceptCallRpc, confirmCall, discardCall, fetchCallDhConfi
 import { fromBase64, toBase64 } from './base64';
 import { CallCipher } from './crypto';
 import { createDhKeyPair, validateDhConfig } from './dh';
-import type { DhConfig, DhKeyPair } from './dh';
+import type { DhConfig } from './dh';
 import { establishKey } from './exchange';
+import { messageOf, randomCallId } from './live';
+import type { LiveCall } from './live';
 import { CallPeerSession } from './peer';
 import { callReducer } from './session';
 import type { CallView } from './session';
-
-/**
- * The live half of a call: everything that must not be in the React state.
- *
- * The keys live here and nowhere else — the shared key is a secret, and a
- * secret in a component's state is a secret in the browser's dev tools, in a
- * crash report and in a screenshot of the DOM.
- */
-interface LiveCall {
-  callId: string;
-  chatId: number;
-  peerId: number;
-  direction: 'outgoing' | 'incoming';
-  /**
-   * The commitment the caller sent, so the callee can check the caller's
-   * public value against it once the key is derived.
-   */
-  gAHash: Uint8Array | null;
-  config: DhConfig | null;
-  keyPair: DhKeyPair | null;
-  peer: CallPeerSession;
-  startedAt: number;
-}
 
 /**
  * What the controller offers the UI.
@@ -91,6 +70,16 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
   const live = useRef<LiveCall | null>(null);
   const config = useRef<DhConfig | null>(null);
   const sendRef = useRef(send);
+  /**
+   * A call is being requested. `live.current` is only assigned after three
+   * awaits, so a double-tap lands inside that window; this flag closes it.
+   */
+  const starting = useRef(false);
+  /**
+   * `accept` is in flight. Two taps would send two accept RPCs with different
+   * gB values, and the second would replace the key the first already used.
+   */
+  const accepting = useRef(false);
 
   useEffect(() => {
     sendRef.current = send;
@@ -118,6 +107,7 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
   const teardown = useCallback((): void => {
     live.current?.peer.close();
     live.current = null;
+    accepting.current = false;
     setRemoteStream(null);
   }, []);
 
@@ -132,10 +122,13 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
   const onActive = useCallback(async (call: CallDto): Promise<void> => {
     const current = live.current;
     if (!current) return;
-    if (current.direction === 'incoming' && !current.peer.ready) {
+    if (current.direction === 'incoming' && !current.peer.ready && !current.deriving) {
       if (!current.keyPair || !current.config || !call.gAOrB) {
         throw new Error("The call did not carry the caller's key exchange value");
       }
+      // Claim the derivation before the first await: two `active` updates can
+      // arrive together, and both would otherwise pass the `ready` check.
+      current.deriving = true;
       const peerValue = fromBase64(call.gAOrB);
       if (peerValue === null) throw new Error("The caller's key exchange value did not arrive intact");
       const { key, fingerprint } = await establishKey({
@@ -161,8 +154,9 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
       const current = live.current;
       if (!current?.keyPair || !current.config || !call.gB) return;
       // The key is derived once: a second "accepted" update must not make
-      // the caller confirm the same call twice.
-      if (current.peer.ready) return;
+      // the caller confirm the same call twice. Claim it before the await.
+      if (current.peer.ready || current.confirmed) return;
+      current.confirmed = true;
       const peerValue = fromBase64(call.gB);
       if (peerValue === null) throw new Error("The callee's key exchange value did not arrive intact");
       const { key, fingerprint } = await establishKey({
@@ -211,6 +205,8 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
           gAHash: call.gAHash ? fromBase64(call.gAHash) : null,
           config: null,
           keyPair: null,
+          deriving: false,
+          confirmed: false,
           peer,
           startedAt: Date.now(),
         };
@@ -257,6 +253,14 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
 
   const startCall = useCallback(
     (chatId: number): void => {
+      if (live.current) return;
+      if (starting.current) {
+        // The overlay does not exist yet, so the failure has nowhere to
+        // render: report it through the app's banner.
+        onError(new Error('A call is already in progress'));
+        return;
+      }
+      starting.current = true;
       void (async () => {
         try {
           const parameters = await dhConfig();
@@ -285,6 +289,8 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
             gAHash: null,
             config: parameters,
             keyPair,
+            deriving: false,
+            confirmed: false,
             peer,
             startedAt: Date.now(),
           };
@@ -293,6 +299,8 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
           // The call never started, so there is no overlay to show the failure
           // on: the app reports it.
           onError(error);
+        } finally {
+          starting.current = false;
         }
       })();
     },
@@ -300,9 +308,11 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
   );
 
   const accept = useCallback((): void => {
+    if (accepting.current) return;
+    const current = live.current;
+    if (!current || current.direction !== 'incoming' || current.keyPair) return;
+    accepting.current = true;
     void (async () => {
-      const current = live.current;
-      if (!current || current.direction !== 'incoming') return;
       try {
         const parameters = await dhConfig();
         const keyPair = await createDhKeyPair(parameters);
@@ -313,6 +323,8 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
       } catch (error) {
         dispatch({ type: 'failed', callId: current.callId, error: messageOf(error) });
         teardown();
+      } finally {
+        accepting.current = false;
       }
     })();
   }, [dhConfig, teardown]);
@@ -359,22 +371,4 @@ export function useCalls(send: (message: ClientSocketMessage) => void, onError: 
     dismiss,
     handleUpdate,
   };
-}
-
-/**
- * A random id for a call request.
- *
- * Telegram's is a 32-bit integer and the client picks it, so a retry of the
- * same request is the same call and not a second one.
- */
-function randomCallId(): string {
-  const value = crypto.getRandomValues(new Uint32Array(1))[0];
-  return String(value === 0 ? 1 : value);
-}
-
-/**
- * The message of a failure, in the reader's words where possible.
- */
-function messageOf(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'The call could not be set up';
 }

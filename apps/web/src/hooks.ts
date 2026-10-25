@@ -218,16 +218,19 @@ export function useUpdatesSocket(
   enabled: boolean,
   onUpdate: (update: UpdateEvent) => void,
   onReady: (resync: boolean) => void,
+  onError: (message: string) => void = () => {},
 ): { connected: boolean; send: (message: ClientSocketMessage) => void } {
   const [connected, setConnected] = useState(false);
   const updateRef = useRef(onUpdate);
   const readyRef = useRef(onReady);
+  const errorRef = useRef(onError);
   const socketRef = useRef<WebSocket | null>(null);
 
   // Latest-callback refs, refreshed after each render.
   useEffect(() => {
     updateRef.current = onUpdate;
     readyRef.current = onReady;
+    errorRef.current = onError;
   });
 
   useEffect(() => {
@@ -247,22 +250,43 @@ export function useUpdatesSocket(
       socket = current;
       socketRef.current = current;
       current.addEventListener('open', () => {
-        retry = 0;
         setConnected(true);
         current.send(JSON.stringify({ type: 'hello' }));
       });
       current.addEventListener('message', (event) => {
-        let message: ServerSocketMessage;
+        let parsed: unknown;
         try {
-          message = JSON.parse(String(event.data)) as ServerSocketMessage;
+          parsed = JSON.parse(String(event.data));
         } catch {
           return;
         }
-        if (message.type === 'update') updateRef.current(message.update);
-        else if (message.type === 'ready') {
-          const resync = ready;
-          ready = true;
-          readyRef.current(resync);
+        if (typeof parsed !== 'object' || parsed === null) return;
+        const message = parsed as ServerSocketMessage;
+        switch (message.type) {
+          case 'update': {
+            updateRef.current(message.update);
+            break;
+          }
+          case 'ready': {
+            // The socket has completed the protocol handshake, so the
+            // connection works. Resetting on `open` instead would let a socket
+            // that opens and immediately closes retry every 500 ms forever.
+            retry = 0;
+            const resync = ready;
+            ready = true;
+            readyRef.current(resync);
+
+            break;
+          }
+          case 'error': {
+            // The engine reports "Not signed in" and live-session failures on
+            // this frame; dropping it leaves the reader with a dead tab and no
+            // explanation.
+            errorRef.current(message.message);
+
+            break;
+          }
+          // No default
         }
       });
       current.addEventListener('close', () => {
@@ -270,7 +294,10 @@ export function useUpdatesSocket(
         if (socketRef.current === current) socketRef.current = null;
         if (stopped) return;
         retry += 1;
-        const delay = Math.min(15_000, 500 * 2 ** Math.min(retry, 5));
+        const base = Math.min(15_000, 500 * 2 ** Math.min(retry, 5));
+        // ±20% jitter, so a fleet reconnecting after an outage does not
+        // hammer the engine in lockstep.
+        const delay = Math.round(base * (0.8 + jitter() * 0.4));
         retryTimer = setTimeout(connect, delay);
       });
       current.addEventListener('error', () => {
@@ -304,4 +331,15 @@ export function useUpdatesSocket(
   }, []);
 
   return { connected: enabled && connected, send };
+}
+
+/**
+ * A random fraction in [0, 1).
+ *
+ * The reconnect backoff only needs an even spread, not unpredictability, but
+ * `crypto` is what the library forbids substituting with `Math.random`; a
+ * Uint32 has enough resolution for the ±20% window.
+ */
+function jitter(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
 }

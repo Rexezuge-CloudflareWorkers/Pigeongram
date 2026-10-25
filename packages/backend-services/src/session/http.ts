@@ -8,14 +8,55 @@ import { EngineConfigError } from '@pigeongram/provider-clients/mtproto/client';
  */
 
 /**
-Reads a JSON body that must be an object; malformed input is a 400.
+ * How large a JSON request body may be. The bridge's parameters are tiny by
+ * contract — a chat id, a message id, a few flags — and parsing a large body
+ * would spend the Free plan's 10 ms CPU budget on the attacker's input.
+ */
+export const MAX_JSON_BODY_BYTES = 256 * 1024;
+
+/**
+Reads a JSON body that must be an object; malformed or oversized input is a 400/413.
 */
 export async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
+  const declared = request.headers.get('content-length');
+  if (declared !== null && Number(declared) > MAX_JSON_BODY_BYTES) {
+    throw new EngineError('Request body is too large', 413);
+  }
+  const body = request.body;
+  if (!body) {
+    throw new EngineError('Request body must be JSON', 400);
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let size = 0;
   try {
-    return await request.json<Record<string, unknown>>();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_JSON_BODY_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new EngineError('Request body is too large', 413);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
   } catch {
     throw new EngineError('Request body must be JSON', 400);
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new EngineError('Request body must be JSON', 400);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 /**

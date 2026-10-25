@@ -10,6 +10,19 @@ import { ThreadView } from './ThreadView';
  * otherwise. Split out of `App.tsx` so the app shell stays readable (and under
  * the god-file cap) while the two views keep their own props.
  */
+/**
+ * The calls' half of the app shell, as the conversation pane sees it.
+ */
+interface ThreadPaneCalls {
+  startCall: (chatId: number) => void;
+  /**
+   * Whether a call is already up. The header's call button is disabled then:
+   * the controller refuses the second call anyway, but a disabled button says
+   * so before the tap.
+   */
+  callActive: boolean;
+}
+
 interface ThreadPaneProps {
   threads: ThreadController;
   comments: CommentsController;
@@ -32,9 +45,10 @@ interface ThreadPaneProps {
    */
   onSetArchived: (archived: boolean) => Promise<void>;
   /**
-   * Starts a voice call to the open chat.
+   * The account's calls: the header starts one, and a call in progress
+   * disables the button.
    */
-  onCall: () => void;
+  calls: ThreadPaneCalls;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
@@ -49,7 +63,7 @@ export function ThreadPane({
   archived,
   onBack,
   onSetArchived,
-  onCall,
+  calls,
   onForward,
   onOpenMedia,
   onReadThrough,
@@ -103,7 +117,10 @@ export function ThreadPane({
       positions={threads.positions}
       onBack={onBack}
       onSetArchived={onSetArchived}
-      onCall={onCall}
+      onCall={() => {
+        if (selected) calls.startCall(selected.id);
+      }}
+      callActive={calls.callActive}
       onLoadOlder={() => void threads.loadOlder()}
       onLoadNewer={() => void threads.loadNewer()}
       onSend={threads.send}

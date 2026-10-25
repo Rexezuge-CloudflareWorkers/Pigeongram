@@ -25,3 +25,7 @@ android/build/
 # Machine-generated. Reformatting the lockfile produces a diff no human reads and
 # no reviewer should approve by reflex.
 pnpm-lock.yaml
+
+# Agent session transcripts kept beside the worklog for continuity. They are
+# machine-generated logs, not documents anyone edits.
+docs/*session-*.md

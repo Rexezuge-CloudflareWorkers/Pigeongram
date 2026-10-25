@@ -52,7 +52,7 @@ export class SessionEngine {
       this.driver,
       (me) => {
         this.me = me;
-        this.store.writeMeta('me', JSON.stringify(me));
+        this.writeMeta('me', JSON.stringify(me));
         void this.afterLogin();
       },
       (error) => {
@@ -220,9 +220,25 @@ export class SessionEngine {
     }
     await this.driver.logout();
     this.me = null;
-    this.store.writeMeta('me', null);
+    this.writeMeta('me', null);
     await this.lifecycle.armWake();
     return { ok: true };
+  }
+
+  /**
+   * Persists the signed-in user, best effort.
+   *
+   * `engine_meta` is a convenience: the session is already in mtcute's
+   * storage, and the snapshot can be read from Telegram again. With the Free
+   * plan's daily write budget exhausted, a rejected write must not turn a
+   * successful login or logout into a failed one.
+   */
+  private writeMeta(key: string, value: string | null): void {
+    try {
+      this.store.writeMeta(key, value);
+    } catch (error) {
+      console.warn(`[engine] failed to persist ${key}`, error);
+    }
   }
 
   // ---- Wake / live lifecycle --------------------------------------------
@@ -264,7 +280,11 @@ function readStoredMe(store: EngineStore): MeDto | null {
   if (!raw) return null;
   try {
     return JSON.parse(raw) as MeDto;
-  } catch {
+  } catch (error) {
+    // A corrupt snapshot is not worth a delete (deletes are writes on the
+    // Free plan): the next `/user/state` reads the account from Telegram and
+    // writes a fresh one.
+    console.warn('[engine] stored profile snapshot is corrupt', error);
     return null;
   }
 }

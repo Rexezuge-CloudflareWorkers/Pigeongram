@@ -56,7 +56,12 @@ function installProfileFetch(body?: unknown, status = 200): void {
 
 function renderHeader(
   peer: ChatDto = chat,
-  options: { archived?: boolean; onSetArchived?: (archived: boolean) => Promise<void>; onCall?: () => void } = {},
+  options: {
+    archived?: boolean;
+    onSetArchived?: (archived: boolean) => Promise<void>;
+    onCall?: () => void;
+    callActive?: boolean;
+  } = {},
 ): void {
   render(
     <ThreadHeader
@@ -66,6 +71,7 @@ function renderHeader(
       onBack={() => {}}
       onSetArchived={options.onSetArchived ?? (async () => {})}
       onCall={options.onCall ?? (() => {})}
+      callActive={options.callActive ?? false}
     />,
   );
 }
@@ -179,6 +185,7 @@ describe('ThreadHeader', () => {
         onBack={() => {}}
         onSetArchived={async () => {}}
         onCall={() => {}}
+        callActive={false}
       />,
     );
 
@@ -196,6 +203,7 @@ describe('ThreadHeader', () => {
         onBack={() => {}}
         onSetArchived={async () => {}}
         onCall={() => {}}
+        callActive={false}
       />,
     );
 
@@ -218,6 +226,16 @@ describe('ThreadHeader', () => {
     const group: ChatDto = { ...chat, id: 5, kind: 'group', title: 'The Team' };
     renderHeader(group, { onCall });
     expect(screen.queryByRole('button', { name: 'Call The Team' })).toBeNull();
+  });
+
+  it('disables the call button while a call is up', () => {
+    const onCall = vi.fn();
+    renderHeader(chat, { onCall, callActive: true });
+
+    const button = screen.getByRole('button', { name: 'Call Bob' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(onCall).not.toHaveBeenCalled();
   });
 
   it('keeps the archive action in the menu and asks before it moves the chat', async () => {

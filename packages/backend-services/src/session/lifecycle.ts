@@ -20,6 +20,14 @@ runs a wake (which ends in a disconnect).
 export const IDLE_RELEASE_MS = 60_000;
 
 /**
+How long `stopLive` waits for a replay that is still running before it drops
+the connection anyway. The replay settles on its own (it has its own
+timeout); holding the socket-close event for it queues every bridge call
+behind `getDifference`.
+*/
+export const STOP_CATCH_UP_TIMEOUT_MS = 2000;
+
+/**
 The collaborators the lifecycle drives.
 */
 export interface LifecycleHost {
@@ -56,6 +64,7 @@ export class SessionLifecycle {
   private live = false;
   private liveTask: Promise<void> | null = null;
   private catchUpTask: Promise<void> | null = null;
+  private stopping: Promise<void> | null = null;
   private rawUpdates = 0;
 
   constructor(private readonly host: LifecycleHost) {}
@@ -252,9 +261,18 @@ export class SessionLifecycle {
   Leaves the live session: the connection is dropped and the wake cadence
   resumes. The socket hub calls it when the last browser socket closes.
 
-  A call keeps the connection — see the guard below.
+  A call keeps the connection — see the guard below. The method is idempotent
+  because `webSocketError` and `webSocketClose` can both run for one socket,
+  and tearing down twice would arm the alarm twice and race two disconnects.
   */
   async stopLive(): Promise<void> {
+    this.stopping ??= this.#stopLive().finally(() => {
+      this.stopping = null;
+    });
+    return this.stopping;
+  }
+
+  async #stopLive(): Promise<void> {
     this.live = false;
     const pending = this.liveTask;
     if (pending) {
@@ -264,10 +282,13 @@ export class SessionLifecycle {
         // `startLive` reports its own failures to the sockets.
       }
     }
-    // The replay may still be running; it settles on its own (the catch-up
-    // has a timeout), and the disconnect below tears the connection down
-    // under it.
-    await this.catchUpTask?.catch(() => {});
+    // The replay may still be running. Its own timeout eventually settles it,
+    // but the socket-close event must not wait up to CATCH_UP_TIMEOUT_MS: the
+    // input gate would queue every bridge call behind it. Give it a moment,
+    // then disconnect under it.
+    const catchUp = this.catchUpTask;
+    this.catchUpTask = null;
+    if (catchUp) await settleWithin(catchUp, STOP_CATCH_UP_TIMEOUT_MS);
     if (this.host.driver.hasActiveCall) {
       // The connection stays up for the call: the signalling between the two
       // peers rides it, and the browser that just lost its socket is about to
@@ -309,4 +330,19 @@ export class SessionLifecycle {
       console.error('[engine] failed to arm the wake alarm', error);
     }
   }
+}
+
+/**
+Waits at most `ms` for `work`, swallowing its outcome: the caller is tearing
+the connection down either way, and the work reports its own failure.
+*/
+function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    const settle = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    void work.then(settle).catch(settle);
+  });
 }

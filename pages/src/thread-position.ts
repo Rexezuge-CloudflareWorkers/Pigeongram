@@ -142,9 +142,11 @@ export function positionThread(element: HTMLElement, opening: ThreadOpening): vo
     flashRow(focus);
     return;
   }
-  // The divider is the opening position; without one the thread was fully
-  // read and lands at the bottom. A divider whose message sits outside the
-  // loaded window (a jump window) falls back to the row.
+  // The divider is the opening position; without one the thread either was
+  // fully read or the divider sits beyond the loaded window (a large unread
+  // backlog), so it lands at the bottom of the page and paging continues from
+  // there. A divider whose message sits outside the loaded window (a jump
+  // window) falls back to the row.
   const divider = element.querySelector<HTMLElement>('[data-unread-divider]');
   const anchor =
     divider ?? (opening.unreadDividerId === null ? null : element.querySelector<HTMLElement>(messageRowSelector(opening.unreadDividerId)));

@@ -27,6 +27,7 @@ export function ThreadView({
   messages,
   loading,
   loadingOlder,
+  loadingNewer,
   hasMoreOlder,
   pending,
   error,
@@ -39,6 +40,7 @@ export function ThreadView({
   onSetArchived,
   onCall,
   onLoadOlder,
+  onLoadNewer,
   onSend,
   onAttach,
   onRetryPending,
@@ -51,6 +53,7 @@ export function ThreadView({
   onOpenMedia,
   unreadDividerId,
   focusMessageId,
+  atLatest,
   positions,
   onReadThrough,
 }: ThreadViewProps) {
@@ -189,15 +192,15 @@ export function ThreadView({
         unreadDividerId,
         resume: positions.resume(chat.id),
       });
-      stickToBottom.current = isAtBottom(element);
+      stickToBottom.current = atLatest && isAtBottom(element);
       reportVisible(element);
       return;
     }
-    if (!stickToBottom.current) return;
+    if (!stickToBottom.current || !atLatest) return;
     element.scrollTop = element.scrollHeight;
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
-  }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, positions, reportVisible]);
+  }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, atLatest, positions, reportVisible]);
 
   if (!chat) {
     return (
@@ -256,7 +259,7 @@ export function ThreadView({
           // the open is about to jump to.
           if (positionedChat.current !== chat.id) return;
           const element = event.currentTarget;
-          stickToBottom.current = isAtBottom(element);
+          stickToBottom.current = atLatest && isAtBottom(element);
           positions.remember(readThreadPosition(element, chat.id));
           reportVisible(element);
           // Read the next older page before the reader reaches the end of the
@@ -309,6 +312,11 @@ export function ThreadView({
             </Fragment>
           );
         })}
+        {!atLatest && messages.length > 0 ? (
+          <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
+            {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load newer messages'}
+          </button>
+        ) : null}
         {pendingForChat.map((entry, index) => (
           <Fragment key={entry.key}>
             {index === 0 && (lastGroupDate === null || !isSameDay(lastGroupDate, entry.createdAt)) ? (

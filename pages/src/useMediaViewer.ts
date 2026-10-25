@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { groupMessages } from './groups';
-import type { ChatThread, CommentsThread } from './state';
+import type { CommentsThread } from './state';
+import type { ChatThread } from './thread-state';
 import type { MessageDto } from './types';
 
 /**

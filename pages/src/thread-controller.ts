@@ -1,5 +1,5 @@
 import type { PendingMessage } from './outbox';
-import type { ChatThread } from './state';
+import type { ChatThread } from './thread-state';
 import type { ThreadPositionMemory } from './thread-position';
 import type { OpenThreadOptions } from './thread-window';
 import type {
@@ -44,6 +44,7 @@ export interface ThreadController {
   thread: ChatThread | null;
   loading: boolean;
   loadingOlder: boolean;
+  loadingNewer: boolean;
   /**
   Messages that are still on their way to Telegram, in submission order. They
   render beside the loaded thread and never enter its message list.
@@ -73,13 +74,20 @@ export interface ThreadController {
   */
   pressingButtonIds: ReadonlySet<number>;
   /**
-  Opens a chat at the dialog's read watermarks, reading the first window (or a
-  window around a linked post), and answers with what it read, so a caller
-  chasing that post (its comments) need not look it up.
+  Opens a chat at the dialog's read watermarks, reading the first window (a
+  linked-post window, the unread boundary, or the newest messages), and answers
+  with what it read, so a caller chasing that post (its comments) need not look
+  it up.
   */
   open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<OpenThreadResult>;
   close: () => void;
   loadOlder: () => Promise<void>;
+  /**
+  Reads the next page towards the chat's newest message. The view offers it
+  only while the loaded range does not reach the newest one, so a large unread
+  backlog is read forward instead of being skipped or marked read at once.
+  */
+  loadNewer: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
   retryPending: (key: string) => void;

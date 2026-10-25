@@ -240,11 +240,12 @@ pays for nothing. It is on the batch whitelist, because it is a read like the ot
 `DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus
 `pinned`/`muted` and `archived` (whether the chat sits in the account's archive — Telegram's peer folder `1`; every
-other chat is in folder `0`). The SPA opens a chat at the first incoming message after the inbox watermark instead of
-the bottom, and renders a single check for sent own messages and a double check up to the outbox watermark.
-`readHistory`'s optional `maxId` reports how far the user actually scrolled (omitted, it reads the whole
-history — the comments screen's behavior). `ChatDto.presence` carries the peer's online state — see
-[Presence](#presence) below.
+other chat is in folder `0`). When a chat has unread messages, the SPA opens at the first incoming message after the
+inbox watermark with about ten already-read messages of context above it, not at the bottom, and offers "Load newer
+messages" until the loaded range reaches the newest message. It renders a single check for sent own messages and a
+double check up to the outbox watermark. `readHistory`'s optional `maxId` reports how far the user actually scrolled
+(omitted, it reads the whole history — the comments screen's behavior). `ChatDto.presence` carries the peer's online
+state — see [Presence](#presence) below.
 
 `unread` is Telegram's own count **minus the album surplus** — see
 [Albums count once](#albums-count-once) below.
@@ -291,8 +292,11 @@ dialog without waiting for the socket. The destination picker offers only dialog
 true; protected content can still be rejected by Telegram, in which case the error stays in the picker.
 
 `getHistory`'s `addOffset` skips that many messages from `offsetId` (negative is towards newer), which is how a
-`t.me` post link opens a window _around_ the linked post instead of the newest messages; `offsetId` alone is
-accepted (the link names the post but not its date, so the omitted date reads as 0).
+`t.me` post link opens a window _around_ the linked post instead of the newest messages. The same parameter opens a
+chat with unread messages at its first unread: `offsetId` is the read watermark and `addOffset: -40` reads 50 messages
+with about ten read ones above the divider and the rest into the backlog; each "Load newer messages" step then reads
+from the loaded range's newest message with `addOffset: -50`. `offsetId` alone is accepted (the link names the post
+but not its date, so the omitted date reads as 0).
 
 A message that replies to another carries `reply`: where the original lives (`origin`), its `messageId`/`chatId`
 when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag. Same-chat

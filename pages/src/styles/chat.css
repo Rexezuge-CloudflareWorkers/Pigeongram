@@ -127,7 +127,8 @@
   gap: 6px;
 }
 
-.load-older {
+.load-older,
+.load-newer {
   align-self: center;
   color: var(--accent);
   padding: 6px 12px;

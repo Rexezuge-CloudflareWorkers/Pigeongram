@@ -1,5 +1,6 @@
 import { toDialogMessage } from './dialog-message';
 import { continuesAlbum, countUnreadGroupsBetween } from './groups';
+import type { ChatThread } from './thread-state';
 import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
 
 /**
@@ -117,44 +118,6 @@ export function replaceMessage(messages: MessageDto[], message: MessageDto): Mes
   const next = [...messages];
   next[index] = message;
   return next;
-}
-
-/**
-The open chat and its loaded messages, held as one value so the two can never
-disagree about which chat the thread belongs to.
-*/
-export interface ChatThread {
-  chat: ChatDto;
-  messages: MessageDto[];
-  /**
-  Id of the last read incoming message, seeded from the dialog when the chat
-  opens and advanced as the user reads.
-  */
-  readInboxMaxId: number;
-  /**
-  Id of the last outgoing message the peer has read, seeded from the dialog
-  and advanced by outbox read updates. Own messages up to it show a double
-  check; later ones a single sent check.
-  */
-  readOutboxMaxId: number;
-  /**
-  The message the unread divider sits above: the first unread message of the
-  window the chat opened with. It marks where reading stopped when the chat
-  was opened, so advancing the watermark moves the badge and the receipts but
-  not the line, and messages arriving later in the same session do not create
-  one; reopening the chat seeds a fresh divider. Null when the opening window
-  was fully read.
-  */
-  unreadDividerId: number | null;
-  /**
-  The linked post a jump landed on, until the view scrolls to it; null when the
-  chat was opened normally.
-  */
-  focusMessageId: number | null;
-  /**
-  Whether history older than the loaded window may still exist.
-  */
-  hasMoreOlder: boolean;
 }
 
 /**

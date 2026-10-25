@@ -10,8 +10,8 @@ import {
   miniAppDeepLink,
   parseTelegramLink,
   usernameAppLink,
-} from '../../pages/src/links';
-import type { ChatDto, DialogDto, MessageForwardDto } from '../../pages/src/types';
+} from '../../apps/web/src/links';
+import type { ChatDto, DialogDto, MessageForwardDto } from '../../apps/web/src/types';
 
 function chat(id: number, username: string | null): ChatDto {
   return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };

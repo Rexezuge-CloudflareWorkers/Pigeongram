@@ -1,8 +1,8 @@
 import type { FileLocation } from '@mtcute/core';
 import { downloadAsIterable } from '@mtcute/core/methods.js';
 import { describe, expect, it } from 'vitest';
-import type { DownloadParams, DownloadSource } from '../../worker/src/session/media-stream';
-import { windowedStream } from '../../worker/src/session/media-stream';
+import type { DownloadParams, DownloadSource } from '../../packages/backend-services/src/session/media-stream';
+import { windowedStream } from '../../packages/backend-services/src/session/media-stream';
 
 /**
  * `windowedStream` is where browser ranges are turned into byte windows: the

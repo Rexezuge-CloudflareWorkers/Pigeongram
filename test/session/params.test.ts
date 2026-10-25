@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EngineError } from '../../worker/src/session/errors';
+import { EngineError } from '../../packages/backend-services/src/session/errors';
 import {
   clampInt,
   optionalAnswerIndexes,
@@ -13,7 +13,7 @@ import {
   requirePeerId,
   requireQuery,
   requireText,
-} from '../../worker/src/session/params';
+} from '../../packages/backend-services/src/session/params';
 
 describe('bridge parameter validation', () => {
   it('accepts marked peer ids and rejects everything else', () => {

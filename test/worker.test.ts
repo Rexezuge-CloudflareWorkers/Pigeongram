@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
 import type { JWK } from 'jose';
-import worker from '@telegram-web-client/worker';
-import { resetAccessJwksCacheForTests } from '../worker/src/access';
+import worker from '@pigeongram/api';
+import { resetAccessJwksCacheForTests } from '../apps/api/src/access';
 
 const context = {} as ExecutionContext;
 

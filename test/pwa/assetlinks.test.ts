@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildAssetLinks, readAssetLinksConfig } from '../../pages/build/pwa/assetlinks';
-import { pwaAssetLinksPlugin } from '../../pages/build/pwa/assetlinks-plugin';
+import { buildAssetLinks, readAssetLinksConfig } from '../../apps/web/build/pwa/assetlinks';
+import { pwaAssetLinksPlugin } from '../../apps/web/build/pwa/assetlinks-plugin';
 
 const PACKAGE_ID = 'com.example.telegramweb';
 

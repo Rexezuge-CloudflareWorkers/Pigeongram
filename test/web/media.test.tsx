@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MessageMedia } from '../../pages/src/components/Media';
-import type { MessageDto, MessageMediaDto } from '../../pages/src/types';
+import { MessageMedia } from '../../apps/web/src/components/Media';
+import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 const lottie = vi.hoisted(() => ({
   loadAnimation: vi.fn(() => ({ destroy: vi.fn(), goToAndStop: vi.fn() })),

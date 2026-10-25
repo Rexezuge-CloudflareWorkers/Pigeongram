@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Composer } from '../../pages/src/components/Composer';
-import type { BotCommandDto } from '../../pages/src/types';
+import { Composer } from '../../apps/web/src/components/Composer';
+import type { BotCommandDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 

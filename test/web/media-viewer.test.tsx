@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MediaViewer } from '../../pages/src/components/MediaViewer';
-import type { MessageDto, MessageMediaDto } from '../../pages/src/types';
+import { MediaViewer } from '../../apps/web/src/components/MediaViewer';
+import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 

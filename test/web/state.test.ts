@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatCount, formatDay, formatListStamp, formatTime, initials, isSameDay, previewOf } from '../../pages/src/format';
+import {
+  formatBytes,
+  formatCount,
+  formatDay,
+  formatListStamp,
+  formatTime,
+  initials,
+  isSameDay,
+  previewOf,
+} from '../../apps/web/src/format';
 import {
   applyEditedMessage,
   applyNewMessage,
@@ -19,9 +28,9 @@ import {
   updateCommentsPoll,
   updateThread,
   updateThreadPoll,
-} from '../../pages/src/state';
-import { firstUnread, readWatermark } from '../../pages/src/reading';
-import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../pages/src/types';
+} from '../../apps/web/src/state';
+import { firstUnread, readWatermark } from '../../apps/web/src/reading';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../apps/web/src/types';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 

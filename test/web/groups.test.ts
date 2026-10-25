@@ -6,8 +6,8 @@ import {
   countUnreadGroupsBetween,
   groupMessages,
   isVisualAlbum,
-} from '../../pages/src/groups';
-import type { DialogMessageDto, MessageDto, MessageMediaDto } from '../../pages/src/types';
+} from '../../apps/web/src/groups';
+import type { DialogMessageDto, MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 const PHOTO: MessageMediaDto = {
   kind: 'photo',

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Composer } from '../../pages/src/components/Composer';
+import { Composer } from '../../apps/web/src/components/Composer';
 
 afterEach(() => {
   cleanup();

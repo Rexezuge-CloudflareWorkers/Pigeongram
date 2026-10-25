@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fromBase64, toBase64 } from '../../pages/src/calls/base64';
-import { CallCipher } from '../../pages/src/calls/crypto';
+import { fromBase64, toBase64 } from '../../apps/web/src/calls/base64';
+import { CallCipher } from '../../apps/web/src/calls/crypto';
 import {
   bigIntToBytes,
   bytesToBigInt,
@@ -9,11 +9,11 @@ import {
   keyFingerprint,
   modPow,
   validateDhConfig,
-} from '../../pages/src/calls/dh';
-import { decodeSignal, encodeSignal } from '../../pages/src/calls/signalling';
-import { callReducer } from '../../pages/src/calls/session';
-import type { CallView } from '../../pages/src/calls/session';
-import { iceServersFor } from '../../pages/src/calls/webrtc';
+} from '../../apps/web/src/calls/dh';
+import { decodeSignal, encodeSignal } from '../../apps/web/src/calls/signalling';
+import { callReducer } from '../../apps/web/src/calls/session';
+import type { CallView } from '../../apps/web/src/calls/session';
+import { iceServersFor } from '../../apps/web/src/calls/webrtc';
 
 /**
  * The calls of the SPA.

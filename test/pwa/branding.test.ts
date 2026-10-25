@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_APP_NAME, DEFAULT_APP_SHORT_NAME, escapeHtml, readBranding } from '../../pages/branding';
-import { pwaBrandingPlugin } from '../../pages/build/pwa/branding-plugin';
-import { createManifest } from '../../pages/build/pwa/manifest';
+import { DEFAULT_APP_NAME, DEFAULT_APP_SHORT_NAME, escapeHtml, readBranding } from '../../apps/web/branding';
+import { pwaBrandingPlugin } from '../../apps/web/build/pwa/branding-plugin';
+import { createManifest } from '../../apps/web/build/pwa/manifest';
 
 interface TransformHook {
   handler: (html: string) => string;

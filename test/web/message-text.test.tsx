@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MessageText } from '../../pages/src/components/MessageText';
-import { TelegramLinkProvider } from '../../pages/src/telegram-links';
+import { MessageText } from '../../apps/web/src/components/MessageText';
+import { TelegramLinkProvider } from '../../apps/web/src/telegram-links';
 
 afterEach(cleanup);
 

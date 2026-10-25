@@ -13,10 +13,10 @@
     // same types.
     "types": ["node", "vite/client"]
   },
-  // `worker-configuration.d.ts` is included because the tests import the worker
+  // `worker-configuration.d.ts` is included because the tests import the API
   // package, whose source references generated globals like `DurableObjectState`.
-  // `worker/src/env.d.ts` adds the secret-backed `CloudflareEnv` members (the
+  // `packages/backend-runtime/src/env.d.ts` adds the secret-backed `CloudflareEnv` members (the
   // generated file cannot know about secrets); ambient files are not pulled in
   // by importing worker sources, so the test project lists it explicitly.
-  "include": ["../worker-configuration.d.ts", "../worker/src/env.d.ts", "**/*.ts", "**/*.tsx"]
+  "include": ["../worker-configuration.d.ts", "../packages/backend-runtime/src/env.d.ts", "**/*.ts", "**/*.tsx"]
 }

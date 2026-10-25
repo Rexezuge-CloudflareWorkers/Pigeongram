@@ -1,0 +1,12 @@
+{
+  // The service worker runs in its own global scope: it has no `window`, no
+  // `document`, and the fetch events it handles are not the page's. The
+  // WebWorker lib is therefore the only correct one here — a program cannot
+  // carry both it and the DOM lib, because the two declare the same globals.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "WebWorker"],
+    "types": []
+  },
+  "include": ["**/*.ts"]
+}

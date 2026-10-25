@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["../../worker-configuration.d.ts", "../backend-runtime/src/env.d.ts", "src/**/*.ts", "src/**/*.d.ts"]
+}

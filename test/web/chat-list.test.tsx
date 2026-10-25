@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ChatList } from '../../pages/src/components/ChatList';
-import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, PresenceDto } from '../../pages/src/types';
+import { ChatList } from '../../apps/web/src/components/ChatList';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, PresenceDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 

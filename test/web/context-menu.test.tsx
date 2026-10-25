@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useSuppressNativeContextMenu } from '../../pages/src/useSuppressNativeContextMenu';
+import { useSuppressNativeContextMenu } from '../../apps/web/src/useSuppressNativeContextMenu';
 
 /**
 The document-level guard as `main.tsx` installs it: an effect on a host around

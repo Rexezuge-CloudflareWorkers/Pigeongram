@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { MeDto } from '../../worker/src/types';
-import type { PhoneLoginCallbacks, QrLoginCallbacks, TelegramDriver } from '../../worker/src/session/driver';
-import { EngineError } from '../../worker/src/session/errors';
-import { LoginFlow } from '../../worker/src/session/login-flow';
-import { describeLoginFailure } from '../../worker/src/session/rpc-errors';
+import type { MeDto } from '../../packages/shared/src/types';
+import type { PhoneLoginCallbacks, QrLoginCallbacks, TelegramDriver } from '../../packages/backend-services/src/session/driver';
+import { EngineError } from '../../packages/backend-services/src/session/errors';
+import { LoginFlow } from '../../packages/backend-services/src/session/login-flow';
+import { describeLoginFailure } from '../../packages/backend-services/src/session/rpc-errors';
 
 /**
 A stand-in for the driver's long-running `signInQr`/`signInPhone` promises.

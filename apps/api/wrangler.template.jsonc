@@ -1,0 +1,44 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Materialized to `./wrangler.jsonc` at the repo root before dev/deploy (see
+  // scripts/prepare-wrangler-config.ts), which is why `main` and every other
+  // path here is root-relative. Do not move it under apps/api/.
+  "name": "telegram-web-client",
+  "main": "apps/api/src/index.ts",
+  "compatibility_date": "2025-12-31",
+  "placement": { "mode": "off" },
+  // The worker is API-only and is reached exclusively through the Pages
+  // project's `/api/*` and `/user/*` proxies (declared by the `API_WORKER`
+  // service binding in apps/web/wrangler.template.jsonc) — never from the public
+  // internet directly. `/api/*` is ungated; `/user/*` requires Cloudflare
+  // Access.
+  "workers_dev": false,
+  // Workers Logs: per-invocation CPU time is what the session-engine spike is
+  // measured against, so the engine (and its Durable Object) must be logged.
+  "observability": { "enabled": true },
+  // One DO class, one binding. The `v1` SQLite migration must be present on the
+  // very first deploy; renaming the class or the binding later requires a new
+  // migration tag, so only change them deliberately.
+  "durable_objects": {
+    "bindings": [{ "name": "SESSION_ENGINE", "class_name": "SessionEngine" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionEngine"] }],
+  "vars": {
+    "ENVIRONMENT": "production",
+    // Cloudflare Access JWT verification reads TEAM_DOMAIN and POLICY_AUD,
+    // which are deployment-specific and therefore declared in
+    // `packages/backend-runtime/src/env.d.ts` rather than here. Set both per deployment (for
+    // example through `WRANGLER_VARS_PATCH_JSON` in CD); when they are absent
+    // `/user/*` fails closed instead of running unauthenticated. `/api/health`
+    // stays public and carries no account data.
+    //
+    // Cadence of the session engine's wake alarm, in seconds. The Free-tier
+    // budget assumes 300 (12 wakes/hour); raise it to trade presence for cost.
+    "WAKE_INTERVAL_SECONDS": "300",
+    // Maximum accepted body of the raw-body `POST /user/upload` route, in
+    // bytes. Cloudflare's own request-body cap is 100 MB on Free/Pro, so this
+    // only exists to fail early and to lower the ceiling when the account's
+    // CPU budget cannot afford large encrypted uploads.
+    "UPLOAD_MAX_BYTES": "104857600",
+  },
+}

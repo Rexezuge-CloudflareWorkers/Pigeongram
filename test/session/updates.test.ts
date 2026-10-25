@@ -1,9 +1,9 @@
 import { getMarkedPeerId, Long, PeersIndex, RawUpdateInfo } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { encodeBase64 } from '../../worker/src/session/base64';
-import { CallRegistry } from '../../worker/src/session/call-registry';
-import { mapRawUpdate } from '../../worker/src/session/updates';
+import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
+import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
+import { mapRawUpdate } from '../../packages/backend-services/src/session/updates';
 
 const rawUser = {
   _: 'user',

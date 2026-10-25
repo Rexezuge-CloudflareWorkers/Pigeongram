@@ -1,7 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
-import { CallRegistry } from '../../worker/src/session/call-registry';
-import { dispatchRpc } from '../../worker/src/session/rpc';
-import { UnreadAlbumLedger } from '../../worker/src/session/unread-albums';
+import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
+import { dispatchRpc } from '../../packages/backend-services/src/session/rpc';
+import { UnreadAlbumLedger } from '../../packages/backend-services/src/session/unread-albums';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
 /**

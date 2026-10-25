@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parentRoute, pathForRoute, routeForPath, sameRoute } from '../../pages/src/routes';
-import type { Route } from '../../pages/src/routes';
+import { parentRoute, pathForRoute, routeForPath, sameRoute } from '../../apps/web/src/routes';
+import type { Route } from '../../apps/web/src/routes';
 
 const chat = (chatId: number, postId: number | null = null): Route => ({ view: 'chat', chatId, postId });
 const comments = (chatId: number, postId: number): Route => ({ view: 'comments', chatId, postId });

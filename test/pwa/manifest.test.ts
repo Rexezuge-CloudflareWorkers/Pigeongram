@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readBranding } from '../../pages/branding';
-import { createManifest } from '../../pages/build/pwa/manifest';
+import { readBranding } from '../../apps/web/branding';
+import { createManifest } from '../../apps/web/build/pwa/manifest';
 
 /**
  * The web app manifest: what the browser needs to install the client.

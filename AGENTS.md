@@ -34,7 +34,7 @@ honours the `packageManager` pin). Every command below also works as `volta run 
 
 Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materialize the config
 (`pnpm exec tsx scripts/prepare-wrangler-config.ts`), then `pnpm exec wrangler dev` (worker, port 8787) and
-`pnpm --filter @telegram-web-client/pages dev` (SPA, port 5173, `/api` and `/user` proxied to the worker).
+`pnpm --filter @pigeongram/web dev` (SPA, port 5173, `/api` and `/user` proxied to the worker).
 
 ## Architecture & invariants
 

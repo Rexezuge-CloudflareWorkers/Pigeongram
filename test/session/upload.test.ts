@@ -1,9 +1,9 @@
 import type { InputMediaLike } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it, vi } from 'vitest';
-import { UploadBodySplitter, sendUploadedMediaGroup } from '../../worker/src/session/upload';
+import { UploadBodySplitter, sendUploadedMediaGroup } from '../../packages/backend-services/src/session/upload';
 
-vi.mock('../../worker/src/session/dto', () => ({
+vi.mock('../../packages/backend-services/src/session/dto', () => ({
   toMessageDto: (message: { id: number }) => ({ id: message.id }),
 }));
 

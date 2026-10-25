@@ -1,6 +1,6 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { readProfile } from '../../worker/src/session/profile';
+import { readProfile } from '../../packages/backend-services/src/session/profile';
 
 describe('readProfile', () => {
   it("reads a person's profile from the full user", async () => {

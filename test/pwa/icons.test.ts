@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { LOWER_WING_COLOR, TILE_COLOR, UPPER_WING_COLOR, renderIcon } from '../../pages/build/pwa/mark';
-import { encodePng } from '../../pages/build/pwa/png';
+import { LOWER_WING_COLOR, TILE_COLOR, UPPER_WING_COLOR, renderIcon } from '../../apps/web/build/pwa/mark';
+import { encodePng } from '../../apps/web/build/pwa/png';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -45,7 +45,7 @@ describe('the install icons', () => {
   });
 
   it('keeps the palette in step with base.css', () => {
-    const css = readFileSync(new URL('../../pages/src/styles/base.css', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../../apps/web/src/styles/base.css', import.meta.url), 'utf8');
     expect(css).toContain(`--bg: #${hex(TILE_COLOR)};`);
     expect(css).toContain(`--accent: #${hex(UPPER_WING_COLOR)};`);
     expect(css).toContain(`--badge: #${hex(LOWER_WING_COLOR)};`);

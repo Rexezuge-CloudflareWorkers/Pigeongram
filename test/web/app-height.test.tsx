@@ -1,6 +1,6 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAppHeight } from '../../pages/src/useAppHeight';
+import { useAppHeight } from '../../apps/web/src/useAppHeight';
 
 /**
  A visual viewport jsdom does not provide. The hook only reads `height` and

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages, threadReachesLatest } from '../../pages/src/thread-state';
-import type { ChatThread } from '../../pages/src/thread-state';
-import type { ChatDto, MessageDto } from '../../pages/src/types';
+import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages, threadReachesLatest } from '../../apps/web/src/thread-state';
+import type { ChatThread } from '../../apps/web/src/thread-state';
+import type { ChatDto, MessageDto } from '../../apps/web/src/types';
 
 const CHAT: ChatDto = {
   id: 1,

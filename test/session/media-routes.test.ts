@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AvatarCache } from '../../worker/src/session/avatar-cache';
-import type { TelegramDriver } from '../../worker/src/session/driver';
-import { EngineError } from '../../worker/src/session/errors';
-import type { MediaDownload } from '../../worker/src/session/media';
-import { avatarResponse, fileResponse, uploadGroupResponse } from '../../worker/src/session/media-routes';
-import type { UploadGroupSpec } from '../../worker/src/session/upload-spec';
+import type { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
+import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
+import { EngineError } from '../../packages/backend-services/src/session/errors';
+import type { MediaDownload } from '../../packages/backend-services/src/session/media';
+import { avatarResponse, fileResponse, uploadGroupResponse } from '../../packages/backend-services/src/session/media-routes';
+import type { UploadGroupSpec } from '../../packages/backend-services/src/session/upload-spec';
 
 /**
  * The HTTP half of `/user/file` and `/user/avatar`: which `Range` forms reach the

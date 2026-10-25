@@ -1,10 +1,10 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PendingMessage } from '../../pages/src/outbox';
-import { pendingAsMessage, withPendingDialogs } from '../../pages/src/outbox';
-import type { PendingBody } from '../../pages/src/useOutbox';
-import { useOutbox } from '../../pages/src/useOutbox';
-import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../pages/src/types';
+import type { PendingMessage } from '../../apps/web/src/outbox';
+import { pendingAsMessage, withPendingDialogs } from '../../apps/web/src/outbox';
+import type { PendingBody } from '../../apps/web/src/useOutbox';
+import { useOutbox } from '../../apps/web/src/useOutbox';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 

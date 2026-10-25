@@ -10,6 +10,10 @@ import {
   previewOf,
 } from '../../apps/web/src/format';
 import {
+  applyCommentCountDelta,
+  applyCommentEdit,
+  applyCommentMessage,
+  applyCommentReactions,
   applyEditedMessage,
   applyNewMessage,
   applyOutboxReadUpdate,
@@ -17,20 +21,25 @@ import {
   applyReactionUpdate,
   applyReadThrough,
   applyReadUpdate,
+  applyThreadReadUpdate,
   applyUserStatus,
   applyViewsUpdate,
   findChatTitle,
   findPollMessage,
+  isThreadComment,
   mergeMessages,
   reactionKey,
   replaceMessage,
   toggleReaction,
   updateCommentsPoll,
+  updateCommentsThread,
   updateThread,
   updateThreadPoll,
 } from '../../apps/web/src/state';
 import { firstUnread, readWatermark } from '../../apps/web/src/reading';
 import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../apps/web/src/types';
+import type { CommentsThread } from '../../apps/web/src/state';
+import type { ChatThread } from '../../apps/web/src/thread-state';
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 
@@ -536,5 +545,137 @@ describe('unread reading', () => {
     // Pinned to the bottom, everything is on screen.
     expect(readWatermark(thread, new Set(), true)).toBe(9);
     expect(readWatermark([], new Set(), true)).toBeNull();
+  });
+});
+
+describe('comment state', () => {
+  const GROUP = -100;
+
+  function comment(id: number, replyTo: number | null = null): MessageDto {
+    return message({
+      id,
+      chatId: GROUP,
+      reply:
+        replyTo === null
+          ? null
+          : {
+              origin: 'same_chat',
+              messageId: replyTo,
+              chatId: null,
+              senderName: 'Ada',
+              date: NOW,
+              text: '',
+              entities: [],
+              mediaKind: null,
+              quote: false,
+            },
+    });
+  }
+
+  function commentsThread(overrides: Partial<CommentsThread> = {}): CommentsThread {
+    return {
+      chat: chat(10),
+      post: message({ id: 100, chatId: 10, comments: { hasComments: true, count: 2, discussionChatId: null } }),
+      discussionChatId: GROUP,
+      discussionMessageId: 500,
+      comments: [comment(501, 500), comment(502, 501)],
+      count: 2,
+      nextOffset: null,
+      ...overrides,
+    };
+  }
+
+  it('recognises only comments that reply into the loaded thread', () => {
+    const open = commentsThread();
+    expect(isThreadComment(open, comment(503, 500))).toBe(true);
+    expect(isThreadComment(open, comment(503, 502))).toBe(true);
+    expect(isThreadComment(open, comment(503, 999))).toBe(false);
+    expect(isThreadComment(open, message({ id: 503, chatId: GROUP }))).toBe(false);
+    expect(isThreadComment(open, comment(503, 500) && message({ id: 503, chatId: 10 }))).toBe(false);
+    expect(isThreadComment({ ...open, discussionChatId: null }, comment(503, 500))).toBe(false);
+  });
+
+  it('merges a live comment once and bumps the count', () => {
+    const open = commentsThread();
+    const merged = applyCommentMessage(open, comment(503, 500));
+    expect(merged?.count).toBe(3);
+    expect(merged?.comments.map((entry) => entry.id)).toEqual([501, 502, 503]);
+    expect(applyCommentMessage(open, comment(501, 500))).toBe(open);
+    expect(applyCommentMessage(open, comment(503, 999))).toBe(open);
+    expect(applyCommentMessage(null, comment(503, 500))).toBeNull();
+  });
+
+  it('edits only a comment the thread holds', () => {
+    const open = commentsThread();
+    const edited = { ...comment(502, 501), text: 'edited' };
+    expect(applyCommentEdit(open, edited)?.comments.find((entry) => entry.id === 502)?.text).toBe('edited');
+    expect(applyCommentEdit(open, { ...comment(999, 501), text: 'other' })).toBe(open);
+    expect(applyCommentEdit(open, { ...edited, chatId: 10 })).toBe(open);
+    expect(applyCommentEdit(null, edited)).toBeNull();
+  });
+
+  it('applies reactions only to a comment in the open discussion', () => {
+    const open = commentsThread();
+    const reactions = [{ emoji: '👍', customEmojiId: null, count: 1, chosen: true }];
+    expect(applyCommentReactions(open, GROUP, 502, reactions)?.comments.find((entry) => entry.id === 502)?.reactions).toEqual(reactions);
+    expect(applyCommentReactions(open, GROUP, 999, reactions)).toBe(open);
+    expect(applyCommentReactions(open, 10, 502, reactions)).toBe(open);
+    expect(applyCommentReactions(null, GROUP, 502, reactions)).toBeNull();
+  });
+
+  it('leaves another post alone when folding into the open thread', () => {
+    const open = commentsThread();
+    expect(updateCommentsThread(open, { chatId: 10, messageId: 100 }, (current) => ({ ...current, count: 9 }))?.count).toBe(9);
+    expect(updateCommentsThread(open, { chatId: 10, messageId: 999 }, (current) => ({ ...current, count: 9 }))).toBe(open);
+    expect(updateCommentsThread(open, { chatId: 11, messageId: 100 }, (current) => ({ ...current, count: 9 }))).toBe(open);
+    expect(updateCommentsThread(null, { chatId: 10, messageId: 100 }, (current) => current)).toBeNull();
+  });
+
+  it('bumps the comment count of the post that was commented on', () => {
+    const post = message({ id: 100, chatId: 10, comments: { hasComments: true, count: 4, discussionChatId: null } });
+    const other = message({ id: 101, chatId: 10, comments: { hasComments: true, count: 2, discussionChatId: null } });
+    const bare = message({ id: 102, chatId: 10 });
+    const next = applyCommentCountDelta([post, other, bare], 100);
+    expect(next[0]?.comments?.count).toBe(5);
+    expect(next[1]?.comments?.count).toBe(2);
+    expect(next[2]).toBe(bare);
+    expect(applyCommentCountDelta([post], 999)).toEqual([post]);
+  });
+});
+
+describe('read and key helpers', () => {
+  function openThread(): ChatThread {
+    return {
+      chat: chat(1),
+      messages: [],
+      readInboxMaxId: 4,
+      readOutboxMaxId: 5,
+      unreadDividerId: null,
+      focusMessageId: null,
+      hasMoreOlder: false,
+      windowEndId: null,
+      latestMessageId: null,
+    };
+  }
+
+  it('advances the matching read watermark and leaves another chat alone', () => {
+    const open = openThread();
+    expect(applyThreadReadUpdate(open, { type: 'read', chatId: 1, maxId: 10, unread: 0, inbox: true })?.readInboxMaxId).toBe(10);
+    expect(applyThreadReadUpdate(open, { type: 'read', chatId: 1, maxId: 10, unread: 0, inbox: false })?.readOutboxMaxId).toBe(10);
+    expect(applyThreadReadUpdate(open, { type: 'read', chatId: 2, maxId: 10, unread: 0, inbox: true })).toBe(open);
+    expect(applyThreadReadUpdate(null, { type: 'read', chatId: 1, maxId: 10, unread: 0, inbox: true })).toBeNull();
+  });
+
+  it('keys a reaction by emoji or by its custom emoji id', () => {
+    expect(reactionKey({ emoji: '👍', customEmojiId: null, count: 1, chosen: false })).toBe('👍');
+    expect(reactionKey({ emoji: null, customEmojiId: '77', count: 1, chosen: false })).toBe('custom:77');
+    expect(reactionKey({ emoji: null, customEmojiId: null, count: 1, chosen: false })).toBe('custom:');
+  });
+
+  it('falls back to the poll id when a named message carries no poll', () => {
+    const post = message({ id: 12, chatId: 1, poll: POLL });
+    expect(findPollMessage([post], { chatId: 1, messageId: 12, pollId: POLL.id })).toBe(post);
+    expect(findPollMessage([post], { chatId: 1, messageId: 99, pollId: POLL.id })).toBe(post);
+    expect(findPollMessage([post], { chatId: 1, messageId: 99, pollId: 'missing' })).toBeNull();
   });
 });

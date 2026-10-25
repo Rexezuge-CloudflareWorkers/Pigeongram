@@ -6,7 +6,7 @@ without re-running the analysis that produced it.
 
 | Field           | Value                                                               |
 | --------------- | ------------------------------------------------------------------- |
-| Status          | PR 1 (W1) complete — W2 coverage floor next                         |
+| Status          | PR 1 (W1) and PR 2 (W2) complete — W3 seams next                    |
 | Branch          | `refactor/family-hardening` (work branches per PR, see §6)          |
 | Baseline commit | `a67c5db` (merge of #100, `main`)                                   |
 | Started         | 2026-10-25                                                          |
@@ -272,9 +272,18 @@ Also: split `test/web/pages.test.tsx` along its existing `describe` blocks while
 | UI partials (`upload.ts`, `clipboard`, `MessageButtons`, `ProfilePopup`, `CommentsView`, `PendingMessageRow`) | ~140      | ~40           |
 | **Total**                                                                                                     |           | **~355**      |
 
-- [ ] Add `thresholds: { lines: 80, statements: 80, branches: 80, functions: 80 }` in `vitest.config.mts`.
-- [ ] Add the `pages/src/main.tsx` coverage exclusion (§3.3).
-- [ ] Confirm `pnpm run test:coverage` fails when a threshold is missed (intentionally lower one, observe, restore).
+- [x] Add `thresholds: { lines: 80, statements: 80, branches: 80, functions: 80 }` in `vitest.config.mts`.
+- [x] Add the `pages/src/main.tsx` coverage exclusion (§3.3).
+- [x] Confirm `pnpm run test:coverage` fails when a threshold is missed (intentionally lower one, observe, restore).
+
+**Landed with PR 2:** the flat floor is met at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%**
+(74 files, 929 tests), and `vitest.config.mts` carries the four 80% thresholds. The gate was checked both ways: a
+deliberate `branches: 81` run failed with `Coverage for branches (80.71%) does not meet global threshold (81%)`, and
+restoring `80` passed. New tests landed for `CallOverlay`, `ConfirmDialog`, `PendingMessageRow`, `MessagePoll`,
+`photo-zoom`/`usePhotoZoom`, `state` comment/read folds, the call key exchange guards (`dh`, `exchange`), `upload` and
+`upload-api`, `dto`, `markup`, `rpc-errors`/`errors`, and the `sendReaction`/`searchMessages` RPC dispatch. The rows that
+need a seam (`call-orchestrator`, `driver`, `rpc-registry`, `mtproto-crypto`, `config`) stay with W3/W5, as the W1 note
+already records; the coverage floor is reached without them.
 
 ### 5.3 W3 — Worker seams and the RPC registry (P1, ~3 days)
 
@@ -442,11 +451,12 @@ Open questions (none blocking PR 1):
 
 Append one entry per landed PR. Keep it terse: date · branch/commit · what changed · gate result · notes.
 
-| Date       | Ref                         | What                                                                                                                                                                                                                         | Gate                    |
-| ---------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| 2026-10-25 | `a67c5db`                   | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                 | `pnpm run checks` green |
-| 2026-10-25 | `docs/hardening-worklog`    | This worklog; decisions recorded                                                                                                                                                                                             | `format:check` + review |
-| 2026-10-25 | `refactor/family-hardening` | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests) | `pnpm run checks` green |
+| Date       | Ref                         | What                                                                                                                                                                                                                                                                | Gate                    |
+| ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 2026-10-25 | `a67c5db`                   | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                                                        | `pnpm run checks` green |
+| 2026-10-25 | `docs/hardening-worklog`    | This worklog; decisions recorded                                                                                                                                                                                                                                    | `format:check` + review |
+| 2026-10-25 | `refactor/family-hardening` | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests)                                        | `pnpm run checks` green |
+| 2026-10-25 | `refactor/family-hardening` | W2 coverage pass: UI, call, upload, DTO and RPC tests added; flat 80% floor reached at **lines 87.27%, statements 84.92%, branches 80.71%, functions 83.68%** (74 files, 929 tests); four 80% thresholds added to `vitest.config.mts` and the failure path verified | `pnpm run checks` green |
 
 Template:
 

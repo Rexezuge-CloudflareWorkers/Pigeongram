@@ -21,4 +21,14 @@ export default defineRepoVitestConfig({
   },
 
   coverageExclude: ['apps/web/src/main.tsx'],
+
+  // The flat floor W2 lands on: every metric at 80%, measured over the whole
+  // suite. A regression in any one metric fails `test:coverage`, so new code
+  // arrives with its tests rather than borrowing the suite's headroom.
+  thresholds: {
+    lines: 80,
+    statements: 80,
+    branches: 80,
+    functions: 80,
+  },
 });

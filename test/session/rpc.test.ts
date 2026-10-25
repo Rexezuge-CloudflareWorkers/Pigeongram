@@ -681,3 +681,79 @@ describe('batch dispatch', () => {
     await expect(rpc(client, 'batch', { calls: many })).rejects.toThrow('at most 8');
   });
 });
+
+describe('sendReaction dispatch', () => {
+  it('sends a unicode emoji and maps the answered message', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      sendReaction: async (input: unknown) => {
+        calls.push(input);
+        return message(5);
+      },
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'sendReaction', { chatId: 1, messageId: 5, emoji: '👍' })) as { message: { id: number } | null };
+
+    expect(calls).toEqual([{ chatId: 1, message: 5, emoji: '👍' }]);
+    expect(result.message?.id).toBe(5);
+  });
+
+  it('sends a custom emoji as a document id and accepts a removed reaction', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      sendReaction: async (input: unknown) => {
+        calls.push(input);
+        return null;
+      },
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'sendReaction', { chatId: 1, messageId: 5, customEmojiId: '123' })) as { message: unknown };
+
+    expect(calls).toHaveLength(1);
+    expect(String((calls[0] as { emoji: Long }).emoji)).toBe('123');
+    expect(result.message).toBeNull();
+    await expect(rpc(client, 'sendReaction', { chatId: 1, messageId: 5 })).resolves.toEqual({ message: null });
+  });
+
+  it('refuses both kinds at once and a malformed custom id', async () => {
+    const client = { sendReaction: async () => message(5) } as unknown as TelegramClient;
+
+    await expect(rpc(client, 'sendReaction', { chatId: 1, messageId: 5, emoji: '👍', customEmojiId: '123' })).rejects.toThrow('not both');
+    await expect(rpc(client, 'sendReaction', { chatId: 1, messageId: 5, customEmojiId: 'abc' })).rejects.toThrow('decimal document id');
+  });
+});
+
+describe('searchMessages dispatch', () => {
+  it('carries the offset, the limit and the next cursor', async () => {
+    const calls: unknown[] = [];
+    const found = Object.assign([message(5)], { next: 4 });
+    const client = {
+      searchMessages: async (input: unknown) => {
+        calls.push(input);
+        return found;
+      },
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'searchMessages', { chatId: 1, query: 'ada', limit: 20, offsetId: 9 })) as {
+      messages: Array<{ id: number }>;
+      nextOffsetId: number;
+    };
+
+    expect(calls).toEqual([{ chatId: 1, query: 'ada', limit: 20, offset: 9 }]);
+    expect(result.messages.map((entry) => entry.id)).toEqual([5]);
+    expect(result.nextOffsetId).toBe(4);
+  });
+
+  it('omits an absent offset and clamps the limit', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      searchMessages: async (input: unknown) => {
+        calls.push(input);
+        return Object.assign([], { next: undefined });
+      },
+    } as unknown as TelegramClient;
+
+    await rpc(client, 'searchMessages', { chatId: 1, query: 'ada', limit: 999 });
+    expect(calls).toEqual([{ chatId: 1, query: 'ada', limit: 100 }]);
+  });
+});

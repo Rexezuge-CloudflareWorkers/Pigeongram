@@ -1,15 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fromBase64, toBase64 } from '../../apps/web/src/calls/base64';
 import { CallCipher } from '../../apps/web/src/calls/crypto';
 import {
   bigIntToBytes,
   bytesToBigInt,
+  checkPeerValue,
   createDhKeyPair,
   deriveSharedKey,
   keyFingerprint,
   modPow,
   validateDhConfig,
 } from '../../apps/web/src/calls/dh';
+import { establishKey } from '../../apps/web/src/calls/exchange';
 import { decodeSignal, encodeSignal } from '../../apps/web/src/calls/signalling';
 import { callReducer } from '../../apps/web/src/calls/session';
 import type { CallView } from '../../apps/web/src/calls/session';
@@ -307,5 +309,69 @@ describe('the relays of a call', () => {
     expect(servers[0].urls).toBe('turn:203.0.113.7:3478?transport=udp');
     expect(servers[0].username).toBe('user');
     expect(servers[1].urls).toBe('stun:203.0.113.7:3478');
+  });
+});
+
+describe('the key exchange guards', () => {
+  it('refuses a negative integer and a non-positive modulus', () => {
+    expect(() => bigIntToBytes(-1n, 4)).toThrow('negative');
+    expect(() => modPow(2n, 3n, 0n)).toThrow('positive');
+    expect(modPow(-2n, 3n, 5n)).toBe(2n);
+  });
+
+  it('refuses a prime that is the wrong width or not prime', async () => {
+    await expect(validateDhConfig({ g: 2, p: new Uint8Array(8) })).rejects.toThrow('2048 bits');
+    await expect(validateDhConfig({ g: 2, p: new Uint8Array(256) })).rejects.toThrow('not prime');
+  });
+
+  it('refuses a generator outside the field and one that is not a residue', async () => {
+    const p = safePrime();
+    await expect(validateDhConfig({ g: 1, p })).rejects.toThrow('out of range');
+    await expect(validateDhConfig({ g: 11, p })).rejects.toThrow('quadratic residue');
+  });
+
+  it('refuses a peer value in another subgroup', async () => {
+    const config = await validateDhConfig({ g: 2, p: safePrime() });
+    expect(() => checkPeerValue(config, bigIntToBytes(11n, 256))).toThrow('wrong subgroup');
+    expect(() => checkPeerValue(config, bigIntToBytes(1n, 256))).toThrow('out of range');
+  });
+
+  it('does not let the private exponent fall to one', async () => {
+    const zeros = new Uint8Array(256);
+    const getRandomValues = vi.spyOn(crypto, 'getRandomValues').mockReturnValue(zeros as never);
+    const config = await validateDhConfig({ g: 2, p: safePrime() });
+
+    const pair = await createDhKeyPair(config);
+
+    expect(pair.secret).toBe(2n);
+    getRandomValues.mockRestore();
+  });
+
+  it('checks the commitment and the fingerprint against the derived key', async () => {
+    const config = await validateDhConfig({ g: 2, p: safePrime() });
+    const caller = await createDhKeyPair(config);
+    const callee = await createDhKeyPair(config);
+    const expected = await establishKey({ config, secret: caller.secret, peerValue: callee.value });
+    const hint = expected.fingerprint;
+
+    await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, commitment: new Uint8Array(32) })).rejects.toThrow(
+      'commitment',
+    );
+    await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, expectedFingerprint: '0' })).rejects.toThrow(
+      'fingerprint',
+    );
+    await expect(
+      establishKey({ config, secret: caller.secret, peerValue: callee.value, expectedFingerprint: hint }),
+    ).resolves.toMatchObject({ fingerprint: hint });
+  });
+
+  it('compares commitment bytes of different lengths as different', async () => {
+    const config = await validateDhConfig({ g: 2, p: safePrime() });
+    const caller = await createDhKeyPair(config);
+    const callee = await createDhKeyPair(config);
+
+    await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, commitment: new Uint8Array(1) })).rejects.toThrow(
+      'commitment',
+    );
   });
 });

@@ -1,7 +1,7 @@
 import { Chat, Dialog, getMarkedPeerId, Long, Message, PeersIndex, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { toChatDto, toDialogDto, toMessageDto } from '../../packages/backend-services/src/session/dto';
+import { toChatDto, toDialogDto, toDialogMessageDto, toMeDto, toMessageDto } from '../../packages/backend-services/src/session/dto';
 
 const rawUser = {
   _: 'user',
@@ -893,5 +893,133 @@ describe('toDialogDto', () => {
     } as unknown as tl.RawMessage;
     const dto = toDialogDto(new Dialog(raw, index(), new Map([[1, last]])));
     expect(dto.lastMessage?.groupedId).toBe('77');
+  });
+});
+
+describe('the account and the remaining media kinds', () => {
+  it('maps the signed-in account, with nulls where Telegram sent nothing', () => {
+    expect(toMeDto(new User({ ...rawUser, phone: '15551234567' } as unknown as tl.RawUser))).toEqual({
+      id: 1,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      username: 'ada',
+      phone: '15551234567',
+      photo: null,
+    });
+
+    const bare = {
+      _: 'user',
+      id: 2,
+      self: true,
+      contact: false,
+      mutualContact: false,
+      deleted: false,
+      bot: false,
+      botChatHistory: false,
+      botNochats: false,
+      verified: false,
+      restricted: false,
+      min: false,
+      firstName: 'Solo',
+    } as unknown as tl.RawUser;
+    expect(toMeDto(new User(bare))).toEqual({
+      id: 2,
+      firstName: 'Solo',
+      lastName: null,
+      username: null,
+      phone: null,
+      photo: null,
+    });
+  });
+
+  function document(attributes: unknown[], mimeType = 'application/octet-stream', size = 512): Message {
+    return message({
+      media: {
+        _: 'messageMediaDocument',
+        document: {
+          _: 'document',
+          id: Long.fromNumber(31),
+          accessHash: Long.fromNumber(310),
+          fileReference: new Uint8Array([5]),
+          date: 1_700_000_000,
+          mimeType,
+          size,
+          dcId: 2,
+          attributes,
+        },
+      },
+    });
+  }
+
+  it('maps audio and voice notes', () => {
+    const audio = document(
+      [
+        { _: 'documentAttributeAudio', duration: 31, title: 'A song', performer: 'Someone' },
+        { _: 'documentAttributeFilename', fileName: 'song.mp3' },
+      ],
+      'audio/mpeg',
+      1024,
+    );
+    expect(toMessageDto(audio).media).toEqual({
+      kind: 'audio',
+      fileName: 'song.mp3',
+      mime: 'audio/mpeg',
+      size: 1024,
+      width: null,
+      height: null,
+      duration: 31,
+    });
+
+    const voice = document([{ _: 'documentAttributeAudio', duration: 4, voice: true }], 'audio/ogg', 256);
+    expect(toMessageDto(voice).media).toMatchObject({ kind: 'voice', duration: 4, width: null, height: null });
+  });
+
+  it('maps an animation and a plain document', () => {
+    const animation = document(
+      [{ _: 'documentAttributeVideo', w: 320, h: 240, duration: 2 }, { _: 'documentAttributeAnimated' }],
+      'video/mp4',
+    );
+    expect(toMessageDto(animation).media).toMatchObject({ kind: 'animation', width: 320, height: 240, duration: 2 });
+
+    const plain = document([{ _: 'documentAttributeFilename', fileName: 'notes.txt' }], 'text/plain', 12);
+    expect(toMessageDto(plain).media).toEqual({
+      kind: 'document',
+      fileName: 'notes.txt',
+      mime: 'text/plain',
+      size: 12,
+      width: null,
+      height: null,
+      duration: null,
+    });
+  });
+
+  it('leaves a quoted non-file media without a kind', () => {
+    const quoted = toMessageDto(
+      message({
+        replyTo: {
+          _: 'messageReplyHeader',
+          replyToMsgId: 3,
+          quote: true,
+          quoteText: 'look',
+          quoteMedia: [
+            {
+              _: 'messageMediaGeo',
+              geo: { _: 'geoPoint', lat: 1, long: 2 },
+            },
+          ],
+        },
+      }),
+    );
+    expect(quoted.reply?.mediaKind).toBeNull();
+    expect(quoted.reply?.quote).toBe(true);
+  });
+
+  it('maps a last message with no media, a poll, and no album', () => {
+    const plain = message({ id: 14 });
+    expect(toDialogMessageDto(plain)).toMatchObject({ id: 14, media: null, poll: null, groupedId: null });
+
+    const polled = pollMessage();
+    expect(toDialogMessageDto(polled).poll?.id).toBe(String(POLL_ID));
+    expect(toDialogMessageDto(polled).media).toBeNull();
   });
 });

@@ -17,9 +17,9 @@
 #
 # A job per gate because a failure is then named by the job rather than arriving
 # inside a combined `checks` log, and a retry re-runs only the tool that broke.
-# Job `name:` values — Typecheck, Lint, Format, God Files, Unit Tests, Build Web
-# App — are the required-check names configured in branch protection; keep them
-# stable.
+# Job `name:` values — Typecheck, Lint, Format, God Files, Unit Tests, Worker
+# Bundle, Build Web App — are the required-check names configured in branch
+# protection; keep them stable.
 
 name: Continuous Integration
 
@@ -145,8 +145,8 @@ jobs:
           retention-days: 14
 
   # Only the SPA build. The worker is covered by the `typecheck` job
-  # (`pnpm -r typecheck` reaches apps/api/); `wrangler deploy --dry-run` in CD is
-  # what proves it bundles.
+  # (`pnpm -r typecheck` reaches apps/api/) and by the `worker-bundle` job; CD's
+  # dry run is the last gate before a deploy, not the first.
   build:
     name: Build Web App
     runs-on: ubuntu-latest
@@ -161,6 +161,86 @@ jobs:
       - name: Build Web App
         run: pnpm --filter @pigeongram/web build
 
+  # A bundle is not a typecheck. Only `wrangler deploy --dry-run` proves that the
+  # wasm module resolves, the Durable Object class is exported through the entry,
+  # and the template's bindings still line up. CD runs the same dry run after
+  # merge — one PR too late: a broken bundle would land on `main` and only fail
+  # when the deploy starts. Needs no secrets: the config is materialized from the
+  # committed template, and a dry run never calls the Cloudflare API.
+  #
+  # The job runs on every event so it is safe as a required check: workflow-level
+  # `paths:` filtering leaves a required check pending on the PRs it skipped, and
+  # a job-level `if:` cannot read a step's change-set output. The step below
+  # decides whether the bundle is worth the install; `apps/web/`, `functions/` and
+  # `docs/` cannot change the worker bundle.
+  worker-bundle:
+    name: Worker Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          # The change set is diffed against the base commit, which the default
+          # single-commit clone does not contain.
+          fetch-depth: 0
+
+      - name: Detect Bundle Changes
+        id: changed
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # A manual or upstream-sync dispatch has no change set to compare and is
+          # an explicit request to run the gate.
+          case "$EVENT_NAME" in
+            pull_request|push) ;;
+            *)
+              echo 'run=true' >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          # The first push to a branch has no parent to compare with.
+          case "$BASE_SHA" in
+            ''|0000000000000000000000000000000000000000)
+              echo 'run=true' >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          # Three dots: the PR's own changes, not whatever landed on the base
+          # branch while the PR was open. A change set that cannot be computed
+          # runs the gate rather than skipping it.
+          if ! diff="$(git diff --name-only "$BASE_SHA"...HEAD)"; then
+            echo 'Could not compute the change set; running the gate.'
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          matched="$(printf '%s\n' "$diff" | grep -E '^(apps/api/|packages/|scripts/lib/|scripts/wrangler-config/|scripts/prepare-wrangler-config\.ts$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.npmrc$)' || true)"
+          if [ -n "$matched" ]; then
+            printf 'Bundle-affecting changes:\n%s\n' "$matched"
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'No bundle-affecting changes; skipping the dry run.'
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Environment
+        if: steps.changed.outputs.run == 'true'
+        uses: ./.github/actions/setup-env
+
+      # The same materialization CD uses, deliberately without the deployment's
+      # variable patches: the gate is the committed template, so a PR cannot pass
+      # on configuration the repository does not carry.
+      - name: Prepare Wrangler Configuration
+        if: steps.changed.outputs.run == 'true'
+        run: pnpm exec tsx scripts/prepare-wrangler-config.ts
+
+      # Not retried, for the same reason as CD's dry run: a failure here is a
+      # defect in the bundle, and retrying only delays the report.
+      - name: Dry Run Deploy with Wrangler
+        if: steps.changed.outputs.run == 'true'
+        run: pnpm exec wrangler deploy --dry-run
+
   dependabot-auto-merge:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}
     name: Auto-Merge Dependabot PR
@@ -170,6 +250,7 @@ jobs:
       - format
       - god-files
       - unit-tests
+      - worker-bundle
       - build
     permissions:
       contents: write
@@ -201,6 +282,7 @@ jobs:
       - format
       - god-files
       - unit-tests
+      - worker-bundle
       - build
     permissions:
       contents: write

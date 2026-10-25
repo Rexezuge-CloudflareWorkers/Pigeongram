@@ -113,8 +113,10 @@ runbook.
 
 - **Continuous Integration** (`.github/workflows/continuous-integration.yml`) runs on PRs, pushes to `main`, and
   upstream-sync dispatches. One job per gate: **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**
-  (coverage artifact), **Build Web App**, plus the two tail jobs (Dependabot auto-merge, upstream-sync deployment
-  dispatch).
+  (coverage artifact), **Worker Bundle**, **Build Web App**, plus the two tail jobs (Dependabot auto-merge,
+  upstream-sync deployment dispatch). **Worker Bundle** runs `wrangler deploy --dry-run` (no secrets needed) when a
+  change could affect the worker bundle — `apps/api/`, `packages/`, or the wrangler config materializer — and reports
+  success without installing otherwise, so it can be a required check while unrelated PRs skip the install.
 - **Continuous Deployment** (`.github/workflows/continuous-deployment.yml`) runs after CI succeeds on `main`, with
   `deploy-worker` and `deploy-pages` in parallel. The worker deploy materializes `wrangler.jsonc`, runs
   `wrangler deploy --dry-run` as a gate, then deploys; the Pages deploy builds the SPA, creates the Pages project if
@@ -167,7 +169,8 @@ APK for another deployment. `ANDROID_PACKAGE_ID` and `ANDROID_CERT_SHA256` also 
 in [`docs/android.md`](docs/android.md).
 
 Also: enable **Allow auto-merge** (the Dependabot job depends on it), and after the first CI run set branch protection
-on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Build Web App**.
+on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Worker Bundle**,
+**Build Web App**.
 
 ### First-deploy verification
 

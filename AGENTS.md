@@ -365,8 +365,10 @@ protocol,registry}`) and the mtcute integration
   service worker, the manifest, the icons and the assetlinks generator are SPA code without a DOM, so their tests run
   under `node` too.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
-  filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Unit Tests`, `Build Web App`) are the required-check
-  names; keep them stable.
+  filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Unit Tests`, `Worker Bundle`, `Build Web App`) are the
+  required-check names; keep them stable. `Worker Bundle` always reports (so it is safe as a required check) but only
+  installs and runs `wrangler deploy --dry-run` when the change set touches `apps/api/`, `packages/`, or the wrangler
+  config materializer.
 - **`pnpm run lint` uses `--fix`.** Run it locally and commit its fixes; CI's `--quiet` discards warnings, which is why the
   separate `format:check` job exists.
 - **The god-file allowlist holds exactly the two contract modules.** `scripts/god-files.allowlist.json` exempts
@@ -384,14 +386,14 @@ protocol,registry}`) and the mtcute integration
 
 ## Workflows
 
-| Workflow                       | Trigger                                    | What it does                                                                                                                                                                      |
-| ------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `continuous-integration.yml`   | PR, push to `main`, upstream-sync dispatch | One job per gate — Typecheck, Lint, Format, God Files, Unit Tests (+coverage artifact), Build Web App — with Dependabot auto-merge and upstream-sync deployment dispatch as tails |
-| `continuous-deployment.yml`    | CI success on `main`, manual dispatch      | `deploy-worker` (materialize config → dry-run gate → deploy) and `deploy-pages` (build → ensure project → deploy) in parallel                                                     |
-| `android-build.yml`            | manual dispatch                            | Per-deployment TWA: verifies the live assetlinks, renders the manifest, builds the signed APK/AAB, uploads artifacts only                                                         |
-| `backup-main.yml`              | push to `main`, monthly                    | Mirrors the repo to Azure DevOps / GitLab — opt-in by secrets; skips green when unset                                                                                             |
-| `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                         |
-| `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                     |
+| Workflow                       | Trigger                                    | What it does                                                                                                                                                                                                              |
+| ------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `continuous-integration.yml`   | PR, push to `main`, upstream-sync dispatch | One job per gate — Typecheck, Lint, Format, God Files, Unit Tests (+coverage artifact), Worker Bundle (dry-run, path-filtered), Build Web App — with Dependabot auto-merge and upstream-sync deployment dispatch as tails |
+| `continuous-deployment.yml`    | CI success on `main`, manual dispatch      | `deploy-worker` (materialize config → dry-run gate → deploy) and `deploy-pages` (build → ensure project → deploy) in parallel                                                                                             |
+| `android-build.yml`            | manual dispatch                            | Per-deployment TWA: verifies the live assetlinks, renders the manifest, builds the signed APK/AAB, uploads artifacts only                                                                                                 |
+| `backup-main.yml`              | push to `main`, monthly                    | Mirrors the repo to Azure DevOps / GitLab — opt-in by secrets; skips green when unset                                                                                                                                     |
+| `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                                                                 |
+| `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                                                             |
 
 Secrets/variables and the branch-protection checklist live in `README.md` (required settings) and are mirrored in the
 workflow files themselves.

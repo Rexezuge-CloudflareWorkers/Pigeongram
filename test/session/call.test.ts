@@ -15,10 +15,10 @@ import {
   requireRating,
 } from '../../packages/backend-services/src/session/call-params';
 import { callProtocol, toCallProtocolDto } from '../../packages/backend-services/src/session/call-protocol';
-import { dispatchCallRpc } from '../../packages/backend-services/src/session/call-rpc';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
 import { EngineError } from '../../packages/backend-services/src/session/errors';
 import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
+import { rpc } from './rpc-dispatch';
 
 /**
  * The calls half of the bridge.
@@ -221,7 +221,7 @@ describe('the requestCall dispatch', () => {
     } as unknown as TelegramClient;
     const gAHash = new Uint8Array(32).fill(9);
 
-    await dispatchCallRpc(client, 'requestCall', { chatId: 2, gAHash: encodeBase64(gAHash), randomId: '7' }, new CallRegistry());
+    await rpc(client, 'requestCall', { chatId: 2, gAHash: encodeBase64(gAHash), randomId: '7' });
 
     expect(requests).toHaveLength(1);
     const request = requests[0] as { _: string; gAHash: Uint8Array };

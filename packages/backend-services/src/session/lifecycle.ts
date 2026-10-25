@@ -37,6 +37,11 @@ export interface LifecycleHost {
   state: DurableObjectState;
   store: EngineStore;
   env: CloudflareEnv;
+  /**
+   * The clock the alarm cadence and the wake log read. Defaults to
+   * `Date.now`, so the host stays as it was; a test passes a clock it owns.
+   */
+  now?: () => number;
 }
 
 /**
@@ -101,7 +106,7 @@ export class SessionLifecycle {
   */
   async runWake(reason: 'alarm' | 'manual'): Promise<WakeCountersDto> {
     const before = this.rawUpdates;
-    const startedAt = Date.now();
+    const startedAt = this.now();
     let ok = true;
     let error: string | null = null;
     try {
@@ -126,7 +131,7 @@ export class SessionLifecycle {
     }
     const record: WakeRecord = {
       reason,
-      durationMs: Date.now() - startedAt,
+      durationMs: this.now() - startedAt,
       updates: this.rawUpdates - before,
       ok,
       error,
@@ -314,8 +319,12 @@ export class SessionLifecycle {
     return Math.round(seconds * 1000);
   }
 
+  private now(): number {
+    return this.host.now?.() ?? Date.now();
+  }
+
   private async arm(delayMs: number): Promise<void> {
-    const target = Date.now() + Math.max(1000, delayMs);
+    const target = this.now() + Math.max(1000, delayMs);
     try {
       // `setAlarm` is a row write on the Free plan, and a chat-list load makes
       // one bridge call per avatar. An alarm already at or before the target

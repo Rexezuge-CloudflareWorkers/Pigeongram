@@ -1,4 +1,5 @@
 import { connectWs } from '@fuman/net';
+import type { WebSocketEndpoint } from '@fuman/net';
 import { IntermediatePacketCodec, MtUnsupportedError, ObfuscatedPacketCodec } from '@mtcute/core';
 import type { IPacketCodec, ITelegramConnection, TelegramTransport } from '@mtcute/core';
 import type { BasicDcOption } from '@mtcute/core/utils.js';
@@ -13,6 +14,12 @@ const DEFAULT_SUBDOMAINS: Record<number, string> = {
   4: 'vesta',
   5: 'flora',
 };
+
+/**
+ * Opens the WebSocket connection. Injectable so the URL building and the
+ * unsupported-DC refusal can be tested without a network.
+ */
+export type WebSocketConnect = (endpoint: WebSocketEndpoint, signal?: AbortSignal) => Promise<ITelegramConnection>;
 
 /**
  * MTProto over WSS (`wss://{dc}.web.telegram.org/apiws`), adapted from
@@ -30,6 +37,7 @@ export class WorkersWsTransport implements TelegramTransport {
       baseDomain?: string;
       subdomains?: Record<number, string>;
     } = {},
+    private readonly open: WebSocketConnect = connectWs,
   ) {}
 
   connect(dc: BasicDcOption, abortSignal: AbortSignal): Promise<ITelegramConnection> {
@@ -40,7 +48,7 @@ export class WorkersWsTransport implements TelegramTransport {
     }
     const baseDomain = this.options.baseDomain ?? 'web.telegram.org';
     const url = `wss://${subdomain}.${baseDomain}/apiws${dc.testMode ? '_test' : ''}`;
-    return connectWs({ url, implementation: WebSocket, protocols: 'binary' }, abortSignal);
+    return this.open({ url, implementation: WebSocket, protocols: 'binary' }, abortSignal);
   }
 
   packetCodec(): IPacketCodec {

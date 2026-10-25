@@ -26,7 +26,27 @@ interface Harness {
   waitUntil: ReturnType<typeof vi.fn>;
 }
 
-function harness(): Harness {
+interface HarnessOptions {
+  /**
+  The clock the cadence reads, when a test wants a fixed target.
+  */
+  now?: () => number;
+  /**
+  An alarm already scheduled before the lifecycle is built. `undefined`
+  keeps the harness's own array as the store.
+  */
+  existingAlarm?: number | null;
+  /**
+  Makes `setAlarm` reject, as an exhausted Free-plan write budget does.
+  */
+  failSetAlarm?: boolean;
+  /**
+  The cadence var, so a test can drive the bounds.
+  */
+  wakeIntervalSeconds?: string;
+}
+
+function harness(options: HarnessOptions = {}): Harness {
   const alarms: number[] = [];
   const waitUntil = vi.fn();
   const driver = {
@@ -42,8 +62,9 @@ function harness(): Harness {
     getWebSockets: () => [],
     waitUntil,
     storage: {
-      getAlarm: async () => alarms.at(-1) ?? null,
+      getAlarm: async () => (options.existingAlarm === undefined ? (alarms.at(-1) ?? null) : options.existingAlarm),
       setAlarm: async (time: number) => {
+        if (options.failSetAlarm) throw new Error('storage write quota exceeded');
         alarms.push(time);
       },
     },
@@ -58,7 +79,8 @@ function harness(): Harness {
     login,
     state,
     store,
-    env: { WAKE_INTERVAL_SECONDS: '300' },
+    env: { WAKE_INTERVAL_SECONDS: options.wakeIntervalSeconds ?? '300' },
+    now: options.now,
   } as unknown as LifecycleHost;
   return { lifecycle: new SessionLifecycle(host), driver, login, hub, alarms, waitUntil };
 }
@@ -72,6 +94,7 @@ function pending(): Promise<void> {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('SessionLifecycle.stopLive', () => {
@@ -139,5 +162,59 @@ describe('SessionLifecycle.stopLive', () => {
     await lifecycle.ensureLive();
     expect(driver.connect).not.toHaveBeenCalled();
     expect(hub.broadcast).toHaveBeenCalledWith({ type: 'error', message: 'Not signed in' });
+  });
+});
+
+describe('SessionLifecycle wake cadence', () => {
+  it('arms the next wake from the injected clock', async () => {
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000 });
+
+    await lifecycle.armWake();
+
+    expect(alarms).toEqual([1_300_000]);
+  });
+
+  it('leaves an alarm that already fires soon enough alone', async () => {
+    // `setAlarm` is a row write on the Free plan, so a request that finds an
+    // alarm at or before the target must not spend one.
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000, existingAlarm: 1_100_000 });
+
+    await lifecycle.ensureArmed();
+
+    expect(alarms).toEqual([]);
+  });
+
+  it('replaces an alarm that would fire after the cadence', async () => {
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000, existingAlarm: 2_000_000 });
+
+    await lifecycle.ensureArmed();
+
+    expect(alarms).toEqual([1_300_000]);
+  });
+
+  it('repairs a missing alarm, which a rejected write can leave behind', async () => {
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000, existingAlarm: null });
+
+    await lifecycle.ensureArmed();
+
+    expect(alarms).toEqual([1_300_000]);
+  });
+
+  it('falls back to the default cadence for a var below the floor', async () => {
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000, wakeIntervalSeconds: '10' });
+
+    await lifecycle.armWake();
+
+    expect(alarms).toEqual([1_300_000]);
+  });
+
+  it('swallows a rejected alarm write, so the request still answers', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { lifecycle, alarms } = harness({ now: () => 1_000_000, failSetAlarm: true });
+
+    await expect(lifecycle.armWake()).resolves.toBeUndefined();
+
+    expect(alarms).toEqual([]);
+    expect(logged).toHaveBeenCalledWith('[engine] failed to arm the wake alarm', expect.any(Error));
   });
 });

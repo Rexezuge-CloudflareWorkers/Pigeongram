@@ -1,5 +1,5 @@
 import { Long } from '@mtcute/core';
-import type { BatchableRpcMethod, RpcBatchCall } from '../rpc-types';
+import type { RpcBatchCall } from '../rpc-types';
 import { EngineError } from './errors';
 
 /**
@@ -12,20 +12,6 @@ import { EngineError } from './errors';
 How many calls one `batch` may carry.
 */
 const MAX_BATCH_CALLS = 8;
-
-/**
-The methods a `batch` may carry: the read-only half of the bridge's surface.
-*/
-const BATCHABLE_METHODS: ReadonlySet<string> = new Set<BatchableRpcMethod>([
-  'getMe',
-  'getDialogs',
-  'getHistory',
-  'searchMessages',
-  'getPollResults',
-  'getComments',
-  'getBotCommands',
-  'getProfile',
-]);
 
 /**
  * A JSON object. An absent value means "no parameters" and becomes `{}`; any
@@ -241,10 +227,12 @@ export function requireQuery(value: unknown, max = 256): string {
 The calls a `batch` carries.
 
 The list is capped so one request cannot become a fan-out amplifier, and every
-method is checked against the read-only whitelist: a batch runs its calls
-concurrently, so a write in it would have no defined completion order.
+method is checked against the batchable set the registry derived from its
+read-only entries: a batch runs its calls concurrently, so a write in it would
+have no defined completion order. The set is passed in rather than imported so
+this validator has no runtime dependency on the method table that uses it.
 */
-export function parseBatchCalls(value: unknown): RpcBatchCall[] {
+export function parseBatchCalls(value: unknown, batchable: ReadonlySet<string>): RpcBatchCall[] {
   if (!Array.isArray(value)) {
     throw new EngineError('calls must be an array of batched calls', 400);
   }
@@ -257,11 +245,11 @@ export function parseBatchCalls(value: unknown): RpcBatchCall[] {
   return value.map((entry, index) => {
     const record = requireRecord(entry);
     const method = record.method;
-    if (typeof method !== 'string' || !BATCHABLE_METHODS.has(method)) {
+    if (typeof method !== 'string' || !batchable.has(method)) {
       throw new EngineError(`calls[${index}].method must be a batchable read method`, 400);
     }
     return {
-      method: method as BatchableRpcMethod,
+      method: method as RpcBatchCall['method'],
       params: requireRecord(record.params),
     };
   });

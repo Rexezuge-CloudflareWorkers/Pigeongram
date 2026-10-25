@@ -18,6 +18,12 @@ import { rpcErrorText } from './rpc-errors';
 import { UnreadAlbumLedger } from './unread-albums';
 import { mapRawUpdate } from './updates';
 
+/**
+ * How the driver builds its client stack. Injectable so the lifecycle and
+ * delegation can be tested without wasm, a network or a real credential.
+ */
+export type MtBundleFactory = (env: CloudflareEnv, storage: TransactionalStorageLike) => MtBundle;
+
 export interface QrLoginCallbacks {
   onUrl(url: string, expiresMs: number): void;
   onScanned(): void;
@@ -82,6 +88,7 @@ export class TelegramDriver {
   constructor(
     private readonly env: CloudflareEnv,
     private readonly storage: TransactionalStorageLike,
+    private readonly createBundle: MtBundleFactory = createMtBundle,
   ) {
     this.#albums = new UnreadAlbumLedger(storage.sql);
   }
@@ -106,7 +113,7 @@ export class TelegramDriver {
 
   #ensure(): MtBundle {
     if (this.#bundle) return this.#bundle;
-    const bundle = createMtBundle(this.env, this.storage);
+    const bundle = this.createBundle(this.env, this.storage);
     bundle.base.onRawUpdate.add((info) => {
       let mapped: UpdateEvent | null = null;
       try {

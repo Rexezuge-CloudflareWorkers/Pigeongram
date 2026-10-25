@@ -127,8 +127,10 @@ describe('bridge parameter validation', () => {
   });
 
   it('refuses a batch entry with a non-object params field', () => {
-    expect(() => parseBatchCalls([{ method: 'getMe', params: 'garbage' }])).toThrow(EngineError);
-    expect(() => parseBatchCalls(['getMe'])).toThrow(EngineError);
-    expect(parseBatchCalls([{ method: 'getMe' }])).toEqual([{ method: 'getMe', params: {} }]);
+    const batchable = new Set(['getMe']);
+    expect(() => parseBatchCalls([{ method: 'getMe', params: 'garbage' }], batchable)).toThrow(EngineError);
+    expect(() => parseBatchCalls(['getMe'], batchable)).toThrow(EngineError);
+    expect(parseBatchCalls([{ method: 'getMe' }], batchable)).toEqual([{ method: 'getMe', params: {} }]);
+    expect(() => parseBatchCalls([{ method: 'sendMessage' }], batchable)).toThrow('batchable read method');
   });
 });

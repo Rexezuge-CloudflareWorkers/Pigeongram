@@ -28,6 +28,44 @@ const asBufferSource = (data: Uint8Array): BufferSource => data as unknown as Bu
 const asRandomTarget = (buf: Uint8Array): Uint8Array<ArrayBuffer> => buf as unknown as Uint8Array<ArrayBuffer>;
 
 /**
+ * The wasm surface the provider delegates to.
+ *
+ * Node has no `CompiledWasm` module rule, so the test suite cannot exercise the
+ * real bindings: a `.wasm` import is an already-instantiated namespace there,
+ * not the buffer `initSync` expects. The provider therefore takes them as a
+ * constructor argument, defaulting to the bundled module — production keeps
+ * the static import (Wrangler's rule depends on it) while the suite drives the
+ * routing over a fake.
+ */
+export interface CryptoWasmBindings {
+  readonly module: WebAssembly.Module;
+  initSync(module: WebAssembly.Module): void;
+  sha1(data: Uint8Array): Uint8Array;
+  sha256(data: Uint8Array): Uint8Array;
+  createCtr256(key: Uint8Array, iv: Uint8Array): number;
+  ctr256(ctx: number, data: Uint8Array): Uint8Array;
+  freeCtr256(ctx: number): void;
+  ige256Encrypt(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Uint8Array;
+  ige256Decrypt(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Uint8Array;
+  deflateMaxSize(data: Uint8Array, maxSize: number): Uint8Array | null;
+  gunzip(data: Uint8Array): Uint8Array;
+}
+
+const defaultBindings: CryptoWasmBindings = {
+  module: wasmModule,
+  initSync,
+  sha1,
+  sha256,
+  createCtr256,
+  ctr256,
+  freeCtr256,
+  ige256Encrypt,
+  ige256Decrypt,
+  deflateMaxSize,
+  gunzip,
+};
+
+/**
  * Crypto provider for workerd, adapted from `@mtcute/web`'s `WebCryptoProvider`
  * (mtcute 0.32.5, MIT licence).
  *
@@ -40,41 +78,45 @@ const asRandomTarget = (buf: Uint8Array): Uint8Array<ArrayBuffer> => buf as unkn
 export class WorkerCryptoProvider extends BaseCryptoProvider {
   #initialized = false;
 
+  constructor(private readonly wasm: CryptoWasmBindings = defaultBindings) {
+    super();
+  }
+
   initialize(): void {
     if (this.#initialized) return;
-    initSync(wasmModule);
+    this.wasm.initSync(this.wasm.module);
     this.#initialized = true;
   }
 
   sha1(data: Uint8Array): Uint8Array {
-    return sha1(data);
+    return this.wasm.sha1(data);
   }
 
   sha256(data: Uint8Array): Uint8Array {
-    return sha256(data);
+    return this.wasm.sha256(data);
   }
 
   createAesCtr(key: Uint8Array, iv: Uint8Array): IAesCtr {
-    const ctx = createCtr256(key, iv);
+    const ctx = this.wasm.createCtr256(key, iv);
     return {
-      process: (data) => ctr256(ctx, data),
-      close: () => freeCtr256(ctx),
+      process: (data) => this.wasm.ctr256(ctx, data),
+      close: () => this.wasm.freeCtr256(ctx),
     };
   }
 
   createAesIge(key: Uint8Array, iv: Uint8Array): IEncryptionScheme {
     return {
-      encrypt: (data) => ige256Encrypt(data, key, iv),
-      decrypt: (data) => ige256Decrypt(data, key, iv),
+      encrypt: (data) => this.wasm.ige256Encrypt(data, key, iv),
+      decrypt: (data) => this.wasm.ige256Decrypt(data, key, iv),
     };
   }
 
   gzip(data: Uint8Array, maxSize: number): Uint8Array | null {
-    return deflateMaxSize(data, maxSize);
+    return this.wasm.deflateMaxSize(data, maxSize);
   }
 
   gunzip(data: Uint8Array): Uint8Array {
-    return gunzip(data);
+    return this.wasm.gunzip(data);
   }
 
   async pbkdf2(password: Uint8Array, salt: Uint8Array, iterations: number, keylen = 64, algo = 'sha512'): Promise<Uint8Array> {

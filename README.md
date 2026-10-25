@@ -3,11 +3,11 @@
 An always-online Telegram web client hosted on Cloudflare. Pigeongram is an independent, unofficial client and is not
 affiliated with Telegram Messenger LLP.
 
-- **`worker/`** — the backend. A Hono API and a Durable Object (`SessionEngine`) that is the single home of one
+- **`apps/api/`** — the backend. A Hono API and a Durable Object (`SessionEngine`) that is the single home of one
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
   `getDifference`, persists to DO SQLite, disconnects, and re-arms its own alarm. While a browser tab is attached it
   holds the session live and pushes updates. See [`docs/session-engine.md`](docs/session-engine.md).
-- **`pages/`** — the frontend. A Vite + React + Tailwind SPA with a four-state home: a public intro page, the offline
+- **`apps/web/`** — the frontend. A Vite + React + Tailwind SPA with a four-state home: a public intro page, the offline
   screen when there is no network, the Telegram QR login
   once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, online
   presence, pathname deep links). Sends are optimistic: a composed message or file appears in the thread and the chat
@@ -30,8 +30,8 @@ deployment's Access configuration (see [Pending owner actions](#pending-owner-ac
 
 | Path         | What                                                                                                                                                                                         |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `worker/`    | Worker package: `src/index.ts` (Hono entry, Access JWT gate, exports the DO) and `src/session/**` (the `SessionEngine`)                                                                      |
-| `pages/`     | Pages package: Vite + React + Tailwind SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding                                                                         |
+| `apps/api/`  | Worker package: `src/index.ts` (Hono entry, Access JWT gate, exports the DO) and `src/session/**` (the `SessionEngine`)                                                                      |
+| `apps/web/`  | Pages package: Vite + React + Tailwind SPA (`src/`), `wrangler.template.jsonc` with the `API_WORKER` service binding                                                                         |
 | `functions/` | Pages Functions: `api/[[path]].ts` forwards the public `/api/*` plane and `user/[[path]].ts` the Access-gated `/user/*` plane to the worker through `API_WORKER` (must sit at the repo root) |
 | `test/`      | Vitest suite as a workspace package; `test/web/**` is the SPA half, everything else is the worker half                                                                                       |
 | `scripts/`   | `check-god-files.ts` and `prepare-wrangler-config.ts`, copied from `@rexezuge/tooling` (see `AGENTS.md`)                                                                                     |
@@ -39,7 +39,7 @@ deployment's Access configuration (see [Pending owner actions](#pending-owner-ac
 | `.github/`   | CI, CD, mirror/backup, version-stamp, upstream-sync workflows and the two composite actions                                                                                                  |
 
 `wrangler.jsonc` is **materialized to the repo root** by `scripts/prepare-wrangler-config.ts` before dev/deploy — the
-templates live in `worker/` and `pages/` and every path inside them is root-relative. `wrangler.jsonc` and the generated
+templates live in `apps/api/` and `apps/web/` and every path inside them is root-relative. `wrangler.jsonc` and the generated
 `worker-configuration.d.ts` are gitignored and never committed.
 
 ## Requirements
@@ -67,7 +67,7 @@ pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler dev
 
 # SPA on http://localhost:5173 — /api and /user are proxied to the worker above:
-pnpm --filter @telegram-web-client/pages dev
+pnpm --filter @pigeongram/web dev
 ```
 
 Local development does not pass through Cloudflare Access: the example `.dev.vars` sets
@@ -94,7 +94,7 @@ The Pages build bakes them into the tab title, the install manifest and the intr
 repository variables of the same names, and a local build sets them on the command:
 
 ```bash
-VITE_APP_NAME="My Client" VITE_APP_SHORT_NAME="MyClient" pnpm --filter @telegram-web-client/pages build
+VITE_APP_NAME="My Client" VITE_APP_SHORT_NAME="MyClient" pnpm --filter @pigeongram/web build
 ```
 
 The Android shell uses `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME`, falling back to those two variables and then to

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseUploadGroupSpec, parseUploadSpec } from '../../worker/src/session/upload-spec';
+import { parseUploadGroupSpec, parseUploadSpec } from '../../packages/backend-services/src/session/upload-spec';
 
 /**
  * The album manifest is the one untrusted, structured part of an upload: it

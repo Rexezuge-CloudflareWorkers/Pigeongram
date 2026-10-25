@@ -1,8 +1,8 @@
 import type { FileLocation } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import type { DownloadParams } from '../../worker/src/session/media-stream';
-import { readAvatar, readAvatarVersion, streamMessageMedia } from '../../worker/src/session/media';
+import type { DownloadParams } from '../../packages/backend-services/src/session/media-stream';
+import { readAvatar, readAvatarVersion, streamMessageMedia } from '../../packages/backend-services/src/session/media';
 
 /**
  * The window arithmetic of the media downloads: which aligned offset a browser

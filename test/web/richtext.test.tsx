@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderMessageText } from '../../pages/src/richtext';
-import type { LinkClickHandler } from '../../pages/src/richtext';
-import type { MessageEntityDto } from '../../pages/src/types';
+import { renderMessageText } from '../../apps/web/src/richtext';
+import type { LinkClickHandler } from '../../apps/web/src/richtext';
+import type { MessageEntityDto } from '../../apps/web/src/types';
 
 function body(text: string, entities: MessageEntityDto[], onLinkClick?: LinkClickHandler): HTMLElement {
   const { container } = render(<div data-testid="body">{renderMessageText(text, entities, onLinkClick)}</div>);

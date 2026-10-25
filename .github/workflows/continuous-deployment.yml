@@ -9,7 +9,7 @@
 #     `WRANGLER_VARS_PATCH_JSON`; without them the worker's `/user/*` answers
 #     503 `access_config`. `/api/health` is public and unaffected.
 #   * Apply Database Migration — no D1; the DO's SQLite is migrated by the
-#     `durable_objects` migrations in worker/wrangler.template.jsonc.
+#     `durable_objects` migrations in apps/api/wrangler.template.jsonc.
 #   * Build Web App (in deploy-worker) — this worker is API-only and serves no
 #     embedded shell.
 #   * Prepare for Deploy (the OpenNext/`next.config` shuffling) — no Next.js
@@ -117,10 +117,10 @@ jobs:
           ANDROID_PACKAGE_ID: ${{ vars.ANDROID_PACKAGE_ID }}
           ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
           ANDROID_PLAY_CERT_SHA256: ${{ vars.ANDROID_PLAY_CERT_SHA256 }}
-        run: pnpm --filter @telegram-web-client/pages build
+        run: pnpm --filter @pigeongram/web build
 
       - name: Configure Pages Service Bindings
-        run: cp pages/wrangler.template.jsonc wrangler.jsonc
+        run: cp apps/web/wrangler.template.jsonc wrangler.jsonc
 
       # Created if absent, and then polled until it is visible, because a project
       # that exists but is not yet listed makes the deploy below fail with an
@@ -155,7 +155,7 @@ jobs:
         uses: ./.github/actions/retry-step
         with:
           command: >
-            pnpm exec wrangler pages deploy pages/dist
+            pnpm exec wrangler pages deploy apps/web/dist
             --project-name "${PROJECT}"
             --branch "${DEPLOY_BRANCH}"
             --commit-hash "${DEPLOY_SHA}"

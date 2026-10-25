@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { UploadGroupInput, UploadInput } from '../../pages/src/api';
-import { canGroupUploads, mediaKind, previewMime, sendUploadBatch } from '../../pages/src/upload';
+import type { UploadGroupInput, UploadInput } from '../../apps/web/src/api';
+import { canGroupUploads, mediaKind, previewMime, sendUploadBatch } from '../../apps/web/src/upload';
 
 const api = vi.hoisted(() => ({
   uploadFile: vi.fn(),
   uploadGroup: vi.fn(),
 }));
 
-vi.mock('../../pages/src/api', () => api);
+vi.mock('../../apps/web/src/api', () => api);
 
 afterEach(() => {
   api.uploadFile.mockReset();

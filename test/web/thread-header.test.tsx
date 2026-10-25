@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ThreadHeader } from '../../pages/src/components/ThreadHeader';
-import type { ChatDto, ProfileDto } from '../../pages/src/types';
+import { ThreadHeader } from '../../apps/web/src/components/ThreadHeader';
+import type { ChatDto, ProfileDto } from '../../apps/web/src/types';
 
 afterEach(() => {
   cleanup();

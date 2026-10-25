@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatPresence } from '../../pages/src/format';
+import { formatPresence } from '../../apps/web/src/format';
 
 describe('formatPresence', () => {
   it('reads an online person as online', () => {

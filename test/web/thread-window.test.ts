@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newerWindow, UNREAD_CONTEXT, unreadWindow, WINDOW_LIMIT } from '../../pages/src/thread-window';
+import { newerWindow, UNREAD_CONTEXT, unreadWindow, WINDOW_LIMIT } from '../../apps/web/src/thread-window';
 
 describe('thread windows', () => {
   it('anchors the unread window above the read watermark', () => {

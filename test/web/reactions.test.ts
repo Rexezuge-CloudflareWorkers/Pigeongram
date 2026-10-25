@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_REACTIONS, QUICK_REACTIONS, reactionFor } from '../../pages/src/reactions';
+import { ALL_REACTIONS, QUICK_REACTIONS, reactionFor } from '../../apps/web/src/reactions';
 
 describe('reaction catalog', () => {
   it('keeps the quick strip inside the full picker', () => {

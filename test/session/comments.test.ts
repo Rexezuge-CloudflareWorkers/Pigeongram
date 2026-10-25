@@ -2,9 +2,14 @@ import { getMarkedPeerId, Long, Message, PeersIndex } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { normalizeReplies, readComments, requireCommentPost, resolveDiscussion } from '../../worker/src/session/comments';
+import {
+  normalizeReplies,
+  readComments,
+  requireCommentPost,
+  resolveDiscussion,
+} from '../../packages/backend-services/src/session/comments';
 import { rpc } from './rpc-dispatch';
-import type { GetCommentsResult } from '../../worker/src/rpc-types';
+import type { GetCommentsResult } from '../../packages/shared/src/rpc-types';
 
 /**
  * The comments path against a fake `TelegramClient`: no network, but the same

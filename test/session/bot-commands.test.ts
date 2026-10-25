@@ -1,6 +1,6 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { readBotCommands } from '../../worker/src/session/bot-commands';
+import { readBotCommands } from '../../packages/backend-services/src/session/bot-commands';
 
 describe('readBotCommands', () => {
   it('reads a private bot chat from the full user', async () => {

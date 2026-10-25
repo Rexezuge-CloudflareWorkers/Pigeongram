@@ -2,7 +2,7 @@ import { Long } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it, vi } from 'vitest';
-import { isPeerRejected, peerIdsIn, refreshPeer, withPeerRetry } from '../../worker/src/session/peers';
+import { isPeerRejected, peerIdsIn, refreshPeer, withPeerRetry } from '../../packages/backend-services/src/session/peers';
 
 /**
  * The mtcute peer cache as the heal sees it: the input peer the cache would

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { downloadFileName, downloadMedia, isDownloadable } from '../../pages/src/media-download';
-import type { MessageDto, MessageMediaDto } from '../../pages/src/types';
+import { downloadFileName, downloadMedia, isDownloadable } from '../../apps/web/src/media-download';
+import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 const photo: MessageMediaDto = {
   kind: 'photo',

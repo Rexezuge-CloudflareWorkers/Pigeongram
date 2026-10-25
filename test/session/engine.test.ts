@@ -1,8 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
-import { SessionEngine } from '../../worker/src/session/engine';
-import { errorResponse } from '../../worker/src/session/http';
-import { SessionLifecycle } from '../../worker/src/session/lifecycle';
+import { SessionEngine } from '../../packages/backend-services/src/session/engine';
+import { errorResponse } from '../../packages/backend-services/src/session/http';
+import { SessionLifecycle } from '../../packages/backend-services/src/session/lifecycle';
 import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 // The wasm-backed crypto provider cannot initialize under node: its wasm
@@ -10,7 +10,7 @@ import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 // expects. Node tests exercise the engine and its storage path, which never
 // touch the wasm primitives; wrangler bundles the real provider, and
 // `wrangler deploy --dry-run` is the gate for that.
-vi.mock('../../worker/src/session/mtproto/crypto', () => ({
+vi.mock('../../packages/provider-clients/src/mtproto/crypto', () => ({
   WorkerCryptoProvider: class {
     initialize(): void {}
     randomFill(buffer: Uint8Array): void {

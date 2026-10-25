@@ -1,6 +1,6 @@
 packages:
-  - 'worker'
-  - 'pages'
+  - 'apps/*'
+  - 'packages/*'
   # The test suite is a workspace project so `pnpm -r typecheck` actually
   # reaches it. It also has to be in the workspace for its bare imports to
   # resolve at all: pnpm's layout is strict, so an unhooked `test/` could not

@@ -1,7 +1,7 @@
 import { Chat, Dialog, getMarkedPeerId, Long, Message, PeersIndex, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { toChatDto, toDialogDto, toMessageDto } from '../../worker/src/session/dto';
+import { toChatDto, toDialogDto, toMessageDto } from '../../packages/backend-services/src/session/dto';
 
 const rawUser = {
   _: 'user',

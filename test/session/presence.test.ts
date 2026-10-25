@@ -2,7 +2,7 @@ import { Chat, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { presenceOf, presenceOfPeer, readContactPresences } from '../../worker/src/session/presence';
+import { presenceOf, presenceOfPeer, readContactPresences } from '../../packages/backend-services/src/session/presence';
 
 const rawUser = {
   _: 'user',

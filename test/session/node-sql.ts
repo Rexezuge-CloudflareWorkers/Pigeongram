@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import type { SqlCursorLike, SqlStorageLike, TransactionalStorageLike } from '../../worker/src/session/mtproto/sqlite';
+import type { SqlCursorLike, SqlStorageLike, TransactionalStorageLike } from '../../packages/provider-clients/src/mtproto/sqlite';
 
 type SqlBinding = null | number | bigint | string | Uint8Array;
 

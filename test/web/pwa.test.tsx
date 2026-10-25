@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { usePwa } from '../../pages/src/pwa/usePwa';
+import { usePwa } from '../../apps/web/src/pwa/usePwa';
 
 interface FakeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

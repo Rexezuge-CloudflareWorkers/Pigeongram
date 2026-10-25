@@ -3,10 +3,10 @@ import type { Dialog } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { CallRegistry } from '../../worker/src/session/call-registry';
-import { dispatchRpc } from '../../worker/src/session/rpc';
-import { albumAwareUnread, reconcileUnreadAlbums, UnreadAlbumLedger } from '../../worker/src/session/unread-albums';
-import type { MessageDto, UpdateEvent } from '../../worker/src/types';
+import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
+import { dispatchRpc } from '../../packages/backend-services/src/session/rpc';
+import { albumAwareUnread, reconcileUnreadAlbums, UnreadAlbumLedger } from '../../packages/backend-services/src/session/unread-albums';
+import type { MessageDto, UpdateEvent } from '../../packages/shared/src/types';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
 /**

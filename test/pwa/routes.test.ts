@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SHELL_URL, isPassthroughPath } from '../../pages/sw/routes';
+import { SHELL_URL, isPassthroughPath } from '../../apps/web/sw/routes';
 
 /**
  * The service worker's routing rules.

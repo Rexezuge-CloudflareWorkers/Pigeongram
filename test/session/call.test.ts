@@ -2,7 +2,7 @@ import { Long } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
-import { callAccessHash, discardReasonConstructor, toCallDto } from '../../worker/src/session/call-dto';
+import { callAccessHash, discardReasonConstructor, toCallDto } from '../../packages/backend-services/src/session/call-dto';
 import {
   requireBytes,
   requireCallId,
@@ -13,12 +13,12 @@ import {
   requireDuration,
   requireFingerprint,
   requireRating,
-} from '../../worker/src/session/call-params';
-import { callProtocol, toCallProtocolDto } from '../../worker/src/session/call-protocol';
-import { dispatchCallRpc } from '../../worker/src/session/call-rpc';
-import { CallRegistry } from '../../worker/src/session/call-registry';
-import { EngineError } from '../../worker/src/session/errors';
-import { encodeBase64 } from '../../worker/src/session/base64';
+} from '../../packages/backend-services/src/session/call-params';
+import { callProtocol, toCallProtocolDto } from '../../packages/backend-services/src/session/call-protocol';
+import { dispatchCallRpc } from '../../packages/backend-services/src/session/call-rpc';
+import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
+import { EngineError } from '../../packages/backend-services/src/session/errors';
+import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
 
 /**
  * The calls half of the bridge.

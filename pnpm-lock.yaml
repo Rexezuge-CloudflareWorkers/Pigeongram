@@ -72,8 +72,36 @@ importers:
         specifier: 4.149.0
         version: 4.149.0(@types/node@26.6.5)
 
-  pages:
+  apps/api:
     dependencies:
+      '@pigeongram/backend-runtime':
+        specifier: workspace:*
+        version: link:../../packages/backend-runtime
+      '@pigeongram/backend-services':
+        specifier: workspace:*
+        version: link:../../packages/backend-services
+      '@pigeongram/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      hono:
+        specifier: ^4.13.13
+        version: 4.13.13
+      jose:
+        specifier: ^6.2.13
+        version: 6.2.13
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  apps/web:
+    dependencies:
+      '@pigeongram/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0
@@ -121,17 +149,73 @@ importers:
         specifier: ^7.4.1
         version: 7.4.1
 
+  packages/backend-runtime:
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/backend-services:
+    dependencies:
+      '@mtcute/core':
+        specifier: 0.32.5
+        version: 0.32.5
+      '@pigeongram/provider-clients':
+        specifier: workspace:*
+        version: link:../provider-clients
+      '@pigeongram/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/provider-clients:
+    dependencies:
+      '@fuman/net':
+        specifier: 0.0.23
+        version: 0.0.23
+      '@mtcute/core':
+        specifier: 0.32.5
+        version: 0.32.5
+      '@mtcute/wasm':
+        specifier: 0.32.0
+        version: 0.32.0
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   test:
     dependencies:
       '@mtcute/core':
         specifier: 0.32.5
         version: 0.32.5
-      '@telegram-web-client/pages':
+      '@pigeongram/api':
         specifier: workspace:*
-        version: link:../pages
-      '@telegram-web-client/worker':
+        version: link:../apps/api
+      '@pigeongram/backend-runtime':
         specifier: workspace:*
-        version: link:../worker
+        version: link:../packages/backend-runtime
+      '@pigeongram/backend-services':
+        specifier: workspace:*
+        version: link:../packages/backend-services
+      '@pigeongram/provider-clients':
+        specifier: workspace:*
+        version: link:../packages/provider-clients
+      '@pigeongram/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
+      '@pigeongram/web':
+        specifier: workspace:*
+        version: link:../apps/web
       react:
         specifier: ^19.2.8
         version: 19.3.1
@@ -169,31 +253,6 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@26.6.5)(@vitest/coverage-v8@4.1.11)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
-
-  worker:
-    dependencies:
-      '@fuman/net':
-        specifier: 0.0.23
-        version: 0.0.23
-      '@mtcute/core':
-        specifier: 0.32.5
-        version: 0.32.5
-      '@mtcute/wasm':
-        specifier: 0.32.0
-        version: 0.32.0
-      hono:
-        specifier: ^4.13.13
-        version: 4.13.13
-      jose:
-        specifier: ^6.2.13
-        version: 6.2.13
-    devDependencies:
-      '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
 
 packages:
 

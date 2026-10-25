@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { UserMenu } from '../../pages/src/components/UserMenu';
-import type { MeDto } from '../../pages/src/types';
+import { UserMenu } from '../../apps/web/src/components/UserMenu';
+import type { MeDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 

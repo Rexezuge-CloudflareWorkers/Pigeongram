@@ -1,0 +1,23 @@
+{
+  "name": "@pigeongram/provider-clients",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mtproto/*": "./src/mtproto/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fuman/net": "0.0.23",
+    "@mtcute/core": "0.32.5",
+    "@mtcute/wasm": "0.32.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

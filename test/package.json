@@ -1,5 +1,5 @@
 {
-  "name": "@telegram-web-client/test",
+  "name": "@pigeongram/test",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,8 +7,12 @@
   },
   "dependencies": {
     "@mtcute/core": "0.32.5",
-    "@telegram-web-client/pages": "workspace:*",
-    "@telegram-web-client/worker": "workspace:*",
+    "@pigeongram/api": "workspace:*",
+    "@pigeongram/backend-runtime": "workspace:*",
+    "@pigeongram/backend-services": "workspace:*",
+    "@pigeongram/provider-clients": "workspace:*",
+    "@pigeongram/shared": "workspace:*",
+    "@pigeongram/web": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

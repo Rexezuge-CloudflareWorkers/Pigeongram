@@ -22,10 +22,9 @@ export const CONFIG_PATH = process.env['WRANGLER_CONFIG_PATH'] ?? path.join(proc
 /**
 The committed template the config is materialized from.
 */
-// Adapted from the kit: this repo's worker template lives at
-// `worker/wrangler.template.jsonc` rather than the family's
-// `apps/api/wrangler.template.jsonc`.
-export const TEMPLATE_PATH = process.env['WRANGLER_TEMPLATE_PATH'] ?? path.join(process.cwd(), 'worker/wrangler.template.jsonc');
+// The family layout: the worker lives at `apps/api`, and the materialized
+// config stays at the repo root so Pages discovers the root `functions/`.
+export const TEMPLATE_PATH = process.env['WRANGLER_TEMPLATE_PATH'] ?? path.join(process.cwd(), 'apps/api/wrangler.template.jsonc');
 
 /**
  * The id a template carries for a D1 database that does not exist yet.

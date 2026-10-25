@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App } from '@telegram-web-client/pages';
+import { App } from '@pigeongram/web';
 import type {
   ChatDto,
   DialogDto,
@@ -10,7 +10,7 @@ import type {
   MessageMediaDto,
   MessagePollDto,
   UpdateEvent,
-} from '../../pages/src/types';
+} from '../../apps/web/src/types';
 
 interface FetchCall {
   method: string;

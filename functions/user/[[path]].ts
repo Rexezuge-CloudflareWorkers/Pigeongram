@@ -1,7 +1,7 @@
 /**
  * The user API plane: a Pages Function that forwards `/user/*` to the worker
  * through the `API_WORKER` service binding (declared in
- * `pages/wrangler.template.jsonc`).
+ * `apps/web/wrangler.template.jsonc`).
  *
  * Cloudflare Access guards this prefix at the edge and forwards its signed
  * `Cf-Access-Jwt-Assertion` header; the worker verifies it before the session
@@ -13,7 +13,7 @@
  *
  * This file must live at repo-root `functions/` — the materialized config is
  * read from the repo root, so Pages finds Functions next to it, not inside
- * `pages/`.
+ * `apps/web/`.
  */
 interface Env {
   API_WORKER: Fetcher;

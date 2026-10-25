@@ -1,0 +1,13 @@
+{
+  // The build-time half of the SPA: the icons and the manifest it writes.
+  //
+  // It is Node code, not browser code, so it gets its own program with Node's
+  // types and without the DOM lib — the same split `scripts/` and `functions/`
+  // already have.
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

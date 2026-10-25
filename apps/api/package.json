@@ -1,0 +1,23 @@
+{
+  "name": "@pigeongram/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pigeongram/backend-runtime": "workspace:*",
+    "@pigeongram/backend-services": "workspace:*",
+    "@pigeongram/shared": "workspace:*",
+    "hono": "^4.13.13",
+    "jose": "^6.2.13"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3"
+  }
+}

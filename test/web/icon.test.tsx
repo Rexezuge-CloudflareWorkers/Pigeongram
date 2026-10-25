@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { Icon } from '../../pages/src/components/Icon';
+import { Icon } from '../../apps/web/src/components/Icon';
 
 afterEach(cleanup);
 

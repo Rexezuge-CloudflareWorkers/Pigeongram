@@ -1,7 +1,7 @@
 import { Long, Message, PeersIndex } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
-import { serviceText } from '../../worker/src/session/service-text';
+import { serviceText } from '../../packages/backend-services/src/session/service-text';
 
 const rawUser = {
   _: 'user',

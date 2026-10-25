@@ -1,8 +1,8 @@
 import { LogManager } from '@mtcute/core/utils.js';
 import { describe, expect, it } from 'vitest';
-import { createDoSqliteDatabase, createTelegramStorage } from '../../worker/src/session/mtproto/sqlite';
-import type { TransactionalStorageLike } from '../../worker/src/session/mtproto/sqlite';
-import { WorkerPlatform } from '../../worker/src/session/mtproto/platform';
+import { createDoSqliteDatabase, createTelegramStorage } from '../../packages/provider-clients/src/mtproto/sqlite';
+import type { TransactionalStorageLike } from '../../packages/provider-clients/src/mtproto/sqlite';
+import { WorkerPlatform } from '../../packages/provider-clients/src/mtproto/platform';
 import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 describe('DoSqliteDatabase', () => {

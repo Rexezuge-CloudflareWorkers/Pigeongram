@@ -9,7 +9,7 @@ browser ──HTTP──▶ Pages (static + /api/* and /user/* proxies in functi
                                                                                       │
                                                                         SESSION_ENGINE Durable Object
                                                                                       │
-                                                                     SessionEngine (worker/src/session/)
+                                                                     SessionEngine (packages/backend-services/src/session/)
                                                                                       │
                                                                    MTProto over WSS (mtcute + @mtcute/wasm)
 ```
@@ -305,7 +305,7 @@ has; `sendMessage` takes `replyTo` (a message id in the same chat) to send one.
 
 A forwarded message carries `forward`: the origin's `senderId`/`senderName`/`senderUsername` (a hidden forward's
 name instead of an id), the original's `date`, the original chat/message for saved-messages forwards and channel posts
-(`fromChatId`/`fromMessageId`), and the post `signature` when the header has one. `worker/src/session/dto.ts` maps
+(`fromChatId`/`fromMessageId`), and the post `signature` when the header has one. `packages/backend-services/src/session/dto.ts` maps
 it from Telegram's forward header, and the bubble renders a "Forwarded from …" line above the sender name. Only the
 origin name is a control: it opens the origin chat when that chat is among the loaded dialogs, and otherwise hands off
 to the installed app by username or marked id.
@@ -336,7 +336,7 @@ Telegram counts every album member as a message: an album of ten files arrives a
 badge counts the album once, so the engine keeps the album members it has seen and subtracts the surplus — the
 unread members of an album beyond the first of that album.
 
-The **album ledger** (`worker/src/session/unread-albums.ts`) is that bookkeeping. It lives in the DO's SQLite
+The **album ledger** (`packages/backend-services/src/session/unread-albums.ts`) is that bookkeeping. It lives in the DO's SQLite
 (`engine_unread_albums`, one row per unread album member; `engine_unread_state`, the reconciliation marker) because
 the engine sleeps between its wakes and the album members outlive the connection that delivered them. It learns
 from the update stream, so it costs no Telegram traffic: an incoming album member is recorded, and a read drops
@@ -363,7 +363,7 @@ list load pays for.
 the API the official clients use for the archive, so the move is the one Telegram's own clients make.
 
 On the SPA side the archive is a screen of its own (`/archived`), reached from the account popup in the sidebar. The
-chat list and the archive live in one list (`pages/src/useDialogs.ts`), so every lookup of a chat — the router, the
+chat list and the archive live in one list (`apps/web/src/useDialogs.ts`), so every lookup of a chat — the router, the
 thread, the read receipts, the forward picker — finds it in the same place. The thread's ⋮ menu carries the move
 itself: an archive item for a chat in the list, an unarchive item for one in the archive. The item asks first — the
 move is confirmed in a modal — and the outcome is announced in a toast. The sidebar keeps the archive in view while one
@@ -445,7 +445,7 @@ connection up while a call is up, even across a dropped browser socket. Without 
 signalling in the gap before the browser reconnects.
 
 **What is not here yet.** The signalling payload _inside_ the encrypted envelope is this client's own format (a
-version byte and a JSON body — `pages/src/calls/signalling.ts`), so a call between two instances of this client
+version byte and a JSON body — `apps/web/src/calls/signalling.ts`), so a call between two instances of this client
 works, but a call between this client and Telegram's native clients does not: those speak tgcalls' own message
 format, which is not publicly specified. That, and the exact byte order of the key fingerprint, is
 [Milestone 4](#milestone-4--native-interoperability) below.
@@ -478,7 +478,7 @@ incompleteness.
 cp .dev.vars.example .dev.vars        # fill in api_id/api_hash
 pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler dev                # worker on :8787
-pnpm --filter @telegram-web-client/pages dev   # SPA on :5173, /api and /user proxied
+pnpm --filter @pigeongram/web dev   # SPA on :5173, /api and /user proxied
 ```
 
 Local development does not pass through Cloudflare Access. The example `.dev.vars` sets

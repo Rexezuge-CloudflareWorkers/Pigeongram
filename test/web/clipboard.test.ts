@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readClipboard } from '../../pages/src/clipboard';
+import { readClipboard } from '../../apps/web/src/clipboard';
 
 function image(name = 'image.png'): File {
   return new File(['bytes'], name, { type: 'image/png' });

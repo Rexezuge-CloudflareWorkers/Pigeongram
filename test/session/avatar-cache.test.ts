@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AvatarCache } from '../../worker/src/session/avatar-cache';
+import { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
 /**

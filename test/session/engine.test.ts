@@ -52,8 +52,9 @@ type TestEnv = Omit<Partial<CloudflareEnv>, 'UPLOAD_MAX_BYTES'> & { UPLOAD_MAX_B
  * enough — `WebSocketPair` (the one global workerd owns) is only reached on the
  * `/user/updates` route, which these tests deliberately avoid.
  */
-function createHarness(env: TestEnv = {}): Harness {
+function createHarness(env: TestEnv = {}, seed?: (db: DatabaseSync) => void): Harness {
   const db = openNodeDatabase();
+  seed?.(db);
   const alarms: number[] = [];
   const sockets: FakeSocket[] = [];
   const prepared: number[] = [];
@@ -342,6 +343,40 @@ describe('SessionEngine (configured client)', () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getHistory', params: {} }));
     expect(response.status).toBe(400);
+  });
+
+  it('400s params that are not an object', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS);
+    const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getMe', params: 'garbage' }));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('object') as string });
+  });
+
+  it('completes a logout when the write budget refuses the snapshot delete', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { engine, alarms } = createHarness({}, (db) => {
+      db.exec('create table if not exists engine_meta (key text primary key, value text not null)');
+      db.exec("insert into engine_meta (key, value) values ('me', '{}')");
+      db.exec("create trigger meta_quota before delete on engine_meta begin select raise(abort, 'storage write quota'); end");
+    });
+
+    const response = await engine.fetch(request('POST', '/user/logout'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(warn).toHaveBeenCalled();
+    expect(alarms.length).toBeGreaterThan(0);
+    warn.mockRestore();
+  });
+
+  it('survives a corrupt stored profile snapshot', async () => {
+    const { engine } = createHarness(FAKE_CREDENTIALS, (db) => {
+      db.exec('create table if not exists engine_meta (key text primary key, value text not null)');
+      db.exec("insert into engine_meta (key, value) values ('me', '{not json')");
+    });
+    const response = await engine.fetch(request('GET', '/user/state'));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ authorized: false, me: null });
   });
 
   it('400s a sendMessage with a malformed reply target before any network call', async () => {

@@ -12,7 +12,9 @@ import {
   requireMessageIds,
   requirePeerId,
   requireQuery,
+  requireRecord,
   requireText,
+  parseBatchCalls,
 } from '../../packages/backend-services/src/session/params';
 
 describe('bridge parameter validation', () => {
@@ -113,5 +115,20 @@ describe('bridge parameter validation', () => {
     for (const bad of [undefined, null, 'AQI', '***', 'A===', 'A'.repeat(88)]) {
       expect(() => requireCallbackData(bad)).toThrow(EngineError);
     }
+  });
+
+  it('reads absent params as an empty object and refuses anything else', () => {
+    expect(requireRecord(undefined)).toEqual({});
+    expect(requireRecord(null)).toEqual({});
+    expect(requireRecord({ method: 'getMe' })).toEqual({ method: 'getMe' });
+    for (const bad of ['garbage', 42, true, [], ['getMe']]) {
+      expect(() => requireRecord(bad)).toThrow(EngineError);
+    }
+  });
+
+  it('refuses a batch entry with a non-object params field', () => {
+    expect(() => parseBatchCalls([{ method: 'getMe', params: 'garbage' }])).toThrow(EngineError);
+    expect(() => parseBatchCalls(['getMe'])).toThrow(EngineError);
+    expect(parseBatchCalls([{ method: 'getMe' }])).toEqual([{ method: 'getMe', params: {} }]);
   });
 });

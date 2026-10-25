@@ -70,14 +70,14 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
    */
   useEffect(() => {
     if (view.phase !== 'ringing') {
-      ringtone.current?.stop();
+      void ringtone.current?.stop();
       return;
     }
     const tone = new Ringtone();
     ringtone.current = tone;
     tone.start();
     return () => {
-      tone.stop();
+      void tone.stop();
       ringtone.current = null;
     };
   }, [view.phase]);

@@ -9,10 +9,19 @@
  * gesture stays silent. The ringtone therefore listens for the reader's
  * first click anywhere and resumes itself then.
  */
+
+/**
+ * Makes the audio context. Injectable so the ringtone's lifecycle can be
+ * tested without a real sound device.
+ */
+export type AudioContextFactory = () => AudioContext;
+
 export class Ringtone {
   #context: AudioContext | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #running = false;
+
+  constructor(private readonly createContext: AudioContextFactory = () => new AudioContext()) {}
 
   /**
    * Starts ringing, or does nothing when it is already ringing.
@@ -25,27 +34,37 @@ export class Ringtone {
   }
 
   /**
-   * Stops ringing.
+   * Stops ringing and releases the audio context.
+   *
+   * A context is a limited resource: a page that suspends one per call and
+   * never closes it runs out after a handful of calls, and audio stops
+   * working for the whole page. Closing also drops the context's audio
+   * thread, which a suspend leaves running.
    */
-  stop(): void {
-    if (!this.#running) return;
+  async stop(): Promise<void> {
+    if (!this.#running && !this.#context) return;
     this.#running = false;
     document.removeEventListener('pointerdown', this.#resume);
     if (this.#timer !== null) {
       clearTimeout(this.#timer);
       this.#timer = null;
     }
-    void this.#context?.suspend();
+    const context = this.#context;
+    this.#context = null;
+    if (context) await context.close().catch(() => {});
   }
 
   /**
    * The ringtone's voice: a short burst of two tones.
    */
   async #ring(): Promise<void> {
+    if (!this.#running) return;
     const context = this.context;
     if (context.state === 'suspended') {
       await context.resume().catch(() => {});
     }
+    // The call may have ended while the context was resuming.
+    if (!this.#running || this.#context !== context) return;
     if (context.state !== 'running') return;
     const now = context.currentTime;
     for (const [frequency, offset] of [
@@ -78,6 +97,7 @@ export class Ringtone {
    * The reader's first click lets the context sound.
    */
   #resume = (): void => {
+    if (!this.#running) return;
     void this.#context?.resume().catch(() => {});
   };
 
@@ -86,7 +106,7 @@ export class Ringtone {
    */
   get context(): AudioContext {
     if (!this.#context) {
-      this.#context = new AudioContext();
+      this.#context = this.createContext();
     }
     return this.#context;
   }

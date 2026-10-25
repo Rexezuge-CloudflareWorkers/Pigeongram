@@ -375,7 +375,7 @@ export function App() {
             if (selected) await setArchived(selected.id, archived);
           }}
           onBack={router.back}
-          onCall={() => selected && calls.startCall(selected.id)}
+          calls={calls}
           onForward={forwarding.open}
           onOpenMedia={openViewer}
           onReadThrough={markRead}

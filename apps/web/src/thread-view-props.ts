@@ -95,6 +95,12 @@ export interface ThreadViewProps {
    * person, so the callback is never asked to call a group.
    */
   onCall: () => void;
+  /**
+   * Whether a call is already up. The header's call button is disabled then:
+   * the controller refuses the second call anyway, but a disabled button says
+   * so before the tap.
+   */
+  callActive: boolean;
   onLoadOlder: () => void;
   /**
    * Reads the page after the loaded window, towards the chat's newest message.

@@ -15,7 +15,7 @@ export default [
   ...defineRepoLintConfig({
     scope: '@pigeongram',
     tsconfigRootDir: import.meta.dirname,
-    extraIgnores: ['apps/*/dist/**', '.wrangler/**'],
+    extraIgnores: ['apps/*/dist/**', '.wrangler/**', 'coverage/**'],
   }),
 
   {

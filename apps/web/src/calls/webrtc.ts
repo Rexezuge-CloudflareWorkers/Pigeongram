@@ -17,6 +17,21 @@
 import type { CallConnectionDto } from '../call-types';
 
 /**
+ * The browser pieces a peer needs, injectable so the lifecycle can be tested
+ * without a real RTCPeerConnection or a real microphone.
+ */
+export interface CallPeerDeps {
+  /**
+   * Makes the peer connection. Defaults to the browser's constructor.
+   */
+  createConnection?: (configuration: RTCConfiguration) => RTCPeerConnection;
+  /**
+   * Asks for the microphone. Defaults to `navigator.mediaDevices`.
+   */
+  mediaDevices?: Pick<MediaDevices, 'getUserMedia'>;
+}
+
+/**
  * The relays the call may use.
  *
  * Telegram's call carries a list of endpoints, and the WebRTC ones are the
@@ -67,21 +82,27 @@ export interface CallPeerHandlers {
  */
 export class CallPeer {
   readonly #connection: RTCPeerConnection;
+  readonly #mediaDevices: Pick<MediaDevices, 'getUserMedia'>;
   #localStream: MediaStream | null = null;
   #closed = false;
 
   constructor(
     connections: CallConnectionDto[],
     private readonly handlers: CallPeerHandlers,
+    deps: CallPeerDeps = {},
   ) {
-    this.#connection = new RTCPeerConnection({ iceServers: iceServersFor(connections) });
+    const createConnection = deps.createConnection ?? ((configuration) => new RTCPeerConnection(configuration));
+    this.#mediaDevices = deps.mediaDevices ?? navigator.mediaDevices;
+    this.#connection = createConnection({ iceServers: iceServersFor(connections) });
     this.#connection.addEventListener('icecandidate', (event) => {
       if (event.candidate) {
         handlers.onCandidate(event.candidate.toJSON());
       }
     });
     this.#connection.addEventListener('track', (event) => {
-      handlers.onTrack(event.streams[0]);
+      // Some browsers deliver a track without a stream; the call still needs
+      // the audio, so wrap the track in one of its own.
+      handlers.onTrack(event.streams[0] ?? new MediaStream([event.track]));
     });
     this.#connection.addEventListener('connectionstatechange', () => {
       handlers.onState(this.#connection.connectionState);
@@ -102,10 +123,17 @@ export class CallPeer {
    * the audio itself is bespoke.
    */
   async openMicrophone(): Promise<void> {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await this.#mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
     });
+    if (this.#closed) {
+      // The call ended while the browser was asking for the microphone. The
+      // stream would be added to a closed connection and never stopped, and
+      // the tab would keep its recording indicator.
+      for (const track of stream.getTracks()) track.stop();
+      return;
+    }
     this.#localStream = stream;
     for (const track of stream.getAudioTracks()) {
       this.#connection.addTrack(track, stream);

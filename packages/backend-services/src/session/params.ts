@@ -27,8 +27,18 @@ const BATCHABLE_METHODS: ReadonlySet<string> = new Set<BatchableRpcMethod>([
   'getProfile',
 ]);
 
+/**
+ * A JSON object. An absent value means "no parameters" and becomes `{}`; any
+ * other non-object — a string, a number, an array — is a 400. The old
+ * coercion turned `params: "garbage"` into an empty object and let the call
+ * through.
+ */
 export function requireRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new EngineError('params must be a JSON object', 400);
+  }
+  return value as Record<string, unknown>;
 }
 
 export function requirePeerId(value: unknown): number {

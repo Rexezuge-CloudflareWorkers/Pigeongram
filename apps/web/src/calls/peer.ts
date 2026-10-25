@@ -7,6 +7,23 @@ import type { SignalMessage } from './signalling';
 import { CallPeer } from './webrtc';
 
 /**
+ * The media peer the session drives. `CallPeer` is the real one; tests pass a
+ * stand-in with the same surface.
+ */
+export type MediaPeer = Pick<
+  CallPeer,
+  'openMicrophone' | 'createOffer' | 'acceptOffer' | 'acceptAnswer' | 'addCandidate' | 'setMuted' | 'muted' | 'close'
+>;
+
+/**
+ * How a session makes its media peer. Injectable so the signalling lifecycle
+ * can be tested without a real RTCPeerConnection.
+ */
+export interface CallPeerSessionDeps {
+  createPeer?: (connections: CallDto['connections'], handlers: ConstructorParameters<typeof CallPeer>[1]) => MediaPeer;
+}
+
+/**
  * The media plane of one call.
  *
  * Two things live here: the peer connection, which carries the audio, and the
@@ -27,7 +44,7 @@ export class CallPeerSession {
   /**
    * The peer connection; null until the media is set up.
    */
-  #peer: CallPeer | null = null;
+  #peer: MediaPeer | null = null;
 
   /**
    * Signalling packets that arrived before the key was ready.
@@ -55,6 +72,7 @@ export class CallPeerSession {
     private readonly onStream: (stream: MediaStream) => void,
     private readonly onConnected: () => void,
     private readonly onFailed: () => void,
+    private readonly deps: CallPeerSessionDeps = {},
   ) {
     this.#ready = new Promise((resolve) => {
       this.#markReady = resolve;
@@ -89,8 +107,8 @@ export class CallPeerSession {
   async open(call: CallDto): Promise<void> {
     await this.#ready;
     if (this.#closed || this.#peer) return;
-    const peer = new CallPeer(call.connections, {
-      onCandidate: (candidate) => {
+    const handlers = {
+      onCandidate: (candidate: RTCIceCandidateInit): void => {
         void this.sendSignal({
           kind: 'candidate',
           mid: candidate.sdpMid ?? null,
@@ -98,14 +116,22 @@ export class CallPeerSession {
           candidate: candidate.candidate ?? '',
         });
       },
-      onTrack: (stream) => this.onStream(stream),
-      onState: (state) => {
+      onTrack: (stream: MediaStream): void => this.onStream(stream),
+      onState: (state: RTCPeerConnectionState): void => {
         if (state === 'connected') this.onConnected();
         if (state === 'failed') this.onFailed();
       },
-    });
+    };
+    const peer = this.deps.createPeer?.(call.connections, handlers) ?? new CallPeer(call.connections, handlers);
     this.#peer = peer;
     await peer.openMicrophone();
+    if (this.#closed || this.#peer !== peer) {
+      // The call ended while the microphone was being opened. The peer that
+      // was just created never joined the call, so tear it down here rather
+      // than let its microphone outlive the call.
+      peer.close();
+      return;
+    }
     if (this.direction !== 'outgoing') return;
     const offer = await peer.createOffer();
     await this.sendSignal({ kind: 'offer', sdp: offer.sdp ?? '' });
@@ -125,13 +151,22 @@ export class CallPeerSession {
       this.#pending.push(data);
       return;
     }
-    const packet = fromBase64(data);
-    if (packet === null) return;
-    const plain = await this.#cipher.decrypt('signaling', packet);
-    if (plain === null) return;
-    const message = decodeSignal(plain);
-    if (message === null) return;
-    await this.#act(message);
+    try {
+      const packet = fromBase64(data);
+      if (packet === null) return;
+      const plain = await this.#cipher.decrypt('signaling', packet);
+      if (plain === null) return;
+      const message = decodeSignal(plain);
+      if (message === null) return;
+      await this.#act(message);
+    } catch (error) {
+      // A malformed session description or candidate is the other peer's
+      // failure to describe its media, and it leaves this side unable to
+      // connect. Report it and release the microphone instead of surfacing an
+      // unhandled rejection.
+      console.error('[call] signalling failed', error);
+      this.#fail();
+    }
   }
 
   /**
@@ -179,6 +214,15 @@ export class CallPeerSession {
     this.#pending.length = 0;
     // Let a caller that is waiting for the key go.
     this.#markReady();
+  }
+
+  /**
+   * Reports a media failure and releases the call.
+   */
+  #fail(): void {
+    if (this.#closed) return;
+    this.onFailed();
+    this.close();
   }
 
   /**

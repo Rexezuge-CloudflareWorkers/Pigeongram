@@ -6,13 +6,18 @@ without re-running the analysis that produced it.
 
 | Field           | Value                                                               |
 | --------------- | ------------------------------------------------------------------- |
-| Status          | In progress — no code changed yet                                   |
-| Branch          | `docs/hardening-worklog` (work branches per PR, see §6)             |
+| Status          | PR 1 (W1) complete — W2 coverage floor next                         |
+| Branch          | `refactor/family-hardening` (work branches per PR, see §6)          |
 | Baseline commit | `a67c5db` (merge of #100, `main`)                                   |
 | Started         | 2026-10-25                                                          |
 | Last updated    | 2026-10-25                                                          |
 | Plan author     | OpenCode / `opencode/deepseek-v4.1-flash-free`                      |
 | Owner decisions | Refuse a second call; slash commands extended to comments; flat 80% |
+
+> **Layout note (2026-10-25, after #102).** The plan was written before the family workspace layout landed.
+> `worker/` now lives in `packages/backend-services/`, `pages/` in `apps/web/`, and the shared contracts in
+> `packages/shared/`. Paths in §2, §5 and Appendix A keep their original spelling so the baseline stays comparable;
+> read them through this map. The PR order and the invariants are unchanged.
 
 ## 0. How to use this file
 
@@ -183,53 +188,58 @@ Priority: W1 → W2 → W3 → W4 → W5 → W6 → W7. W7 is optional and last 
 
 Every row was verified by reading the code at `a67c5db`; none is speculative.
 
-- [ ] **1.1** `pages/src/calls/webrtc.ts:104` — `openMicrophone()` can resolve after `close()`. The resolved stream is
+- [x] **1.1** `pages/src/calls/webrtc.ts:104` — `openMicrophone()` can resolve after `close()`. The resolved stream is
       added to a closed `RTCPeerConnection` and never stopped: the microphone stays live and the tab keeps its recording
       indicator. **Fix:** `#closed` flag; after `getUserMedia` resolves, if closed, stop every track and return.
-- [ ] **1.2** `pages/src/calls/peer.ts:89` — same race one level up. `#peer` is assigned, then `await peer.openMicrophone()`
+- [x] **1.2** `pages/src/calls/peer.ts:89` — same race one level up. `#peer` is assigned, then `await peer.openMicrophone()`
       runs, then orientation/offer proceeds even if `close()` ran during the await. **Fix:** re-check `#closed` after the
       await; `peer.close()` and return.
-- [ ] **1.3** `pages/src/calls/controller.ts:258` — `startCall` awaits three times before assigning `live.current`; a
+- [x] **1.3** `pages/src/calls/controller.ts:258` — `startCall` awaits three times before assigning `live.current`; a
       double-tap starts two calls and the second overwrites the first's session object. The first call is left ringing
       server-side and its peer object is orphaned. **Fix:** `starting` ref + `live.current` check before the first await;
       refuse per §3.1.
-- [ ] **1.4** `pages/src/calls/controller.ts:302` — `accept` has no in-flight guard. Two taps send two `acceptCall` RPCs
+- [x] **1.4** `pages/src/calls/controller.ts:302` — `accept` has no in-flight guard. Two taps send two `acceptCall` RPCs
       with different `gB` values; the engine keeps the last while the first may already have been used, so the derived
       keys disagree. **Fix:** `accepting` ref; also guard on `current.keyPair`.
-- [ ] **1.5** `pages/src/calls/controller.ts:132,159` — `onActive`/`onAccepted` check `peer.ready`, but `establishKey` is
+- [x] **1.5** `pages/src/calls/controller.ts:132,159` — `onActive`/`onAccepted` check `peer.ready`, but `establishKey` is
       async, so concurrent updates can both pass the check and derive/confirm twice. **Fix:** a `deriving`/`confirmed`
       flag set **before** the first await.
-- [ ] **1.6** `pages/src/hooks.ts:261` — server `{type:'error'}` frames are parsed and dropped. The engine broadcasts them
+- [x] **1.6** `pages/src/hooks.ts:261` — server `{type:'error'}` frames are parsed and dropped. The engine broadcasts them
       for "Not signed in" and live-session failures, so the reader never learns the session is down. **Fix:** `onError`
       callback on `useUpdatesSocket`; surface through the app's existing error banner.
-- [ ] **1.7** `pages/src/hooks.ts:249` — backoff resets on `open`, not on `ready`. A socket that opens and immediately
+- [x] **1.7** `pages/src/hooks.ts:249` — backoff resets on `open`, not on `ready`. A socket that opens and immediately
       closes retries every 500 ms indefinitely, and each retry is a Worker request. **Fix:** reset on the first `ready`;
       add ±20% jitter.
-- [ ] **1.8** `pages/src/calls/ringtone.ts:30` — `stop()` suspends the `AudioContext` but never closes it; the getter
+- [x] **1.8** `pages/src/calls/ringtone.ts:30` — `stop()` suspends the `AudioContext` but never closes it; the getter
       creates one per instance and `CallOverlay` creates a `Ringtone` per call. Contexts accumulate to the browser's
       limit, after which audio breaks. **Fix:** `stop()` awaits `close()`, nulls the field; `#ring()` guards against a
       stopped instance.
-- [ ] **1.9** `pages/src/calls/webrtc.ts:84` — `event.streams[0]` is assumed present; some browsers deliver a track with
+- [x] **1.9** `pages/src/calls/webrtc.ts:84` — `event.streams[0]` is assumed present; some browsers deliver a track with
       an empty `streams` list. **Fix:** fall back to `new MediaStream([event.track])`.
-- [ ] **1.10** `pages/src/calls/peer.ts:187` — `#act` (and `receive`) can reject on malformed SDP/candidate, producing an
+- [x] **1.10** `pages/src/calls/peer.ts:187` — `#act` (and `receive`) can reject on malformed SDP/candidate, producing an
       unhandled rejection and a call that never reports failure. **Fix:** catch, report `onFailed`, close.
-- [ ] **1.11** `worker/src/session/engine.ts:55,223` — `writeMeta('me', …)` is not best-effort. With the write quota
+- [x] **1.11** `worker/src/session/engine.ts:55,223` — `writeMeta('me', …)` is not best-effort. With the write quota
       exhausted, a successful login throws from the callback and a logout answers 500 **after** the session is already
       destroyed. **Fix:** try/catch + warning on both. `readStoredMe` (`:262`) should warn on corrupt JSON and return
       null — do **not** delete the row (deletes are writes).
-- [ ] **1.12** `worker/src/session/lifecycle.ts:257` — `stopLive` awaits `catchUpTask` (up to `CATCH_UP_TIMEOUT_MS` = 25 s)
+- [x] **1.12** `worker/src/session/lifecycle.ts:257` — `stopLive` awaits `catchUpTask` (up to `CATCH_UP_TIMEOUT_MS` = 25 s)
       even though its own comment says the replay settles on its own. The socket-close event holds the input gate for the
       whole replay. **Fix:** `Promise.race([catchUp, 2 s])`, then disconnect; the rest stays backgrounded. Make `stopLive`
       idempotent so a `webSocketError` + `webSocketClose` pair cannot tear down twice.
-- [ ] **1.13** `worker/src/session/params.ts:30`, `rpc.ts:59` — `requireRecord` coerces a non-object to `{}`, so
+- [x] **1.13** `worker/src/session/params.ts:30`, `rpc.ts:59` — `requireRecord` coerces a non-object to `{}`, so
       `params: "garbage"` is silently accepted. **Fix:** strict record for dispatch (400); keep a lenient variant only
       where a handler genuinely accepts absent params.
-- [ ] **1.14** `worker/src/session/http.ts:14` — `readJsonBody` has no size cap; a large body is parsed inside the 10 ms
+- [x] **1.14** `worker/src/session/http.ts:14` — `readJsonBody` has no size cap; a large body is parsed inside the 10 ms
       CPU budget. **Fix:** stream-read with a 256 KB cap → 413 `payload_too_large`. RPC params are tiny by contract.
-- [ ] **1.15** `worker/src/session/socket-hub.ts:57` — socket frames are `JSON.parse`d before any length check. **Fix:**
+- [x] **1.15** `worker/src/session/socket-hub.ts:57` — socket frames are `JSON.parse`d before any length check. **Fix:**
       ignore text frames above 128 KB before parsing.
 
 Regression tests for 1.1–1.15 ship in the same PR (§5.2), not later.
+
+**Landed with PR 1:** `test/web/call-peer.test.ts`, `test/web/call-controller.test.tsx`, `test/web/ringtone.test.ts`,
+`test/web/updates-socket.test.tsx`, `test/session/http.test.ts`, `test/session/lifecycle.test.ts` and
+`test/session/socket-hub.test.ts`. The remaining W2 files (driver, RPC registry, mtproto crypto, config, the full engine
+route table) wait for the W3 seams.
 
 ### 5.2 W2 — Tests and the 80% gate (P0, ~2.5–3.5 days)
 
@@ -432,10 +442,11 @@ Open questions (none blocking PR 1):
 
 Append one entry per landed PR. Keep it terse: date · branch/commit · what changed · gate result · notes.
 
-| Date       | Ref                      | What                                                         | Gate                    |
-| ---------- | ------------------------ | ------------------------------------------------------------ | ----------------------- |
-| 2026-10-25 | `a67c5db`                | Baseline: full analysis, defects verified, coverage measured | `pnpm run checks` green |
-| 2026-10-25 | `docs/hardening-worklog` | This worklog; decisions recorded                             | `format:check` + review |
+| Date       | Ref                         | What                                                                                                                                                                                                                         | Gate                    |
+| ---------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 2026-10-25 | `a67c5db`                   | Baseline: full analysis, defects verified, coverage measured                                                                                                                                                                 | `pnpm run checks` green |
+| 2026-10-25 | `docs/hardening-worklog`    | This worklog; decisions recorded                                                                                                                                                                                             | `format:check` + review |
+| 2026-10-25 | `refactor/family-hardening` | W1 1.1–1.15 fixed; regression tests added; call button disabled while a call is up. Coverage re-measured after the layout move: **lines 83.68%, statements 80.71%, branches 75.13%, functions 81.10%** (65 files, 807 tests) | `pnpm run checks` green |
 
 Template:
 

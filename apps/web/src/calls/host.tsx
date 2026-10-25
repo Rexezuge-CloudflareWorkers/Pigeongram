@@ -57,6 +57,12 @@ export interface CallHost {
    */
   startCall: (chatId: number) => void;
   /**
+   * Whether a call is up. The thread header disables its call button then:
+   * the controller refuses a second call anyway, but the button says so
+   * before the tap.
+   */
+  callActive: boolean;
+  /**
    * The overlay, or nothing when no call is up.
    */
   overlay: ReactNode;
@@ -94,12 +100,17 @@ export function useCallHost({ enabled, onUpdate, onResync, findChat, onError }: 
     [handleCallUpdate],
   );
 
-  const { connected, send: socketSend } = useUpdatesSocket(enabled, handleUpdate, (resync) => {
-    // The first socket after a sign-in is the boot's own connection: the app
-    // has just read everything it needs, and only a dropped connection means
-    // the state may be stale.
-    if (resync) void resyncRef.current();
-  });
+  const { connected, send: socketSend } = useUpdatesSocket(
+    enabled,
+    handleUpdate,
+    (resync) => {
+      // The first socket after a sign-in is the boot's own connection: the app
+      // has just read everything it needs, and only a dropped connection means
+      // the state may be stale.
+      if (resync) void resyncRef.current();
+    },
+    onError,
+  );
 
   useLayoutEffect(() => {
     sendRef.current = socketSend;
@@ -122,5 +133,5 @@ export function useCallHost({ enabled, onUpdate, onResync, findChat, onError }: 
     />
   ) : null;
 
-  return { connected, startCall: calls.startCall, overlay };
+  return { connected, startCall: calls.startCall, callActive: calls.view !== null, overlay };
 }

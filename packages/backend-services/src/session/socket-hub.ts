@@ -3,6 +3,12 @@ import { decodeBase64 } from './base64';
 import { MAX_SIGNALING_BYTES } from './call-params';
 
 /**
+ * The largest client frame the hub will parse. Signalling packets are capped
+ * much lower; this is the outer guard for a frame that claims to be one.
+ */
+export const MAX_SOCKET_FRAME_BYTES = 128 * 1024;
+
+/**
  * What the hub needs from the engine: the live-session lifecycle and the
  * call relay.
  */
@@ -55,22 +61,31 @@ export class UpdatesSocketHub {
   }
 
   async onMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (typeof message === 'string') {
+      // A UTF-16 code unit is at least one byte of UTF-8, so a string under
+      // the cap cannot exceed it; a string over it is refused before parsing.
+      if (message.length > MAX_SOCKET_FRAME_BYTES) return;
+    } else if (message.byteLength > MAX_SOCKET_FRAME_BYTES) {
+      return;
+    }
     const text = typeof message === 'string' ? message : new TextDecoder().decode(message);
-    let parsed: ClientSocketMessage;
+    let parsed: unknown;
     try {
-      parsed = JSON.parse(text) as ClientSocketMessage;
+      parsed = JSON.parse(text);
     } catch {
       return;
     }
-    if (parsed.type === 'ping') {
+    if (typeof parsed !== 'object' || parsed === null) return;
+    const frame = parsed as ClientSocketMessage;
+    if (frame.type === 'ping') {
       socket.send(JSON.stringify({ type: 'pong' } satisfies ServerSocketMessage));
       return;
     }
-    if (parsed.type === 'call_signaling') {
-      this.relaySignaling(parsed.callId, parsed.data);
+    if (frame.type === 'call_signaling') {
+      this.relaySignaling(frame.callId, frame.data);
       return;
     }
-    if (parsed.type !== 'hello') {
+    if (frame.type !== 'hello') {
       return;
     }
 

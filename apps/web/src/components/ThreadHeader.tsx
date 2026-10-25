@@ -38,6 +38,10 @@ interface ThreadHeaderProps {
    * button is offered for a user and for nobody else.
    */
   onCall: () => void;
+  /**
+   * Whether a call is already up; the button is disabled until it ends.
+   */
+  callActive: boolean;
 }
 
 /**
@@ -46,7 +50,7 @@ interface ThreadHeaderProps {
  */
 const COPY_FEEDBACK_MS = 1600;
 
-export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, onCall }: ThreadHeaderProps) {
+export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, onCall, callActive }: ThreadHeaderProps) {
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -185,8 +189,9 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
         {chat.kind === 'user' ? (
           <button
             type="button"
-            className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
             onClick={onCall}
+            disabled={callActive}
             aria-label={`Call ${chat.title}`}
           >
             <Icon name="call" />

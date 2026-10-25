@@ -1,5 +1,4 @@
 import { applyNewMessage } from './state';
-import type { ChatThread } from './thread-state';
 import type { DialogDto, MessageDto, MessageMediaDto, MessageReplyDto, PeerId } from './types';
 import { mediaKind } from './upload';
 
@@ -181,12 +180,4 @@ function pendingReply(entry: PendingMessage): MessageReplyDto | null {
  */
 export function withPendingDialogs(dialogs: DialogDto[], pending: readonly PendingMessage[], activeChatId: PeerId | null): DialogDto[] {
   return pending.reduce((current, entry) => applyNewMessage(current, pendingAsMessage(entry), activeChatId), dialogs);
-}
-
-/**
- * The open thread's pending entries, filtered by the thread's chat scope.
- */
-export function pendingForThread(pending: readonly PendingMessage[], thread: ChatThread | null): PendingMessage[] {
-  if (!thread) return [];
-  return pending.filter((entry) => entry.scope === String(thread.chat.id));
 }

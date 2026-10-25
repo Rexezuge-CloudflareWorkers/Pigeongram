@@ -1,5 +1,6 @@
 import type { Plugin } from 'vite';
-import { MANIFEST } from './manifest';
+import type { Branding } from '../../branding';
+import { createManifest } from './manifest';
 import { TILE_RADIUS_RATIO, renderIcon } from './mark';
 import { encodePng } from './png';
 
@@ -49,7 +50,7 @@ export function iconBytes(icon: IconSpec): Uint8Array {
  * The assets are emitted during `generateBundle`, so they are part of the
  * bundle before workbox globs the output for its precache manifest.
  */
-export function pwaIconsPlugin(): Plugin {
+export function pwaIconsPlugin(branding: Branding): Plugin {
   return {
     name: 'pwa-icons',
     generateBundle() {
@@ -64,7 +65,7 @@ export function pwaIconsPlugin(): Plugin {
         const path = (request.url ?? '').split('?', 1)[0] ?? '';
         if (path === '/manifest.webmanifest') {
           response.setHeader('content-type', 'application/manifest+json');
-          response.end(JSON.stringify(MANIFEST));
+          response.end(JSON.stringify(createManifest(branding)));
           return;
         }
         const icon = ICONS.find((candidate) => candidate.file === path.slice(1));

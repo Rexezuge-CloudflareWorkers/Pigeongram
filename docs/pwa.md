@@ -51,8 +51,15 @@ The manifest and the icons come from `pages/build/pwa/`:
 - `mark.ts` holds the mark — the folded paper plane the tab favicon carries — as geometry and as a rasteriser. The
   icons are drawn from it at build time, so the art is one definition rather than a definition plus four binaries.
 - `png.ts` is a small PNG encoder (Node's zlib does the deflate); the repo takes no image dependency for four icons.
-- `manifest.ts` is the manifest, used by both the build and the dev server.
+- `manifest.ts` builds the manifest, used by both the build and the dev server; its `name` and `short_name` are the
+  deployment's branding.
+- `branding-plugin.ts` writes the product name into the document title.
 - `plugin.ts` writes the icons into the bundle and serves the manifest and the icons in development.
+
+The product name lives in `pages/branding.ts` and comes from `VITE_APP_NAME` / `VITE_APP_SHORT_NAME` (both default to
+`Pigeongram`). The document title, the manifest and the intro read the same values. Continuous deployment passes the
+repository variables of the same names; a local build sets them in the environment before
+`pnpm --filter @telegram-web-client/pages build`.
 
 `pages/public/_headers` gives the worker `Cache-Control: no-cache` (it decides which build the browser runs) and the
 hashed assets a year of `immutable`.

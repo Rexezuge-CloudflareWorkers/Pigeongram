@@ -31,8 +31,8 @@ function buildEnv(overrides: Record<string, string | undefined> = {}): NodeJS.Pr
     ANDROID_KEYSTORE_PASSWORD: 'storepass',
     ANDROID_KEY_ALIAS: 'telegram',
     ANDROID_KEY_PASSWORD: 'keypass',
-    ANDROID_APP_NAME: 'Telegram Web Client',
-    ANDROID_LAUNCHER_NAME: 'Telegram Web',
+    ANDROID_APP_NAME: 'Pigeongram',
+    ANDROID_LAUNCHER_NAME: 'Pigeon',
     INPUT_VERSION_NAME: '1.2.3',
     INPUT_VERSION_CODE: '42',
     ...overrides,
@@ -62,8 +62,8 @@ describe('the Android build configuration', () => {
       origin: 'https://tg.example.com',
       host: 'tg.example.com',
       packageId: 'com.example.telegramweb',
-      appName: 'Telegram Web Client',
-      launcherName: 'Telegram Web',
+      appName: 'Pigeongram',
+      launcherName: 'Pigeon',
       versionName: '1.2.3',
       versionCode: 42,
     });
@@ -163,7 +163,7 @@ describe('the live deployment preflight', () => {
   } as const;
 
   it('reads the PWA manifest name', () => {
-    expect(readManifestName(new TextEncoder().encode('{"name":"Telegram Web"}'))).toBe('Telegram Web');
+    expect(readManifestName(new TextEncoder().encode('{"name":"Pigeongram"}'))).toBe('Pigeongram');
     expect(() => readManifestName(new TextEncoder().encode('not json'))).toThrow('The live web manifest is not valid JSON');
     expect(() => readManifestName(new TextEncoder().encode('{"short_name":"x"}'))).toThrow('The live web manifest has no name');
   });
@@ -243,7 +243,7 @@ describe('the live deployment preflight', () => {
         return new Response(assetLinks([RELEASE_FINGERPRINT]), { status: 200 });
       }
       if (url.endsWith('/manifest.webmanifest')) {
-        return new Response('{"name":"Telegram Web"}', { status: 200 });
+        return new Response('{"name":"Pigeongram"}', { status: 200 });
       }
       if (url.endsWith('.png')) {
         return new Response(PNG_BYTES.buffer as ArrayBuffer, { status: 200 });
@@ -273,8 +273,8 @@ describe('the rendered TWA manifest', () => {
     origin: 'https://tg.example.com',
     host: 'tg.example.com',
     packageId: 'com.example.telegramweb',
-    appName: 'Telegram Web Client',
-    launcherName: 'Telegram Web',
+    appName: 'Pigeongram',
+    launcherName: 'Pigeon',
     versionName: '1.2.3',
     versionCode: 42,
     keystorePath: '/runner/temp/android-release.jks',

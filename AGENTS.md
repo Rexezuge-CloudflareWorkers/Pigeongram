@@ -5,7 +5,8 @@ file records the architecture, the load-bearing invariants, and the house conven
 
 ## Overview
 
-**Telegram-Web-Client** is an always-online Telegram web client on Cloudflare. The worker (`worker/`) is the backend —
+**Pigeongram** (repository `Telegram-Web-Client`; internal identifiers keep `telegram-web-client`) is an always-online
+Telegram web client on Cloudflare. The worker (`worker/`) is the backend —
 a Hono API and a Durable Object (`SessionEngine`) that owns one Telegram account's MTProto session: a 5-minute alarm
 wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect (the always-reachable baseline), and
 while a browser socket is attached it holds the session live and pushes updates. The Pages app (`pages/`) is the Vite +
@@ -113,6 +114,16 @@ protocol,registry}`) and the mtcute integration
 
 ### Load-bearing details
 
+- **The product was renamed to Pigeongram; `telegram-web-client` is the internal name.** Telegram's Terms of Service
+  forbid a third-party product from using “Telegram” in its name, so every user-visible brand surface — the document
+  title, the PWA `name`/`short_name`, the intro and offline eyebrow, and the Android app/launcher defaults — reads
+  `Pigeongram`. Descriptive references to the service (“Sign in to Telegram”, “Open in Telegram”) stay. The repository,
+  the `@telegram-web-client/*` packages, the worker and Pages project names,
+  `history.state.app === 'telegram-web-client'`, the `/api/health` `service` value and `TELEGRAM_API_*` are identifiers,
+  not branding; renaming one is a migration. The Pages build resolves `VITE_APP_NAME`/`VITE_APP_SHORT_NAME` in
+  `pages/branding.ts` (default Pigeongram) and applies them through `pages/src/app-name.ts`, `createManifest` and
+  `pwaBrandingPlugin`; CD passes the repository variables of the same names, and the Android workflow uses its own
+  `ANDROID_APP_NAME`/`ANDROID_LAUNCHER_NAME` first, then those variables, then Pigeongram.
 - **`wrangler.jsonc` is materialized at the repo root, never committed.** Both templates and every path inside them are
   root-relative for that reason; the Pages Functions in repo-root `functions/` are discovered because the config wrangler
   reads for them sits at the root.

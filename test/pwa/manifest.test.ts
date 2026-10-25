@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MANIFEST } from '../../pages/build/pwa/manifest';
+import { readBranding } from '../../pages/branding';
+import { createManifest } from '../../pages/build/pwa/manifest';
 
 /**
  * The web app manifest: what the browser needs to install the client.
  */
+const MANIFEST = createManifest(readBranding({}));
+
 describe('the web app manifest', () => {
   it('opens the app at its own root', () => {
     expect(MANIFEST.start_url).toBe('/');

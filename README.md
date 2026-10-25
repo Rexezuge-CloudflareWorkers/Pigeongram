@@ -1,6 +1,7 @@
-# Telegram Web Client
+# Pigeongram
 
-An always-online Telegram web client hosted on Cloudflare:
+An always-online Telegram web client hosted on Cloudflare. Pigeongram is an independent, unofficial client and is not
+affiliated with Telegram Messenger LLP.
 
 - **`worker/`** — the backend. A Hono API and a Durable Object (`SessionEngine`) that is the single home of one
   Telegram account's MTProto session: it wakes on an alarm every few minutes, connects to Telegram over WSS, replays
@@ -88,6 +89,18 @@ The SPA installs as an app and boots without a network:
 - **The account plane is never cached.** `/user/*` and `/api/*` always go to the network. `/user/login` in particular
   has to reach Cloudflare Access, or the sign-in round-trip breaks.
 
+The user-visible product name comes from `VITE_APP_NAME` and `VITE_APP_SHORT_NAME` (both default to `Pigeongram`).
+The Pages build bakes them into the tab title, the install manifest and the intro; continuous deployment passes the
+repository variables of the same names, and a local build sets them on the command:
+
+```bash
+VITE_APP_NAME="My Client" VITE_APP_SHORT_NAME="MyClient" pnpm --filter @telegram-web-client/pages build
+```
+
+The Android shell uses `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME`, falling back to those two variables and then to
+`Pigeongram`. The repository, package, worker and Pages identifiers deliberately keep `telegram-web-client`: they are
+deployment names, not the product's name.
+
 `docs/pwa.md` is the runbook: the worker's rules, how the worker and the icons are built, and how to verify an
 install. The worker is not registered in development — a worker in the dev server would serve a stale shell over Vite's
 own modules.
@@ -128,6 +141,7 @@ re-login, not history.
 | Secret (optional)   | `BACKUP_REPO_AZURE_DEVOPS_SSH_KEY` / `BACKUP_REPO_AZURE_DEVOPS_REPO_URL`                               | Mirrors `main` to Azure DevOps (backup workflow)         |
 | Secret (optional)   | `BACKUP_REPO_GITLAB_SSH_KEY` / `BACKUP_REPO_GITLAB_REPO_URL`                                           | Mirrors `main` to GitLab (backup workflow)               |
 | Variable (optional) | `CLOUDFLARE_PAGES_PROJECT_NAME`                                                                        | Overrides the default `telegram-web-client-web`          |
+| Variable (optional) | `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`                                                                | Product name in the tab title, manifest and intro        |
 | Variable (optional) | `WRANGLER_JSONC` / `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`                                  | Per-environment wrangler overrides                       |
 | Variable (optional) | `ANDROID_PWA_ORIGIN` / `ANDROID_PACKAGE_ID` / `ANDROID_CERT_SHA256`                                    | Per-deployment Android build; unset means no TWA         |
 | Variable (optional) | `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME` / `ANDROID_PLAY_CERT_SHA256`                              | Android presentation and Play signing overrides          |

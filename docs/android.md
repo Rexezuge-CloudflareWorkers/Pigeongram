@@ -43,7 +43,7 @@ Pick these once; the first two are effectively permanent:
 
 - **Origin** — the production custom domain, for example `https://tg.example.com`. It must be the Access-gated host, not
   the `*.pages.dev` preview host, and it must serve the site at `/`.
-- **Package id** — your own reverse-DNS id, for example `com.example.telegramweb`. Do not reuse the upstream
+- **Package id** — your own reverse-DNS id, for example `com.example.pigeongram`. Do not reuse the upstream
   `com.rexezuge.telegramwebclient`; that is the canonical deployment's id.
 - **App name / launcher name** — the name in Android settings and the label under the icon. Keep the launcher name short
   (12 characters or fewer).
@@ -60,7 +60,7 @@ keytool -genkeypair -v \
   -storetype PKCS12 \
   -alias telegram \
   -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=Your Name, OU=Telegram Web, O=Your Org, L=City, ST=State, C=US"
+  -dname "CN=Your Name, OU=Pigeongram, O=Your Org, L=City, ST=State, C=US"
 ```
 
 `keytool` prompts for the store and key passwords. PKCS12 normally uses the same password for both. Back the file up;
@@ -86,17 +86,17 @@ The value is a colon-separated, uppercase SHA-256 fingerprint. It is public conf
 
 Set these in the fork that deploys the site (Settings → Secrets and variables → Actions). They are per deployment.
 
-| Kind     | Name                                         | Value                                                       |
-| -------- | -------------------------------------------- | ----------------------------------------------------------- |
-| Variable | `ANDROID_PWA_ORIGIN`                         | `https://tg.example.com` (no path or port; trailing `/` ok) |
-| Variable | `ANDROID_PACKAGE_ID`                         | `com.example.telegramweb`                                   |
-| Variable | `ANDROID_CERT_SHA256`                        | The keystore's SHA-256 fingerprint                          |
-| Variable | `ANDROID_PLAY_CERT_SHA256`                   | Optional Play App Signing certificate fingerprint           |
-| Variable | `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME` | Optional; default to `Telegram Web Client` / `Telegram Web` |
-| Secret   | `ANDROID_KEYSTORE_BASE64`                    | The base64 of `release.jks`                                 |
-| Secret   | `ANDROID_KEYSTORE_PASSWORD`                  | The store password                                          |
-| Secret   | `ANDROID_KEY_ALIAS`                          | `telegram`                                                  |
-| Secret   | `ANDROID_KEY_PASSWORD`                       | The key password                                            |
+| Kind     | Name                                         | Value                                                                             |
+| -------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
+| Variable | `ANDROID_PWA_ORIGIN`                         | `https://tg.example.com` (no path or port; trailing `/` ok)                       |
+| Variable | `ANDROID_PACKAGE_ID`                         | `com.example.pigeongram`                                                          |
+| Variable | `ANDROID_CERT_SHA256`                        | The keystore's SHA-256 fingerprint                                                |
+| Variable | `ANDROID_PLAY_CERT_SHA256`                   | Optional Play App Signing certificate fingerprint                                 |
+| Variable | `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME` | Optional; fall back to `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`, then `Pigeongram` |
+| Secret   | `ANDROID_KEYSTORE_BASE64`                    | The base64 of `release.jks`                                                       |
+| Secret   | `ANDROID_KEYSTORE_PASSWORD`                  | The store password                                                                |
+| Secret   | `ANDROID_KEY_ALIAS`                          | `telegram`                                                                        |
+| Secret   | `ANDROID_KEY_PASSWORD`                       | The key password                                                                  |
 
 The two certificate variables are public. The keystore and its passwords are secrets; never commit them, share them, or
 reuse another deployment's key.
@@ -184,7 +184,8 @@ The first build of a new package id has no previous code to beat; the default ru
   sideloaded builds both verify.
 - Access is a login wall. Google's reviewers need a way through it; provide test credentials or an Access policy that
   admits the reviewer, or the review may be rejected for requiring an inaccessible login.
-- Use your own app name and iconography. Do not imply that the app is an official Telegram product.
+- Use your own app name and iconography. Do not imply that the app is an official Telegram product, and do not use
+  “Telegram” in the product or launcher name: Telegram's Terms of Service forbid it. The defaults use `Pigeongram`.
 - The shell supports Android 7.0 (API 24) and newer. `androidbrowserhelper:2.7.4`, the library Bubblewrap `1.27.0`
   generates, declares API 24 as its minimum, so `android/twa-manifest.template.json` sets `minSdkVersion` to 24;
   lowering it makes the manifest merger fail the build.

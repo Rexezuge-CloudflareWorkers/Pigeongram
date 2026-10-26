@@ -2,13 +2,14 @@ import { useLayoutEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 
 /**
- * The rules of paging a loaded window by scrolling up.
+ * The rules of paging a loaded window by scrolling towards either edge.
  *
  * The next older page is fetched a viewport before the reader reaches the top,
- * so the content is usually already there when they do. Prepending a page
- * shifts the loaded messages down; the anchor below keeps the row the reader
- * was looking at in place. The list disables the browser's own scroll
- * anchoring, so the correction behaves the same in every browser.
+ * and the next newer one a viewport before the end, so the content is usually
+ * already there when they get there. Prepending a page shifts the loaded
+ * messages down; the anchor below keeps the row the reader was looking at in
+ * place. The list disables the browser's own scroll anchoring, so the
+ * correction behaves the same in every browser.
  */
 
 /**
@@ -18,6 +19,15 @@ import type { RefObject } from 'react';
  */
 export function isNearTop(element: HTMLElement): boolean {
   return element.scrollTop < element.clientHeight;
+}
+
+/**
+ * How close to the end counts as asking for the newer page: the same one
+ * viewport of preload as the top. Appending needs no anchor — content added
+ * below the viewport leaves the reader's rows where they are.
+ */
+export function isNearBottom(element: HTMLElement): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight < element.clientHeight;
 }
 
 interface PrependAnchor {

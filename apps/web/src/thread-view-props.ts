@@ -76,7 +76,8 @@ export interface ThreadViewProps {
   /**
    * Whether the loaded range reaches the chat's newest known message. False
    * while an unread backlog or an older linked post leaves messages beyond the
-   * window: the view holds the pin back and offers "Load newer messages".
+   * window: the view holds the pin back and reads the next newer page as the
+   * reader approaches the end, with "Load newer messages" as its fallback.
    */
   atLatest: boolean;
   /**

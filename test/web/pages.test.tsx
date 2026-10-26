@@ -2400,6 +2400,40 @@ describe('App', () => {
         expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
       });
 
+      it('loads the next newer page as the reader approaches the end', async () => {
+        const reads: Array<Record<string, unknown>> = [];
+        const box = stubLayout({ listHeight: 2500, viewportHeight: 100 });
+        installSignedInFetch({
+          dialogs: [backlogDialog(1090)],
+          history: (_chatId, params) => {
+            reads.push(params);
+            if (params.offsetId === watermark) return json({ messages: page(991, 1040) });
+            // The forward page lands below the viewport; the list grows by its
+            // rows.
+            box.listHeight += 50 * 50;
+            return json({ messages: page(1041, 1090) });
+          },
+        });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Bob'));
+        expect(await within(threadSection()).findByText('first unread')).toBeDefined();
+        expect(reads).toHaveLength(1);
+
+        // One viewport before the end, the next page is read and merged.
+        scrollContainer().scrollTop = 2400;
+        fireEvent.scroll(scrollContainer());
+        expect(await within(threadSection()).findByText('message 1090')).toBeDefined();
+        expect(reads).toHaveLength(2);
+        expect(reads[1]).toEqual({ chatId: 2, limit: 50, offsetId: 1040, addOffset: -50 });
+
+        // The page reached the newest message, so the button and further
+        // reads are gone.
+        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+        fireEvent.scroll(scrollContainer());
+        expect(reads).toHaveLength(2);
+      });
+
       it('holds a live message until forward paging reaches it', async () => {
         installBacklogFetch(1089, { 1000: page(991, 1040), 1040: [...page(1041, 1089), backlogMessage(1090, 'live newest')] });
         stubLayout({ listHeight: 2500, viewportHeight: 100 });

@@ -10,12 +10,16 @@ the full user (`userFull.botInfo.commands`), and a group or channel carries
 them per bot in `botInfo[]`. Commands are ordered as Telegram sent them and
 de-duplicated by name, because several bots in one group may register the
 same command.
+
+`peer` is the input peer when the caller already holds it — the discussion
+group resolved from a channel post — so the read does not resolve the chat a
+second time.
 */
-export async function readBotCommands(client: TelegramClient, chatId: number): Promise<BotCommandDto[]> {
+export async function readBotCommands(client: TelegramClient, chatId: number, peer?: tl.TypeInputPeer): Promise<BotCommandDto[]> {
   if (chatId > 0) {
-    return toCommandDtos([(await client.getFullUser(chatId)).full.botInfo]);
+    return toCommandDtos([(await client.getFullUser(peer ?? chatId)).full.botInfo]);
   }
-  const { full } = await client.getFullChat(chatId);
+  const { full } = await client.getFullChat(peer ?? chatId);
   // `chatFull`/`channelFull` carry bot commands; `communityFull` does not.
   return toCommandDtos('botInfo' in full ? (full.botInfo ?? []) : []);
 }

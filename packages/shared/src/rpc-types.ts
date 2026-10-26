@@ -255,6 +255,12 @@ export interface SendCommentParams {
 
 export interface GetBotCommandsParams {
   chatId: PeerId;
+  /**
+   * A channel post whose comment thread is the target: the commands belong to
+   * the linked discussion group the engine resolves for the post, not to
+   * `chatId`. Omitted for a chat's own menu.
+   */
+  messageId?: number;
 }
 
 export interface GetProfileParams {
@@ -361,6 +367,11 @@ export interface GetCommentsResult {
    * thread does not exist yet.
    */
   discussionMessageId: number | null;
+  /**
+   * Slash commands of the linked discussion group; empty while the thread does
+   * not exist yet. The comments composer posts into that group.
+   */
+  commands: BotCommandDto[];
   /**
    * Pagination cursor for older comments; absent when the oldest comment is
    * loaded.

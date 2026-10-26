@@ -169,32 +169,32 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 
 ### RPC methods
 
-| Method                | Params                                                                            | Returns                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getMe`               | —                                                                                 | `{me}`                                                                                      |
-| `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                     |
-| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed) |
-| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                 |
-| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                       |
-| `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                        |
-| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                 |
-| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                             |
-| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                    |
-| `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                               |
-| `getPollResults`      | `{chatId, messageId}`                                                             | `{poll}`                                                                                    |
-| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, nextOffsetId?, nextOffsetDate?}`  |
-| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                 |
-| `getBotCommands`      | `{chatId}`                                                                        | `{commands: BotCommandDto[]}`                                                               |
-| `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                        |
-| `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                     |
-| `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                          |
-| `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                           |
-| `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                        |
-| `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                           |
-| `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                           |
-| `discardCall`         | `{callId, reason: 'missed'\|'disconnect'\|'hangup'\|'busy', duration, video?}`    | `{}`                                                                                        |
-| `rateCall`            | `{callId, rating: 1..5, comment?}`                                                | `{}`                                                                                        |
-| `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                        |
+| Method                | Params                                                                            | Returns                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `getMe`               | —                                                                                 | `{me}`                                                                                               |
+| `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                              |
+| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed)          |
+| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                          |
+| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                |
+| `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                 |
+| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                          |
+| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                                      |
+| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                             |
+| `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                                        |
+| `getPollResults`      | `{chatId, messageId}`                                                             | `{poll}`                                                                                             |
+| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, commands, nextOffsetId?, nextOffsetDate?}` |
+| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                          |
+| `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                        |
+| `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                 |
+| `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                              |
+| `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                                   |
+| `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                                    |
+| `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                                 |
+| `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                                    |
+| `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                                    |
+| `discardCall`         | `{callId, reason: 'missed'\|'disconnect'\|'hangup'\|'busy', duration, video?}`    | `{}`                                                                                                 |
+| `rateCall`            | `{callId, rating: 1..5, comment?}`                                                | `{}`                                                                                                 |
+| `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                                 |
 
 `getDialogs`'s `archived` flag reads the archive instead of the chat list: `true` returns the chats in Telegram's
 peer folder `1`, `false` (the default) the ones in folder `0`. The two are separate reads on purpose — one limit over
@@ -232,6 +232,11 @@ dialog peer, so the engine looks at the full info instead: a user (`users.getFul
 `botInfo` per bot. The bridge flattens the group list, de-duplicates command names and returns
 `{command, description}` in Telegram's order; an empty list is a normal answer, not an error. The SPA asks for
 this when a bot, group or supergroup thread opens and offers the menu from the composer.
+
+`messageId` names a channel post whose comment thread is the target: the engine resolves the linked discussion
+group with `messages.getDiscussionMessage` and reads that group's menu, so the comments composer offers the
+commands its own group's bots registered. A post without a thread yet answers an empty list. The SPA takes the
+same menu from `getComments` (see below), so it does not spend a second request on it.
 
 `getProfile` reads what the chat list has no room for: the bio of a person, the description and member count of a
 group or a channel. Like the command menu, the answer is in the peer's full info, so the engine reads the full user
@@ -322,10 +327,12 @@ post is mirrored there as a root message and every comment replies into its thre
 `messages.getReplies` (oldest first, newest window unless a cursor is passed); the root message is dropped and
 the cursor is the oldest comment of the window. `discussionChatId`/`discussionMessageId` are null while the
 thread does not exist yet, and the pre-thread `FLOOD_WAIT` Telegram answers the lookup with is read as "no
-thread yet". `sendComment` posts through mtcute's `commentText`/`commentMedia` for a top-level comment (which
-also covers the first comment, when Telegram still has to create the thread) and resolves the group itself for
-a reply, so `replyTo` names a comment in the thread. Reads never require membership in the group; posting
-requires it, and Telegram's error surfaces to the SPA verbatim.
+thread yet". The window and the group's slash-command menu are read concurrently over the one connection, so
+the comments composer can offer the group's commands without a second bridge call; `commands` is empty while
+the thread does not exist yet. `sendComment` posts through mtcute's `commentText`/`commentMedia` for a top-level
+comment (which also covers the first comment, when Telegram still has to create the thread) and resolves the
+group itself for a reply, so `replyTo` names a comment in the thread. Reads never require membership in the group;
+posting requires it, and Telegram's error surfaces to the SPA verbatim.
 
 Reactions on comments target the group and arrive live, and the SPA merges them into the open screen by
 matching the update's chat id and reply header against the thread. Reply counts on the post are only as fresh

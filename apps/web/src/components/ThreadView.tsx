@@ -4,7 +4,7 @@ import { groupMessages, messageRowSelector } from '../groups';
 import { messageWebLink } from '../links';
 import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
-import { isNearTop, usePrependAnchor } from '../thread-paging';
+import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
 import type { ChatDto, MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
@@ -271,9 +271,13 @@ export function ThreadView({
           stickToBottom.current = atLatest && isAtBottom(element);
           positions.remember(readThreadPosition(element, chat.id));
           reportVisible(element);
-          // Read the next older page before the reader reaches the end of the
+          // Read the next older page before the reader reaches the top of the
           // loaded window; the controller serializes the requests.
           if (hasMoreOlder && !loadingOlder && isNearTop(element)) onLoadOlder();
+          // Forward paging mirrors it: an unread backlog or a linked post can
+          // leave the newest messages beyond the window, so approaching its
+          // end reads the next newer page too.
+          if (!atLatest && !loadingNewer && isNearBottom(element)) onLoadNewer();
         }}
       >
         {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (

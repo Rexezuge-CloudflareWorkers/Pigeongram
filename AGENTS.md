@@ -62,9 +62,9 @@ protocol,registry}`) and the mtcute integration
   `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread
   watermark with its read context) and the forward-paging rule, `thread-state.ts` the loaded-range cursors and the
-  live/sent/edit folds, `useThreadPaging.ts` the older/newer reads, `thread-paging.ts` the scroll-driven older read
-  and the prepend anchor, `reading.ts` the unread-position logic they share, `components/` the screens). The calls
-  live in `src/calls/` (`dh.ts` the
+  live/sent/edit folds, `useThreadPaging.ts` the older/newer reads, `thread-paging.ts` the scroll-driven paging at
+  either edge and the prepend anchor, `reading.ts` the unread-position logic they share, `components/` the
+  screens). The calls live in `src/calls/` (`dh.ts` the
   browser-side Diffie-Hellman, `crypto.ts` the packet envelope, `exchange.ts` the key establishment, `peer.ts` the
   WebRTC peer and the signalling channel, `controller.ts` the call state machine, `session.ts` its reducer,
   `host.tsx` the hook that joins the calls to the updates socket, `signalling.ts` the payload format, `webrtc.ts` the

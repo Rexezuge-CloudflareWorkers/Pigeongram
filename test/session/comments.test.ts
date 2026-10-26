@@ -20,6 +20,8 @@ import type { GetCommentsResult } from '../../packages/shared/src/rpc-types';
 const CHANNEL_ID = getMarkedPeerId(20, 'channel');
 const GROUP_ID = getMarkedPeerId(30, 'channel');
 
+const GROUP_COMMANDS = [{ command: 'rules', description: 'Read the rules' }];
+
 const rawUser = {
   _: 'user',
   id: 1,
@@ -115,6 +117,7 @@ interface FakeClient {
   calls: Array<{ _: string } & Record<string, unknown>>;
   sent: Array<{ peer: tl.TypeInputPeer; text: string; replyTo?: number }>;
   commented: Array<{ postId: number; text: string }>;
+  fullChats: Array<number | tl.TypeInputPeer>;
 }
 
 function fakeClient(options: {
@@ -126,6 +129,7 @@ function fakeClient(options: {
   const calls: Array<{ _: string } & Record<string, unknown>> = [];
   const sent: FakeClient['sent'] = [];
   const commented: FakeClient['commented'] = [];
+  const fullChats: FakeClient['fullChats'] = [];
   const client = {
     resolvePeer: async () => ({ _: 'inputPeerChannel', channelId: 20, accessHash: Long.fromNumber(20_000) }),
     call: async (request: { _: string } & Record<string, unknown>) => {
@@ -137,6 +141,10 @@ function fakeClient(options: {
       if (request._ === 'messages.getReplies') return options.page ?? repliesContainer([], 0);
       throw new Error(`unexpected call ${request._}`);
     },
+    getFullChat: async (peer: number | tl.TypeInputPeer) => {
+      fullChats.push(peer);
+      return { full: { botInfo: [{ commands: GROUP_COMMANDS }] } };
+    },
     getMessages: async () => [options.post === undefined ? chatPost({ replies: commentsHeader }) : options.post],
     commentText: async (post: Message, text: string) => {
       commented.push({ postId: post.id, text });
@@ -147,7 +155,7 @@ function fakeClient(options: {
       return chatPost({ id: 98 });
     },
   } as unknown as TelegramClient;
-  return { client, calls, sent, commented };
+  return { client, calls, sent, commented, fullChats };
 }
 
 describe('normalizeReplies', () => {
@@ -225,7 +233,7 @@ describe('resolveDiscussion', () => {
 
 describe('readComments', () => {
   it('pages the thread with the root id and the caller offsets', async () => {
-    const { client, calls } = fakeClient({ page: repliesContainer([rawMessage(12), rawMessage(11)], 50) });
+    const { client, calls, fullChats } = fakeClient({ page: repliesContainer([rawMessage(12), rawMessage(11)], 50) });
     const result = await readComments(client, {
       chatId: CHANNEL_ID,
       messageId: 7,
@@ -235,6 +243,8 @@ describe('readComments', () => {
     });
     expect(result.discussion?.rootId).toBe(10);
     expect(result.page.comments.map((message) => message.id)).toEqual([11, 12]);
+    expect(result.commands).toEqual(GROUP_COMMANDS);
+    expect(fullChats).toEqual([{ _: 'inputPeerChannel', channelId: 30, accessHash: Long.fromNumber(30_000) }]);
     expect(calls).toMatchObject([
       { _: 'messages.getDiscussionMessage', msgId: 7 },
       {
@@ -248,12 +258,14 @@ describe('readComments', () => {
     ]);
   });
 
-  it('skips the thread read when no discussion exists', async () => {
-    const { client, calls } = fakeClient({ discussionResult: discussion(null) });
+  it('skips the thread and command reads when no discussion exists', async () => {
+    const { client, calls, fullChats } = fakeClient({ discussionResult: discussion(null) });
     const result = await readComments(client, { chatId: CHANNEL_ID, messageId: 7, limit: 50 });
     expect(result.discussion).toBeNull();
     expect(result.page).toEqual({ comments: [], count: 0, nextOffset: null });
+    expect(result.commands).toEqual([]);
     expect(calls.map((call) => call._)).toEqual(['messages.getDiscussionMessage']);
+    expect(fullChats).toEqual([]);
   });
 });
 
@@ -317,6 +329,7 @@ describe('dispatchRpc comments methods', () => {
     expect(result.count).toBe(50);
     expect(result.discussionChatId).toBe(GROUP_ID);
     expect(result.discussionMessageId).toBe(10);
+    expect(result.commands).toEqual(GROUP_COMMANDS);
     expect(result.nextOffsetId).toBe(11);
     expect(result.nextOffsetDate).toBe(1_700_000_000);
   });
@@ -329,6 +342,32 @@ describe('dispatchRpc comments methods', () => {
       count: 0,
       discussionChatId: null,
       discussionMessageId: null,
+      commands: [],
     });
+  });
+});
+
+describe('getBotCommands dispatch for a post discussion', () => {
+  it("reads the linked discussion group's commands", async () => {
+    const { client, calls, fullChats } = fakeClient({});
+    const result = (await rpc(client, 'getBotCommands', { chatId: CHANNEL_ID, messageId: 7 })) as {
+      commands: typeof GROUP_COMMANDS;
+    };
+    expect(result.commands).toEqual(GROUP_COMMANDS);
+    expect(calls.map((call) => call._)).toEqual(['messages.getDiscussionMessage']);
+    expect(fullChats).toEqual([{ _: 'inputPeerChannel', channelId: 30, accessHash: Long.fromNumber(30_000) }]);
+  });
+
+  it('answers no commands while the post has no discussion thread', async () => {
+    const { client, fullChats } = fakeClient({ discussionResult: discussion(null) });
+    await expect(rpc(client, 'getBotCommands', { chatId: CHANNEL_ID, messageId: 7 })).resolves.toEqual({ commands: [] });
+    expect(fullChats).toEqual([]);
+  });
+
+  it('rejects a malformed messageId before Telegram is touched', async () => {
+    const { client, calls, fullChats } = fakeClient({});
+    await expect(rpc(client, 'getBotCommands', { chatId: CHANNEL_ID, messageId: 0 })).rejects.toThrow('messageId');
+    expect(calls).toEqual([]);
+    expect(fullChats).toEqual([]);
   });
 });

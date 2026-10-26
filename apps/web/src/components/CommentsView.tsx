@@ -243,7 +243,14 @@ export function CommentsView({
         ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      <Composer placeholder="Comment" replyTarget={replyTarget} onCancelReply={() => setReplyingTo(null)} onSend={send} onAttach={attach} />
+      <Composer
+        placeholder="Comment"
+        replyTarget={replyTarget}
+        botCommands={thread.botCommands}
+        onCancelReply={() => setReplyingTo(null)}
+        onSend={send}
+        onAttach={attach}
+      />
     </section>
   );
 }

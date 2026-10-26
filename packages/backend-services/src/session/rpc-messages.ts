@@ -177,7 +177,7 @@ export const messagesRpcMethods = {
       const limit = clampInt(params.limit, 1, 100, 50);
       const offsetId = optionalInt(params.offsetId);
       const offsetDate = optionalInt(params.offsetDate);
-      const { discussion, page } = await readComments(context.client, {
+      const { discussion, page, commands } = await readComments(context.client, {
         chatId,
         messageId,
         limit,
@@ -189,6 +189,7 @@ export const messagesRpcMethods = {
         count: page.count,
         discussionChatId: discussion?.chatId ?? null,
         discussionMessageId: discussion?.rootId ?? null,
+        commands,
         ...(page.nextOffset && { nextOffsetId: page.nextOffset.id, nextOffsetDate: page.nextOffset.date }),
       };
     },

@@ -88,6 +88,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
         count: result.count,
         discussionChatId: result.discussionChatId,
         discussionMessageId: result.discussionMessageId,
+        botCommands: result.commands ?? [],
         nextOffset: open.nextOffset ?? commentsCursor(result),
       })),
     );
@@ -116,7 +117,16 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
       setThread((current) =>
         current && current.chat.id === chat.id && current.post.id === message.id
           ? { ...current, post: message, count }
-          : { chat, post: message, discussionChatId: null, discussionMessageId: null, comments: [], count, nextOffset: null },
+          : {
+              chat,
+              post: message,
+              discussionChatId: null,
+              discussionMessageId: null,
+              botCommands: [],
+              comments: [],
+              count,
+              nextOffset: null,
+            },
       );
       setError(null);
       setLoading(true);

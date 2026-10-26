@@ -1,6 +1,8 @@
 import { getMarkedPeerId, Long, Message, PeersIndex } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
+import type { BotCommandDto } from '../types';
+import { readBotCommands } from './bot-commands';
 import { EngineError } from './errors';
 import { rpcErrorText } from './rpc-errors';
 
@@ -111,27 +113,34 @@ export interface ReadCommentsParams {
 /**
  * Reads one window of a post's comments, newest window first: `offsetId` is
  * the oldest loaded comment and pages backwards through the thread.
+ *
+ * The discussion group's slash commands ride along: the comments composer
+ * posts into that group, so its menu is the group's. The two reads run
+ * concurrently over the one connection.
  */
 export async function readComments(
   client: TelegramClient,
   params: ReadCommentsParams,
-): Promise<{ discussion: Discussion | null; page: CommentPage }> {
+): Promise<{ discussion: Discussion | null; page: CommentPage; commands: BotCommandDto[] }> {
   const discussion = await resolveDiscussion(client, params.chatId, params.messageId);
-  if (!discussion) return { discussion: null, page: { comments: [], count: 0, nextOffset: null } };
+  if (!discussion) return { discussion: null, page: { comments: [], count: 0, nextOffset: null }, commands: [] };
 
-  const res = await client.call({
-    _: 'messages.getReplies',
-    peer: discussion.peer,
-    msgId: discussion.rootId,
-    offsetId: params.offsetId ?? 0,
-    offsetDate: params.offsetDate ?? 0,
-    addOffset: 0,
-    limit: params.limit,
-    maxId: 0,
-    minId: 0,
-    hash: Long.ZERO,
-  });
-  return { discussion, page: normalizeReplies(res, discussion.rootId, params.limit) };
+  const [res, commands] = await Promise.all([
+    client.call({
+      _: 'messages.getReplies',
+      peer: discussion.peer,
+      msgId: discussion.rootId,
+      offsetId: params.offsetId ?? 0,
+      offsetDate: params.offsetDate ?? 0,
+      addOffset: 0,
+      limit: params.limit,
+      maxId: 0,
+      minId: 0,
+      hash: Long.ZERO,
+    }),
+    readBotCommands(client, discussion.chatId, discussion.peer),
+  ]);
+  return { discussion, page: normalizeReplies(res, discussion.rootId, params.limit), commands };
 }
 
 /**

@@ -2956,6 +2956,31 @@ describe('App', () => {
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
     });
 
+    it("offers the linked discussion group's slash commands in the comments composer", async () => {
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        return json({
+          comments: commentList,
+          count: 2,
+          discussionChatId: GROUP,
+          discussionMessageId: ROOT,
+          commands: [{ command: 'rules', description: 'Read the rules' }],
+        });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect(await screen.findByText('Comments')).toBeDefined();
+
+      // The channel itself has no command menu; this one comes from the
+      // discussion group, read together with the comments.
+      fireEvent.click(screen.getByRole('button', { name: 'Bot commands' }));
+      const menu = screen.getByRole('listbox', { name: 'Bot commands' });
+      expect(within(menu).getByRole('option', { name: /\/rules/ })).toBeDefined();
+    });
+
     it('copies a comment link that names the channel post', async () => {
       const writeText = vi.fn().mockResolvedValue(undefined);
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
@@ -3671,7 +3696,14 @@ describe('App', () => {
     Opens the archive from the profile popup.
     */
     async function openArchive(): Promise<void> {
-      fireEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }));
+      const trigger = await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' });
+      // The router ignores navigation until its boot has seeded the history
+      // stack, so a click that lands while the boot read is still in flight
+      // would close the menu without going anywhere. The sidebar leaving its
+      // loading state is the boot's signal that the stack is ready, whatever
+      // the list turned out to hold.
+      await waitFor(() => expect(within(sidebar()).queryByText('Loading chats…')).toBeNull());
+      fireEvent.click(trigger);
       fireEvent.click(within(screen.getByRole('menu', { name: 'Account menu' })).getByRole('menuitem', { name: 'Archived Chats' }));
     }
 

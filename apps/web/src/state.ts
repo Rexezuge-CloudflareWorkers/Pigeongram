@@ -1,7 +1,17 @@
 import { toDialogMessage } from './dialog-message';
 import { continuesAlbum, countUnreadGroupsBetween } from './groups';
 import type { ChatThread } from './thread-state';
-import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, PresenceDto, UpdateEvent } from './types';
+import type {
+  BotCommandDto,
+  ChatDto,
+  DialogDto,
+  MessageDto,
+  MessagePollDto,
+  MessageReactionDto,
+  PeerId,
+  PresenceDto,
+  UpdateEvent,
+} from './types';
 
 /**
  * Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.
@@ -159,6 +169,12 @@ export interface CommentsThread {
   Id of the thread's root message in the group, once resolved.
   */
   discussionMessageId: number | null;
+  /**
+  The slash-command menu of the linked discussion group, empty while the
+  thread does not exist yet or none of its bots publishes one. The comments
+  composer posts into that group, so these are the commands it offers.
+  */
+  botCommands: readonly BotCommandDto[];
   /**
   Loaded comments, oldest first.
   */

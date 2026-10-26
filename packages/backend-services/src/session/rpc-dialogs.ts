@@ -3,8 +3,9 @@ import type { Dialog } from '@mtcute/core';
 import type { DialogDto, PresenceDto } from '../types';
 import { readBotCommands } from './bot-commands';
 import { setChatArchived } from './archive';
+import { resolveDiscussion } from './comments';
 import { toDialogDto, toMeDto } from './dto';
-import { clampInt, optionalBoolean, requireBoolean, requirePeerId } from './params';
+import { clampInt, optionalBoolean, optionalMessageId, requireBoolean, requirePeerId } from './params';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
 import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
@@ -55,7 +56,16 @@ export const dialogsRpcMethods = {
     readOnly: true,
     run: async (context, params) => {
       const chatId = requirePeerId(params.chatId);
-      return { commands: await readBotCommands(context.client, chatId) };
+      const messageId = optionalMessageId(params.messageId);
+      if (messageId === undefined) {
+        return { commands: await readBotCommands(context.client, chatId) };
+      }
+      // A channel post's comments live in the linked discussion group, and its
+      // composer offers that group's commands. The peer is resolved here, not
+      // in the SPA; a post without a thread yet has no menu.
+      const discussion = await resolveDiscussion(context.client, chatId, messageId);
+      if (!discussion) return { commands: [] };
+      return { commands: await readBotCommands(context.client, discussion.chatId, discussion.peer) };
     },
   },
 

@@ -131,11 +131,11 @@ backslashes, and CR/LF are rejected) and defaults to `/`.
 
 ### Media routes
 
-`GET /user/file` serves every downloadable kind (photo/video/audio/voice/sticker/document) with the right content
-type, resolved fresh from the message on each request — no file location or `file_reference` ever reaches the
-browser. `thumb=1` answers with the best thumbnail instead (video posters). Videos and documents are served with
-`accept-ranges`/`content-range` so `<video>` seeking works; the engine owns each byte window
-(`session/media-stream.ts`): it requests from a 1 MB-block-aligned offset (mtcute's non-precise parts must not
+`GET /user/file` serves every downloadable kind (photo/video/audio/voice/sticker/document) and a link preview's
+photo, with the right content type, resolved fresh from the message on each request — no file location or
+`file_reference` ever reaches the browser. `thumb=1` answers with the best thumbnail instead (video posters). Videos
+and documents are served with `accept-ranges`/`content-range` so `<video>` seeking works; the engine owns each byte
+window (`session/media-stream.ts`): it requests from a 1 MB-block-aligned offset (mtcute's non-precise parts must not
 straddle a 1 MB boundary), drops the extra prefix bytes, cuts the tail at the requested end and applies backpressure
 (one chunk buffered), so a slow player never pulls the file into the isolate. Browser ranges are never forwarded to
 mtcute as `limit`: it accepts only whole-file sizes and throws after the response headers have already gone out —
@@ -285,6 +285,14 @@ keeps "unknown" apart from zero voters. `sendVote` therefore takes answer **inde
 (Telegram caps a poll at ten answers) rather than raw option bytes: the engine resolves them server-side, so a
 stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote. The comments screen
 votes through the same RPCs, including polls on the pinned channel post and on comments in the discussion group.
+
+A link preview carries `webPage` beside `media` — Telegram's `messageMediaWebPage` has no message file either, so
+`media` stays null. `MessageWebPageDto` holds the page's `url` and `displayUrl`, `siteName`/`title`/`description`
+(Telegram's `author` stands in for a missing description), its `displaySize` layout hint (`small` keeps the
+thumbnail beside the text, `large` puts it above) and the preview photo's `id`/dimensions. Only `http(s)` URLs are
+carried; anything else degrades to a text-only message. The photo is served by `GET /user/file` from the message
+itself, with the photo id as the `v=` cache-buster, so the browser never fetches the linked page or its image: a
+preview leaks nothing to the site until the card is opened.
 
 A message's inline keyboard arrives as `markup`: Telegram's rows of `MessageButtonDto`, each with its `text`, optional
 `style` and a discriminated `kind`. Callback buttons carry their opaque payload as base64 `data` (JSON has no byte

@@ -13,6 +13,7 @@ import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
 import { MessageText } from './MessageText';
+import { MessageWebPage } from './WebPagePreview';
 
 /**
 One message bubble: forward header, sender, reply quote, media, rich text,
@@ -242,6 +243,7 @@ export function MessageRow({
           <MessageText text={message.text} entities={message.entities} />
         </div>
       ) : null}
+      {message.webPage ? <MessageWebPage message={message} page={message.webPage} /> : null}
       {buttonMessage?.markup ? (
         <MessageButtons message={buttonMessage} markup={buttonMessage.markup} pressing={pressingButton} onPress={onPressButton} />
       ) : null}

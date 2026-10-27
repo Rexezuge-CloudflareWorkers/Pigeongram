@@ -59,6 +59,7 @@ function preview(text = 'Earlier'): MessageDto {
     reactions: [],
     service: false,
     media: null,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

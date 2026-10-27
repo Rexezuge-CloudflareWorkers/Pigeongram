@@ -1,4 +1,5 @@
-import type { FileLocation } from '@mtcute/core';
+import { Long, WebPageMedia } from '@mtcute/core';
+import type { FileLocation, tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it } from 'vitest';
 import type { DownloadParams } from '../../packages/backend-services/src/session/media-stream';
@@ -66,6 +67,35 @@ function fakeClient(media: unknown, peer: unknown = null, size = SIZE): { client
 
 async function body(download: { stream: ReadableStream<Uint8Array> }): Promise<Uint8Array> {
   return new Uint8Array(await new Response(download.stream).arrayBuffer());
+}
+
+/**
+ * A `messageMediaWebPage` whose page photo is the synthetic file, so a preview
+ * download reads the same bytes as any other media. `page` can drop the photo
+ * (the shape a preview without an image arrives as).
+ */
+function webpageMedia(page: Record<string, unknown> = {}): WebPageMedia {
+  const raw = {
+    _: 'messageMediaWebPage',
+    webpage: {
+      _: 'webPage',
+      id: Long.fromNumber(7),
+      url: 'https://example.com/article',
+      displayUrl: 'example.com/article',
+      hash: 0,
+      photo: {
+        _: 'photo',
+        id: Long.fromNumber(1234),
+        accessHash: Long.fromNumber(5678),
+        fileReference: new Uint8Array([1, 2, 3]),
+        date: 1_700_000_000,
+        dcId: 2,
+        sizes: [{ _: 'photoSize', type: 'x', w: 320, h: 200, size: SIZE }],
+      },
+      ...page,
+    },
+  } as unknown as tl.RawMessageMediaWebPage;
+  return new WebPageMedia(raw);
 }
 
 describe('streamMessageMedia', () => {
@@ -148,6 +178,21 @@ describe('streamMessageMedia', () => {
     expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: null, status: 200 });
     // The thumbnail location, not the video's.
     expect(requests[0]?.fileSize).toBe(50);
+  });
+
+  it("streams a link preview's photo through the same route", async () => {
+    const { client } = fakeClient(webpageMedia());
+    const download = await streamMessageMedia(client, 1, 2);
+
+    // A preview photo is a photo: served whole, as JPEG, with no
+    // content-length promise derived from Telegram's size list.
+    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: null, status: 200, contentRange: null });
+    await expect(body(download)).resolves.toEqual(bytesAt(0, SIZE));
+  });
+
+  it('rejects a link preview without a photo', async () => {
+    const { client } = fakeClient(webpageMedia({ photo: undefined }));
+    await expect(streamMessageMedia(client, 1, 2)).rejects.toThrow('no downloadable media');
   });
 });
 

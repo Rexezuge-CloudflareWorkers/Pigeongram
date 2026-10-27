@@ -148,6 +148,8 @@ export function pendingAsMessage(entry: PendingMessage): MessageDto {
     reactions: [],
     service: false,
     media: entry.media,
+    // A link preview is Telegram's own; the card appears once the send settles.
+    webPage: null,
     poll: null,
     markup: null,
     reply: pendingReply(entry),

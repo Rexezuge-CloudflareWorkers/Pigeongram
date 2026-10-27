@@ -50,6 +50,7 @@ function message(text: string): MessageDto {
     reactions: [],
     service: false,
     media: null,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

@@ -69,6 +69,7 @@ function messageDto(overrides: Partial<MessageDto> & { id: number }): MessageDto
     reactions: [],
     service: false,
     media: null,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

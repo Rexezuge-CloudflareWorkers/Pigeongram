@@ -20,6 +20,7 @@ function message(id: number, media: MessageMediaDto): MessageDto {
     reactions: [],
     service: false,
     media,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

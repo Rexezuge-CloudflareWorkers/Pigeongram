@@ -23,6 +23,7 @@ function message(): MessageDto {
     reactions: [],
     service: false,
     media: null,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

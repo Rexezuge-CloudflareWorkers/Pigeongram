@@ -28,6 +28,7 @@ function message(id: number, text = `message ${id}`, overrides: Partial<MessageD
     reactions: [],
     service: false,
     media: null,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

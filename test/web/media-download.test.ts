@@ -37,6 +37,7 @@ function message(media: MessageMediaDto | null, overrides: Partial<MessageDto> =
     reactions: [],
     service: false,
     media,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

@@ -447,9 +447,15 @@ export interface MessageDto {
   service: boolean;
   /**
   The message's downloadable media, or null for text/service messages and
-  non-file media such as polls.
+  non-file media such as polls and link previews (which ride in `webPage`).
   */
   media: MessageMediaDto | null;
+  /**
+  The message's link preview (Telegram's `messageMediaWebPage`), or null when
+  it has none. The preview's photo is served through `/user/file`, like any
+  other media.
+  */
+  webPage: MessageWebPageDto | null;
   /**
   The message's poll, or null when it is not a poll message.
   */
@@ -503,6 +509,55 @@ export interface MessageMediaDto {
   Duration in seconds for videos/audio/voice.
   */
   duration: number | null;
+}
+
+/**
+A link preview: the page Telegram resolved for a URL in a message.
+
+The card is Telegram's own copy of the page — the browser never fetches the
+page or its image, so opening a chat leaks nothing to the linked site until the
+card is opened. `photo` is the preview image; its `id` is only the
+cache-busting token for `/user/file`.
+*/
+export interface MessageWebPageDto {
+  /**
+  The page URL the card opens; only `http(s)` URLs are carried.
+  */
+  url: string;
+  /**
+  The shortened URL Telegram displays, e.g. `example.com/article`.
+  */
+  displayUrl: string;
+  /**
+  The site's name (`og:site_name` or the domain), when Telegram sent one.
+  */
+  siteName: string | null;
+  /**
+  The page title (`og:title` or `<title>`), when Telegram resolved one.
+  */
+  title: string | null;
+  /**
+  The page description, or the author Telegram supplies as its fallback.
+  */
+  description: string | null;
+  /**
+  Telegram's layout hint: `small` keeps the thumbnail beside the text,
+  `large` puts it above; `default` leaves it to the client.
+  */
+  displaySize: 'small' | 'large' | 'default';
+  /**
+  The preview photo's dimensions and cache-busting id, or null when the page
+  has no photo (or only a stripped thumbnail).
+  */
+  photo: {
+    /**
+    The photo's Telegram id; `/user/file` ignores it and it only changes the
+    browser's cache key when the preview photo changes.
+    */
+    id: string;
+    width: number;
+    height: number;
+  } | null;
 }
 
 /**

@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./types": "./src/types.ts",
     "./rpc-types": "./src/rpc-types.ts",
+    "./search-types": "./src/search-types.ts",
     "./call-types": "./src/call-types.ts"
   },
   "scripts": {

@@ -9,7 +9,6 @@ import type {
   PeerId,
   PressCallbackButtonResult,
   RpcBatchCall,
-  SearchMessagesResult,
   SendCommentResult,
   SendMessageResult,
   SendReactionResult,
@@ -130,9 +129,6 @@ export const sendComment = (
     ...(replyTo !== undefined && { replyTo }),
     ...(randomId !== undefined && { randomId }),
   });
-
-export const searchMessages = (chatId: PeerId, query: string): Promise<SearchMessagesResult> =>
-  rpc('searchMessages', { chatId, query, limit: 50 });
 
 /**
 Sets (or, with `null`, removes) the current user's reaction on a message.

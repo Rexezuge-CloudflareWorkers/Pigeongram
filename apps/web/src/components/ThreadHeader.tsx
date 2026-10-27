@@ -34,6 +34,15 @@ interface ThreadHeaderProps {
    */
   onSetArchived: (archived: boolean) => Promise<void>;
   /**
+   * Whether the chat is in the loaded list, so the archive move is meaningful.
+   * A chat reached through search is transient: it has no folder to move.
+   */
+  canArchive: boolean;
+  /**
+   * Opens the search overlay scoped to this chat.
+   */
+  onSearch: () => void;
+  /**
    * Starts a voice call to the chat. Only a person can be called, so the
    * button is offered for a user and for nobody else.
    */
@@ -50,7 +59,17 @@ interface ThreadHeaderProps {
  */
 const COPY_FEEDBACK_MS = 1600;
 
-export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, onCall, callActive }: ThreadHeaderProps) {
+export function ThreadHeader({
+  chat,
+  presence,
+  archived,
+  onBack,
+  onSetArchived,
+  canArchive,
+  onSearch,
+  onCall,
+  callActive,
+}: ThreadHeaderProps) {
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -152,29 +171,39 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
             {chat.title}
           </button>
         </div>
-        {chat.kind === 'user' ? (
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <button
             type="button"
-            className="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={onCall}
-            disabled={callActive}
-            aria-label={`Call ${chat.title}`}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={onSearch}
+            aria-label={`Search in ${chat.title}`}
           >
-            <Icon name="call" />
+            <Icon name="search" />
           </button>
-        ) : null}
-        <button
-          ref={triggerRef}
-          type="button"
-          className={`${chat.kind === 'user' ? '' : 'ml-auto'} inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-controls={menuId}
-          aria-label={`Menu for ${chat.title}`}
-        >
-          <Icon name="more-vertical" />
-        </button>
+          {chat.kind === 'user' ? (
+            <button
+              type="button"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={onCall}
+              disabled={callActive}
+              aria-label={`Call ${chat.title}`}
+            >
+              <Icon name="call" />
+            </button>
+          ) : null}
+          <button
+            ref={triggerRef}
+            type="button"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls={menuId}
+            aria-label={`Menu for ${chat.title}`}
+          >
+            <Icon name="more-vertical" />
+          </button>
+        </div>
       </header>
 
       {menuOpen ? (
@@ -220,19 +249,23 @@ export function ThreadHeader({ chat, presence, archived, onBack, onSetArchived, 
               <span>Open in Telegram</span>
             </button>
           ) : null}
-          <div className="my-1 h-px bg-line" role="separator" />
-          {/* The archive is Telegram's own place for the chats that are
-              put away; the item offers the move in the direction the
-              chat is not in, and the move asks first. */}
-          <button
-            type="button"
-            role="menuitem"
-            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-            onClick={requestArchive}
-          >
-            <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
-            <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
-          </button>
+          {canArchive ? (
+            <>
+              <div className="my-1 h-px bg-line" role="separator" />
+              {/* The archive is Telegram's own place for the chats that are
+                  put away; the item offers the move in the direction the
+                  chat is not in, and the move asks first. */}
+              <button
+                type="button"
+                role="menuitem"
+                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+                onClick={requestArchive}
+              >
+                <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
+                <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
+              </button>
+            </>
+          ) : null}
         </AnchoredMenu>
       ) : null}
 

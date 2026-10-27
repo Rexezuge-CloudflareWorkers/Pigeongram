@@ -20,12 +20,12 @@ export {
   forwardMessages,
   pressCallbackButton,
   readHistory,
-  searchMessages,
   sendComment,
   sendMessage,
   sendReaction,
   sendVote,
 } from './api/threads';
+export { searchGlobal, searchMessages } from './api/search';
 export { rpc } from './api/request';
 export { avatarUrl, fileUrl, uploadFile, uploadGroup } from './api/uploads';
 export type { UploadGroupInput, UploadGroupItem, UploadInput } from './api/uploads';

@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMessageText } from '../../apps/web/src/richtext';
-import type { LinkClickHandler } from '../../apps/web/src/richtext';
+import type { RichTextHandlers } from '../../apps/web/src/richtext';
 import type { MessageEntityDto } from '../../apps/web/src/types';
 
-function body(text: string, entities: MessageEntityDto[], onLinkClick?: LinkClickHandler): HTMLElement {
-  const { container } = render(<div data-testid="body">{renderMessageText(text, entities, onLinkClick)}</div>);
+function body(text: string, entities: MessageEntityDto[], handlers?: RichTextHandlers): HTMLElement {
+  const { container } = render(<div data-testid="body">{renderMessageText(text, entities, handlers)}</div>);
   return container;
 }
 
@@ -59,7 +59,7 @@ describe('renderMessageText', () => {
 
   it('lets the router swallow a link click', () => {
     const handler = vi.fn(() => true);
-    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], handler);
+    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], { onLinkClick: handler });
     const anchor = container.querySelector('a');
     // `fireEvent.click` answers `false` when the event was canceled, i.e. the
     // browser's new-tab navigation was prevented.
@@ -70,9 +70,24 @@ describe('renderMessageText', () => {
 
   it('keeps the default navigation when the router declines the link', () => {
     const handler = vi.fn(() => false);
-    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], handler);
+    const container = body('see example.com', [{ offset: 4, length: 11, kind: 'url' }], { onLinkClick: handler });
     expect(fireEvent.click(container.querySelector('a') as Element)).toBe(true);
     expect(handler).toHaveBeenCalledWith('https://example.com');
+  });
+
+  it('renders a hashtag as a search button when a handler is provided', () => {
+    const onHashtagClick = vi.fn();
+    const container = body('try #cloudflare now', [{ offset: 4, length: 11, kind: 'hashtag' }], { onHashtagClick });
+    const button = container.querySelector('button.hashtag');
+    expect(button?.textContent).toBe('#cloudflare');
+    fireEvent.click(button as Element);
+    expect(onHashtagClick).toHaveBeenCalledWith('#cloudflare');
+  });
+
+  it('keeps a hashtag as styled text without a handler', () => {
+    const container = body('try #cloudflare now', [{ offset: 4, length: 11, kind: 'hashtag' }]);
+    expect(container.querySelector('button')).toBeNull();
+    expect(container.querySelector('span.hashtag')?.textContent).toBe('#cloudflare');
   });
 
   it('nests entities inside one another', () => {

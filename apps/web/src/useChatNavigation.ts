@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { Route, RouteApplyOptions } from './routes';
-import type { DialogDto } from './types';
+import type { DialogDto, PeerId } from './types';
 import type { CommentsController, PrefetchedComments } from './comments-controller';
 import type { OpenThreadResult, ThreadController } from './thread-controller';
 
@@ -17,17 +17,18 @@ import type { OpenThreadResult, ThreadController } from './thread-controller';
 
 export interface ChatNavigationOptions {
   /**
-   * The live dialogs. A ref because `boot` applies the URL immediately after
-   * the dialogs fetch resolves, before React has committed them; the route
-   * must find its chat in that same tick.
+   * The chat's dialog, in either list, or a transient one for a chat reached
+   * through search. A callback rather than the array because `boot` applies
+   * the URL immediately after the dialogs fetch resolves, before React has
+   * committed them; the route must find its chat in that same tick.
    */
-  dialogs: { current: readonly DialogDto[] };
+  findDialog: (chatId: PeerId) => DialogDto | undefined;
   threads: ThreadController;
   comments: CommentsController;
 }
 
 export function useChatNavigation({
-  dialogs: dialogsRef,
+  findDialog,
   threads,
   comments,
 }: ChatNavigationOptions): (route: Route, options: RouteApplyOptions) => Promise<void> {
@@ -48,7 +49,7 @@ export function useChatNavigation({
 
       const ticket = ++sequence.current;
 
-      const dialog = dialogsRef.current.find((candidate) => candidate.chat.id === route.chatId);
+      const dialog = findDialog(route.chatId);
       if (!dialog) {
         options.replaceTo({ view: 'list' });
         return;
@@ -94,6 +95,6 @@ export function useChatNavigation({
             : { ok: true, result: opened.comments };
       await comments.open(dialog.chat, post, prefetched);
     },
-    [comments, threads],
+    [comments, findDialog, threads],
   );
 }

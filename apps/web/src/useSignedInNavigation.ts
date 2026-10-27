@@ -1,11 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { readHistory } from './api';
 import type { CommentsController } from './comments-controller';
 import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
 import type { Route, RouteApplyOptions } from './routes';
 import { routeForChat } from './routes';
 import type { ThreadController } from './thread-controller';
-import type { ChatDto, MessageForwardDto, PeerId } from './types';
+import type { ChatDto, DialogDto, MessageDto, MessageForwardDto, PeerId } from './types';
 import { useChatNavigation } from './useChatNavigation';
 import type { DialogsController } from './useDialogs';
 import { useForwardOrigin } from './useForwardOrigin';
@@ -30,7 +30,7 @@ interface UseSignedInNavigationOptions {
   The live dialogs: the router looks its chat up before React has committed
   the boot read.
   */
-  dialogs: Pick<DialogsController, 'all' | 'find' | 'ref' | 'applyRead' | 'loadArchive'>;
+  dialogs: Pick<DialogsController, 'all' | 'find' | 'applyRead' | 'loadArchive'>;
   threads: ThreadController;
   comments: CommentsController;
   /**
@@ -51,6 +51,12 @@ export interface SignedInNavigation {
   openViewer: (source: 'thread' | 'comments', messageId: number) => void;
   closeViewer: () => void;
   openChat: (chat: ChatDto, target?: { postId?: number; commentId?: number }) => void;
+  /**
+   * Opens a search hit: the message's chat at the message itself. A chat the
+   * loaded list does not carry (a global hit) is kept as a transient dialog
+   * for this session, so the route and the thread can resolve it.
+   */
+  openSearchResult: (chat: ChatDto, message: MessageDto) => void;
   openForwardOrigin: (forward: MessageForwardDto) => void;
   openArchive: () => void;
   leaveArchive: () => void;
@@ -59,9 +65,20 @@ export interface SignedInNavigation {
 }
 
 export function useSignedInNavigation({ dialogs, threads, comments, onArchiveContext }: UseSignedInNavigationOptions): SignedInNavigation {
-  const { find: findDialog, ref: dialogsRef, applyRead, loadArchive } = dialogs;
+  const { find: findDialog, applyRead, loadArchive } = dialogs;
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
-  const navigate = useChatNavigation({ dialogs: dialogsRef, threads, comments });
+  /**
+   * The chats a search found outside the loaded list, as dialogs good enough
+   * for the thread to open. They are memory-only: the route they are on cannot
+   * survive a reload, because the list would have to be read to resolve them
+   * again, and Telegram is the only source for that.
+   */
+  const transientDialogs = useRef(new Map<PeerId, DialogDto>());
+  const resolveDialog = useCallback(
+    (chatId: PeerId): DialogDto | undefined => findDialog(chatId) ?? transientDialogs.current.get(chatId),
+    [findDialog],
+  );
+  const navigate = useChatNavigation({ findDialog: resolveDialog, threads, comments });
 
   /**
   The route drives the screen, and the archive is a screen of its own: the
@@ -70,19 +87,18 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
   */
   const applyRoute = useCallback(
     (route: Route, options: RouteApplyOptions): Promise<void> => {
-      const target = route.view === 'chat' || route.view === 'comments' ? findDialog(route.chatId) : null;
+      const target = route.view === 'chat' || route.view === 'comments' ? resolveDialog(route.chatId) : null;
       onArchiveContext(route.view === 'archived' || target?.archived === true);
       // The archive is read when it is opened, not before: the main list is the
       // account's chats, and the archive is a screen the reader asks for.
       if (route.view === 'archived') void loadArchive();
       return navigate(route, options);
     },
-    [findDialog, loadArchive, navigate, onArchiveContext],
+    [resolveDialog, loadArchive, navigate, onArchiveContext],
   );
   const canOpen = useCallback(
-    (route: Route): boolean =>
-      route.view === 'list' || route.view === 'archived' || dialogsRef.current.some((dialog) => dialog.chat.id === route.chatId),
-    [dialogsRef],
+    (route: Route): boolean => route.view === 'list' || route.view === 'archived' || resolveDialog(route.chatId) !== undefined,
+    [resolveDialog],
   );
   const router = useRouter({
     onRoute: applyRoute,
@@ -110,6 +126,29 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
       router.navigateTo(routeForChat(chat.id, postId, target?.commentId), postId === null ? undefined : { force: true });
     },
     [router],
+  );
+  /**
+   * Opens a search hit at its message. The transient dialog is registered
+   * before the route applies, so `canOpen` and the thread's own lookup find it
+   * in the same tick.
+   */
+  const openSearchResult = useCallback(
+    (chat: ChatDto, message: MessageDto): void => {
+      if (findDialog(chat.id) === undefined) {
+        transientDialogs.current.set(chat.id, {
+          chat,
+          lastMessage: null,
+          unread: 0,
+          readInboxMaxId: 0,
+          readOutboxMaxId: 0,
+          pinned: false,
+          muted: false,
+          archived: false,
+        });
+      }
+      openChat(chat, { postId: message.id });
+    },
+    [findDialog, openChat],
   );
   const openForwardOrigin = useForwardOrigin(
     // The forward picker and the links both look a chat up in one list; the
@@ -180,6 +219,7 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
     openViewer,
     closeViewer,
     openChat,
+    openSearchResult,
     openForwardOrigin,
     openArchive,
     leaveArchive,

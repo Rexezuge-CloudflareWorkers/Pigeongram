@@ -38,6 +38,11 @@ interface ThreadPaneProps {
    * Whether the open chat sits in the account's archive.
    */
   archived: boolean;
+  /**
+   * Whether the open chat is in the loaded list, so the archive move is
+   * meaningful. A chat reached through search is transient.
+   */
+  canArchive: boolean;
   onBack: () => void;
   /**
    * Moves the open chat into the archive, or back out of it. The promise
@@ -49,6 +54,10 @@ interface ThreadPaneProps {
    * disables the button.
    */
   calls: ThreadPaneCalls;
+  /**
+   * Opens the search overlay scoped to the open chat.
+   */
+  onSearch: () => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
@@ -61,9 +70,11 @@ export function ThreadPane({
   selected,
   presence,
   archived,
+  canArchive,
   onBack,
   onSetArchived,
   calls,
+  onSearch,
   onForward,
   onOpenMedia,
   onReadThrough,
@@ -99,6 +110,7 @@ export function ThreadPane({
       chat={selected}
       presence={presence}
       archived={archived}
+      canArchive={canArchive}
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}
       loadingOlder={threads.loadingOlder}
@@ -117,6 +129,7 @@ export function ThreadPane({
       positions={threads.positions}
       onBack={onBack}
       onSetArchived={onSetArchived}
+      onSearch={onSearch}
       onCall={() => {
         if (selected) calls.startCall(selected.id);
       }}

@@ -258,6 +258,23 @@
   text-decoration: underline;
 }
 
+/* A hashtag is a search affordance inside the body: it reads like a link but
+   is a button, so it keeps the text's flow instead of the control box. */
+.hashtag {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hashtag:hover,
+.hashtag:focus-visible {
+  text-decoration: underline;
+}
+
 .message .text .spoiler {
   background: rgba(233, 238, 243, 0.16);
   border-radius: 4px;

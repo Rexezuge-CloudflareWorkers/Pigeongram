@@ -43,6 +43,7 @@ function message(media: MessageMediaDto): MessageDto {
     reactions: [],
     service: false,
     media,
+    webPage: null,
     poll: null,
     markup: null,
     reply: null,

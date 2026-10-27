@@ -3,6 +3,7 @@ import type { TelegramClient } from '@mtcute/core/client.js';
 import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
 import { windowedStream } from './media-stream';
+import { webPagePhoto } from './web-page';
 
 /**
  * Media downloads.
@@ -42,7 +43,8 @@ export interface MessageMediaOptions {
 }
 
 /**
- * Streams a message's media (photo, video, audio, voice, sticker, document).
+ * Streams a message's media (photo, video, audio, voice, sticker, document),
+ * or the photo of a link preview.
  *
  * `thumb: true` resolves the best thumbnail of the media instead — the poster
  * for a video or the preview of a photo. A `range` produces a partial
@@ -59,26 +61,26 @@ export async function streamMessageMedia(
 ): Promise<MediaDownload> {
   const [message] = await client.getMessages(chatId, [messageId]);
   if (!message) throw new EngineError('Message not found', 404);
-  const media = message.media;
-  if (!isDownloadableMedia(media)) {
+  const file = downloadableMedia(message.media);
+  if (!file) {
     throw new EngineError('Message has no downloadable media', 400);
   }
 
   if (options.thumb === true) {
-    const thumb = pickThumbnail(media.thumbnails);
+    const thumb = pickThumbnail(file.thumbnails);
     if (!thumb) throw new EngineError('Message media has no thumbnail', 404);
     return fullDownload(client, thumb, 'image/jpeg', false);
   }
 
-  const photo = media.type === 'photo';
-  const mime = photo ? 'image/jpeg' : media.mimeType;
+  const photo = file.type === 'photo';
+  const mime = photo ? 'image/jpeg' : file.mimeType;
   // Photos are served whole: their `fileSize` is derived from Telegram's size
   // list, which is good enough for bounds but not for a `content-range`
   // promise. Videos and documents carry exact sizes and support seeking.
   if (photo || !options.range) {
-    return fullDownload(client, media, mime, !photo);
+    return fullDownload(client, file, mime, !photo);
   }
-  return rangedDownload(client, media, mime, options.range, mediaWindowBytes);
+  return rangedDownload(client, file, mime, options.range, mediaWindowBytes);
 }
 
 /**
@@ -194,15 +196,19 @@ function rangedDownload(
 
 /**
  * The message-media union members that are file locations (everything a
- * `/user/file` request can stream).
+ * `/user/file` request can stream). A web page preview's photo is one: the
+ * card fetches it through the same route, while the page itself is never
+ * contacted.
  */
 type DownloadableMedia = Photo | Video | Audio | Voice | Sticker | Document;
 
 /**
- * Narrows `MessageMedia` (which also covers polls, geo points, …) to the
- * members backed by a downloadable file.
+ * Narrows `MessageMedia` (which also covers polls, geo points, …) to the file
+ * behind a `/user/file` request, if there is one. A web page preview resolves
+ * to its photo; every other non-file media resolves to null.
  */
-function isDownloadableMedia(media: MessageMedia): media is DownloadableMedia {
+function downloadableMedia(media: MessageMedia): DownloadableMedia | null {
+  if (media?.type === 'webpage') return webPagePhoto(media);
   switch (media?.type) {
     case 'photo':
     case 'video':
@@ -210,10 +216,10 @@ function isDownloadableMedia(media: MessageMedia): media is DownloadableMedia {
     case 'voice':
     case 'sticker':
     case 'document': {
-      return true;
+      return media;
     }
     default: {
-      return false;
+      return null;
     }
   }
 }

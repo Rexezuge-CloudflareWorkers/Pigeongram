@@ -274,12 +274,57 @@ describe('toMessageDto', () => {
       reactions: [],
       service: false,
       media: null,
+      webPage: null,
       poll: null,
       markup: null,
       reply: null,
       forward: null,
       views: null,
       comments: null,
+    });
+  });
+
+  it('maps a link preview beside the message media', () => {
+    const dto = toMessageDto(
+      message({
+        message: 'https://example.com/article',
+        media: {
+          _: 'messageMediaWebPage',
+          webpage: {
+            _: 'webPage',
+            id: Long.fromNumber(99),
+            url: 'https://example.com/article',
+            displayUrl: 'example.com/article',
+            hash: 0,
+            type: 'article',
+            siteName: 'Example',
+            title: 'An article',
+            description: 'A description',
+            photo: {
+              _: 'photo',
+              id: Long.fromNumber(1234),
+              accessHash: Long.fromNumber(5678),
+              fileReference: new Uint8Array([1, 2, 3]),
+              date: 1_700_000_000,
+              dcId: 2,
+              sizes: [{ _: 'photoSize', type: 'x', w: 320, h: 200, size: 2048 }],
+            },
+          },
+        },
+      }),
+    );
+
+    // A preview has no message file: `media` stays null and the card rides in
+    // `webPage`, so the SPA never mistakes it for a downloadable attachment.
+    expect(dto.media).toBeNull();
+    expect(dto.webPage).toEqual({
+      url: 'https://example.com/article',
+      displayUrl: 'example.com/article',
+      siteName: 'Example',
+      title: 'An article',
+      description: 'A description',
+      displaySize: 'default',
+      photo: { id: '1234', width: 320, height: 200 },
     });
   });
 

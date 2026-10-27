@@ -2,6 +2,7 @@ import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, Re
 import { serviceText } from './service-text';
 import { toMessageMarkupDto } from './markup';
 import { presenceOfPeer } from './presence';
+import { toMessageWebPageDto } from './web-page';
 import type {
   ChatDto,
   DialogDto,
@@ -231,6 +232,7 @@ export function toMessageDto(message: Message): MessageDto {
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
     media: toMessageMediaDto(media),
+    webPage: toMessageWebPageDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     markup: toMessageMarkupDto(message),
     reply: toMessageReplyDto(message),
@@ -303,7 +305,8 @@ function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
     }
     default: {
       // Geo points, contacts, games and other non-file media stay text-only
-      // in the UI; polls ride beside `media` through `toPollDto`.
+      // in the UI; polls ride beside `media` through `toPollDto`, and link
+      // previews through `toMessageWebPageDto`.
       return null;
     }
   }

@@ -24,6 +24,12 @@ export interface ThreadPaging {
   loadingNewer: boolean;
   loadOlder: () => Promise<void>;
   loadNewer: () => Promise<void>;
+  /**
+   * Fast-forwards the loaded window to the chat's newest messages. A backlog
+   * window is replaced rather than walked page by page: the reader asked for
+   * the bottom, not for every message in between.
+   */
+  jumpToLatest: () => Promise<void>;
 }
 
 function failureText(failure: unknown): string {
@@ -55,8 +61,11 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
         // The bridge speaks unix seconds; the DTO carries milliseconds.
         offsetDate: Math.floor(oldest.date / 1000),
       });
+      // A jump may have replaced the whole window meanwhile; its page starts
+      // elsewhere, so prepending this one would leave a hole in between.
+      const oldestId = oldest.id;
       setThread((current) =>
-        current && current.chat.id === chat.id
+        current && current.chat.id === chat.id && current.messages[0]?.id === oldestId
           ? {
               ...current,
               messages: mergeMessages(current.messages, result.messages),
@@ -87,7 +96,8 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
       const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT, ...newerWindow(end) });
       const pageEnd = result.messages.reduce((newest, message) => Math.max(newest, message.id), end);
       setThread((current) => {
-        if (!current || current.chat.id !== chat.id) return current;
+        // A jump may have moved the window to the newest page meanwhile.
+        if (!current || current.chat.id !== chat.id || current.windowEndId !== end) return current;
         // An empty page means the window was already at the end of the chat;
         // jumping the cursor to the newest known id stops the control from
         // asking for the same empty page again.
@@ -103,5 +113,48 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
     }
   }, [threadRef, setThread, setError]);
 
-  return { loadingOlder, loadingNewer, loadOlder, loadNewer };
+  /**
+  Replaces the loaded window with the newest page, so a backlog or an older
+  linked post can be left behind in one read. The messages newer than that page
+  are kept — a send or a live message that raced the request belongs on screen —
+  and the unread divider and focus anchor go with the old window.
+  */
+  const jumpToLatest = useCallback(async (): Promise<void> => {
+    const open = threadRef.current;
+    const chat = open?.chat;
+    if (!open || !chat || threadReachesLatest(open) || loadingNewerRef.current) return;
+    loadingNewerRef.current = true;
+    setLoadingNewer(true);
+    setError(null);
+    try {
+      const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT });
+      setThread((current) => {
+        if (!current || current.chat.id !== chat.id) return current;
+        const newest = result.messages.at(-1)?.id ?? null;
+        if (newest === null) {
+          // An empty answer has nowhere to land. Claim the newest known id so
+          // the control stops offering the same unanswerable jump.
+          return { ...current, windowEndId: current.latestMessageId ?? current.windowEndId };
+        }
+        const beyond = current.messages.filter((message) => message.id > newest);
+        const end = Math.max(newest, beyond.at(-1)?.id ?? 0);
+        return {
+          ...current,
+          messages: mergeMessages(result.messages, beyond),
+          hasMoreOlder: result.messages.length >= WINDOW_LIMIT,
+          windowEndId: end,
+          latestMessageId: Math.max(current.latestMessageId ?? 0, end),
+          unreadDividerId: null,
+          focusMessageId: null,
+        };
+      });
+    } catch (failure) {
+      setError(failureText(failure));
+    } finally {
+      loadingNewerRef.current = false;
+      setLoadingNewer(false);
+    }
+  }, [threadRef, setThread, setError]);
+
+  return { loadingOlder, loadingNewer, loadOlder, loadNewer, jumpToLatest };
 }

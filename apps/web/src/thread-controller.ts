@@ -88,6 +88,12 @@ export interface ThreadController {
   backlog is read forward instead of being skipped or marked read at once.
   */
   loadNewer: () => Promise<void>;
+  /**
+   * Fast-forwards the loaded window to the chat's newest messages, so a jump
+   * from a backlog or an older linked post can land at the bottom. No-op when
+   * the window already reaches the newest message.
+   */
+  jumpToLatest: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
   retryPending: (key: string) => void;

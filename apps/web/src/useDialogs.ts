@@ -56,6 +56,12 @@ export interface DialogsController {
   */
   applyRead: (chatId: PeerId, maxId: number, messages: readonly MessageDto[]) => void;
   /**
+   * Folds a wholesale read into the lists: the badge empties and the watermark
+   * moves to the chat's newest known message. The server's own `read` update
+   * settles the exact count a moment later.
+   */
+  applyReadAll: (chatId: PeerId, maxId: number) => void;
+  /**
   Moves a chat into the archive, or back out of it.
   */
   setArchived: (chatId: PeerId, archived: boolean) => Promise<void>;
@@ -179,6 +185,18 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
   );
 
   /**
+  A read of the whole chat: unlike `applyRead`, there is no loaded window to
+  count the unread messages in, because the backlog this clears was never read.
+  The badge empties at once; the server's `read` update confirms the watermark.
+  */
+  const applyReadAll = useCallback(
+    (chatId: PeerId, maxId: number): void => {
+      commit(applyReadUpdate(mainRef.current, chatId, 0, maxId), applyReadUpdate(archivedRef.current, chatId, 0, maxId));
+    },
+    [commit],
+  );
+
+  /**
   Moves a chat into the archive, or back out of it.
 
   The move is optimistic — the chat leaves the list it was in at once — and a
@@ -228,6 +246,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     clear,
     applyUpdate,
     applyRead,
+    applyReadAll,
     setArchived,
   };
 }

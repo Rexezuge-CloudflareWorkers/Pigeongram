@@ -1,9 +1,12 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatList } from '../../apps/web/src/components/ChatList';
 import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, PresenceDto } from '../../apps/web/src/types';
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
 
 function chat(id: number, overrides: Partial<ChatDto> = {}): ChatDto {
   return {
@@ -80,6 +83,15 @@ function renderEmpty(emptyLabel?: string): void {
   render(<ChatList dialogs={[]} activeChatId={null} loading={false} onSelect={() => {}} emptyLabel={emptyLabel} />);
 }
 
+/**
+The row a chat's title belongs to.
+*/
+function rowIn(name: string): HTMLElement {
+  const row = screen.getByText(name).closest('button');
+  if (!row) throw new Error(`no row for ${name}`);
+  return row as HTMLElement;
+}
+
 function badgeIn(name: string): Element | null {
   const row = screen.getByText(name).closest('button');
   return row?.querySelector('[data-status="online"]') ?? null;
@@ -145,12 +157,6 @@ describe('ChatList presence', () => {
 });
 
 describe('ChatList pin marker', () => {
-  function rowIn(name: string): HTMLElement {
-    const row = screen.getByText(name).closest('button');
-    if (!row) throw new Error(`no row for ${name}`);
-    return row as HTMLElement;
-  }
-
   function pinIn(name: string): Element | null {
     return rowIn(name).querySelector('[data-pin]');
   }
@@ -192,5 +198,94 @@ describe('ChatList pin marker', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 
     expect(pinIn('Bob')?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('ChatList context menu', () => {
+  function renderWithHandlers(dialogs: DialogDto[], handlers: { onSelect?: () => void; onMarkRead?: () => void } = {}): void {
+    render(
+      <ChatList
+        dialogs={dialogs}
+        activeChatId={null}
+        loading={false}
+        onSelect={handlers.onSelect ?? (() => {})}
+        onMarkRead={handlers.onMarkRead}
+      />,
+    );
+  }
+
+  it('opens Chat actions on a right-click and marks the chat read', () => {
+    const onMarkRead = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { unread: 3 })], { onMarkRead });
+
+    fireEvent.contextMenu(rowIn('Bob'), { clientX: 20, clientY: 30 });
+    const menu = screen.getByRole('menu', { name: 'Chat actions' });
+    const item = within(menu).getByRole('menuitem', { name: 'Mark As Read' });
+    expect((item as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(item);
+
+    expect(onMarkRead).toHaveBeenCalledWith(1);
+    expect(screen.queryByRole('menu', { name: 'Chat actions' })).toBeNull();
+  });
+
+  it('offers Mark As Read disabled for a chat with nothing unread', () => {
+    const onMarkRead = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { unread: 0 })], { onMarkRead });
+
+    fireEvent.contextMenu(rowIn('Bob'), { clientX: 20, clientY: 30 });
+    const item = within(screen.getByRole('menu', { name: 'Chat actions' })).getByRole('menuitem', { name: 'Mark As Read' });
+    expect((item as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(item);
+
+    expect(onMarkRead).not.toHaveBeenCalled();
+  });
+
+  it('opens the same menu with a 500 ms touch long press', () => {
+    vi.useFakeTimers();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { unread: 3 })]);
+
+    fireEvent.pointerDown(rowIn('Bob'), { pointerType: 'touch', clientX: 20, clientY: 30 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(screen.getByRole('menu', { name: 'Chat actions' })).toBeDefined();
+  });
+
+  it('cancels a long press that drifts past the slop', () => {
+    vi.useFakeTimers();
+    const onSelect = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { unread: 3 })], { onSelect });
+
+    fireEvent.pointerDown(rowIn('Bob'), { pointerType: 'touch', clientX: 20, clientY: 30 });
+    fireEvent.pointerMove(rowIn('Bob'), { pointerType: 'touch', clientX: 31, clientY: 30 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(screen.queryByRole('menu', { name: 'Chat actions' })).toBeNull();
+
+    // The press turned into a scroll, so the tap still opens the chat.
+    fireEvent.pointerUp(rowIn('Bob'));
+    fireEvent.click(rowIn('Bob'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not open the chat when the finger lifts after a long press', () => {
+    vi.useFakeTimers();
+    const onSelect = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { unread: 3 })], { onSelect });
+
+    fireEvent.pointerDown(rowIn('Bob'), { pointerType: 'touch', clientX: 20, clientY: 30 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.pointerUp(rowIn('Bob'));
+    fireEvent.click(rowIn('Bob'));
+
+    expect(screen.getByRole('menu', { name: 'Chat actions' })).toBeDefined();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ import type { ThreadViewProps } from '../thread-view-props';
 import type { ChatDto, MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
 import { Composer } from './Composer';
+import { JumpToLatest } from './JumpToLatest';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
@@ -44,6 +45,7 @@ export function ThreadView({
   callActive,
   onLoadOlder,
   onLoadNewer,
+  onJumpToLatest,
   onSend,
   onAttach,
   onRetryPending,
@@ -71,6 +73,8 @@ export function ThreadView({
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
+  // The jump control redraws only when this boolean flips, not on every scroll pixel.
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
 
   // Older pages are prepended above the viewport; keep the row the reader was
   // looking at where it was instead of letting the new content push it down.
@@ -196,11 +200,13 @@ export function ThreadView({
         resume: positions.resume(chat.id),
       });
       stickToBottom.current = atLatest && isAtBottom(element);
+      setAwayFromBottom(!isAtBottom(element));
       reportVisible(element);
       return;
     }
     if (!stickToBottom.current || !atLatest) return;
     element.scrollTop = element.scrollHeight;
+    setAwayFromBottom(false);
     // A live message pinned to the bottom is on screen; report it read.
     reportVisible(element);
   }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, atLatest, positions, reportVisible]);
@@ -248,6 +254,17 @@ export function ThreadView({
     if (element) positions.remember(readThreadPosition(element, chat.id));
     onOpenComments(message);
   };
+  /**
+  Catches the reader up: marks the whole chat read and lands at the bottom,
+  replacing a window that is behind the newest message.
+  */
+  const jumpToLatest = async (): Promise<void> => {
+    stickToBottom.current = true;
+    await onJumpToLatest();
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+    setAwayFromBottom(false);
+  };
 
   return (
     <section className="thread">
@@ -262,86 +279,94 @@ export function ThreadView({
         onCall={onCall}
         callActive={callActive}
       />
-      <div
-        className="messages"
-        ref={scrollRef}
-        onScroll={(event) => {
-          // Until this chat's window has landed, the position is the loading
-          // skeleton's own: clearing the previous chat clamps the reused list
-          // through 0, and remembering that would override the unread divider
-          // the open is about to jump to.
-          if (positionedChat.current !== chat.id) return;
-          const element = event.currentTarget;
-          stickToBottom.current = atLatest && isAtBottom(element);
-          positions.remember(readThreadPosition(element, chat.id));
-          reportVisible(element);
-          // Read the next older page before the reader reaches the top of the
-          // loaded window; the controller serializes the requests.
-          if (hasMoreOlder && !loadingOlder && isNearTop(element)) onLoadOlder();
-          // Forward paging mirrors it: an unread backlog or a linked post can
-          // leave the newest messages beyond the window, so approaching its
-          // end reads the next newer page too.
-          if (!atLatest && !loadingNewer && isNearBottom(element)) onLoadNewer();
-        }}
-      >
-        {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (
-          <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
-            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older messages'}
-          </button>
-        ) : null}
-        {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
-        {!loading && messages.length === 0 ? <p className="muted pad">No messages yet — say hello.</p> : null}
-        {groups.map((group, index) => {
-          const anchor = group[0];
-          return (
-            <Fragment key={anchor.id}>
-              {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
-                <div className="day">{formatDay(anchor.date)}</div>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          className="messages"
+          ref={scrollRef}
+          onScroll={(event) => {
+            // Until this chat's window has landed, the position is the loading
+            // skeleton's own: clearing the previous chat clamps the reused list
+            // through 0, and remembering that would override the unread divider
+            // the open is about to jump to.
+            if (positionedChat.current !== chat.id) return;
+            const element = event.currentTarget;
+            stickToBottom.current = atLatest && isAtBottom(element);
+            positions.remember(readThreadPosition(element, chat.id));
+            setAwayFromBottom(!isAtBottom(element));
+            reportVisible(element);
+            // Read the next older page before the reader reaches the top of the
+            // loaded window; the controller serializes the requests.
+            if (hasMoreOlder && !loadingOlder && isNearTop(element)) onLoadOlder();
+            // Forward paging mirrors it: an unread backlog or a linked post can
+            // leave the newest messages beyond the window, so approaching its
+            // end reads the next newer page too.
+            if (!atLatest && !loadingNewer && isNearBottom(element)) onLoadNewer();
+          }}
+        >
+          {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (
+            <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
+              {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older messages'}
+            </button>
+          ) : null}
+          {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
+          {!loading && messages.length === 0 ? <p className="muted pad">No messages yet — say hello.</p> : null}
+          {groups.map((group, index) => {
+            const anchor = group[0];
+            return (
+              <Fragment key={anchor.id}>
+                {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
+                  <div className="day">{formatDay(anchor.date)}</div>
+                ) : null}
+                {group.some((message) => message.id === unreadDividerId) ? (
+                  <div className="unread-divider" data-unread-divider>
+                    Unread Messages
+                  </div>
+                ) : null}
+                <MessageRow
+                  group={group}
+                  chat={chat}
+                  showAvatar={chat.kind === 'group' || chat.kind === 'supergroup'}
+                  original={
+                    anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
+                      ? (messageById.get(anchor.reply.messageId) ?? null)
+                      : null
+                  }
+                  reacting={reactingIds.has(anchor.id)}
+                  onReact={onReact}
+                  voting={votingIds.has(anchor.id)}
+                  onVote={onVote}
+                  pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
+                  onPressButton={onPressButton}
+                  readOutboxMaxId={readOutboxMaxId}
+                  onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+                  onForward={onForward}
+                  link={messageWebLink(chat, anchor.id)}
+                  onJump={jumpToMessage}
+                  onOpenComments={chat.kind === 'channel' ? openComments : undefined}
+                  onOpenMedia={onOpenMedia}
+                />
+              </Fragment>
+            );
+          })}
+          {!atLatest && messages.length > 0 ? (
+            <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
+              {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load newer messages'}
+            </button>
+          ) : null}
+          {pendingForChat.map((entry, index) => (
+            <Fragment key={entry.key}>
+              {index === 0 && (lastGroupDate === null || !isSameDay(lastGroupDate, entry.createdAt)) ? (
+                <div className="day">{formatDay(entry.createdAt)}</div>
               ) : null}
-              {group.some((message) => message.id === unreadDividerId) ? (
-                <div className="unread-divider" data-unread-divider>
-                  Unread Messages
-                </div>
-              ) : null}
-              <MessageRow
-                group={group}
-                chat={chat}
-                showAvatar={chat.kind === 'group' || chat.kind === 'supergroup'}
-                original={
-                  anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
-                    ? (messageById.get(anchor.reply.messageId) ?? null)
-                    : null
-                }
-                reacting={reactingIds.has(anchor.id)}
-                onReact={onReact}
-                voting={votingIds.has(anchor.id)}
-                onVote={onVote}
-                pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
-                onPressButton={onPressButton}
-                readOutboxMaxId={readOutboxMaxId}
-                onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
-                onForward={onForward}
-                link={messageWebLink(chat, anchor.id)}
-                onJump={jumpToMessage}
-                onOpenComments={chat.kind === 'channel' ? openComments : undefined}
-                onOpenMedia={onOpenMedia}
-              />
+              <PendingMessageRow entry={entry} onRetry={onRetryPending} onDiscard={onDiscardPending} />
             </Fragment>
-          );
-        })}
-        {!atLatest && messages.length > 0 ? (
-          <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
-            {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load newer messages'}
-          </button>
-        ) : null}
-        {pendingForChat.map((entry, index) => (
-          <Fragment key={entry.key}>
-            {index === 0 && (lastGroupDate === null || !isSameDay(lastGroupDate, entry.createdAt)) ? (
-              <div className="day">{formatDay(entry.createdAt)}</div>
-            ) : null}
-            <PendingMessageRow entry={entry} onRetry={onRetryPending} onDiscard={onDiscardPending} />
-          </Fragment>
-        ))}
+          ))}
+        </div>
+        <JumpToLatest
+          visible={!loading && messages.length > 0 && (!atLatest || awayFromBottom)}
+          busy={loadingNewer}
+          onJump={() => void jumpToLatest()}
+        />
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       {chat.canSendMessages ? (

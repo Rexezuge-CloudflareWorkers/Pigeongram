@@ -116,6 +116,11 @@ export interface ThreadViewProps {
    * Reads the page after the loaded window, towards the chat's newest message.
    */
   onLoadNewer: () => void;
+  /**
+   * Marks the chat read and reads the newest window, for the down-arrow jump:
+   * a backlog or an older linked post is left behind in one action.
+   */
+  onJumpToLatest: () => Promise<void>;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onRetryPending: (key: string) => void;

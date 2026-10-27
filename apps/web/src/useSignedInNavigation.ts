@@ -30,7 +30,7 @@ interface UseSignedInNavigationOptions {
   The live dialogs: the router looks its chat up before React has committed
   the boot read.
   */
-  dialogs: Pick<DialogsController, 'all' | 'find' | 'applyRead' | 'loadArchive'>;
+  dialogs: Pick<DialogsController, 'all' | 'find' | 'applyRead' | 'applyReadAll' | 'loadArchive'>;
   threads: ThreadController;
   comments: CommentsController;
   /**
@@ -62,10 +62,15 @@ export interface SignedInNavigation {
   leaveArchive: () => void;
   handleTelegramLink: (url: string) => boolean;
   markRead: (chatId: PeerId, maxId: number) => void;
+  /**
+   * Marks the whole chat read, including an unread backlog the thread has not
+   * loaded. A no-op when the chat has nothing unread.
+   */
+  markAllRead: (chatId: PeerId) => void;
 }
 
 export function useSignedInNavigation({ dialogs, threads, comments, onArchiveContext }: UseSignedInNavigationOptions): SignedInNavigation {
-  const { find: findDialog, applyRead, loadArchive } = dialogs;
+  const { find: findDialog, applyRead, applyReadAll, loadArchive } = dialogs;
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
   /**
    * The chats a search found outside the loaded list, as dialogs good enough
@@ -212,6 +217,29 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
     [applyRead, findDialog, threads],
   );
 
+  /**
+  Marks the whole chat read: a chat-list action, or the thread's jump to the
+  bottom. The unread backlog is not necessarily loaded, so the receipt is sent
+  with no max id — the bridge marks everything to Telegram's own newest message
+  — while the lists and the open thread move to the newest id the client knows.
+  */
+  const markAllRead = useCallback(
+    (chatId: PeerId): void => {
+      const open = threads.thread && threads.thread.chat.id === chatId ? threads.thread : null;
+      const dialog = findDialog(chatId);
+      const current = Math.max(open?.readInboxMaxId ?? 0, dialog?.readInboxMaxId ?? 0);
+      const newest = Math.max(open?.latestMessageId ?? 0, open?.messages.at(-1)?.id ?? 0, dialog?.lastMessage?.id ?? 0);
+      if ((dialog?.unread ?? 0) === 0 && newest <= current) return;
+      const boundary = Math.max(newest, current);
+      threads.setReadWatermark(chatId, boundary);
+      applyReadAll(chatId, boundary);
+      void readHistory(chatId).catch(() => {
+        // Read receipts are best-effort; the next open retries.
+      });
+    },
+    [applyReadAll, findDialog, threads],
+  );
+
   return {
     router,
     canOpen,
@@ -225,5 +253,6 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
     leaveArchive,
     handleTelegramLink,
     markRead,
+    markAllRead,
   };
 }

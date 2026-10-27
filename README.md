@@ -10,7 +10,8 @@ affiliated with Telegram Messenger LLP.
 - **`apps/web/`** — the frontend. A Vite + React + Tailwind SPA with a four-state home: a public intro page, the offline
   screen when there is no network, the Telegram QR login
   once Cloudflare Access admits the browser, and the chat list once Telegram is linked (threads, live updates, online
-  presence, pathname deep links). Sends are optimistic: a composed message or file appears in the thread and the chat
+  presence, pathname deep links, and message search across one chat or every chat — a tapped hashtag opens a search for
+  it). Sends are optimistic: a composed message or file appears in the thread and the chat
   list at once, and the composer stays usable while it is on its way. Files reach a chat from the attach button or
   from a paste into the message box; both go through the same review step. It installs as a progressive web app and
   boots offline into its shell (see [`docs/pwa.md`](docs/pwa.md)). It can also make **voice calls**: the key

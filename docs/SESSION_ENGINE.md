@@ -178,6 +178,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                |
 | `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                 |
 | `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                          |
+| `searchGlobal`        | `{query, limit?, offset?: {rate, chatId, messageId}}`                             | `{messages, chats: ChatDto[], next?: {rate, chatId, messageId}}`                                     |
 | `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                                      |
 | `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                             |
 | `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                                        |
@@ -208,9 +209,15 @@ clients make. The peer is resolved server-side, and the method is a write: it is
 context beside it) and, when the first read missed it — a deleted post, or one past the end of the history — reads the
 page that ends at it instead. The fallback the SPA used to spend a second round trip on now happens server-side.
 
+`searchGlobal` searches every chat the account can read, and it answers the chats its page names as well as the
+messages: a hit may belong to a chat the loaded dialog list does not carry, and the row still has to say where it came
+from. Its cursor is Telegram's own `{rate, chatId, messageId}` triple, and the chat id is the only part that crosses
+the bridge — the engine resolves it back to a peer on the next page, so no access hash leaves the DO. The SPA keeps the
+cursor opaque and sends it back verbatim for "load more".
+
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
-`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `getPollResults`, `getComments`, `getBotCommands` and
-`getProfile`; a
+`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `searchGlobal`, `getPollResults`, `getComments`, `getBotCommands`
+and `getProfile`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark, and
 `setArchived` because it moves a chat between the chat list and the archive. Each call reports its own outcome, so

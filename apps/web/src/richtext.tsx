@@ -88,12 +88,13 @@ function clampSpans(text: string, entities: MessageEntityDto[]): Span[] {
 Renders `text` as React nodes: entity spans become formatting elements or
 anchors, everything else stays a plain string (React escapes it).
 
-`onLinkClick` lets the caller route an anchor click: it receives the href and
-returns whether it handled it — a `true` cancels the browser's new-tab
-navigation, a `false` (or no handler) keeps it.
+`handlers` lets the caller route a click: `onLinkClick` receives an anchor's
+href and returns whether it handled it (a `true` cancels the browser's new-tab
+navigation), and `onHashtagClick` receives a hashtag's text so the app can
+search for it.
 */
-export function renderMessageText(text: string, entities: MessageEntityDto[], onLinkClick?: LinkClickHandler): ReactNode[] {
-  return entities.length === 0 ? [text] : renderSpans(text, clampSpans(text, entities), onLinkClick);
+export function renderMessageText(text: string, entities: MessageEntityDto[], handlers?: RichTextHandlers): ReactNode[] {
+  return entities.length === 0 ? [text] : renderSpans(text, clampSpans(text, entities), handlers);
 }
 
 /**
@@ -102,7 +103,22 @@ the anchor's default navigation must not happen.
 */
 export type LinkClickHandler = (href: string) => boolean;
 
-function renderSpans(text: string, spans: Span[], onLinkClick?: LinkClickHandler): ReactNode[] {
+/**
+Receives a hashtag's text (with its leading `#`) when the reader taps it.
+*/
+export type HashtagClickHandler = (hashtag: string) => void;
+
+/**
+What the app routes inside a message body. Both handlers are optional: without
+one the text still renders, and the affordance keeps its default behavior (a
+link) or stays inert (a hashtag).
+*/
+export interface RichTextHandlers {
+  onLinkClick?: LinkClickHandler;
+  onHashtagClick?: HashtagClickHandler;
+}
+
+function renderSpans(text: string, spans: Span[], handlers?: RichTextHandlers): ReactNode[] {
   const nodes: ReactNode[] = [];
   const stack: OpenSpan[] = [];
   let key = 0;
@@ -122,7 +138,7 @@ function renderSpans(text: string, spans: Span[], onLinkClick?: LinkClickHandler
       const tail = text.slice(pos, top.span.end);
       if (tail) top.children.push(tail);
       pos = Math.max(pos, top.span.end);
-      push(wrapSpan(top.span, text.slice(top.span.start, top.span.end), top.children, key, onLinkClick));
+      push(wrapSpan(top.span, text.slice(top.span.start, top.span.end), top.children, key, handlers));
       key += 1;
     }
   };
@@ -139,10 +155,11 @@ function renderSpans(text: string, spans: Span[], onLinkClick?: LinkClickHandler
   return nodes;
 }
 
-function wrapSpan(span: Span, spanText: string, children: ReactNode[], key: number, onLinkClick?: LinkClickHandler): ReactNode {
+function wrapSpan(span: Span, spanText: string, children: ReactNode[], key: number, handlers?: RichTextHandlers): ReactNode {
   const { entity } = span;
   const href = linkHref(entity, spanText);
   if (href) {
+    const onLinkClick = handlers?.onLinkClick;
     const onClick =
       onLinkClick === undefined
         ? undefined
@@ -155,9 +172,19 @@ function wrapSpan(span: Span, spanText: string, children: ReactNode[], key: numb
       children,
     );
   }
+  if (entity.kind === 'hashtag') {
+    // Telegram's own search takes the tag with its `#`; the entity text is
+    // exactly that, so the handler gets it verbatim.
+    const hashtag = spanText.trim();
+    const onHashtagClick = handlers?.onHashtagClick;
+    if (onHashtagClick !== undefined && hashtag.length > 1) {
+      return createElement('button', { type: 'button', key, className: 'hashtag', onClick: () => onHashtagClick(hashtag) }, children);
+    }
+    return createElement('span', { key, className: 'hashtag' }, children);
+  }
   const tag = FORMAT_TAG[entity.kind];
   if (!tag) {
-    // Not styled (hashtag, bot command, custom emoji, unknown kinds…):
+    // Not styled (bot command, cashtag, custom emoji, unknown kinds…):
     // render the plain text so nothing is ever lost.
     return createElement('span', { key }, children);
   }

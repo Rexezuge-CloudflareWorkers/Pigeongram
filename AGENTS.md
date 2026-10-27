@@ -373,7 +373,8 @@ protocol,registry}`) and the mtcute integration
 - **The god-file allowlist holds exactly the two contract modules.** `scripts/god-files.allowlist.json` exempts
   `worker/src/types.ts` and `pages/src/types.ts` from the hard cap: each is one mirrored contract (the SPA copy must stay
   in sync by hand), so splitting one is a mirror-wide refactor rather than a per-file fix. The `rpc-types.ts` split from
-  `types.ts` was the last such split; anything else over 400 is split before it lands.
+  `types.ts`, and the later `search-types.ts` split from `rpc-types.ts`, were the last such splits; anything else over 400
+  is split before it lands.
 - **No speculative exports.** An export exists because a caller outside its module uses it: a helper only its own module
   calls stays private, and an unreferenced symbol is deleted rather than kept for a later screen. `knip` is not the guard
   here, because it false-positives on the mirrored contract modules — their exports are the contract, not dead code.

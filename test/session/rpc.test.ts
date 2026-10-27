@@ -1,7 +1,7 @@
 import { Long, Message, PeersIndex, Poll, User } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { rpc } from './rpc-dispatch';
 
 const peers = PeersIndex.from({
@@ -755,5 +755,98 @@ describe('searchMessages dispatch', () => {
 
     await rpc(client, 'searchMessages', { chatId: 1, query: 'ada', limit: 999 });
     expect(calls).toEqual([{ chatId: 1, query: 'ada', limit: 100 }]);
+  });
+});
+
+describe('searchGlobal dispatch', () => {
+  const globalPeers = PeersIndex.from({
+    users: [rawUser, { ...rawUser, id: 2, firstName: 'Bob', username: 'bob' } as unknown as tl.RawUser],
+    chats: [],
+  });
+
+  function globalMessage(id: number, userId: number): Message {
+    return new Message(
+      {
+        _: 'message',
+        id,
+        peerId: { _: 'peerUser', userId },
+        fromId: { _: 'peerUser', userId },
+        date: 1_700_000_000,
+        message: `m${id}`,
+        out: false,
+      } as unknown as tl.RawMessage,
+      globalPeers,
+    );
+  }
+
+  it('resolves the cursor, carries the page and answers its chats and next cursor', async () => {
+    const calls: unknown[] = [];
+    const found = Object.assign([globalMessage(5, 1), globalMessage(4, 2)], {
+      next: { rate: 2, id: 3, peer: { _: 'inputPeerUser', userId: 2, accessHash: Long.ZERO } },
+    });
+    const resolved = { _: 'inputPeerUser', userId: 2, accessHash: Long.fromNumber(7) } as tl.TypeInputPeer;
+    const resolvePeer = vi.fn(async () => resolved);
+    const client = {
+      resolvePeer,
+      searchGlobal: async (input: unknown) => {
+        calls.push(input);
+        return found;
+      },
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'searchGlobal', {
+      query: '#tag',
+      limit: 20,
+      offset: { rate: 1, chatId: 2, messageId: 9 },
+    })) as {
+      messages: Array<{ id: number }>;
+      chats: Array<{ id: number }>;
+      next: { rate: number; chatId: number; messageId: number };
+    };
+
+    expect(resolvePeer).toHaveBeenCalledWith(2);
+    expect(calls).toEqual([{ query: '#tag', limit: 20, offset: { rate: 1, peer: resolved, id: 9 } }]);
+    expect(result.messages.map((entry) => entry.id)).toEqual([5, 4]);
+    expect(result.chats.map((chat) => chat.id)).toEqual([1, 2]);
+    expect(result.next).toEqual({ rate: 2, chatId: 2, messageId: 3 });
+  });
+
+  it('omits an absent cursor and clamps the limit', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      searchGlobal: async (input: unknown) => {
+        calls.push(input);
+        return Object.assign([], { next: undefined });
+      },
+    } as unknown as TelegramClient;
+
+    const result = (await rpc(client, 'searchGlobal', { query: 'ada', limit: 999 })) as {
+      messages: unknown[];
+      chats: unknown[];
+      next?: unknown;
+    };
+
+    expect(calls).toEqual([{ query: 'ada', limit: 100 }]);
+    expect(result.messages).toEqual([]);
+    expect(result.chats).toEqual([]);
+    expect(result.next).toBeUndefined();
+  });
+
+  it('rejects a partial or malformed cursor', async () => {
+    const client = {
+      resolvePeer: async () => ({ _: 'inputPeerEmpty' }),
+      searchGlobal: async () => Object.assign([], { next: undefined }),
+    } as unknown as TelegramClient;
+
+    for (const offset of [
+      42,
+      { rate: 1 },
+      { rate: -1, chatId: 2, messageId: 3 },
+      { rate: 1, chatId: 0, messageId: 3 },
+      { rate: 1, chatId: 2, messageId: 0 },
+    ]) {
+      await expect(rpc(client, 'searchGlobal', { query: 'ada', offset })).rejects.toMatchObject({ status: 400 });
+    }
+    await expect(rpc(client, 'searchGlobal', { query: '' })).rejects.toThrow('query must be a non-empty string');
   });
 });

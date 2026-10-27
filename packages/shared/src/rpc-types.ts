@@ -23,6 +23,7 @@ export type RpcMethod =
   | 'forwardMessages'
   | 'readHistory'
   | 'searchMessages'
+  | 'searchGlobal'
   | 'sendReaction'
   | 'sendVote'
   | 'pressCallbackButton'
@@ -53,7 +54,15 @@ mutates the account's read watermark. `setArchived` is excluded because it
 moves a chat between the chat list and the archive.
 */
 export type BatchableRpcMethod =
-  'getMe' | 'getDialogs' | 'getHistory' | 'searchMessages' | 'getPollResults' | 'getComments' | 'getBotCommands' | 'getProfile';
+  | 'getMe'
+  | 'getDialogs'
+  | 'getHistory'
+  | 'searchMessages'
+  | 'searchGlobal'
+  | 'getPollResults'
+  | 'getComments'
+  | 'getBotCommands'
+  | 'getProfile';
 
 /**
 One call inside a `batch`.
@@ -166,12 +175,6 @@ export interface ReadHistoryParams {
   passes what the user actually scrolled through.
   */
   maxId?: number;
-}
-
-export interface SearchMessagesParams {
-  chatId: PeerId;
-  query: string;
-  limit?: number;
 }
 
 export interface SendReactionParams {
@@ -313,11 +316,6 @@ export interface SendReactionResult {
    * The reacted message, when Telegram returned it; `null` otherwise.
    */
   message: MessageDto | null;
-}
-
-export interface SearchMessagesResult {
-  messages: MessageDto[];
-  nextOffsetId?: number;
 }
 
 export interface SendVoteResult {

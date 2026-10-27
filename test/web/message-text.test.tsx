@@ -23,4 +23,17 @@ describe('MessageText', () => {
     const { container } = render(<MessageText text="see example.com" entities={[{ offset: 4, length: 11, kind: 'url' }]} />);
     expect(fireEvent.click(container.querySelector('a') as Element)).toBe(true);
   });
+
+  it('routes a hashtag through the provider', () => {
+    const onHashtag = vi.fn();
+    const { container } = render(
+      <TelegramLinkProvider handler={() => false} onHashtag={onHashtag}>
+        <MessageText text="try #cloudflare" entities={[{ offset: 4, length: 11, kind: 'hashtag' }]} />
+      </TelegramLinkProvider>,
+    );
+    const button = container.querySelector('button.hashtag');
+    expect(button?.textContent).toBe('#cloudflare');
+    fireEvent.click(button as Element);
+    expect(onHashtag).toHaveBeenCalledWith('#cloudflare');
+  });
 });

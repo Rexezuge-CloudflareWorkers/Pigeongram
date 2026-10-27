@@ -2,8 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { fetchBootstrap, logout } from '../api';
 import { useCallHost } from '../calls/host';
 import type { PwaState } from '../pwa/usePwa';
+import type { SearchScope } from '../search';
 import { TelegramLinkProvider } from '../telegram-links';
-import type { MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
+import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
 import { useComments } from '../useComments';
 import { useDialogs } from '../useDialogs';
 import { useForwarding } from '../useForwarding';
@@ -12,7 +13,9 @@ import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
 import { ChatList } from './ChatList';
 import { ForwardPicker } from './ForwardPicker';
+import { Icon } from './Icon';
 import { MediaViewer } from './MediaViewer';
+import { SearchOverlay } from './SearchOverlay';
 import { ThreadPane } from './ThreadPane';
 import { Toasts } from './Toasts';
 import { UserMenu } from './UserMenu';
@@ -60,6 +63,11 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
   is the chat's, so reading one of its chats does not leave it behind.
   */
   const [archiveContext, setArchiveContext] = useState(false);
+  /**
+  What the search overlay was opened for: the scope it starts in and, for a
+  hashtag, the query it carries. Null while the overlay is closed.
+  */
+  const [search, setSearch] = useState<{ scope: SearchScope; query?: string } | null>(null);
 
   /**
   Shows a short informational toast (a bot's callback answer, a clipboard
@@ -155,6 +163,20 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
   // sidebar back to the chat list, where the chat now lives.
   const showArchive = archiveContext && (selected === null || selectedArchived);
 
+  /**
+  The search overlay's entry points: the sidebar searches every chat, the
+  thread header searches the open one, and a tapped hashtag searches every chat
+  for the tag. A result opens at its message; the navigation hook registers a
+  chat outside the list as transient so the route can find it.
+  */
+  const openGlobalSearch = useCallback((): void => setSearch({ scope: { kind: 'all' } }), []);
+  const openThreadSearch = useCallback((): void => {
+    if (selected !== null) setSearch({ scope: { kind: 'chat', chatId: selected.id } });
+  }, [selected]);
+  const handleHashtag = useCallback((hashtag: string): void => {
+    setSearch({ scope: { kind: 'all' }, query: hashtag });
+  }, []);
+
   const {
     router: { boot: bootRouter, route: currentRoute, reset: resetRouter },
     router,
@@ -163,12 +185,21 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     openViewer,
     closeViewer,
     openChat,
+    openSearchResult,
     openForwardOrigin,
     openArchive,
     leaveArchive,
     handleTelegramLink,
     markRead,
   } = useSignedInNavigation({ dialogs, threads, comments, onArchiveContext: setArchiveContext });
+
+  const handleSearchResult = useCallback(
+    (message: MessageDto, chat: ChatDto): void => {
+      setSearch(null);
+      openSearchResult(chat, message);
+    },
+    [openSearchResult],
+  );
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest selection. A layout effect runs with the commit, so
@@ -259,6 +290,14 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
       <aside className="sidebar">
         <header className="me">
           <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={handleLogout} onOpenArchive={openArchive} />
+          <button
+            type="button"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={openGlobalSearch}
+            aria-label="Search messages"
+          >
+            <Icon name="search" />
+          </button>
         </header>
         {showArchive ? <ArchiveBar count={archivedDialogs.length} onBack={leaveArchive} /> : null}
         <ChatList
@@ -270,18 +309,20 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           emptyLabel={showArchive ? 'No archived chats.' : undefined}
         />
       </aside>
-      <TelegramLinkProvider handler={handleTelegramLink} onOpenForward={openForwardOrigin}>
+      <TelegramLinkProvider handler={handleTelegramLink} onHashtag={handleHashtag} onOpenForward={openForwardOrigin}>
         <ThreadPane
           threads={threads}
           comments={comments}
           selected={selected}
           presence={selectedPresence}
           archived={selectedArchived}
+          canArchive={selected !== null && findDialog(selected.id) !== undefined}
           onSetArchived={async (archived) => {
             if (selected) await setArchived(selected.id, archived);
           }}
           onBack={router.back}
           calls={calls}
+          onSearch={openThreadSearch}
           onForward={forwarding.open}
           onOpenMedia={openViewer}
           onReadThrough={markRead}
@@ -289,12 +330,21 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
             if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
           }}
         />
+        {viewer.viewer ? (
+          <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
+        ) : null}
       </TelegramLinkProvider>
-      {viewer.viewer ? (
-        <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
-      ) : null}
       {forwarding.target ? (
         <ForwardPicker messages={forwarding.target} dialogs={allDialogs} onForward={forwarding.forward} onClose={forwarding.close} />
+      ) : null}
+      {search ? (
+        <SearchOverlay
+          chat={selected}
+          initialScope={search.scope}
+          initialQuery={search.query}
+          onOpenResult={handleSearchResult}
+          onClose={() => setSearch(null)}
+        />
       ) : null}
       {calls.overlay}
       <Toasts error={error} notice={notice} />

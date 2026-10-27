@@ -38,6 +38,8 @@ export function ThreadView({
   readOutboxMaxId,
   onBack,
   onSetArchived,
+  canArchive,
+  onSearch,
   onCall,
   callActive,
   onLoadOlder,
@@ -255,6 +257,8 @@ export function ThreadView({
         archived={archived}
         onBack={onBack}
         onSetArchived={onSetArchived}
+        canArchive={canArchive}
+        onSearch={onSearch}
         onCall={onCall}
         callActive={callActive}
       />

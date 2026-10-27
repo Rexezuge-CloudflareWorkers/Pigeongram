@@ -418,6 +418,14 @@ function installSignedInFetch(
 }
 
 /**
+The first recorded call of one bridge method, for assertions about the request
+rather than its answer.
+*/
+function bridgeCall(calls: FetchCall[], method: string): FetchCall | undefined {
+  return calls.find((call) => call.body?.method === method);
+}
+
+/**
 The rendered thread, so assertions cannot match chat-list previews.
 */
 function threadSection(): HTMLElement {
@@ -1685,6 +1693,87 @@ describe('App', () => {
       // The app takes the tab over: the fallback timer is cancelled with it.
       globalThis.dispatchEvent(new Event('blur'));
       expect(document.querySelector('iframe')).toBeNull();
+    });
+  });
+
+  describe('search', () => {
+    /**
+    Opens the overlay from the sidebar and types a query.
+    */
+    async function searchEverywhere(query: string): Promise<HTMLElement> {
+      fireEvent.click(await screen.findByRole('button', { name: 'Search messages' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
+      fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Search messages' }), { target: { value: query } });
+      return dialog;
+    }
+
+    it('opens a global result from a chat the list does not carry', async () => {
+      const hit = message({ id: 30, chatId: 3, senderId: 3, senderName: 'Carol', text: 'a global hit' });
+      const calls = installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method === 'searchGlobal') return json({ messages: [hit], chats: [carol] });
+        },
+        history: (chatId) => json({ messages: chatId === 3 ? [hit] : history }),
+      });
+
+      render(<App />);
+      const dialog = await searchEverywhere('global');
+
+      fireEvent.click(await within(dialog).findByRole('button', { name: /Carol/ }));
+
+      expect(await within(threadSection()).findByText('a global hit')).toBeDefined();
+      expect(location.pathname).toBe('/chat/3/post/30');
+      expect(screen.queryByRole('dialog', { name: 'Search messages' })).toBeNull();
+      // The window was read around the hit, not from the chat's newest page.
+      const jump = calls.find((call) => {
+        const params = call.body?.params as { chatId?: number; anchorId?: number } | undefined;
+        return call.body?.method === 'getHistory' && params?.chatId === 3 && params.anchorId === 30;
+      });
+      expect(jump).toBeDefined();
+      // A transient chat has no folder in the list, so it cannot be archived.
+      fireEvent.click(screen.getByRole('button', { name: 'Menu for Carol' }));
+      expect(within(screen.getByRole('menu', { name: 'Menu for Carol' })).queryByRole('menuitem', { name: 'Archive Chat' })).toBeNull();
+    });
+
+    it('opens a search for a hashtag tapped in a message', async () => {
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'try #cloudflare',
+        entities: [{ offset: 4, length: 11, kind: 'hashtag' }],
+      });
+      const calls = installSignedInFetch({
+        history: () => json({ messages: [source] }),
+        rpc: (call) => (call.body?.method === 'searchGlobal' ? json({ messages: [], chats: [] }) : undefined),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await within(threadSection()).findByRole('button', { name: '#cloudflare' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
+      expect((within(dialog).getByRole('searchbox', { name: 'Search messages' }) as HTMLInputElement).value).toBe('#cloudflare');
+      expect(within(dialog).getByText('Messages in all chats')).toBeDefined();
+      await waitFor(() => expect(bridgeCall(calls, 'searchGlobal')?.body?.params).toMatchObject({ query: '#cloudflare' }));
+    });
+
+    it('searches the open chat from the thread header', async () => {
+      const calls = installSignedInFetch({
+        rpc: (call) => (call.body?.method === 'searchMessages' ? json({ messages: [history[1]] }) : undefined),
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Search in Bob' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
+      expect(within(dialog).getByText('Messages in Bob')).toBeDefined();
+      fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Search messages' }), { target: { value: 'see' } });
+
+      expect(await within(dialog).findByRole('button', { name: /see you/ })).toBeDefined();
+      await waitFor(() => expect(bridgeCall(calls, 'searchMessages')?.body?.params).toMatchObject({ chatId: 2, query: 'see' }));
     });
   });
 

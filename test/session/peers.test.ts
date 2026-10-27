@@ -41,6 +41,13 @@ describe('peerIdsIn', () => {
       expect(peerIdsIn(params)).toEqual([]);
     }
   });
+
+  it('reads the cursor chat of a global search', () => {
+    expect(peerIdsIn({ query: '#tag', offset: { rate: 1, chatId: -1_000_000_000_002, messageId: 7 } })).toEqual([-1_000_000_000_002]);
+    // A malformed cursor names no peer; the method's own validation rejects it.
+    expect(peerIdsIn({ offset: { chatId: 'x' } })).toEqual([]);
+    expect(peerIdsIn({ offset: null })).toEqual([]);
+  });
 });
 
 describe('isPeerRejected', () => {

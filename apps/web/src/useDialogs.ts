@@ -28,11 +28,6 @@ export interface DialogsController {
   readonly loading: boolean;
   readonly archiveLoading: boolean;
   /**
-  The same list, readable before React has committed it: the router applies a
-  route right after the boot read resolves, and it must find the chat then.
-  */
-  readonly ref: { current: DialogDto[] };
-  /**
   The chat's dialog, in either list.
   */
   find: (chatId: PeerId) => DialogDto | undefined;
@@ -226,7 +221,6 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     archived,
     loading,
     archiveLoading,
-    ref,
     find,
     apply,
     load,

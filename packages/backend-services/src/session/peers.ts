@@ -32,13 +32,15 @@ import { rpcErrorText } from './rpc-errors';
 const PEER_ERRORS = new Set(['PEER_ID_INVALID', 'CHANNEL_INVALID', 'USER_ID_INVALID']);
 
 /**
- * The peer ids a bridge call addresses: the source chat and, for a forward,
- * the destination. Every other parameter is validated where it is used.
+ * The peer ids a bridge call addresses: the source chat, a forward's
+ * destination, and a global search's cursor chat. Every other parameter is
+ * validated where it is used.
  */
 export function peerIdsIn(params: unknown): number[] {
   if (typeof params !== 'object' || params === null) return [];
   const record = params as Record<string, unknown>;
-  return [record.chatId, record.toChatId].filter(
+  const offset = typeof record.offset === 'object' && record.offset !== null ? (record.offset as Record<string, unknown>) : null;
+  return [record.chatId, record.toChatId, offset?.chatId].filter(
     (value): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value !== 0,
   );
 }

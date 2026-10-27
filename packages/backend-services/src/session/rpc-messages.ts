@@ -15,7 +15,6 @@ import {
   requireMessageId,
   requireMessageIds,
   requirePeerId,
-  requireQuery,
   requireText,
 } from './params';
 import type { PartialMethodTable } from './rpc-methods';
@@ -91,23 +90,6 @@ export const messagesRpcMethods = {
         await context.client.readHistory(chatId, { maxId });
       }
       return {};
-    },
-  },
-
-  searchMessages: {
-    readOnly: true,
-    run: async (context, params) => {
-      const chatId = requirePeerId(params.chatId);
-      const query = requireQuery(params.query);
-      const limit = clampInt(params.limit, 1, 100, 50);
-      const offset = optionalInt(params.offsetId);
-      const found = await context.client.searchMessages({
-        chatId,
-        query,
-        limit,
-        ...(offset !== undefined && { offset }),
-      });
-      return { messages: found.map(toMessageDto), nextOffsetId: found.next };
     },
   },
 

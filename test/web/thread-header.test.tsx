@@ -58,7 +58,9 @@ function renderHeader(
   peer: ChatDto = chat,
   options: {
     archived?: boolean;
+    canArchive?: boolean;
     onSetArchived?: (archived: boolean) => Promise<void>;
+    onSearch?: () => void;
     onCall?: () => void;
     callActive?: boolean;
   } = {},
@@ -70,6 +72,8 @@ function renderHeader(
       archived={options.archived ?? false}
       onBack={() => {}}
       onSetArchived={options.onSetArchived ?? (async () => {})}
+      canArchive={options.canArchive ?? true}
+      onSearch={options.onSearch ?? (() => {})}
       onCall={options.onCall ?? (() => {})}
       callActive={options.callActive ?? false}
     />,
@@ -184,6 +188,8 @@ describe('ThreadHeader', () => {
         archived={false}
         onBack={() => {}}
         onSetArchived={async () => {}}
+        canArchive
+        onSearch={() => {}}
         onCall={() => {}}
         callActive={false}
       />,
@@ -202,6 +208,8 @@ describe('ThreadHeader', () => {
         archived={false}
         onBack={() => {}}
         onSetArchived={async () => {}}
+        canArchive
+        onSearch={() => {}}
         onCall={() => {}}
         callActive={false}
       />,
@@ -282,5 +290,24 @@ describe('ThreadHeader', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Unarchive' }));
 
     await waitFor(() => expect(onSetArchived).toHaveBeenCalledWith(false));
+  });
+
+  it('opens the chat search from the header', () => {
+    installProfileFetch();
+    const onSearch = vi.fn();
+    renderHeader(chat, { onSearch });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search in Bob' }));
+
+    expect(onSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the archive move for a chat that is not in the list', () => {
+    installProfileFetch();
+    renderHeader(chat, { canArchive: false });
+
+    const menu = openMenu();
+    expect(within(menu).queryByRole('menuitem', { name: 'Archive Chat' })).toBeNull();
+    expect(within(menu).queryByRole('separator')).toBeNull();
   });
 });

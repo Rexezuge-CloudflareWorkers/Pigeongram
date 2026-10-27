@@ -22,6 +22,15 @@ export interface ThreadViewProps {
    * back, a chat in the list can be put away.
    */
   archived: boolean;
+  /**
+   * Whether the chat is in the loaded list, so the archive move is meaningful.
+   * A chat reached through search is transient: it has no folder to move.
+   */
+  canArchive: boolean;
+  /**
+   * Opens the search overlay scoped to the open chat.
+   */
+  onSearch: () => void;
   messages: MessageDto[];
   loading: boolean;
   loadingOlder: boolean;

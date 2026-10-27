@@ -6,6 +6,7 @@ import { parseBatchCalls } from './params';
 import { dialogsRpcMethods } from './rpc-dialogs';
 import { dispatchBatch } from './rpc-batch';
 import { messagesRpcMethods } from './rpc-messages';
+import { searchRpcMethods } from './rpc-search';
 import type { UnreadAlbumLedger } from './unread-albums';
 
 /**
@@ -48,6 +49,7 @@ export const RPC_METHODS = {
   ...callRpcMethods,
   ...dialogsRpcMethods,
   ...messagesRpcMethods,
+  ...searchRpcMethods,
 
   batch: {
     // A batch is a read of many reads; the batch parser refuses every write

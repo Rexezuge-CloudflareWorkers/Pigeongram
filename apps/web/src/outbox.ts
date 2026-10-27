@@ -164,6 +164,7 @@ function pendingReply(entry: PendingMessage): MessageReplyDto | null {
     messageId: entry.replyTo,
     chatId: null,
     senderName: null,
+    outgoing: false,
     date: null,
     text: entry.replyPreview?.text ?? '',
     entities: entry.replyPreview?.entities ?? [],

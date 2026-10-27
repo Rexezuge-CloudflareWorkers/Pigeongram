@@ -136,8 +136,9 @@ export function toMessageReactionDtos(reactions: readonly ReactionCount[]): Mess
 Maps mtcute's reply header onto the wire shape.
 
 A same-chat header carries only the replied-to message id, so the SPA
-resolves sender and snippet from the thread it already has; cross-chat
-headers carry sender/date/media instead.
+resolves sender and snippet from the thread it already has (and the engine
+fills them in for originals outside the page it read); cross-chat headers
+carry sender/date/media instead.
 */
 function toMessageReplyDto(message: Message): MessageReplyDto | null {
   const reply = message.replyToMessage;
@@ -151,6 +152,8 @@ function toMessageReplyDto(message: Message): MessageReplyDto | null {
     messageId: reply.id,
     chatId: reply.chat?.id ?? null,
     senderName: sender?.displayName ?? null,
+    // Only a resolved original can tell; the header itself never says.
+    outgoing: false,
     date: reply.date?.getTime() ?? null,
     text: reply.quoteText,
     entities: reply.quoteEntities.map(toMessageEntityDto),

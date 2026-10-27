@@ -294,7 +294,8 @@ export interface MessageMarkupDto {
 The message a message replies to, mapped from Telegram's reply header.
 
 Same-chat headers carry only the message id, so the SPA resolves the sender
-and snippet from the loaded thread; cross-chat headers carry the sender, date
+and snippet from the loaded thread; the engine fills them in when the original
+sits outside the page it just read. Cross-chat headers carry the sender, date
 and (sometimes) a media descriptor, but their text usually only exists when
 the reply quotes a fragment explicitly.
 */
@@ -312,16 +313,23 @@ export interface MessageReplyDto {
   */
   chatId: PeerId | null;
   /**
-  The replied-to message's sender name, when the header names one; null for
-  same-chat replies.
+  The replied-to message's sender name, when known: named by a cross-chat
+  header, or read from an original outside the loaded page.
   */
   senderName: string | null;
   /**
-  Unix milliseconds of the replied-to message, when the header carries it.
+  Whether the replied-to message was sent by this account. The reply header
+  itself never says; a resolved original fills the real value, so an own quote
+  can say "You".
+  */
+  outgoing: boolean;
+  /**
+  Unix milliseconds of the replied-to message, when known.
   */
   date: number | null;
   /**
-  Explicit quote text, or the text the header carried; empty when neither is present.
+  Explicit quote text, the text the header carried, or the resolved original's
+  text; empty when none is present.
   */
   text: string;
   /**
@@ -329,7 +337,8 @@ export interface MessageReplyDto {
   */
   entities: MessageEntityDto[];
   /**
-  Kind of the replied-to message's media, when the header embeds it (cross-chat replies).
+  Kind of the replied-to message's media, when known: embedded by a cross-chat
+  header, or read from an original outside the loaded page.
   */
   mediaKind: MessageMediaKind | null;
   /**

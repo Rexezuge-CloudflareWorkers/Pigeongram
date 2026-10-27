@@ -54,6 +54,7 @@ the one connection at the same time. **The lever is therefore: fewer events, and
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `batch` (`POST /user/rpc`)                              | Several read-only methods in one request, run concurrently over the one connection                                                                                                   |
 | `getHistory`'s `anchorId`                               | The jump-window fallback happens server-side, instead of costing a second round trip                                                                                                 |
+| Reply previews (`reply-previews.ts`)                    | An original the page names but does not contain is read inside the same event, so a quote is complete on first paint instead of waiting for a second request                         |
 | `getDialogs`                                            | The chat list and the contact presences are two independent Telegram reads, run together                                                                                             |
 | The replay runs outside the input gate                  | `startLive` connects, then hands the `getDifference` catch-up to `waitUntil` — it is the longest event in the system, and holding the gate for it queued every bridge call behind it |
 | The storage warms up before the first event             | `blockConcurrencyWhile` runs the migrations once, while the object is still empty                                                                                                    |
@@ -169,33 +170,33 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 
 ### RPC methods
 
-| Method                | Params                                                                            | Returns                                                                                              |
-| --------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `getMe`               | —                                                                                 | `{me}`                                                                                               |
-| `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                              |
-| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed)          |
-| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                          |
-| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                |
-| `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                 |
-| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                          |
-| `searchGlobal`        | `{query, limit?, offset?: {rate, chatId, messageId}}`                             | `{messages, chats: ChatDto[], next?: {rate, chatId, messageId}}`                                     |
-| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                                      |
-| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                             |
-| `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                                        |
-| `getPollResults`      | `{chatId, messageId}`                                                             | `{poll}`                                                                                             |
-| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, commands, nextOffsetId?, nextOffsetDate?}` |
-| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                          |
-| `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                        |
-| `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                 |
-| `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                              |
-| `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                                   |
-| `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                                    |
-| `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                                 |
-| `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                                    |
-| `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                                    |
-| `discardCall`         | `{callId, reason: 'missed'\|'disconnect'\|'hangup'\|'busy', duration, video?}`    | `{}`                                                                                                 |
-| `rateCall`            | `{callId, rating: 1..5, comment?}`                                                | `{}`                                                                                                 |
-| `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                                 |
+| Method                | Params                                                                            | Returns                                                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getMe`               | —                                                                                 | `{me}`                                                                                                                                       |
+| `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                                                                      |
+| `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed; reply originals outside the window are resolved) |
+| `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                                                                  |
+| `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                                                        |
+| `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                                                         |
+| `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                                                                  |
+| `searchGlobal`        | `{query, limit?, offset?: {rate, chatId, messageId}}`                             | `{messages, chats: ChatDto[], next?: {rate, chatId, messageId}}`                                                                             |
+| `sendReaction`        | `{chatId, messageId, emoji?\|customEmojiId?}`                                     | `{message: MessageDto \| null}`                                                                                                              |
+| `sendVote`            | `{chatId, messageId, options: number[] \| null}`                                  | `{poll}`                                                                                                                                     |
+| `pressCallbackButton` | `{chatId, messageId, data}`                                                       | `{text: string \| null, alert: boolean, url: string \| null}`                                                                                |
+| `getPollResults`      | `{chatId, messageId}`                                                             | `{poll}`                                                                                                                                     |
+| `getComments`         | `{chatId, messageId, limit?: 1..100, offsetId?, offsetDate?}`                     | `{comments, count, discussionChatId, discussionMessageId, commands, nextOffsetId?, nextOffsetDate?}`                                         |
+| `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                                                                  |
+| `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                                                                |
+| `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                                                         |
+| `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
+| `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                                                                           |
+| `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                                                                            |
+| `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                                                                         |
+| `acceptCall`          | `{callId, gB: string (base64)}`                                                   | `{call: CallDto}`                                                                                                                            |
+| `confirmCall`         | `{callId, gA: string (base64), keyFingerprint: string}`                           | `{call: CallDto}`                                                                                                                            |
+| `discardCall`         | `{callId, reason: 'missed'\|'disconnect'\|'hangup'\|'busy', duration, video?}`    | `{}`                                                                                                                                         |
+| `rateCall`            | `{callId, rating: 1..5, comment?}`                                                | `{}`                                                                                                                                         |
+| `batch`               | `{calls: [{method, params?}]}` (1–8 calls)                                        | `{results: [{ok, result?, error?}]}`                                                                                                         |
 
 `getDialogs`'s `archived` flag reads the archive instead of the chat list: `true` returns the chats in Telegram's
 peer folder `1`, `false` (the default) the ones in folder `0`. The two are separate reads on purpose — one limit over
@@ -313,9 +314,14 @@ from the loaded range's newest message with `addOffset: -50`. `offsetId` alone i
 but not its date, so the omitted date reads as 0).
 
 A message that replies to another carries `reply`: where the original lives (`origin`), its `messageId`/`chatId`
-when known, `senderName`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag. Same-chat
-headers carry only the message id, so the SPA resolves the quote's sender and snippet from the thread it already
-has; `sendMessage` takes `replyTo` (a message id in the same chat) to send one.
+when known, `senderName`/`outgoing`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag.
+Same-chat headers carry only the message id, so the SPA resolves the quote's sender and snippet from the thread it
+already has. When the original sits outside the page, the engine reads it during that same read
+(`session/reply-previews.ts`: one `getMessages` per chat for the ids the page names but does not contain) and fills
+`senderName`/`outgoing`/`date`/`text`/`entities`/`mediaKind`, so the quote is complete on the first paint. A loaded
+original still wins over that snapshot, so an edit is never hidden by a stale preview; a reply that arrives live for
+an out-of-page message keeps the "Quoted Content Unavailable" body until its thread is read again. `sendMessage` takes
+`replyTo` (a message id in the same chat) to send one.
 
 A forwarded message carries `forward`: the origin's `senderId`/`senderName`/`senderUsername` (a hidden forward's
 name instead of an id), the original's `date`, the original chat/message for saved-messages forwards and channel posts
@@ -332,7 +338,9 @@ post is mirrored there as a root message and every comment replies into its thre
 
 `getComments` resolves the group with `messages.getDiscussionMessage` and reads one window of the thread with
 `messages.getReplies` (oldest first, newest window unless a cursor is passed); the root message is dropped and
-the cursor is the oldest comment of the window. `discussionChatId`/`discussionMessageId` are null while the
+the cursor is the oldest comment of the window. Replies to comments resolve the same way as in a chat window, except
+that the thread root (the target of every top-level comment) is skipped: its quote is never rendered, so it costs no
+read. `discussionChatId`/`discussionMessageId` are null while the
 thread does not exist yet, and the pre-thread `FLOOD_WAIT` Telegram answers the lookup with is read as "no
 thread yet". The window and the group's slash-command menu are read concurrently over the one connection, so
 the comments composer can offer the group's commands without a second bridge call; `commands` is empty while

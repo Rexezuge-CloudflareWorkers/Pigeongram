@@ -17,6 +17,7 @@ import {
   requirePeerId,
   requireText,
 } from './params';
+import { resolveReplyPreviews } from './reply-previews';
 import type { PartialMethodTable } from './rpc-methods';
 
 /**
@@ -41,8 +42,11 @@ export const messagesRpcMethods = {
       const anchorId = optionalInt(params.anchorId);
       const page = await readWindow(context.client, chatId, { limit, offsetId, offsetDate, addOffset, anchorId });
       const messages = await completeOldestAlbum(context.client, chatId, page);
+      // Quotes complete on the first paint: the originals a page names but does
+      // not contain are read here, inside the same event.
+      const withPreviews = await resolveReplyPreviews(context.client, messages.map(toMessageDto));
       // mtcute answers newest-first; the bridge promises oldest-first.
-      return { messages: messages.map(toMessageDto).toReversed() };
+      return { messages: withPreviews.toReversed() };
     },
   },
 
@@ -167,7 +171,14 @@ export const messagesRpcMethods = {
         ...(offsetDate !== undefined && { offsetDate }),
       });
       return {
-        comments: page.comments.map(toMessageDto),
+        // Top-level comments reply to the thread root, whose quote is hidden;
+        // passing it as ignored keeps the resolution from reading it on every
+        // page of an ordinary thread.
+        comments: await resolveReplyPreviews(
+          context.client,
+          page.comments.map(toMessageDto),
+          discussion === null ? undefined : new Set([discussion.rootId]),
+        ),
         count: page.count,
         discussionChatId: discussion?.chatId ?? null,
         discussionMessageId: discussion?.rootId ?? null,

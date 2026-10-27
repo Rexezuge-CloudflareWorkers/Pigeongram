@@ -118,6 +118,7 @@ interface FakeClient {
   sent: Array<{ peer: tl.TypeInputPeer; text: string; replyTo?: number }>;
   commented: Array<{ postId: number; text: string }>;
   fullChats: Array<number | tl.TypeInputPeer>;
+  previews: Array<{ chatId: number; ids: number[] }>;
 }
 
 function fakeClient(options: {
@@ -125,11 +126,13 @@ function fakeClient(options: {
   discussionError?: Error;
   page?: tl.messages.TypeMessages;
   post?: Message | null;
+  originals?: ReadonlyMap<number, Message>;
 }): FakeClient {
   const calls: Array<{ _: string } & Record<string, unknown>> = [];
   const sent: FakeClient['sent'] = [];
   const commented: FakeClient['commented'] = [];
   const fullChats: FakeClient['fullChats'] = [];
+  const previews: FakeClient['previews'] = [];
   const client = {
     resolvePeer: async () => ({ _: 'inputPeerChannel', channelId: 20, accessHash: Long.fromNumber(20_000) }),
     call: async (request: { _: string } & Record<string, unknown>) => {
@@ -145,7 +148,11 @@ function fakeClient(options: {
       fullChats.push(peer);
       return { full: { botInfo: [{ commands: GROUP_COMMANDS }] } };
     },
-    getMessages: async () => [options.post === undefined ? chatPost({ replies: commentsHeader }) : options.post],
+    getMessages: async (chatId: number, ids: number[]) => {
+      previews.push({ chatId, ids });
+      if (!options.originals) return [options.post === undefined ? chatPost({ replies: commentsHeader }) : options.post];
+      return ids.map((id) => options.originals?.get(id) ?? null);
+    },
     commentText: async (post: Message, text: string) => {
       commented.push({ postId: post.id, text });
       return chatPost({ id: 99 });
@@ -155,7 +162,7 @@ function fakeClient(options: {
       return chatPost({ id: 98 });
     },
   } as unknown as TelegramClient;
-  return { client, calls, sent, commented, fullChats };
+  return { client, calls, sent, commented, fullChats, previews };
 }
 
 describe('normalizeReplies', () => {
@@ -332,6 +339,33 @@ describe('dispatchRpc comments methods', () => {
     expect(result.commands).toEqual(GROUP_COMMANDS);
     expect(result.nextOffsetId).toBe(11);
     expect(result.nextOffsetDate).toBe(1_700_000_000);
+  });
+
+  it('resolves a reply to a comment outside the page', async () => {
+    const original = new Message(rawMessage(5), PeersIndex.from({ users: [rawUser], chats: [rawChannel, rawGroup] }));
+    const { client, previews } = fakeClient({
+      page: repliesContainer([rawMessage(12, 1_700_000_000, { replyTo: { _: 'messageReplyHeader', replyToMsgId: 5 } })], 50),
+      originals: new Map([[5, original]]),
+    });
+    const result = (await rpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 })) as GetCommentsResult;
+
+    expect(previews).toEqual([{ chatId: GROUP_ID, ids: [5] }]);
+    expect(result.comments[0].reply).toMatchObject({ senderName: 'Ada Lovelace', text: 'comment 5' });
+  });
+
+  it('does not read the thread root every top-level comment replies to', async () => {
+    const { client, previews } = fakeClient({
+      page: repliesContainer(
+        [
+          rawMessage(11, 1_700_000_000, { replyTo: { _: 'messageReplyHeader', replyToMsgId: 10 } }),
+          rawMessage(12, 1_700_000_000, { replyTo: { _: 'messageReplyHeader', replyToMsgId: 10 } }),
+        ],
+        50,
+      ),
+    });
+    await rpc(client, 'getComments', { chatId: CHANNEL_ID, messageId: 7 });
+
+    expect(previews).toEqual([]);
   });
 
   it('answers getComments with null coordinates while no thread exists', async () => {

@@ -63,20 +63,46 @@ function message(id: number, groupedId?: number): Message {
 
 /**
 A fake client whose `getHistory` answers from a script of pages, so the
-oldest-edge completion can be observed call by call.
+oldest-edge completion can be observed call by call. `getMessages` answers the
+reply-preview reads from `originals`.
 */
-function fakeHistoryClient(pages: readonly (readonly Message[])[]): {
+function fakeHistoryClient(
+  pages: readonly (readonly Message[])[],
+  originals: readonly Message[] = [],
+): {
   client: TelegramClient;
   calls: Array<{ chatId: number; params: unknown }>;
+  previews: Array<{ chatId: number; ids: number[] }>;
 } {
   const calls: Array<{ chatId: number; params: unknown }> = [];
+  const previews: Array<{ chatId: number; ids: number[] }> = [];
   const client = {
     getHistory: async (chatId: number, params?: unknown) => {
       calls.push({ chatId, params });
       return pages[calls.length - 1] ?? [];
     },
+    getMessages: async (chatId: number, ids: number[]) => {
+      previews.push({ chatId, ids });
+      return ids.map((id) => originals.find((original) => original.id === id) ?? null);
+    },
   } as unknown as TelegramClient;
-  return { client, calls };
+  return { client, calls, previews };
+}
+
+function replyMessage(id: number, replyTo: number): Message {
+  return new Message(
+    {
+      _: 'message',
+      id,
+      peerId: { _: 'peerUser', userId: 1 },
+      fromId: { _: 'peerUser', userId: 1 },
+      date: 1_700_000_000,
+      message: `m${id}`,
+      out: false,
+      replyTo: { _: 'messageReplyHeader', replyToMsgId: replyTo },
+    } as unknown as tl.RawMessage,
+    peers,
+  );
 }
 
 /**
@@ -269,6 +295,20 @@ describe('getHistory dispatch', () => {
     const result = (await rpc(client, 'getHistory', { chatId: 1 })) as { messages: Array<{ id: number }> };
     expect(result.messages.map((entry) => entry.id)).toEqual([11, 12]);
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50 } }]);
+  });
+
+  it('resolves a reply whose original sits outside the window', async () => {
+    const { client, previews } = fakeHistoryClient([[replyMessage(12, 5)]], [message(5)]);
+    const result = (await rpc(client, 'getHistory', { chatId: 1 })) as {
+      messages: Array<{ reply: { senderName: string | null; text: string; date: number | null } | null }>;
+    };
+
+    expect(previews).toEqual([{ chatId: 1, ids: [5] }]);
+    expect(result.messages[0].reply).toMatchObject({
+      senderName: 'Ada',
+      date: 1_700_000_000_000,
+      text: 'm5',
+    });
   });
 
   it('completes the oldest album at the window edge', async () => {

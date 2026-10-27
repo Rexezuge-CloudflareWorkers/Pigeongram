@@ -564,6 +564,7 @@ describe('comment state', () => {
               messageId: replyTo,
               chatId: null,
               senderName: 'Ada',
+              outgoing: false,
               date: NOW,
               text: '',
               entities: [],

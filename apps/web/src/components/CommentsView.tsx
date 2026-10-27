@@ -258,13 +258,17 @@ export function CommentsView({
 /**
 Top-level comments carry a reply header pointing at the thread's root, which
 Telegram shows without a quote. Replies to comments render their quote only
-when it says something: the loaded original, or a named cross-chat sender.
+when it says something: the loaded original, the original the engine read for
+an out-of-window reply, or a named cross-chat sender.
 */
 function quoteVisible(comment: MessageDto, thread: CommentsThread, commentsById: Map<number, MessageDto>): boolean {
   const reply = comment.reply;
   if (!reply) return false;
   if (reply.messageId !== null && reply.messageId === thread.discussionMessageId) return false;
-  if (reply.origin === 'same_chat') return reply.messageId !== null && commentsById.has(reply.messageId);
+  if (reply.origin === 'same_chat') {
+    if (reply.messageId === null) return false;
+    return commentsById.has(reply.messageId) || reply.text !== '' || reply.mediaKind !== null;
+  }
   return true;
 }
 

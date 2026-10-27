@@ -9,6 +9,7 @@ import type {
   MessageMarkupDto,
   MessageMediaDto,
   MessagePollDto,
+  MessageReplyDto,
   UpdateEvent,
 } from '../../apps/web/src/types';
 
@@ -1490,6 +1491,7 @@ describe('App', () => {
           messageId: 10,
           chatId: null,
           senderName: null,
+          outgoing: false,
           date: null,
           text: '',
           entities: [],
@@ -1515,7 +1517,7 @@ describe('App', () => {
       expect(document.querySelector('[data-message-id="10"]')?.classList.contains('reply-flash')).toBe(true);
     });
 
-    it('falls back to the reply header for cross-chat and unloaded originals', async () => {
+    it('renders a resolved original for an unloaded quote, and the fallback when nothing is known', async () => {
       installSignedInFetch({
         history: () =>
           json({
@@ -1530,6 +1532,7 @@ describe('App', () => {
                   messageId: 3,
                   chatId: -1_000_000_000_020,
                   senderName: 'Announcements',
+                  outgoing: false,
                   date: 1_699_999_000_000,
                   text: '',
                   entities: [],
@@ -1541,14 +1544,51 @@ describe('App', () => {
                 id: 13,
                 chatId: 2,
                 senderName: 'Bob',
-                text: 'missing original',
+                text: 'the answer',
                 reply: {
                   origin: 'same_chat',
                   messageId: 5,
                   chatId: null,
+                  senderName: 'Bob',
+                  outgoing: false,
+                  date: 1_699_999_500_000,
+                  text: 'the old question',
+                  entities: [],
+                  mediaKind: null,
+                  quote: false,
+                },
+              }),
+              message({
+                id: 14,
+                chatId: 2,
+                senderName: 'Bob',
+                text: 'missing original',
+                reply: {
+                  origin: 'same_chat',
+                  messageId: 6,
+                  chatId: null,
                   senderName: null,
+                  outgoing: false,
                   date: null,
                   text: '',
+                  entities: [],
+                  mediaKind: null,
+                  quote: false,
+                },
+              }),
+              message({
+                id: 15,
+                chatId: 2,
+                senderName: 'Bob',
+                text: 'my own reply',
+                reply: {
+                  origin: 'same_chat',
+                  messageId: 7,
+                  chatId: null,
+                  senderName: 'Ada',
+                  outgoing: true,
+                  date: 1_699_999_400_000,
+                  text: 'my earlier note',
                   entities: [],
                   mediaKind: null,
                   quote: false,
@@ -1563,11 +1603,20 @@ describe('App', () => {
       expect(await screen.findByText('from the channel')).toBeDefined();
 
       const quotes = threadSection().querySelectorAll('.reply-quote');
-      expect(quotes.length).toBe(2);
+      expect(quotes.length).toBe(4);
+      // Cross-chat: the header's sender and media label, never clickable.
       expect(quotes[0].tagName).toBe('DIV');
       expect(quotes[0].textContent).toContain('Announcements');
       expect(quotes[0].textContent).toContain('Photo');
-      expect(quotes[1].textContent).toContain('Original message');
+      // Out-of-window: the engine resolved the original while reading the page.
+      expect(quotes[1].tagName).toBe('DIV');
+      expect(quotes[1].textContent).toContain('Bob');
+      expect(quotes[1].textContent).toContain('the old question');
+      // Deleted or otherwise unreadable: the explicit fallback.
+      expect(quotes[2].textContent).toContain('Quoted Content Unavailable');
+      // An own original reads "You", like a loaded one.
+      expect(quotes[3].textContent).toContain('You');
+      expect(quotes[3].textContent).toContain('my earlier note');
     });
 
     it('prefills the composer from the context menu and sends replyTo', async () => {
@@ -2804,6 +2853,7 @@ describe('App', () => {
                   messageId: 21,
                   chatId: null,
                   senderName: null,
+                  outgoing: false,
                   date: null,
                   text: '',
                   entities: [],
@@ -2988,12 +3038,13 @@ describe('App', () => {
     A same-chat reply header into the thread, as the discussion group carries
     it (top-level comments point at the root).
     */
-    function replyHeader(messageId: number): MessageDto['reply'] {
+    function replyHeader(messageId: number): MessageReplyDto {
       return {
         origin: 'same_chat',
         messageId,
         chatId: null,
         senderName: null,
+        outgoing: false,
         date: null,
         text: '',
         entities: [],
@@ -3077,6 +3128,39 @@ describe('App', () => {
       expect(screen.getByPlaceholderText('Comment')).toBeDefined();
       expect(calls).toHaveLength(1);
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
+    });
+
+    it('shows an out-of-window reply quote and keeps the thread root bare', async () => {
+      const resolved = {
+        ...replyHeader(ROOT + 40),
+        senderName: 'Dana',
+        date: 1_699_999_000_000,
+        text: 'the earlier point',
+      };
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        return json({
+          comments: [
+            comment({ id: ROOT + 1, text: 'top level', reply: replyHeader(ROOT) }),
+            comment({ id: ROOT + 2, text: 'follow up', reply: resolved }),
+          ],
+          count: 2,
+          discussionChatId: GROUP,
+          discussionMessageId: ROOT,
+        });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+      expect(await screen.findByText('Comments')).toBeDefined();
+
+      const quotes = threadSection().querySelectorAll('.reply-quote');
+      expect(quotes.length).toBe(1);
+      expect(quotes[0].tagName).toBe('DIV');
+      expect(quotes[0].textContent).toContain('Dana');
+      expect(quotes[0].textContent).toContain('the earlier point');
     });
 
     it("offers the linked discussion group's slash commands in the comments composer", async () => {

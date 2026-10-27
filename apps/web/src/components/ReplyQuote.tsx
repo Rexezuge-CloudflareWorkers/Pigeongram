@@ -5,8 +5,12 @@ import { MessageText } from './MessageText';
 
 /**
 The quote block a reply renders above its message body, and the composer's
-"replying to…" banner. Both resolve their snippet the same way: an explicit
-quote wins, then the loaded original's rich text, then a media-kind label.
+"replying to…" banner.
+
+The snippet resolves in this order: an explicit quoted fragment, the loaded
+original, the original the engine read for an out-of-window reply, a media-kind
+label, and finally the unavailable body. A loaded original always wins over a
+snapshot, so an edit is never hidden behind a stale preview.
 */
 
 export function MessageReplyQuote({
@@ -24,9 +28,9 @@ export function MessageReplyQuote({
   */
   onJump?: (messageId: number) => void;
 }) {
-  const name = original ? (original.outgoing ? 'You' : original.senderName) : reply.senderName;
+  const name = original ? (original.outgoing ? 'You' : original.senderName) : reply.outgoing ? 'You' : reply.senderName;
   let body: ReactNode;
-  if (reply.text) {
+  if (reply.quote && reply.text) {
     body = <MessageText text={reply.text} entities={reply.entities} />;
   } else if (original?.text) {
     body = <MessageText text={original.text} entities={original.entities} />;
@@ -34,10 +38,12 @@ export function MessageReplyQuote({
     body = pollPreview(original.poll);
   } else if (original?.media) {
     body = mediaPreview(original.media.kind);
+  } else if (reply.text) {
+    body = <MessageText text={reply.text} entities={reply.entities} />;
   } else if (reply.mediaKind) {
     body = mediaPreview(reply.mediaKind);
   } else {
-    body = 'Original message';
+    body = 'Quoted Content Unavailable';
   }
 
   const jumpTarget = original && reply.origin === 'same_chat' ? reply.messageId : null;

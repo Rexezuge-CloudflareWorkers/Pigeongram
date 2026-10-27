@@ -191,6 +191,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     leaveArchive,
     handleTelegramLink,
     markRead,
+    markAllRead,
   } = useSignedInNavigation({ dialogs, threads, comments, onArchiveContext: setArchiveContext });
 
   const handleSearchResult = useCallback(
@@ -306,6 +307,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           loading={showArchive ? archiveLoading : dialogsLoading}
           pending={threads.pending}
           onSelect={openChat}
+          onMarkRead={markAllRead}
           emptyLabel={showArchive ? 'No archived chats.' : undefined}
         />
       </aside>
@@ -326,6 +328,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           onForward={forwarding.open}
           onOpenMedia={openViewer}
           onReadThrough={markRead}
+          onMarkAllRead={markAllRead}
           onOpenComments={(message) => {
             if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
           }}

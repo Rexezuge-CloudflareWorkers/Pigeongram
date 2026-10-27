@@ -61,6 +61,11 @@ interface ThreadPaneProps {
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
+  /**
+   * Marks the whole chat read, including an unread backlog the thread has not
+   * loaded. The down-arrow jump uses it before reading the newest window.
+   */
+  onMarkAllRead: (chatId: PeerId) => void;
   onOpenComments: (message: MessageDto) => void;
 }
 
@@ -78,6 +83,7 @@ export function ThreadPane({
   onForward,
   onOpenMedia,
   onReadThrough,
+  onMarkAllRead,
   onOpenComments,
 }: ThreadPaneProps) {
   if (comments.thread) {
@@ -136,6 +142,11 @@ export function ThreadPane({
       callActive={calls.callActive}
       onLoadOlder={() => void threads.loadOlder()}
       onLoadNewer={() => void threads.loadNewer()}
+      onJumpToLatest={async () => {
+        if (!selected) return;
+        onMarkAllRead(selected.id);
+        await threads.jumpToLatest();
+      }}
       onSend={threads.send}
       onAttach={threads.attach}
       onRetryPending={threads.retryPending}

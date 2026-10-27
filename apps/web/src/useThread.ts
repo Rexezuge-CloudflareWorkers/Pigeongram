@@ -78,7 +78,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     threadRef.current = thread;
   }, [thread]);
 
-  const { loadingOlder, loadingNewer, loadOlder, loadNewer } = useThreadPaging({ threadRef, setThread, setError });
+  const { loadingOlder, loadingNewer, loadOlder, loadNewer, jumpToLatest } = useThreadPaging({ threadRef, setThread, setError });
 
   const open = useCallback(
     async (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
@@ -355,6 +355,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     close,
     loadOlder,
     loadNewer,
+    jumpToLatest,
     send,
     attach,
     retryPending: outbox.retry,

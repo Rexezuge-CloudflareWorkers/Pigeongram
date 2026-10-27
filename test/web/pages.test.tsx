@@ -2180,6 +2180,27 @@ describe('App', () => {
     });
   });
 
+  describe('chat list context menu', () => {
+    it('marks an unread chat read from its right-click menu', async () => {
+      const calls = installSignedInFetch();
+
+      render(<App />);
+      const row = (await screen.findByText('Bob')).closest('button');
+      if (!row) throw new Error('Bob has no chat row');
+      expect(document.querySelector('.badge')?.textContent).toBe('1');
+
+      fireEvent.contextMenu(row, { clientX: 20, clientY: 30 });
+      const menu = screen.getByRole('menu', { name: 'Chat actions' });
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Mark As Read' }));
+
+      expect(screen.queryByRole('menu', { name: 'Chat actions' })).toBeNull();
+      expect(document.querySelector('.badge')).toBeNull();
+      await waitFor(() => {
+        expect(calls.filter((call) => call.body?.method === 'readHistory').map((call) => call.body?.params)).toEqual([{ chatId: 2 }]);
+      });
+    });
+  });
+
   describe('unread position', () => {
     /**
     Bob's dialog with reading stopped at message 8: 9, 11 and 13 are unread
@@ -2536,6 +2557,37 @@ describe('App', () => {
           addOffset: -50,
         });
         expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+      });
+
+      it('jumps to the newest message and reads the whole chat', async () => {
+        const calls = installSignedInFetch({
+          dialogs: [backlogDialog(1090)],
+          // The opening window lands around the watermark; a read with no
+          // cursor is the jump's newest page.
+          history: (_chatId, params) => json({ messages: params.offsetId === undefined ? page(1041, 1090) : page(991, 1040) }),
+        });
+        stubLayout({ listHeight: 2500, viewportHeight: 100 });
+
+        render(<App />);
+        fireEvent.click(await screen.findByText('Bob'));
+        expect(await within(threadSection()).findByText('first unread')).toBeDefined();
+        expect(document.querySelector('.badge')?.textContent).toBe('99+');
+
+        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Jump to latest and mark as read' }));
+
+        expect(await within(threadSection()).findByText('message 1090')).toBeDefined();
+        // The old backlog is left behind, not paged through one page at a time.
+        expect(within(threadSection()).queryByText('first unread')).toBeNull();
+        expect(within(threadSection()).queryByRole('button', { name: 'Jump to latest and mark as read' })).toBeNull();
+
+        // One read covers the whole chat, backlog included, so the receipt
+        // carries no max id.
+        expect(calls.filter((call) => call.body?.method === 'readHistory').map((call) => call.body?.params)).toEqual([{ chatId: 2 }]);
+        expect(calls.filter((call) => call.body?.method === 'getHistory').map((call) => call.body?.params)).toContainEqual({
+          chatId: 2,
+          limit: 50,
+        });
+        expect(document.querySelector('.badge')).toBeNull();
       });
 
       it('loads the next newer page as the reader approaches the end', async () => {

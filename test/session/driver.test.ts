@@ -215,10 +215,13 @@ describe('TelegramDriver', () => {
     expect(harness.createBundle).not.toHaveBeenCalled();
   });
 
-  it('refuses to catch up on a dead connection', async () => {
+  it('refuses to catch up on a dead connection with a retryable, coded failure', async () => {
     const harness = fakeBundle();
 
-    await expect(harness.driver.catchUp()).rejects.toThrow('Not connected');
+    const failure = await harness.driver.catchUp().catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(EngineError);
+    expect(failure).toMatchObject({ code: 'unavailable', status: 503, message: 'Not connected to any DC' });
   });
 
   it('waits for the update manager to settle and unbinds its state listener', async () => {

@@ -4,6 +4,7 @@ import type { MeDto, MessageDto, UpdateEvent } from '../types';
 import type { EngineConfig } from './config';
 import { readEngineConfig } from './config';
 import { toMeDto } from './dto';
+import { EngineError } from './errors';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
 import { readAvatar, readAvatarVersion, streamMessageMedia } from './media';
 import type { AvatarImage } from './media';
@@ -270,11 +271,15 @@ export class TelegramDriver {
    * Refuses to start on a disconnected client: mtcute's updates loop restarts
    * without backoff when it cannot fetch the initial state, so the engine must
    * never hand it a dead connection.
+   *
+   * The message mirrors mtcute's own wording so one search finds both throws,
+   * and the code marks the failure as retryable. It is diagnostic text only:
+   * the app-facing sentence is chosen where the failure is broadcast.
    */
   async catchUp(timeoutMs = 25_000): Promise<void> {
     const { base } = this.#ensure();
     if (!base.isConnected) {
-      throw new Error('Not connected to any DC');
+      throw new EngineError('Not connected to any DC', 503, 'unavailable');
     }
     let catchingUp = false;
     const { promise: settled, resolve: settle } = Promise.withResolvers<void>();

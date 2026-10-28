@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readEngineConfig } from '../../packages/backend-services/src/session/config';
+import { EngineError } from '../../packages/backend-services/src/session/errors';
 import { SessionLifecycle, STOP_CATCH_UP_TIMEOUT_MS } from '../../packages/backend-services/src/session/lifecycle';
 import type { LifecycleHost } from '../../packages/backend-services/src/session/lifecycle';
 
@@ -148,13 +149,29 @@ describe('SessionLifecycle.stopLive', () => {
     expect(alarms.at(-1)).toBeGreaterThan(Date.now());
   });
 
-  it('reports a failed live start and re-arms', async () => {
+  it('reports a failed live start in copy the app can show, never the exception text', async () => {
     const { lifecycle, driver, hub, alarms } = harness();
     driver.connect.mockRejectedValue(new Error('no DC'));
     await lifecycle.ensureLive();
     expect(lifecycle.isLive).toBe(false);
-    expect(hub.broadcast).toHaveBeenCalledWith({ type: 'error', message: 'no DC' });
+    expect(hub.broadcast).toHaveBeenCalledWith({
+      type: 'error',
+      code: undefined,
+      message: 'Live updates are unavailable right now — retrying…',
+    });
+    expect(JSON.stringify(hub.broadcast.mock.calls)).not.toContain('no DC');
     expect(alarms.length).toBeGreaterThan(0);
+  });
+
+  it('carries the code and its own sentence for a typed live failure', async () => {
+    const { lifecycle, driver, hub } = harness();
+    driver.connect.mockRejectedValue(new EngineError('Not connected to any DC', 503, 'unavailable'));
+    await lifecycle.ensureLive();
+    expect(hub.broadcast).toHaveBeenCalledWith({
+      type: 'error',
+      code: 'unavailable',
+      message: 'Lost the connection to Telegram — retrying…',
+    });
   });
 
   it('refuses to go live before the account is linked', async () => {

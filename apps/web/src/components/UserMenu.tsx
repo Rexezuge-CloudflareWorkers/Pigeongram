@@ -149,7 +149,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
               onClick={requestInstall}
             >
               <Icon name="download" className="text-muted" />
-              <span>Install app</span>
+              <span>Install App</span>
             </button>
           ) : null}
           <button
@@ -159,16 +159,16 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
             onClick={requestSignOut}
           >
             <Icon name="logout" />
-            <span>Sign out</span>
+            <span>Sign Out</span>
           </button>
         </AnchoredMenu>
       ) : null}
 
       {confirmOpen ? (
         <ConfirmDialog
-          title="Sign out of Telegram?"
+          title="Sign Out of Telegram?"
           message="This ends the session on this client. You'll need to sign in again to use the app."
-          confirmLabel="Sign out"
+          confirmLabel="Sign Out"
           busy={signingOut}
           busyLabel="Signing out…"
           onConfirm={() => void confirmSignOut()}

@@ -335,11 +335,14 @@ dialog without waiting for the socket. The destination picker offers only dialog
 true; protected content can still be rejected by Telegram, in which case the error stays in the picker.
 
 `getHistory`'s `addOffset` skips that many messages from `offsetId` (negative is towards newer), which is how a
-`t.me` post link opens a window _around_ the linked post instead of the newest messages. The same parameter opens a
-chat with unread messages at its first unread: `offsetId` is the read watermark and `addOffset: -40` reads 50 messages
-with about ten read ones above the divider and the rest into the backlog; each "Load newer messages" step then reads
-from the loaded range's newest message with `addOffset: -50`. `offsetId` alone is accepted (the link names the post
-but not its date, so the omitted date reads as 0).
+`t.me` post link opens a window _around_ the linked post instead of the newest messages: half the page, capped at
+twenty-five messages, lands on the newer side so the post sits mid-window. The same parameter opens a chat with unread
+messages at its first unread: the SPA asks for a twenty-message opening page with `offsetId` at the read watermark and
+`addOffset: -5`, which puts about fifteen read messages above the divider and five into the backlog. Each
+"Load newer messages" step then reads 50 from the loaded range's newest message with `addOffset: -50`, and "Load older
+messages" reads 50 before the loaded range. A reopen of a fully-read chat paints the SPA's in-memory cached window
+first and revalidates its newest page beside it, so it does not wait for a read at all. `offsetId` alone is accepted
+(the link names the post but not its date, so the omitted date reads as 0).
 
 A message that replies to another carries `reply`: where the original lives (`origin`), its `messageId`/`chatId`
 when known, `senderName`/`outgoing`/`date`, explicit quote `text`/`entities`, `mediaKind`, and the `quote` flag.

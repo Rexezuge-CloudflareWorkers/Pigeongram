@@ -299,8 +299,10 @@ export function ThreadView({
             setAwayFromBottom(!isAtBottom(element));
             reportVisible(element);
             // Read the next older page before the reader reaches the top of the
-            // loaded window; the controller serializes the requests.
-            if (hasMoreOlder && !loadingOlder && isNearTop(element)) onLoadOlder();
+            // loaded window; the controller serializes the requests. A short
+            // opening window can already fill the viewport, so the first scroll
+            // event at the top is not the reader asking for history.
+            if (hasMoreOlder && !loadingOlder && !isAtBottom(element) && isNearTop(element)) onLoadOlder();
             // Forward paging mirrors it: an unread backlog or a linked post can
             // leave the newest messages beyond the window, so approaching its
             // end reads the next newer page too.

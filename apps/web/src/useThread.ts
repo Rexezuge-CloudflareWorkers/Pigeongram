@@ -1,30 +1,27 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { fetchChatScreen, fetchPollResults, sendMessage, sendReaction } from './api';
-import { firstUnread } from './reading';
+import { fetchPollResults, sendMessage, sendReaction } from './api';
 import {
   applyCommentCountDelta,
   applyReactionUpdate,
   applyThreadReadUpdate,
   applyViewsUpdate,
   findPollMessage,
-  mergeMessages,
   toggleReaction,
   updateThread,
   updateThreadPoll,
 } from './state';
 import type { PollUpdateTarget } from './state';
-import type { ThreadController, OpenThreadResult } from './thread-controller';
+import type { ThreadController } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
 import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages } from './thread-state';
 import type { ChatThread } from './thread-state';
-import { supportsCommands, unreadWindow, WINDOW_LIMIT } from './thread-window';
-import type { OpenThreadOptions } from './thread-window';
-import type { BotCommandDto, ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
 import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
+import { useThreadOpen } from './useThreadOpen';
 import { useThreadPaging } from './useThreadPaging';
 
 /**
@@ -52,24 +49,12 @@ interface UseThreadOptions {
   onNotice: (text: string) => void;
 }
 
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
-}
-
-/**
-The empty slash-command menu, before a chat is opened.
-*/
-const NO_COMMANDS: readonly BotCommandDto[] = [];
-
 export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
-  const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
-  const [description, setDescription] = useState<string | null>(null);
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
+  const { open, reset: resetOpen, loading, error, setError, botCommands, description } = useThreadOpen({ thread, setThread, positions });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -81,97 +66,11 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
 
   const { loadingOlder, loadingNewer, loadOlder, loadNewer, jumpToLatest } = useThreadPaging({ threadRef, setThread, setError });
 
-  const open = useCallback(
-    async (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
-      const chat = dialog.chat;
-      const postId = options?.postId ?? null;
-      // A fresh read is a new session: only a comments detour keeps the
-      // remembered position, because it leaves this thread open.
-      positions.forget();
-      // The divider is decided once, from the window the chat opens with: it
-      // marks where reading stopped on open, so reading past it (or a message
-      // arriving later) leaves it where it is.
-      const divider = (messages: MessageDto[]): number | null => firstUnread(messages, dialog.readInboxMaxId)?.id ?? null;
-      setThread({
-        chat,
-        messages: [],
-        readInboxMaxId: dialog.readInboxMaxId,
-        readOutboxMaxId: dialog.readOutboxMaxId,
-        unreadDividerId: null,
-        focusMessageId: postId,
-        hasMoreOlder: true,
-        windowEndId: null,
-        latestMessageId: dialog.lastMessage?.id ?? null,
-      });
-      // The menu and the empty-chat description belong to the chat being
-      // opened, so the previous chat's answer must not survive a failed read.
-      setBotCommands(NO_COMMANDS);
-      setDescription(null);
-      setError(null);
-      setLoading(true);
-      try {
-        // A chat with unread messages opens at where reading stopped, not at
-        // the newest page: the watermark anchors a window that reaches a little
-        // way back for context and the rest of the page towards the unread
-        // side. A large backlog can still extend past that page; forward paging
-        // continues from the window's end.
-        const unread = postId === null && dialog.unread > 0 ? unreadWindow(dialog.readInboxMaxId) : null;
-        // The window, the chat's slash commands and — when a post is named —
-        // its comments are one request: the engine reads them at the same
-        // time, where separate requests would queue behind each other.
-        const screen = await fetchChatScreen(chat.id, postId, {
-          limit: WINDOW_LIMIT,
-          ...(postId !== null && { anchorId: postId }),
-          ...(unread !== null && unread),
-          withCommands: supportsCommands(chat.kind),
-        });
-        setBotCommands(screen.commands);
-        setDescription(screen.description);
-        const screenEnd = screen.messages.at(-1)?.id ?? null;
-        // A live message can arrive while the window is in flight. If the
-        // window was at the newest message when it was requested, those
-        // messages continue it and are kept; otherwise they sit beyond the
-        // backlog and wait for forward paging. An own send is the reader's own
-        // action and stays either way, with the gap left for paging to fill;
-        // an empty window has no range to be behind, so its messages stay too.
-        const openedLatest = dialog.lastMessage?.id ?? null;
-        const reachedAtOpen = screenEnd !== null && (openedLatest === null || screenEnd >= openedLatest);
-        setThread((current) =>
-          current && current.chat.id === chat.id
-            ? {
-                ...current,
-                messages: mergeMessages(
-                  screen.messages,
-                  current.messages.filter((message) => reachedAtOpen || screenEnd === null || message.outgoing || message.id <= screenEnd),
-                ),
-                unreadDividerId: divider(screen.messages),
-                // A plain read starts at the newest message, so a short window
-                // is the whole history. A jump window is anchored mid-history
-                // and can be short without being the start, so it always has a
-                // page to ask for until one comes back empty.
-                hasMoreOlder: postId === null ? screen.messages.length >= WINDOW_LIMIT : screen.messages.length > 0,
-                windowEndId: reachedAtOpen ? Math.max(screenEnd ?? 0, current.latestMessageId ?? 0) : screenEnd,
-              }
-            : current,
-        );
-        return { messages: screen.messages, comments: screen.comments, commentsError: screen.commentsError };
-      } catch (failure) {
-        setError(failureText(failure));
-        return { messages: [], comments: null, commentsError: failureText(failure) };
-      } finally {
-        setLoading(false);
-      }
-    },
-    [positions],
-  );
-
   const close = useCallback((): void => {
+    resetOpen();
     positions.forget();
     setThread(null);
-    setError(null);
-    setBotCommands(NO_COMMANDS);
-    setDescription(null);
-  }, [positions]);
+  }, [positions, resetOpen]);
 
   const updateChat = useCallback((chat: ChatDto): void => {
     setThread((current) => (current && current.chat.id === chat.id ? { ...current, chat } : current));

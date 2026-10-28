@@ -229,7 +229,9 @@ export const messagesRpcMethods = {
 
 /**
 How many messages of context a jump window reads on the newer side of the
-linked post; the rest of the page is the post and its older messages.
+linked post, at most: the rest of the page is the post and its older messages.
+Half a page lands the post mid-window; the cap keeps a larger read from
+spending more than twenty-five messages of context.
 */
 const JUMP_CONTEXT = 25;
 
@@ -255,7 +257,7 @@ interface WindowRequest {
  */
 async function readWindow(client: TelegramClient, chatId: number, request: WindowRequest): Promise<Message[]> {
   if (request.anchorId !== undefined) {
-    const skip = request.addOffset === 0 ? -JUMP_CONTEXT : request.addOffset;
+    const skip = request.addOffset === 0 ? -Math.min(JUMP_CONTEXT, Math.floor(request.limit / 2)) : request.addOffset;
     const around = await client.getHistory(chatId, {
       limit: request.limit,
       offset: { id: request.anchorId, date: 0 },

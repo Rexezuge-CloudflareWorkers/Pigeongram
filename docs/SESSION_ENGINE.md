@@ -346,15 +346,20 @@ post is mirrored there as a root message and every comment replies into its thre
 
 `getComments` resolves the group with `messages.getDiscussionMessage` and reads one window of the thread with
 `messages.getReplies` (oldest first, newest window unless a cursor is passed); the root message is dropped and
-the cursor is the oldest comment of the window. Replies to comments resolve the same way as in a chat window, except
+the cursor is the oldest comment of the window. The thread-start window is returned newest-first, so the
+auto-forwarded channel post that roots the thread is its **last** message — a grouped post mirrors its album
+beside it, and any id but the last is a comment, which `messages.getReplies` rejects with `MSG_ID_INVALID`.
+Replies to comments resolve the same way as in a chat window, except
 that the thread root (the target of every top-level comment) is skipped: its quote is never rendered, so it costs no
 read. `discussionChatId`/`discussionMessageId` are null while the
 thread does not exist yet, and the pre-thread `FLOOD_WAIT` Telegram answers the lookup with is read as "no
 thread yet". The window and the group's slash-command menu are read concurrently over the one connection, so
 the comments composer can offer the group's commands without a second bridge call; `commands` is empty while
-the thread does not exist yet. `sendComment` posts through mtcute's `commentText`/`commentMedia` for a top-level
-comment (which also covers the first comment, when Telegram still has to create the thread) and resolves the
-group itself for a reply, so `replyTo` names a comment in the thread. Reads never require membership in the group;
+the thread does not exist yet. `sendComment` resolves the discussion itself and sends a top-level comment to the
+group with `replyTo` naming that root — both for text and, through `upload.ts`, for a file or an album. It falls
+back to mtcute's `commentText`/`commentMedia`/`commentMediaGroup` only for the first comment, when Telegram still
+has to create the thread, because those helpers pick the window's first message as the root. A reply resolves the
+group itself too, so `replyTo` names a comment in the thread. Reads never require membership in the group;
 posting requires it, and Telegram's error surfaces to the SPA verbatim.
 
 Reactions on comments target the group and arrive live, and the SPA merges them into the open screen by

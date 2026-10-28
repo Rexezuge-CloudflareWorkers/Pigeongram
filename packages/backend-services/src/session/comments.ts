@@ -50,8 +50,14 @@ export async function resolveDiscussion(client: TelegramClient, chatId: number, 
     throw error;
   }
 
-  const root = res.messages[0];
-  if (!root || root._ === 'messageEmpty') return null;
+  // The window is the thread's start, not just the root, and Telegram returns
+  // it newest-first: the auto-forwarded channel post that started the comment
+  // section is the last message (core.telegram.org/api/discussion). It is only
+  // `messages[0]` while the thread has no other start messages; a grouped post
+  // brings its mirrored album along, and taking the first member leaves
+  // `messages.getReplies` a comment id, which it rejects with MSG_ID_INVALID.
+  const root = res.messages.findLast((message) => message._ !== 'messageEmpty');
+  if (!root) return null;
   const peerId = root.peerId;
   if (peerId._ !== 'peerChannel') return null;
   const group = res.chats.find((chat): chat is tl.RawChannel => chat._ === 'channel' && chat.id === peerId.channelId);

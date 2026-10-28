@@ -1,7 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { Long } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
-import { readComments, requireCommentPost, requireDiscussion } from './comments';
+import { readComments, requireCommentPost, requireDiscussion, resolveDiscussion } from './comments';
 import { toMessageDto, toPollDto } from './dto';
 import { EngineError } from './errors';
 import {
@@ -198,11 +198,21 @@ export const messagesRpcMethods = {
       const randomId = optionalRandomId(params.randomId);
       const post = await requireCommentPost(context.client, chatId, messageId);
       if (replyTo === undefined) {
-        // `commentText` resolves the thread itself and covers the
-        // first-comment case Telegram accepts through the channel.
-        return {
-          message: toMessageDto(await context.client.commentText(post, text, { ...(randomId !== undefined && { randomId }) })),
-        };
+        // A top-level comment replies to the thread root. mtcute's
+        // `commentText` resolves that root itself but takes the first message
+        // of the thread-start window, which is a comment (or an album member)
+        // once the window carries more than the root; resolve it here instead.
+        // Without a thread yet, `commentText` covers the first comment
+        // Telegram accepts through the channel.
+        const discussion = await resolveDiscussion(context.client, chatId, messageId);
+        const message =
+          discussion === null
+            ? await context.client.commentText(post, text, { ...(randomId !== undefined && { randomId }) })
+            : await context.client.sendText(discussion.peer, text, {
+                replyTo: discussion.rootId,
+                ...(randomId !== undefined && { randomId }),
+              });
+        return { message: toMessageDto(message) };
       }
       const discussion = await requireDiscussion(context.client, chatId, messageId);
       return {

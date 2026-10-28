@@ -62,6 +62,11 @@ export interface ThreadController {
   */
   botCommands: readonly BotCommandDto[];
   /**
+  The text Telegram shows in an empty chat: a bot's description, or a group's
+  description. Read with the command menu, and null when the chat has none.
+  */
+  description: string | null;
+  /**
   Message ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;

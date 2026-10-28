@@ -1247,11 +1247,10 @@ export interface SendCommentResult {
 }
 
 export interface GetBotCommandsResult {
-  /**
-   * The chat's slash commands in Telegram's order. Group chats aggregate the
-   * commands of their bots, de-duplicated by name.
-   */
+  /** Telegram's commands in its order, de-duplicated by name for a group. */
   commands: BotCommandDto[];
+  /** The empty-chat text: a bot's description or a chat's about; null when none. */
+  description: string | null;
 }
 
 export interface GetProfileResult {

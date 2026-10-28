@@ -67,6 +67,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   const [error, setError] = useState<string | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
   const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
+  const [description, setDescription] = useState<string | null>(null);
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
 
@@ -102,6 +103,10 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
         windowEndId: null,
         latestMessageId: dialog.lastMessage?.id ?? null,
       });
+      // The menu and the empty-chat description belong to the chat being
+      // opened, so the previous chat's answer must not survive a failed read.
+      setBotCommands(NO_COMMANDS);
+      setDescription(null);
       setError(null);
       setLoading(true);
       try {
@@ -121,6 +126,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
           withCommands: supportsCommands(chat.kind),
         });
         setBotCommands(screen.commands);
+        setDescription(screen.description);
         const screenEnd = screen.messages.at(-1)?.id ?? null;
         // A live message can arrive while the window is in flight. If the
         // window was at the newest message when it was requested, those
@@ -164,6 +170,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     setThread(null);
     setError(null);
     setBotCommands(NO_COMMANDS);
+    setDescription(null);
   }, [positions]);
 
   const updateChat = useCallback((chat: ChatDto): void => {
@@ -352,6 +359,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     pending: outbox.pending,
     error,
     botCommands,
+    description,
     reactingIds,
     votingIds,
     pressingButtonIds,

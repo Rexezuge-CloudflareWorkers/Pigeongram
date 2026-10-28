@@ -478,12 +478,13 @@ describe('getBotCommands dispatch', () => {
     const client = {
       getFullUser: async (chatId: number) => {
         calls.push(chatId);
-        return { full: { botInfo: { commands: [{ command: 'start', description: 'Start' }] } } };
+        return { full: { botInfo: { description: 'Answers questions.', commands: [{ command: 'start', description: 'Start' }] } } };
       },
     } as unknown as TelegramClient;
 
     await expect(rpc(client, 'getBotCommands', { chatId: 5 })).resolves.toEqual({
       commands: [{ command: 'start', description: 'Start' }],
+      description: 'Answers questions.',
     });
     expect(calls).toEqual([5]);
   });

@@ -360,6 +360,13 @@ describe('getHistory dispatch', () => {
     expect(calls).toEqual([{ chatId: 1, params: { limit: 50, offset: { id: 30, date: 0 }, addOffset: -25 } }]);
   });
 
+  it('centres a small anchored window with half its page as newer context', async () => {
+    const { client, calls } = fakeHistoryClient([[message(30), message(29)]]);
+    await rpc(client, 'getHistory', { chatId: 1, limit: 20, anchorId: 30 });
+
+    expect(calls).toEqual([{ chatId: 1, params: { limit: 20, offset: { id: 30, date: 0 }, addOffset: -10 } }]);
+  });
+
   it('falls back to the page that ends at an anchor the window missed', async () => {
     const { client, calls } = fakeHistoryClient([[message(29)], [message(28), message(27)]]);
     const result = (await rpc(client, 'getHistory', { chatId: 1, anchorId: 30 })) as { messages: Array<{ id: number }> };

@@ -2703,7 +2703,7 @@ describe('App', () => {
         expect(await within(threadSection()).findByText('first unread')).toBeDefined();
 
         const opened = calls.find((call) => call.body?.method === 'getHistory');
-        expect(opened?.body?.params).toMatchObject({ chatId: 2, limit: 50, offsetId: watermark, addOffset: -40 });
+        expect(opened?.body?.params).toMatchObject({ chatId: 2, limit: 20, offsetId: watermark, addOffset: -5 });
         expect(opened?.body?.params).not.toHaveProperty('anchorId');
 
         const divider = threadSection().querySelector('[data-unread-divider]');

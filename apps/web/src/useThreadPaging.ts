@@ -4,7 +4,7 @@ import { fetchHistory } from './api';
 import { mergeMessages } from './state';
 import { threadReachesLatest } from './thread-state';
 import type { ChatThread } from './thread-state';
-import { newerWindow, WINDOW_LIMIT } from './thread-window';
+import { newerWindow, PAGE_LIMIT } from './thread-window';
 
 /**
  * The thread's two paging directions. Kept in their own hook so the controller
@@ -56,7 +56,7 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
     setError(null);
     try {
       const result = await fetchHistory(chat.id, {
-        limit: WINDOW_LIMIT,
+        limit: PAGE_LIMIT,
         offsetId: oldest.id,
         // The bridge speaks unix seconds; the DTO carries milliseconds.
         offsetDate: Math.floor(oldest.date / 1000),
@@ -70,7 +70,7 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
               ...current,
               messages: mergeMessages(current.messages, result.messages),
               // A short page is the oldest one Telegram has.
-              hasMoreOlder: result.messages.length >= WINDOW_LIMIT,
+              hasMoreOlder: result.messages.length >= PAGE_LIMIT,
             }
           : current,
       );
@@ -93,7 +93,7 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
     setLoadingNewer(true);
     setError(null);
     try {
-      const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT, ...newerWindow(end) });
+      const result = await fetchHistory(chat.id, { limit: PAGE_LIMIT, ...newerWindow(end) });
       const pageEnd = result.messages.reduce((newest, message) => Math.max(newest, message.id), end);
       setThread((current) => {
         // A jump may have moved the window to the newest page meanwhile.
@@ -127,7 +127,7 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
     setLoadingNewer(true);
     setError(null);
     try {
-      const result = await fetchHistory(chat.id, { limit: WINDOW_LIMIT });
+      const result = await fetchHistory(chat.id, { limit: PAGE_LIMIT });
       setThread((current) => {
         if (!current || current.chat.id !== chat.id) return current;
         const newest = result.messages.at(-1)?.id ?? null;
@@ -141,7 +141,7 @@ export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPag
         return {
           ...current,
           messages: mergeMessages(result.messages, beyond),
-          hasMoreOlder: result.messages.length >= WINDOW_LIMIT,
+          hasMoreOlder: result.messages.length >= PAGE_LIMIT,
           windowEndId: end,
           latestMessageId: Math.max(current.latestMessageId ?? 0, end),
           unreadDividerId: null,

@@ -5,8 +5,8 @@ import type { ChatDto } from './types';
  * which chats carry a slash-command menu.
  *
  * Kept away from the thread controller because the window is worth reading on
- * its own. The size matches the controller's paging so `loadOlder` continues
- * from the same edge.
+ * its own. The opening window is deliberately small so a chat paints sooner;
+ * older history is read at the paging size when the reader asks for it.
  */
 
 export interface OpenThreadOptions {
@@ -18,18 +18,26 @@ export interface OpenThreadOptions {
 }
 
 /**
-How many messages of context the jump window reads on the newer side of a
-linked post; the rest of the page is the post and its older messages.
+How many messages the first open reads. A small window paints faster and the
+cache makes a reopen instant; `PAGE_LIMIT` is the size every later page reads.
 */
-export const WINDOW_LIMIT = 50;
+export const OPEN_LIMIT = 20;
+
+/**
+How many messages one paging read asks for: the older page, the newer page and
+the jump to the newest messages.
+*/
+export const PAGE_LIMIT = 50;
 
 /**
 How many already-read messages the unread window reads above the divider. The
-rest of the page reaches towards the newer messages. Telegram's `addOffset` is
-counted from the watermark and the bridge clamps it to `-50`, so the context
-has to leave that much of the page on the unread side.
+rest of the opening page reaches towards the newer messages: with an opening
+page of twenty, a chat opens with about fifteen read messages of context and
+five unread ones. Telegram's `addOffset` is counted from the watermark and the
+bridge clamps it to `-50`, so the context has to leave that much of the page on
+the unread side.
 */
-export const UNREAD_CONTEXT = 10;
+export const UNREAD_CONTEXT = 15;
 
 /**
 A history window's place in the chat: the id to start from and how many
@@ -50,7 +58,7 @@ so a never-read chat keeps the newest-window read.
 */
 export function unreadWindow(readInboxMaxId: number): HistoryWindow | null {
   if (readInboxMaxId <= 0) return null;
-  return { offsetId: readInboxMaxId, addOffset: UNREAD_CONTEXT - WINDOW_LIMIT };
+  return { offsetId: readInboxMaxId, addOffset: UNREAD_CONTEXT - OPEN_LIMIT };
 }
 
 /**
@@ -59,7 +67,7 @@ message and reads towards the newer ones, so the gap between an unread window
 and the chat's newest message can be filled in order.
 */
 export function newerWindow(windowEndId: number): HistoryWindow {
-  return { offsetId: windowEndId, addOffset: -WINDOW_LIMIT };
+  return { offsetId: windowEndId, addOffset: -PAGE_LIMIT };
 }
 
 /**

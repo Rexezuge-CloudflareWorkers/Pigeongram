@@ -1,4 +1,8 @@
-import type { ChatDto, DialogDto, MessageForwardDto } from './types';
+import type { ChatDto, MessageForwardDto } from './types';
+import type { TelegramChatRef } from './links-targets';
+
+export type { TelegramChatRef, TelegramChatTarget } from './links-targets';
+export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAppLink, usernameAppLink } from './links-targets';
 
 /**
  * Telegram links and the handoff to the installed app.
@@ -13,12 +17,6 @@ import type { ChatDto, DialogDto, MessageForwardDto } from './types';
  * An unknown `tg://` operation passes through untouched: the app is the only
  * thing that can make sense of it.
  */
-
-/**
- * The chat a link names: a public username, or the raw id of a private
- * channel (`t.me/c/<id>`, which the bridge addresses in its marked form).
- */
-export type TelegramChatRef = { username: string } | { internalId: number };
 
 export interface TelegramLink {
   /**
@@ -133,27 +131,6 @@ export function miniAppDeepLink(raw: string): string | null {
 }
 
 /**
- * The dialog a link names, when the account already has it: usernames are
- * matched case-insensitively, private-channel ids through their marked form.
- */
-export function findLinkedChat(dialogs: readonly DialogDto[], chat: TelegramChatRef): ChatDto | null {
-  if ('username' in chat) {
-    const wanted = chat.username.toLowerCase();
-    return dialogs.find((dialog) => dialog.chat.username?.toLowerCase() === wanted)?.chat ?? null;
-  }
-  const wanted = markedChatId(chat.internalId);
-  return dialogs.find((dialog) => dialog.chat.id === wanted)?.chat ?? null;
-}
-
-/**
- * The marked (bridge) id of a channel or megagroup from the raw id a
- * `t.me/c/...` link carries.
- */
-export function markedChatId(internalId: number): number {
-  return -(1_000_000_000_000 + internalId);
-}
-
-/**
  * The shareable address of one message, or null when Telegram has none: a
  * user chat and a basic group cannot be addressed at a message. A public
  * supergroup or channel links by username; a private one by its raw id, the
@@ -202,18 +179,6 @@ export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | nu
     };
   }
   return null;
-}
-
-/**
- * The address of a public chat, for handing it to the installed app.
- *
- * A chat with a handle has two addresses: the deep link the app answers and
- * the https URL a browser falls back to. A chat without one has neither, so
- * the caller asks for a handle first.
- */
-export function usernameAppLink(username: string): { deepLink: string; webUrl: string } {
-  const link = chatLink(username, null, null);
-  return { deepLink: link.deepLink, webUrl: link.webUrl ?? `https://t.me/${username}` };
 }
 
 /**

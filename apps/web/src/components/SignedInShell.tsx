@@ -190,9 +190,13 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     openArchive,
     leaveArchive,
     handleTelegramLink,
+    preview,
+    joinPreview,
     markRead,
     markAllRead,
-  } = useSignedInNavigation({ dialogs, threads, comments, onArchiveContext: setArchiveContext });
+  } = useSignedInNavigation({ dialogs, threads, comments, onArchiveContext: setArchiveContext, onError, onNotice: notify });
+
+  const selectedPreview = selected !== null && preview?.chatId === selected.id ? preview : null;
 
   const handleSearchResult = useCallback(
     (message: MessageDto, chat: ChatDto): void => {
@@ -318,6 +322,8 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           selected={selected}
           presence={selectedPresence}
           archived={selectedArchived}
+          preview={selectedPreview}
+          onJoin={joinPreview}
           canArchive={selected !== null && findDialog(selected.id) !== undefined}
           onSetArchived={async (archived) => {
             if (selected) await setArchived(selected.id, archived);

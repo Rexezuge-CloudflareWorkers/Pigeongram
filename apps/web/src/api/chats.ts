@@ -1,9 +1,22 @@
-import type { DialogDto, GetDialogsResult, GetMeResult, GetProfileResult, MeDto, PeerId, SetArchivedResult } from '../types';
+import type {
+  DialogDto,
+  GetDialogsResult,
+  GetMeResult,
+  GetProfileResult,
+  JoinChatParams,
+  JoinChatResult,
+  MeDto,
+  PeerId,
+  ResolveChatParams,
+  ResolveChatResult,
+  SetArchivedResult,
+} from '../types';
 import { batchResult, rpc, rpcBatch } from './request';
 
 /**
  * The chat-list half of the bridge: the dialogs, the archive that is a read of
- * its own, the combined boot read and a peer's profile.
+ * its own, the combined boot read, a peer's profile, and the resolution of a
+ * chat a link or a forward names.
  */
 
 export const fetchDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100 });
@@ -40,3 +53,15 @@ reader asks for when they open it, and a thread open would otherwise pay for
 a read nobody looks at.
 */
 export const fetchProfile = (chatId: PeerId): Promise<GetProfileResult> => rpc('getProfile', { chatId });
+
+/**
+Resolves the chat a link or a forward names. The engine turns the username or
+marked id into a peer and answers its DTO with whether this account is in it.
+*/
+export const resolveChat = (params: ResolveChatParams): Promise<ResolveChatResult> => rpc('resolveChat', { ...params });
+
+/**
+Joins a resolved public chat, or reports that an admin must approve the
+request or that a guard bot wants its web view opened.
+*/
+export const joinChat = (params: JoinChatParams): Promise<JoinChatResult> => rpc('joinChat', { ...params });

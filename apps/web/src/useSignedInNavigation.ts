@@ -1,17 +1,14 @@
-import { useCallback, useRef } from 'react';
-import { readHistory } from './api';
-import type { CommentsController } from './comments-controller';
-import { findLinkedChat, launchTelegramApp, parseTelegramLink } from './links';
+import { useCallback, useRef, useState } from 'react';
+import { ApiError, joinChat, readHistory, resolveChat } from './api';
+import { findLinkedChat, launchTelegramApp, linkTarget, parseTelegramLink, targetAppLink } from './links';
+import type { TelegramChatTarget } from './links';
+import type { ChatPreview, ResolveRequest, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
 import type { Route, RouteApplyOptions } from './routes';
 import { routeForChat } from './routes';
-import type { ThreadController } from './thread-controller';
-import type { ChatDto, DialogDto, MessageDto, MessageForwardDto, PeerId } from './types';
+import type { ChatDto, DialogDto, MessageDto, PeerId } from './types';
 import { useChatNavigation } from './useChatNavigation';
-import type { DialogsController } from './useDialogs';
 import { useForwardOrigin } from './useForwardOrigin';
-import type { MediaViewerController } from './useMediaViewer';
 import { useMediaViewer } from './useMediaViewer';
-import type { Router } from './useRouter';
 import { useRouter } from './useRouter';
 
 /**
@@ -22,55 +19,20 @@ import { useRouter } from './useRouter';
  *
  * It composes the existing hooks (`useRouter`, `useChatNavigation`,
  * `useMediaViewer`) so the shell above it only wires the data plane and paints
- * the screen.
+ * the screen. The link and preview half is the reason a chat outside the
+ * loaded list can be opened at all; a preview is memory-only, because Telegram
+ * is the only source that can resolve it again.
  */
 
-interface UseSignedInNavigationOptions {
-  /**
-  The live dialogs: the router looks its chat up before React has committed
-  the boot read.
-  */
-  dialogs: Pick<DialogsController, 'all' | 'find' | 'applyRead' | 'applyReadAll' | 'loadArchive'>;
-  threads: ThreadController;
-  comments: CommentsController;
-  /**
-  Whether the sidebar is browsing the archive. The route owns the archive
-  screen, and a chat opened from it keeps the context.
-  */
-  onArchiveContext: (archived: boolean) => void;
-}
-
-export interface SignedInNavigation {
-  router: Router;
-  /**
-  Whether the route names something the signed-in account can open. The boot
-  asks before it reads the archive for a shared link.
-  */
-  canOpen: (route: Route) => boolean;
-  viewer: MediaViewerController;
-  openViewer: (source: 'thread' | 'comments', messageId: number) => void;
-  closeViewer: () => void;
-  openChat: (chat: ChatDto, target?: { postId?: number; commentId?: number }) => void;
-  /**
-   * Opens a search hit: the message's chat at the message itself. A chat the
-   * loaded list does not carry (a global hit) is kept as a transient dialog
-   * for this session, so the route and the thread can resolve it.
-   */
-  openSearchResult: (chat: ChatDto, message: MessageDto) => void;
-  openForwardOrigin: (forward: MessageForwardDto) => void;
-  openArchive: () => void;
-  leaveArchive: () => void;
-  handleTelegramLink: (url: string) => boolean;
-  markRead: (chatId: PeerId, maxId: number) => void;
-  /**
-   * Marks the whole chat read, including an unread backlog the thread has not
-   * loaded. A no-op when the chat has nothing unread.
-   */
-  markAllRead: (chatId: PeerId) => void;
-}
-
-export function useSignedInNavigation({ dialogs, threads, comments, onArchiveContext }: UseSignedInNavigationOptions): SignedInNavigation {
-  const { find: findDialog, applyRead, applyReadAll, loadArchive } = dialogs;
+export function useSignedInNavigation({
+  dialogs,
+  threads,
+  comments,
+  onArchiveContext,
+  onError,
+  onNotice,
+}: UseSignedInNavigationOptions): SignedInNavigation {
+  const { find: findDialog, applyRead, applyReadAll, load, loadArchive } = dialogs;
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
   /**
    * The chats a search found outside the loaded list, as dialogs good enough
@@ -79,6 +41,11 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
    * again, and Telegram is the only source for that.
    */
   const transientDialogs = useRef(new Map<PeerId, DialogDto>());
+  /**
+   * The latest link or forward resolution. A slower answer must not take the
+   * reader away from a screen they moved to after the click.
+   */
+  const resolution = useRef(0);
   const resolveDialog = useCallback(
     (chatId: PeerId): DialogDto | undefined => findDialog(chatId) ?? transientDialogs.current.get(chatId),
     [findDialog],
@@ -86,12 +53,22 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
   const navigate = useChatNavigation({ findDialog: resolveDialog, threads, comments });
 
   /**
-  The route drives the screen, and the archive is a screen of its own: the
-  sidebar shows the archived chats while the route names it or while the open
-  chat came from it.
-  */
+   * The preview chat the thread is showing, if any. It sits outside the list,
+   * so it is shown only while its chat is the open one — a route away from it
+   * hides the mark without forgetting which chat was resolved.
+   */
+  const [preview, setPreview] = useState<ChatPreview | null>(null);
+  const openChatId = threads.thread?.chat.id ?? null;
+  const activePreview = preview !== null && preview.chatId === openChatId ? preview : null;
+
+  /**
+   * The route drives the screen, and the archive is a screen of its own: the
+   * sidebar shows the archived chats while the route names it or while the open
+   * chat came from it.
+   */
   const applyRoute = useCallback(
     (route: Route, options: RouteApplyOptions): Promise<void> => {
+      resolution.current += 1;
       const target = route.view === 'chat' || route.view === 'comments' ? resolveDialog(route.chatId) : null;
       onArchiveContext(route.view === 'archived' || target?.archived === true);
       // The archive is read when it is opened, not before: the main list is the
@@ -125,20 +102,12 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
     router.closeViewer();
   }, [router, viewer]);
 
-  const openChat = useCallback(
-    (chat: ChatDto, target?: { postId?: number; commentId?: number }): void => {
-      const postId = target?.postId ?? null;
-      router.navigateTo(routeForChat(chat.id, postId, target?.commentId), postId === null ? undefined : { force: true });
-    },
-    [router],
-  );
   /**
-   * Opens a search hit at its message. The transient dialog is registered
-   * before the route applies, so `canOpen` and the thread's own lookup find it
-   * in the same tick.
+   * Keeps a chat outside the loaded list addressable: the route, the thread and
+   * the read receipts all look a chat up in one place.
    */
-  const openSearchResult = useCallback(
-    (chat: ChatDto, message: MessageDto): void => {
+  const registerTransient = useCallback(
+    (chat: ChatDto): void => {
       if (findDialog(chat.id) === undefined) {
         transientDialogs.current.set(chat.id, {
           chat,
@@ -151,20 +120,108 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
           archived: false,
         });
       }
-      openChat(chat, { postId: message.id });
     },
-    [findDialog, openChat],
+    [findDialog],
   );
-  const openForwardOrigin = useForwardOrigin(
-    // The forward picker and the links both look a chat up in one list; the
-    // controller already keeps every chat there.
-    dialogs.all,
-    openChat,
+
+  const openChat = useCallback(
+    (chat: ChatDto, target?: { postId?: number; commentId?: number }): void => {
+      resolution.current += 1;
+      // A chat-list click leaves a preview behind; opening the preview itself
+      // keeps it (the caller sets it after this call).
+      setPreview((current) => (current === null || current.chatId === chat.id ? current : null));
+      const postId = target?.postId ?? null;
+      router.navigateTo(routeForChat(chat.id, postId, target?.commentId), postId === null ? undefined : { force: true });
+    },
+    [router],
   );
 
   /**
-  Opens the archive: the screen of the chats the account archived.
-  */
+   * Opens a search hit at its message. The transient dialog is registered
+   * before the route applies, so `canOpen` and the thread's own lookup find it
+   * in the same tick.
+   */
+  const openSearchResult = useCallback(
+    (chat: ChatDto, message: MessageDto): void => {
+      registerTransient(chat);
+      openChat(chat, { postId: message.id });
+    },
+    [openChat, registerTransient],
+  );
+
+  /**
+   * Hands a target the bridge could not resolve to the installed app, using
+   * the link's own address where there is one.
+   */
+  const handOff = useCallback((target: TelegramChatTarget, request: ResolveRequest): void => {
+    if (request.link !== undefined) {
+      launchTelegramApp(request.link.deepLink, request.link.webUrl);
+      return;
+    }
+    const link = targetAppLink(target);
+    if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
+  }, []);
+
+  /**
+   * Turns a resolved chat into a thread: a member opens normally, a public
+   * chat the account is not in opens as a preview. A target with no public
+   * username could not be joined from here, so it goes to the installed app.
+   */
+  const showResolved = useCallback(
+    (chat: ChatDto, member: boolean, target: TelegramChatTarget, request: ResolveRequest): void => {
+      if (!member && chat.username === null) {
+        handOff(target, request);
+        return;
+      }
+      registerTransient(chat);
+      openChat(chat, {
+        ...(request.postId !== undefined && { postId: request.postId }),
+        ...(request.commentId !== undefined && { commentId: request.commentId }),
+      });
+      setPreview(
+        member
+          ? null
+          : {
+              chatId: chat.id,
+              target,
+              joining: false,
+              requested: false,
+            },
+      );
+    },
+    [handOff, openChat, registerTransient],
+  );
+
+  /**
+   * Resolves a username or marked id the loaded list does not carry. A 404 is
+   * the unknown-chat case and hands the target to the installed app; every
+   * other failure is reported.
+   */
+  const resolveTarget = useCallback(
+    (target: TelegramChatTarget, request: ResolveRequest = {}): void => {
+      const ticket = ++resolution.current;
+      void resolveChat(target)
+        .then((result) => {
+          if (ticket !== resolution.current) return;
+          showResolved(result.chat, result.member, target, request);
+        })
+        .catch((failure: unknown) => {
+          if (ticket !== resolution.current) return;
+          if (failure instanceof ApiError && failure.status === 404) {
+            handOff(target, request);
+            return;
+          }
+          onError(failure);
+        });
+    },
+    [handOff, onError, showResolved],
+  );
+
+  const openForwardOrigin = useForwardOrigin(dialogs.all, openChat, resolveTarget);
+
+  /**
+   * Opens the archive: the screen of the chats the account archived.
+   */
   const openArchive = useCallback((): void => {
     router.navigateTo({ view: 'archived' });
   }, [router]);
@@ -175,36 +232,86 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
   );
 
   /**
-  Routes a click on a link inside a message: a chat this client already knows
-  opens in the thread (a linked post lands on that post), any other Telegram
-  link is handed to the installed app, and `false` leaves ordinary web links to
-  the browser.
-  */
+   * Routes a click on a link inside a message: a chat this client already knows
+   * opens in the thread (a linked post lands on that post), any other Telegram
+   * chat is resolved and opened or previewed, and everything Telegram cannot
+   * open here is handed to the installed app. `false` leaves ordinary web links
+   * to the browser.
+   */
   const handleTelegramLink = useCallback(
     (url: string): boolean => {
       const link = parseTelegramLink(url);
       if (link === null) return false;
-      const chat = link.chat === null ? null : findLinkedChat(dialogs.all, link.chat);
-      if (chat !== null) {
-        openChat(chat, {
+      if (link.chat === null) {
+        launchTelegramApp(link.deepLink, link.webUrl);
+        return true;
+      }
+      const target = linkTarget(link.chat);
+      const known = findLinkedChat(dialogs.all, target);
+      if (known !== null) {
+        openChat(known, {
           ...(link.postId !== null && { postId: link.postId }),
           ...(link.commentId !== null && { commentId: link.commentId }),
         });
         return true;
       }
-      launchTelegramApp(link.deepLink, link.webUrl);
+      resolveTarget(target, {
+        ...(link.postId !== null && { postId: link.postId }),
+        ...(link.commentId !== null && { commentId: link.commentId }),
+        link,
+      });
       return true;
     },
-    [dialogs.all, openChat],
+    [dialogs.all, openChat, resolveTarget],
   );
 
   /**
-  Persists what the user read, as reported by the thread's scroll position:
-  the dialog's badge and watermark move immediately, the receipt is
-  best-effort, and the server's own `read` update settles the exact count.
-  */
+   * Joins the open preview chat. The resolved DTO is folded into the thread in
+   * place, so the composer appears without re-reading the window; the chat list
+   * is read again because the chat now belongs there.
+   */
+  const joinPreview = useCallback((): void => {
+    const current = activePreview;
+    if (current === null || current.joining || current.requested) return;
+    setPreview((state) => (state !== null && state.chatId === current.chatId ? { ...state, joining: true } : state));
+    void joinChat(current.target)
+      .then((result) => {
+        if (result.status === 'joined' && result.chat !== null) {
+          const chat = result.chat;
+          threads.updateChat(chat);
+          const dialog = transientDialogs.current.get(chat.id);
+          if (dialog !== undefined) transientDialogs.current.set(chat.id, { ...dialog, chat });
+          setPreview(null);
+          void load();
+          return;
+        }
+        if (result.status === 'request_sent') {
+          setPreview((state) => (state !== null && state.chatId === current.chatId ? { ...state, requested: true } : state));
+          onNotice('Your join request was sent. An admin has to approve it.');
+          return;
+        }
+        if (result.status !== 'webview') return;
+        onNotice('Telegram needs this join completed in its own app.');
+        const link = targetAppLink(current.target);
+        if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
+      })
+      .catch(onError)
+      .finally(() => {
+        setPreview((state) => (state !== null && state.chatId === current.chatId ? { ...state, joining: false } : state));
+      });
+  }, [activePreview, threads, load, onNotice, onError]);
+
+  /**
+   * Persists what the user read, as reported by the thread's scroll position:
+   * the dialog's badge and watermark move immediately, the receipt is
+   * best-effort, and the server's own `read` update settles the exact count.
+   *
+   * A preview is not in the account's chat list and its messages were not sent
+   * to this account, so nothing is marked read there.
+   */
   const markRead = useCallback(
     (chatId: PeerId, maxId: number): void => {
+      if (activePreview?.chatId === chatId) return;
       const open = threads.thread && threads.thread.chat.id === chatId ? threads.thread : null;
       const boundary = open?.readInboxMaxId ?? findDialog(chatId)?.readInboxMaxId ?? 0;
       if (maxId <= boundary) return;
@@ -214,17 +321,18 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
         // Read receipts are best-effort; the next open retries.
       });
     },
-    [applyRead, findDialog, threads],
+    [activePreview, applyRead, findDialog, threads],
   );
 
   /**
-  Marks the whole chat read: a chat-list action, or the thread's jump to the
-  bottom. The unread backlog is not necessarily loaded, so the receipt is sent
-  with no max id — the bridge marks everything to Telegram's own newest message
-  — while the lists and the open thread move to the newest id the client knows.
-  */
+   * Marks the whole chat read: a chat-list action, or the thread's jump to the
+   * bottom. The unread backlog is not necessarily loaded, so the receipt is sent
+   * with no max id — the bridge marks everything to Telegram's own newest message
+   * — while the lists and the open thread move to the newest id the client knows.
+   */
   const markAllRead = useCallback(
     (chatId: PeerId): void => {
+      if (activePreview?.chatId === chatId) return;
       const open = threads.thread && threads.thread.chat.id === chatId ? threads.thread : null;
       const dialog = findDialog(chatId);
       const current = Math.max(open?.readInboxMaxId ?? 0, dialog?.readInboxMaxId ?? 0);
@@ -237,7 +345,7 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
         // Read receipts are best-effort; the next open retries.
       });
     },
-    [applyReadAll, findDialog, threads],
+    [activePreview, applyReadAll, findDialog, threads],
   );
 
   return {
@@ -252,6 +360,8 @@ export function useSignedInNavigation({ dialogs, threads, comments, onArchiveCon
     openArchive,
     leaveArchive,
     handleTelegramLink,
+    preview: activePreview,
+    joinPreview,
     markRead,
     markAllRead,
   };

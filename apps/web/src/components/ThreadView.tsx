@@ -6,13 +6,13 @@ import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
-import type { ChatDto, MessageDto, PeerId } from '../types';
+import type { MessageDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
-import { Composer } from './Composer';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
+import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
 
 /**
@@ -25,6 +25,8 @@ export function ThreadView({
   chat,
   presence,
   archived,
+  preview,
+  onJoin,
   messages,
   loading,
   loadingOlder,
@@ -309,7 +311,9 @@ export function ThreadView({
             </button>
           ) : null}
           {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
-          {!loading && messages.length === 0 ? <p className="muted pad">No messages yet — say hello.</p> : null}
+          {!loading && messages.length === 0 ? (
+            <p className="muted pad">{preview === null ? 'No messages yet — say hello.' : 'No messages yet.'}</p>
+          ) : null}
           {groups.map((group, index) => {
             const anchor = group[0];
             return (
@@ -332,17 +336,17 @@ export function ThreadView({
                       : null
                   }
                   reacting={reactingIds.has(anchor.id)}
-                  onReact={onReact}
+                  onReact={preview === null ? onReact : undefined}
                   voting={votingIds.has(anchor.id)}
-                  onVote={onVote}
+                  onVote={preview === null ? onVote : undefined}
                   pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
-                  onPressButton={onPressButton}
+                  onPressButton={preview === null ? onPressButton : undefined}
                   readOutboxMaxId={readOutboxMaxId}
-                  onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+                  onReply={preview === null ? (target) => setReplyingTo({ chatId: chat.id, message: target }) : undefined}
                   onForward={onForward}
                   link={messageWebLink(chat, anchor.id)}
                   onJump={jumpToMessage}
-                  onOpenComments={chat.kind === 'channel' ? openComments : undefined}
+                  onOpenComments={preview === null && chat.kind === 'channel' ? openComments : undefined}
                   onOpenMedia={onOpenMedia}
                 />
               </Fragment>
@@ -369,31 +373,16 @@ export function ThreadView({
         />
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      {chat.canSendMessages ? (
-        // A per-chat instance keeps a draft and an open command menu from
-        // leaking into the next thread.
-        <Composer
-          key={chat.id}
-          placeholder="Message"
-          replyTarget={replyTarget}
-          botCommands={botCommands}
-          onCancelReply={() => setReplyingTo(null)}
-          onSend={send}
-          onAttach={attach}
-        />
-      ) : (
-        <p className="composer composer-notice">{sendBlockedNotice(chat)}</p>
-      )}
+      <ThreadFooter
+        chat={chat}
+        preview={preview}
+        onJoin={onJoin}
+        replyTarget={replyTarget}
+        botCommands={botCommands}
+        onCancelReply={() => setReplyingTo(null)}
+        onSend={send}
+        onAttach={attach}
+      />
     </section>
   );
-}
-
-/**
-The read-only notice shown in place of the composer: a broadcast channel
-explains itself, everything else was restricted by the chat's admins.
-*/
-function sendBlockedNotice(chat: ChatDto): string {
-  return chat.kind === 'channel'
-    ? 'Only admins can post in this channel.'
-    : 'The admins of this chat have restricted your ability to send messages.';
 }

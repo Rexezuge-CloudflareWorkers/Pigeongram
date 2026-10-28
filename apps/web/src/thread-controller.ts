@@ -4,6 +4,7 @@ import type { ThreadPositionMemory } from './thread-position';
 import type { OpenThreadOptions } from './thread-window';
 import type {
   BotCommandDto,
+  ChatDto,
   DialogDto,
   GetCommentsResult,
   MessageButtonDto,
@@ -81,6 +82,11 @@ export interface ThreadController {
   */
   open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<OpenThreadResult>;
   close: () => void;
+  /**
+   * Replaces the open chat's DTO, after a write changed it (a join turns a
+   * preview into a chat with a composer) without re-reading its window.
+   */
+  updateChat: (chat: ChatDto) => void;
   loadOlder: () => Promise<void>;
   /**
   Reads the next page towards the chat's newest message. The view offers it

@@ -44,7 +44,8 @@ Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materializ
   `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
   `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
   domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
-  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `config`, `log`, `socket-hub`, `unread-albums`, `call-{rpc,dto,params,
+  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `config`, `log`, `socket-hub`, `unread-albums`,
+  `resolve-chat`, `call-{rpc,dto,params,
 protocol,registry}`) and the mtcute integration
   (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
   `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA; the calls' half is `src/call-types.ts`
@@ -88,7 +89,14 @@ protocol,registry}`) and the mtcute integration
   and `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
   (t.me URLs and `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the
   context that routes link clicks from message bodies (`components/MessageText.tsx`) — known chats open in the thread,
-  everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer. Styling is
+  a public chat the list does not carry is resolved through `resolveChat` and opens as a **transient preview**, and
+  everything else Telegram goes to the installed app — and `richtext.tsx` the formatting/entity renderer. A preview is
+  a chat the account has not joined: `useSignedInNavigation.ts` keeps it memory-only beside the search transients,
+  `ThreadView` puts Join where the composer would be, the write affordances (reply, reactions, votes, callback
+  buttons, comments) are withheld, and its scroll position never sends a read receipt. `joinChat` folds the joined
+  chat into the open thread and reads the list again; `request_sent` and `webview` leave the preview in place and
+  report the outcome (a guard bot's web view is handed to the installed app). Invite links and private `t.me/c` ids the
+  engine does not already know still go straight to the app. Styling is
   Tailwind v4 through `@tailwindcss/vite`: `src/styles/tailwind.css` imports full Tailwind (preflight included) and
   layers the existing stylesheets under `components`, so legacy rules sit above preflight but below utilities. New UI
   should use utilities; extend a legacy sheet only for a genuinely shared rule. The installable app sits beside it:
@@ -373,8 +381,8 @@ protocol,registry}`) and the mtcute integration
 - **The god-file allowlist holds exactly the two contract modules.** `scripts/god-files.allowlist.json` exempts
   `worker/src/types.ts` and `pages/src/types.ts` from the hard cap: each is one mirrored contract (the SPA copy must stay
   in sync by hand), so splitting one is a mirror-wide refactor rather than a per-file fix. The `rpc-types.ts` split from
-  `types.ts`, and the later `search-types.ts` split from `rpc-types.ts`, were the last such splits; anything else over 400
-  is split before it lands.
+  `types.ts`, and the later `search-types.ts` and `chat-link-types.ts` splits from `rpc-types.ts`, were the last such
+  splits; anything else over 400 is split before it lands.
 - **No speculative exports.** An export exists because a caller outside its module uses it: a helper only its own module
   calls stays private, and an unreferenced symbol is deleted rather than kept for a later screen. `knip` is not the guard
   here, because it false-positives on the mirrored contract modules — their exports are the contract, not dead code.

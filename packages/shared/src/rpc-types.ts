@@ -1,11 +1,12 @@
 /**
  * The RPC half of the JSON contract: the method names exposed over
  * `POST /user/rpc` with their parameters and results. Split from `types.ts`
- * (which keeps the DTOs they carry) so each contract module stays under the
- * god-file cap; the SPA mirrors both in `apps/web/src/types.ts`.
+ * and `chat-link-types.ts` to stay under the god-file cap.
  */
 
 import type { BotCommandDto, DialogDto, MeDto, MessageDto, MessagePollDto, PeerId, ProfileDto } from './types';
+
+export type { JoinChatParams, JoinChatResult, ResolveChatParams, ResolveChatResult } from './chat-link-types';
 
 export interface RpcRequestDto {
   method: string;
@@ -33,6 +34,8 @@ export type RpcMethod =
   | 'getBotCommands'
   | 'setArchived'
   | 'getProfile'
+  | 'resolveChat'
+  | 'joinChat'
   | 'getCallDhConfig'
   | 'requestCall'
   | 'receivedCall'
@@ -62,7 +65,8 @@ export type BatchableRpcMethod =
   | 'getPollResults'
   | 'getComments'
   | 'getBotCommands'
-  | 'getProfile';
+  | 'getProfile'
+  | 'resolveChat';
 
 /**
 One call inside a `batch`.

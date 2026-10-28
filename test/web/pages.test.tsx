@@ -1024,6 +1024,39 @@ describe('App', () => {
     expect(opened).toBe(true);
   });
 
+  it('resolves a forwarded origin the list does not carry', async () => {
+    const forwarded = message({
+      id: 11,
+      chatId: 2,
+      senderId: 2,
+      senderName: 'Bob',
+      text: 'fresh news',
+      forward: {
+        senderId: 3,
+        senderName: 'Carol',
+        senderUsername: 'carol',
+        date: 1_699_999_800_000,
+        fromChatId: null,
+        fromMessageId: null,
+        signature: null,
+      },
+    });
+    const calls = installSignedInFetch({
+      history: (chatId) => json({ messages: chatId === 3 ? carolHistory : [forwarded] }),
+      rpc: (call) => {
+        if (call.body?.method === 'resolveChat') return json({ chat: carol, member: true });
+      },
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Bob'));
+    const origin = await within(threadSection()).findByRole('button', { name: 'Carol' });
+    fireEvent.click(origin);
+
+    expect(await within(threadSection()).findByText('carol says hi')).toBeDefined();
+    expect(bridgeCall(calls, 'resolveChat')?.body?.params).toEqual({ username: 'carol' });
+  });
+
   it('hands an unknown forwarded origin to the installed app', async () => {
     const forwarded = message({
       id: 11,
@@ -1048,8 +1081,9 @@ describe('App', () => {
     const origin = await within(threadSection()).findByRole('button', { name: 'Unknown Channel' });
     fireEvent.click(origin);
 
-    const frame = document.querySelector('iframe');
-    expect(frame?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+    await waitFor(() => {
+      expect(document.querySelector('iframe')?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+    });
     globalThis.dispatchEvent(new Event('blur'));
     expect(document.querySelector('iframe')).toBeNull();
   });
@@ -1695,6 +1729,128 @@ describe('App', () => {
       expect(opened).toBe(true);
     });
 
+    it('opens a public chat outside the list as a preview', async () => {
+      const channelId = -1_000_000_000_042;
+      const publicChannel: ChatDto = {
+        id: channelId,
+        kind: 'channel',
+        title: 'Public News',
+        username: 'public_news',
+        photo: null,
+        canSendMessages: false,
+        presence: null,
+      };
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'open public news',
+        entities: [{ offset: 0, length: 16, kind: 'text_link', url: 'https://t.me/public_news' }],
+      });
+      const preview = message({ id: 4, chatId: channelId, senderName: 'Public News', text: 'a public post' });
+      const calls = installSignedInFetch({
+        history: (chatId) => json({ messages: chatId === channelId ? [preview] : [source] }),
+        rpc: (call) => {
+          if (call.body?.method === 'resolveChat') return json({ chat: publicChannel, member: false });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(fireEvent.click(await within(threadSection()).findByText('open public news'))).toBe(false);
+
+      expect(await within(threadSection()).findByText('a public post')).toBeDefined();
+      expect(within(threadSection()).getByRole('button', { name: 'Join' })).toBeDefined();
+      expect(screen.queryByPlaceholderText('Message')).toBeNull();
+      expect(bridgeCall(calls, 'resolveChat')?.body?.params).toEqual({ username: 'public_news' });
+      // The preview was opened as a member would see it, but reading it here
+      // must not move the account's read watermark.
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      expect(calls.some((call) => call.body?.method === 'readHistory')).toBe(false);
+    });
+
+    it('joins a preview and gives it a composer', async () => {
+      const channelId = -1_000_000_000_043;
+      const publicChannel: ChatDto = {
+        id: channelId,
+        kind: 'channel',
+        title: 'Joinable',
+        username: 'joinable',
+        photo: null,
+        canSendMessages: false,
+        presence: null,
+      };
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'open joinable',
+        entities: [{ offset: 0, length: 13, kind: 'text_link', url: 'https://t.me/joinable' }],
+      });
+      const post = message({ id: 5, chatId: channelId, text: 'join me' });
+      const calls = installSignedInFetch({
+        history: (chatId) => json({ messages: chatId === channelId ? [post] : [source] }),
+        rpc: (call) => {
+          if (call.body?.method === 'resolveChat') return json({ chat: publicChannel, member: false });
+          if (call.body?.method === 'joinChat') {
+            return json({ status: 'joined', chat: { ...publicChannel, canSendMessages: true } });
+          }
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(fireEvent.click(await within(threadSection()).findByText('open joinable'))).toBe(false);
+      await within(threadSection()).findByText('join me');
+
+      fireEvent.click(within(threadSection()).getByRole('button', { name: 'Join' }));
+      expect(await screen.findByPlaceholderText('Message')).toBeDefined();
+      expect(bridgeCall(calls, 'joinChat')?.body?.params).toEqual({ username: 'joinable' });
+      // The chat now belongs to the account's list, so it is read again.
+      expect(calls.filter((call) => call.body?.method === 'getDialogs').length).toBe(2);
+    });
+
+    it('keeps a preview while an admin has to approve the join', async () => {
+      const channelId = -1_000_000_000_044;
+      const publicChannel: ChatDto = {
+        id: channelId,
+        kind: 'channel',
+        title: 'Private News',
+        username: 'private_news',
+        photo: null,
+        canSendMessages: false,
+        presence: null,
+      };
+      const source = message({
+        id: 9,
+        chatId: 2,
+        senderId: 2,
+        senderName: 'Bob',
+        text: 'open private news',
+        entities: [{ offset: 0, length: 17, kind: 'text_link', url: 'https://t.me/private_news' }],
+      });
+      installSignedInFetch({
+        history: (chatId) =>
+          json({ messages: chatId === channelId ? [message({ id: 6, chatId: channelId, text: 'members only' })] : [source] }),
+        rpc: (call) => {
+          if (call.body?.method === 'resolveChat') return json({ chat: publicChannel, member: false });
+          if (call.body?.method === 'joinChat') return json({ status: 'request_sent', chat: null });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(fireEvent.click(await within(threadSection()).findByText('open private news'))).toBe(false);
+      await within(threadSection()).findByText('members only');
+
+      fireEvent.click(within(threadSection()).getByRole('button', { name: 'Join' }));
+      expect(await screen.findByText('Your join request was sent. An admin has to approve it.')).toBeDefined();
+      expect(within(threadSection()).getByRole('button', { name: 'Request sent' })).toBeDefined();
+      expect(screen.queryByPlaceholderText('Message')).toBeNull();
+    });
+
     it('re-opens the chat around the linked post and lands on it', async () => {
       const post = message({ id: 30, chatId: 2, senderId: 2, senderName: 'Bob', text: 'linked post' });
       const source = message({
@@ -1741,8 +1897,9 @@ describe('App', () => {
       const link = await within(threadSection()).findByText('open channel');
       expect(fireEvent.click(link)).toBe(false);
 
-      const frame = document.querySelector('iframe');
-      expect(frame?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+      await waitFor(() => {
+        expect(document.querySelector('iframe')?.getAttribute('src')).toBe('tg://resolve?domain=unknown_channel');
+      });
       // The app takes the tab over: the fallback timer is cancelled with it.
       globalThis.dispatchEvent(new Event('blur'));
       expect(document.querySelector('iframe')).toBeNull();

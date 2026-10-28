@@ -1,29 +1,33 @@
 import { useCallback } from 'react';
-import { forwardOriginLink, launchTelegramApp } from './links';
+import { findLinkedChat, forwardOriginTarget } from './links';
+import type { TelegramChatTarget } from './links';
 import type { ChatDto, DialogDto, MessageForwardDto } from './types';
 
 /**
  * Opens the chat a forwarded message came from.
  *
- * The origin is addressed by `senderId` first (saved-messages headers also
- * carry `fromChatId`), matching how Telegram credits the forward. A chat the
- * account already has open in its loaded dialogs opens in the thread; anything
- * else is handed to the installed app, the same fallback an unknown Telegram
- * link takes.
+ * The origin is addressed by `senderUsername` first (saved-messages headers
+ * also carry `fromChatId`), matching how Telegram credits the forward. A chat
+ * the account already has in its loaded dialogs opens in the thread; anything
+ * else goes through the bridge's resolver, which may open a transient preview
+ * or hand the target to the installed app.
  */
-export function useForwardOrigin(dialogs: readonly DialogDto[], openChat: (chat: ChatDto) => void): (forward: MessageForwardDto) => void {
+export function useForwardOrigin(
+  dialogs: readonly DialogDto[],
+  openChat: (chat: ChatDto) => void,
+  resolveTarget: (target: TelegramChatTarget) => void,
+): (forward: MessageForwardDto) => void {
   return useCallback(
     (forward: MessageForwardDto): void => {
-      const target = forward.senderId ?? forward.fromChatId;
+      const target = forwardOriginTarget(forward);
       if (target === null) return;
-      const dialog = dialogs.find((candidate) => candidate.chat.id === target);
-      if (dialog !== undefined) {
-        openChat(dialog.chat);
+      const dialog = findLinkedChat(dialogs, target);
+      if (dialog !== null) {
+        openChat(dialog);
         return;
       }
-      const link = forwardOriginLink(forward);
-      if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
+      resolveTarget(target);
     },
-    [dialogs, openChat],
+    [dialogs, openChat, resolveTarget],
   );
 }

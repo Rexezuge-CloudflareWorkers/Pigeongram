@@ -4,11 +4,14 @@ import {
   commentWebLink,
   findLinkedChat,
   forwardOriginLink,
+  forwardOriginTarget,
   launchTelegramApp,
+  linkTarget,
   markedChatId,
   messageWebLink,
   miniAppDeepLink,
   parseTelegramLink,
+  targetAppLink,
   usernameAppLink,
 } from '../../apps/web/src/links';
 import type { ChatDto, DialogDto, MessageForwardDto } from '../../apps/web/src/types';
@@ -22,6 +25,22 @@ A peer of any kind, for the address builders that care about the kind.
 */
 function peer(id: number, username: string | null, kind: ChatDto['kind'] = 'channel'): ChatDto {
   return { id, kind, title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
+}
+
+/**
+A forward header with every field defaulted, for the target and link builders.
+*/
+function forward(overrides: Partial<MessageForwardDto>): MessageForwardDto {
+  return {
+    senderId: null,
+    senderName: null,
+    senderUsername: null,
+    date: 0,
+    fromChatId: null,
+    fromMessageId: null,
+    signature: null,
+    ...overrides,
+  };
 }
 
 describe('parseTelegramLink', () => {
@@ -182,9 +201,45 @@ describe('findLinkedChat', () => {
   });
 
   it('matches a private-channel id through its marked form', () => {
-    expect(markedChatId(1_234_567_890)).toBe(-1_001_234_567_890);
-    expect(findLinkedChat(dialogs, { internalId: 1_234_567_890 })).toBe(dialogs[1].chat);
-    expect(findLinkedChat(dialogs, { internalId: 42 })).toBeNull();
+    expect(linkTarget({ internalId: 1_234_567_890 })).toEqual({ chatId: -1_001_234_567_890 });
+    expect(findLinkedChat(dialogs, linkTarget({ internalId: 1_234_567_890 }))).toBe(dialogs[1].chat);
+    expect(findLinkedChat(dialogs, linkTarget({ internalId: 42 }))).toBeNull();
+  });
+});
+
+describe('forwardOriginTarget', () => {
+  it('prefers the durable username', () => {
+    expect(forwardOriginTarget(forward({ senderId: 42, senderUsername: 'carol' }))).toEqual({ username: 'carol' });
+  });
+
+  it('falls back to the sender id, then the source chat', () => {
+    expect(forwardOriginTarget(forward({ senderId: 42 }))).toEqual({ chatId: 42 });
+    expect(forwardOriginTarget(forward({ fromChatId: markedChatId(7) }))).toEqual({ chatId: markedChatId(7) });
+  });
+
+  it('has no target for a hidden forward', () => {
+    expect(forwardOriginTarget(forward({ senderName: 'Anonymous' }))).toBeNull();
+  });
+});
+
+describe('targetAppLink', () => {
+  it('uses a public username with its web fallback', () => {
+    expect(targetAppLink({ username: 'durov' })).toEqual({
+      deepLink: 'tg://resolve?domain=durov',
+      webUrl: 'https://t.me/durov',
+    });
+  });
+
+  it('addresses a person and a private channel by id', () => {
+    expect(targetAppLink({ chatId: 42 })).toEqual({ deepLink: 'tg://user?id=42', webUrl: null });
+    expect(targetAppLink({ chatId: markedChatId(1_234_567_890) })).toEqual({
+      deepLink: 'tg://privatepost?channel=1234567890',
+      webUrl: null,
+    });
+  });
+
+  it('has no address for a basic group', () => {
+    expect(targetAppLink({ chatId: -42 })).toBeNull();
   });
 });
 
@@ -214,19 +269,6 @@ describe('commentWebLink', () => {
 });
 
 describe('forwardOriginLink', () => {
-  function forward(overrides: Partial<MessageForwardDto>): MessageForwardDto {
-    return {
-      senderId: null,
-      senderName: null,
-      senderUsername: null,
-      date: 0,
-      fromChatId: null,
-      fromMessageId: null,
-      signature: null,
-      ...overrides,
-    };
-  }
-
   it('prefers a public username, which has a web fallback too', () => {
     expect(forwardOriginLink(forward({ senderId: 42, senderUsername: 'carol' }))).toEqual({
       chat: { username: 'carol' },

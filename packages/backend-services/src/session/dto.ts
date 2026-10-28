@@ -50,13 +50,16 @@ export function toChatDto(peer: Peer): ChatDto {
 /**
 Whether the account may post in a chat.
 
-Broadcast channels are admin-only, so the account can post only as the
-creator or with the `post_messages` right. Elsewhere a user-specific ban
-wins, then the group's default rights bind everyone but admins (a gigagroup
-is one whose defaults ban sending outright). An incomplete (`min`) peer
-carries none of these flags, so it stays writable rather than guessed at.
+A chat the account is not in is never writable: a public channel or supergroup
+resolved from a link is readable as a preview, but a send there would only
+fail. Broadcast channels are admin-only, so the account can post only as the
+creator or with the `post_messages` right. Elsewhere a user-specific ban wins,
+then the group's default rights bind everyone but admins (a gigagroup is one
+whose defaults ban sending outright). An incomplete (`min`) peer carries none
+of these flags, so it stays writable rather than guessed at.
 */
 function canSendMessages(chat: Chat): boolean {
+  if (!chat.isMember) return false;
   if (chat.isMin) return true;
   if (chat.permissions && !chat.permissions.canSendMessages) return false;
   switch (chat.chatType) {

@@ -2,6 +2,7 @@ import type { CommentsController } from '../comments-controller';
 import type { ThreadController } from '../thread-controller';
 import { threadReachesLatest } from '../thread-state';
 import type { ChatDto, MessageDto, PeerId, PresenceDto } from '../types';
+import type { ChatPreview } from '../navigation-types';
 import { CommentsView } from './CommentsView';
 import { ThreadView } from './ThreadView';
 
@@ -39,6 +40,15 @@ interface ThreadPaneProps {
    */
   archived: boolean;
   /**
+   * The open chat as a preview when the account has not joined it; Join takes
+   * the composer's place.
+   */
+  preview: ChatPreview | null;
+  /**
+   * Joins the open preview chat.
+   */
+  onJoin: () => void;
+  /**
    * Whether the open chat is in the loaded list, so the archive move is
    * meaningful. A chat reached through search is transient.
    */
@@ -75,6 +85,8 @@ export function ThreadPane({
   selected,
   presence,
   archived,
+  preview,
+  onJoin,
   canArchive,
   onBack,
   onSetArchived,
@@ -116,6 +128,8 @@ export function ThreadPane({
       chat={selected}
       presence={presence}
       archived={archived}
+      preview={preview === null ? null : { joining: preview.joining, requested: preview.requested }}
+      onJoin={onJoin}
       canArchive={canArchive}
       messages={threads.thread?.messages ?? []}
       loading={threads.loading}

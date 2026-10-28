@@ -8,6 +8,7 @@ import { toDialogDto, toMeDto } from './dto';
 import { clampInt, optionalBoolean, optionalMessageId, requireBoolean, requirePeerId } from './params';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
+import { joinChatTarget, resolveChatTarget } from './resolve-chat';
 import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
 import type { PartialMethodTable } from './rpc-methods';
 
@@ -75,6 +76,18 @@ export const dialogsRpcMethods = {
       const chatId = requirePeerId(params.chatId);
       return { profile: await readProfile(context.client, chatId) };
     },
+  },
+
+  resolveChat: {
+    readOnly: true,
+    run: async (context, params) => resolveChatTarget(context.client, params),
+  },
+
+  joinChat: {
+    // Joining changes the account's membership, so it is a write and stays out
+    // of a batch.
+    readOnly: false,
+    run: async (context, params) => joinChatTarget(context.client, params),
   },
 } as const satisfies PartialMethodTable;
 

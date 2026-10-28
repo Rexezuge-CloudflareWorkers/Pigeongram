@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./types": "./src/types.ts",
     "./rpc-types": "./src/rpc-types.ts",
+    "./chat-link-types": "./src/chat-link-types.ts",
     "./search-types": "./src/search-types.ts",
     "./call-types": "./src/call-types.ts"
   },

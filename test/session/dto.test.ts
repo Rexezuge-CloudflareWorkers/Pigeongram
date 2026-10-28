@@ -217,6 +217,13 @@ describe('toChatDto', () => {
     expect(toChatDto(new Chat(admin)).canSendMessages).toBe(true);
   });
 
+  it('blocks sending in a chat the account has not joined', () => {
+    // A public channel resolved from a link is readable as a preview; a send
+    // there would only fail, so the DTO must not offer a composer.
+    const left = { ...rawChannel, left: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(left)).canSendMessages).toBe(false);
+  });
+
   it('keeps an incomplete (min) peer writable rather than guessing', () => {
     const min = { ...rawChannel, min: true } as unknown as tl.RawChannel;
     expect(toChatDto(new Chat(min)).canSendMessages).toBe(true);

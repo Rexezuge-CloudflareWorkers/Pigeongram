@@ -23,6 +23,17 @@ export interface ThreadViewProps {
    */
   archived: boolean;
   /**
+   * The open chat as a public preview, when the account has not joined it:
+   * Join takes the composer's place, and the message actions that would write
+   * (reply, react, vote, press a callback) are not offered. Null for a chat in
+   * the account's list.
+   */
+  preview: { joining: boolean; requested: boolean } | null;
+  /**
+   * Joins the preview chat, or sends the join request an admin has to approve.
+   */
+  onJoin: () => void;
+  /**
    * Whether the chat is in the loaded list, so the archive move is meaningful.
    * A chat reached through search is transient: it has no folder to move.
    */

@@ -98,9 +98,7 @@ function needsPreview(
   loadedIds: ReadonlySet<number>,
   ignoredIds: ReadonlySet<number>,
 ): reply is MessageReplyDto & { messageId: number } {
-  if (!reply) return false;
-  if (reply.origin !== 'same_chat') return false;
-  if (reply.messageId === null) return false;
+  if (!reply || reply.origin !== 'same_chat' || reply.messageId === null) return false;
   // An explicit quote already carries the fragment Telegram sent; the
   // original must not replace it.
   if (reply.quote || reply.text !== '') return false;

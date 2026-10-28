@@ -238,7 +238,7 @@ describe('resolveReplyPreviews', () => {
   it('caps how many originals one page reads', async () => {
     const { client, calls } = fakeClient(new Map());
 
-    const page = Array.from({ length: 101 }, (_, index) => reply(1_000 + index, 2_000 + index));
+    const page = Array.from({ length: 101 }, (_, index) => reply(1000 + index, 2000 + index));
     await resolveReplyPreviews(client, page);
 
     expect(calls[0].ids).toHaveLength(100);

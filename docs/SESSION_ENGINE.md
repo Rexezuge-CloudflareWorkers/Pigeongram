@@ -189,6 +189,8 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                                                                |
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                                                         |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
+| `resolveChat`         | `{username}\|{chatId}` (exactly one)                                              | `{chat: ChatDto, member: boolean}`                                                                                                           |
+| `joinChat`            | `{username}\|{chatId}` (exactly one)                                              | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
 | `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                                                                           |
 | `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                                                                            |
 | `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                                                                         |
@@ -217,12 +219,13 @@ the bridge — the engine resolves it back to a peer on the next page, so no acc
 cursor opaque and sends it back verbatim for "load more".
 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
-`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `searchGlobal`, `getPollResults`, `getComments`, `getBotCommands`
-and `getProfile`; a
+`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `searchGlobal`, `getPollResults`, `getComments`, `getBotCommands`,
+`getProfile` and `resolveChat`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
-`readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark, and
-`setArchived` because it moves a chat between the chat list and the archive. Each call reports its own outcome, so
-one broken read (a post without a comments section) never takes the reads beside it down with it.
+`readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark,
+`setArchived` because it moves a chat between the chat list and the archive, and `joinChat` because it changes the
+account's membership. Each call reports its own outcome, so one broken read (a post without a comments section) never
+takes the reads beside it down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -251,6 +254,23 @@ group or a channel. Like the command menu, the answer is in the peer's full info
 for a positive id and the full chat for a negative one. A bot's own description stands in for its bio, which a bot
 usually leaves empty. The read is on demand — the SPA asks for it when the reader opens the profile, so a thread open
 pays for nothing. It is on the batch whitelist, because it is a read like the others.
+
+`resolveChat` turns a public username or a marked peer id into a chat DTO and says whether the account is in it. It
+is what a `t.me` link or a forward's origin goes through when the loaded dialog list does not carry the chat: a
+username is the durable address, while a marked id resolves only while the engine still has the peer's access hash. A
+public channel or supergroup the account has not joined is readable as a **preview** — `member: false` — and the DTO
+then reports `canSendMessages: false`, so the SPA offers Join instead of a composer that would fail. A target that
+Telegram does not know (or this session has no access hash for) is a `404`, which the SPA hands to the installed app.
+The method is read-only and on the batch whitelist.
+
+`joinChat` resolves the same target, answers `joined` without a write when the account is already in it, and otherwise
+calls `joinChat` with the resolved username (falling back to the requested target when the peer has none). The result
+is Telegram's own outcome: `joined` carries the chat, `request_sent` means an admin must approve the request, and
+`webview` means a guard bot wants its web view opened. It is a write, so it stays out of a batch.
+
+`resolveChat` and `joinChat` are deliberately narrow: invite links (`t.me/+…`) hand off to the installed app, and a
+private `t.me/c/<id>` link resolves only when the engine already knows the peer. There is no invite-joining, no
+history backfill and no storage write on either path.
 
 `DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus

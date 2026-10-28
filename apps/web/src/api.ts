@@ -11,7 +11,7 @@ import type { EngineStateDto } from './types';
 
 export { ApiError } from './api-error';
 
-export { fetchArchivedDialogs, fetchBootstrap, fetchDialogs, fetchProfile, setArchived } from './api/chats';
+export { fetchArchivedDialogs, fetchBootstrap, fetchDialogs, fetchProfile, joinChat, resolveChat, setArchived } from './api/chats';
 export {
   fetchChatScreen,
   fetchComments,

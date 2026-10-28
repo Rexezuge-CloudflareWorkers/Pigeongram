@@ -19,7 +19,7 @@ import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages } from 
 import type { ChatThread } from './thread-state';
 import { supportsCommands, unreadWindow, WINDOW_LIMIT } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { BotCommandDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { BotCommandDto, ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
@@ -165,6 +165,10 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     setError(null);
     setBotCommands(NO_COMMANDS);
   }, [positions]);
+
+  const updateChat = useCallback((chat: ChatDto): void => {
+    setThread((current) => (current && current.chat.id === chat.id ? { ...current, chat } : current));
+  }, []);
 
   const setReadWatermark = useCallback((chatId: PeerId, maxId: number): void => {
     setThread((current) =>
@@ -353,6 +357,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     pressingButtonIds,
     open,
     close,
+    updateChat,
     loadOlder,
     loadNewer,
     jumpToLatest,

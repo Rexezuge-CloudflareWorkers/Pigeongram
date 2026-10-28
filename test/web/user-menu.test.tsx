@@ -66,6 +66,23 @@ describe('UserMenu', () => {
     expect(onSignOut).not.toHaveBeenCalled();
   });
 
+  it('shows the phone handle with a plus when the account has no username', () => {
+    render(
+      <UserMenu
+        me={{ ...me, username: null, phone: '15551234567' }}
+        connected
+        pwa={pwa}
+        onSignOut={async () => {}}
+        onOpenArchive={() => {}}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
+
+    const menu = openMenu(trigger);
+
+    expect(within(menu).getByText('+15551234567')).toBeDefined();
+  });
+
   it('opens the archive from the profile menu and closes the menu', () => {
     const onOpenArchive = vi.fn();
     render(<UserMenu me={me} connected pwa={pwa} onSignOut={async () => {}} onOpenArchive={onOpenArchive} />);

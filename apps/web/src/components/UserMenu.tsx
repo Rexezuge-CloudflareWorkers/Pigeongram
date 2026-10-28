@@ -32,6 +32,17 @@ interface UserMenuProps {
   onOpenArchive: () => void;
 }
 
+/**
+The account's secondary line: the public username when it has one, otherwise
+the phone number. Telegram stores the phone without its leading plus.
+*/
+function displayHandle(me: MeDto | null): string | undefined {
+  if (me?.username) return `@${me.username}`;
+  const phone = me?.phone;
+  if (!phone) return undefined;
+  return phone.startsWith('+') ? phone : `+${phone}`;
+}
+
 export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -40,7 +51,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
   const menuId = useId();
 
   const displayName = me ? `${me.firstName}${me.lastName ? ` ${me.lastName}` : ''}` : 'Telegram';
-  const handle = me?.username ? `@${me.username}` : me?.phone;
+  const handle = displayHandle(me);
 
   const focusTrigger = useCallback((): void => {
     triggerRef.current?.focus();

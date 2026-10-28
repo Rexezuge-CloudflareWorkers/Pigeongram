@@ -12,6 +12,7 @@ import { JumpToLatest } from './JumpToLatest';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
+import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
 
@@ -35,6 +36,7 @@ export function ThreadView({
   pending,
   error,
   botCommands,
+  description,
   reactingIds,
   votingIds,
   pressingButtonIds,
@@ -311,9 +313,7 @@ export function ThreadView({
             </button>
           ) : null}
           {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
-          {!loading && messages.length === 0 ? (
-            <p className="muted pad">{preview === null ? 'No messages yet — say hello.' : 'No messages yet.'}</p>
-          ) : null}
+          {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
           {groups.map((group, index) => {
             const anchor = group[0];
             return (

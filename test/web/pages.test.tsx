@@ -934,6 +934,32 @@ describe('App', () => {
     expect(lists).toHaveLength(1);
   });
 
+  it("shows a bot's description in an empty thread", async () => {
+    const helper: ChatDto = {
+      id: 7,
+      kind: 'bot',
+      title: 'Helper',
+      username: 'helper_bot',
+      photo: null,
+      canSendMessages: true,
+      presence: null,
+    };
+    installSignedInFetch({
+      dialogs: [
+        { chat: helper, lastMessage: null, unread: 0, readInboxMaxId: 0, readOutboxMaxId: 0, pinned: false, muted: false, archived: false },
+      ],
+      history: () => json({ messages: [] }),
+      rpc: (call) =>
+        call.body?.method === 'getBotCommands' ? json({ commands: [], description: 'Answers questions about the weather.' }) : undefined,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Helper'));
+
+    expect(await within(threadSection()).findByText('Answers questions about the weather.')).toBeDefined();
+    expect(within(threadSection()).queryByText('No messages yet — say hello.')).toBeNull();
+  });
+
   it('loads the slash-command menu for an open bot chat', async () => {
     const helper: ChatDto = {
       id: 7,

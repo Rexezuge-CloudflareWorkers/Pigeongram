@@ -34,6 +34,11 @@ interface ChatScreen {
   */
   commands: BotCommandDto[];
   /**
+  The text Telegram shows in a chat with no messages: a bot's description, or
+  a group's description. Null when the chat has none, or when no menu was read.
+  */
+  description: string | null;
+  /**
   The post's comments, when a post was named. Null when the read failed —
   a post without a comments section is not a failure of the window beside it.
   */
@@ -75,12 +80,14 @@ export async function fetchChatScreen(
   const outcomes = await rpcBatch(calls);
   const messages = batchResult<GetHistoryResult>(outcomes[0], 'chat history').messages;
   // A chat without a command menu is normal, and a failed lookup is no
-  // worse than an empty one: the composer simply offers no menu.
-  const commands = outcomes[1]?.ok ? (outcomes[1].result as GetBotCommandsResult).commands : [];
+  // worse than an empty one: the composer simply offers no menu and the
+  // empty thread keeps its generic prompt.
+  const menu = outcomes[1]?.ok ? (outcomes[1].result as GetBotCommandsResult) : null;
   const commentsOutcome = postId === null ? undefined : outcomes[2];
   return {
     messages,
-    commands,
+    commands: menu?.commands ?? [],
+    description: menu?.description ?? null,
     comments: commentsOutcome?.ok ? (commentsOutcome.result as GetCommentsResult) : null,
     commentsError: commentsOutcome === undefined || commentsOutcome.ok ? null : (commentsOutcome.error ?? 'The comments could not be read'),
   };

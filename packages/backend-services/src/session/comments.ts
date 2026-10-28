@@ -2,7 +2,7 @@ import { getMarkedPeerId, Long, Message, PeersIndex } from '@mtcute/core';
 import type { tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { BotCommandDto } from '../types';
-import { readBotCommands } from './bot-commands';
+import { readChatMenu } from './bot-commands';
 import { EngineError } from './errors';
 import { rpcErrorText } from './rpc-errors';
 
@@ -131,7 +131,7 @@ export async function readComments(
   const discussion = await resolveDiscussion(client, params.chatId, params.messageId);
   if (!discussion) return { discussion: null, page: { comments: [], count: 0, nextOffset: null }, commands: [] };
 
-  const [res, commands] = await Promise.all([
+  const [res, menu] = await Promise.all([
     client.call({
       _: 'messages.getReplies',
       peer: discussion.peer,
@@ -144,9 +144,9 @@ export async function readComments(
       minId: 0,
       hash: Long.ZERO,
     }),
-    readBotCommands(client, discussion.chatId, discussion.peer),
+    readChatMenu(client, discussion.chatId, discussion.peer),
   ]);
-  return { discussion, page: normalizeReplies(res, discussion.rootId, params.limit), commands };
+  return { discussion, page: normalizeReplies(res, discussion.rootId, params.limit), commands: menu.commands };
 }
 
 /**

@@ -442,7 +442,10 @@ describe('getBotCommands dispatch for a post discussion', () => {
 
   it('answers no commands while the post has no discussion thread', async () => {
     const { client, fullChats } = fakeClient({ discussionResult: discussion(null) });
-    await expect(rpc(client, 'getBotCommands', { chatId: CHANNEL_ID, messageId: 7 })).resolves.toEqual({ commands: [] });
+    await expect(rpc(client, 'getBotCommands', { chatId: CHANNEL_ID, messageId: 7 })).resolves.toEqual({
+      commands: [],
+      description: null,
+    });
     expect(fullChats).toEqual([]);
   });
 

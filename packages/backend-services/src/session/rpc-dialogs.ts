@@ -1,7 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { Dialog } from '@mtcute/core';
 import type { DialogDto, PresenceDto } from '../types';
-import { readBotCommands } from './bot-commands';
+import { readChatMenu } from './bot-commands';
 import { setChatArchived } from './archive';
 import { resolveDiscussion } from './comments';
 import { toDialogDto, toMeDto } from './dto';
@@ -59,14 +59,17 @@ export const dialogsRpcMethods = {
       const chatId = requirePeerId(params.chatId);
       const messageId = optionalMessageId(params.messageId);
       if (messageId === undefined) {
-        return { commands: await readBotCommands(context.client, chatId) };
+        return readChatMenu(context.client, chatId);
       }
       // A channel post's comments live in the linked discussion group, and its
       // composer offers that group's commands. The peer is resolved here, not
       // in the SPA; a post without a thread yet has no menu.
       const discussion = await resolveDiscussion(context.client, chatId, messageId);
-      if (!discussion) return { commands: [] };
-      return { commands: await readBotCommands(context.client, discussion.chatId, discussion.peer) };
+      if (!discussion) return { commands: [], description: null };
+      const menu = await readChatMenu(context.client, discussion.chatId, discussion.peer);
+      // The description belongs to the empty chat screen; a post's comments
+      // are not one, so it stays out of this answer.
+      return { commands: menu.commands, description: null };
     },
   },
 

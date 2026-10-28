@@ -87,7 +87,7 @@ hot reloading. The dev server still serves the manifest and the icons, so the do
 3. Application → Service Workers → **Offline** (or DevTools → Network → Offline) and reload: the app shell boots and
    the offline screen appears, because the account API is not reachable.
 4. Put the browser back online: the screen retries itself on the `online` event.
-5. Install it (the account menu offers "Install app" when the browser raised the prompt) and open the installed app:
+5. Install it (the account menu offers "Install App" when the browser raised the prompt) and open the installed app:
    it starts at `/`, which is public, and decides between the intro and the chat list by itself.
 
 ## Known limits

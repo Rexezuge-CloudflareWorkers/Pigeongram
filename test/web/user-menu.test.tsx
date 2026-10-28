@@ -26,8 +26,8 @@ function openMenu(trigger: HTMLButtonElement): HTMLElement {
 
 function requestSignOut(trigger: HTMLButtonElement): HTMLElement {
   const menu = openMenu(trigger);
-  fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sign out' }));
-  return screen.getByRole('dialog', { name: 'Sign out of Telegram?' });
+  fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sign Out' }));
+  return screen.getByRole('dialog', { name: 'Sign Out of Telegram?' });
 }
 
 describe('UserMenu', () => {
@@ -84,7 +84,7 @@ describe('UserMenu', () => {
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
 
     const menu = openMenu(trigger);
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Install app' }));
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Install App' }));
 
     expect(install).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).toBeNull();
@@ -94,7 +94,7 @@ describe('UserMenu', () => {
     const trigger = renderStatus(true);
 
     const menu = openMenu(trigger);
-    expect(within(menu).queryByRole('menuitem', { name: 'Install app' })).toBeNull();
+    expect(within(menu).queryByRole('menuitem', { name: 'Install App' })).toBeNull();
   });
 
   it('asks for confirmation and cancels without signing out', () => {
@@ -124,7 +124,7 @@ describe('UserMenu', () => {
     const trigger = renderMenu(onSignOut);
 
     const dialog = requestSignOut(trigger);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign Out' }));
 
     expect(onSignOut).toHaveBeenCalledTimes(1);
     expect((within(dialog).getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);

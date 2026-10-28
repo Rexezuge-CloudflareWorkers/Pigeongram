@@ -715,7 +715,21 @@ export type ClientSocketMessage =
 Messages the session engine sends over the updates socket.
 */
 export type ServerSocketMessage =
-  { type: 'ready' } | { type: 'pong' } | { type: 'error'; message: string } | { type: 'update'; update: UpdateEvent };
+  | { type: 'ready' }
+  | { type: 'pong' }
+  | {
+      type: 'error';
+      /**
+      A sentence the app shows as it arrived: the engine never puts a raw
+      exception message in this frame.
+      */
+      message: string;
+      /**
+      The engine's coarse error code, when the failure carried one.
+      */
+      code?: string;
+    }
+  | { type: 'update'; update: UpdateEvent };
 
 /**
  * Login phases of the session engine.

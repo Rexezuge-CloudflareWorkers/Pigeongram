@@ -1,9 +1,12 @@
 import type { TelegramDriver } from './driver';
 import type { EngineConfig } from './config';
+import type { EngineErrorCode } from './errors';
+import { EngineError } from './errors';
 import type { LoginFlow } from './login-flow';
 import type { UpdatesSocketHub } from './socket-hub';
 import type { EngineStore, WakeCountersDto, WakeRecord } from './stats';
 import { log } from './log';
+import type { ServerSocketMessage } from '../types';
 
 /**
 How long a wake may spend catching up before it disconnects anyway.
@@ -23,6 +26,39 @@ timeout); holding the socket-close event for it queues every bridge call
 behind `getDifference`.
 */
 export const STOP_CATCH_UP_TIMEOUT_MS = 2000;
+
+/**
+The sentences the app shows when a live session cannot start, keyed by the
+engine's error code. The socket's `error` frame is rendered verbatim in the
+SPA's toast, so it carries copy a reader can act on — the raw exception text
+stays in the `live.failed` log line.
+*/
+const LIVE_FAILURE_MESSAGES: Partial<Record<EngineErrorCode, string>> = {
+  access: 'Your Telegram session is no longer authorized — sign in again.',
+  upstream: 'Telegram is not answering right now — retrying…',
+  unavailable: 'Lost the connection to Telegram — retrying…',
+};
+
+/**
+What the app shows for a failure with no more specific sentence.
+*/
+const LIVE_FAILURE_MESSAGE = 'Live updates are unavailable right now — retrying…';
+
+/**
+Builds the `error` frame for a failed live start.
+
+Additive on the wire: the sentence is always present, the code only when the
+failure carried one, so a client that knows nothing of codes still shows the
+sentence.
+*/
+function liveFailureFrame(failure: unknown): ServerSocketMessage {
+  const code = failure instanceof EngineError ? failure.code : undefined;
+  return {
+    type: 'error',
+    code,
+    message: (code ? LIVE_FAILURE_MESSAGES[code] : undefined) ?? LIVE_FAILURE_MESSAGE,
+  };
+}
 
 /**
 The collaborators the lifecycle drives.
@@ -229,7 +265,6 @@ export class SessionLifecycle {
       this.background(this.catchUpTask);
       await this.arm(this.host.config.wakeIntervalMs);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       log.error('live.failed', { error });
       this.live = false;
       if (!this.host.login.running) {
@@ -239,7 +274,7 @@ export class SessionLifecycle {
           // The connection is already broken; the next connect rebuilds it.
         }
       }
-      this.host.hub.broadcast({ type: 'error', message });
+      this.host.hub.broadcast(liveFailureFrame(error));
       await this.arm(this.host.config.wakeIntervalMs);
     }
   }

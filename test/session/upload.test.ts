@@ -1,7 +1,10 @@
 import type { InputMediaLike } from '@mtcute/core';
+import type { tl } from '@mtcute/core';
+import { Long, Message, PeersIndex } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { describe, expect, it, vi } from 'vitest';
-import { UploadBodySplitter, sendUploadedMediaGroup } from '../../packages/backend-services/src/session/upload';
+import { UploadBodySplitter, sendUploadedMedia, sendUploadedMediaGroup } from '../../packages/backend-services/src/session/upload';
+import type { UploadGroupSpec, UploadSpec } from '../../packages/backend-services/src/session/upload-spec';
 
 vi.mock('../../packages/backend-services/src/session/dto', () => ({
   toMessageDto: (message: { id: number }) => ({ id: message.id }),
@@ -148,5 +151,161 @@ describe('sendUploadedMediaGroup', () => {
     );
 
     expect(types).toEqual(['video', 'video']);
+  });
+});
+
+/**
+ * The comment send is addressed by the thread root, which Telegram returns
+ * last in `messages.getDiscussionMessage`'s newest-first window. These tests
+ * pin the media paths to that root (and the first-comment fallback).
+ */
+
+const CHANNEL_ID = -1_000_000_000_020;
+const GROUP_PEER = { _: 'inputPeerChannel', channelId: 30, accessHash: Long.fromNumber(30_000) };
+
+const rawChannel = {
+  _: 'channel',
+  id: 20,
+  title: 'Announcements',
+  username: 'announce',
+  broadcast: true,
+  megagroup: false,
+  date: 1_700_000_000,
+  accessHash: Long.fromNumber(20_000),
+} as unknown as tl.RawChannel;
+
+const rawGroup = {
+  ...rawChannel,
+  id: 30,
+  title: 'Announcements Chat',
+  username: undefined,
+  broadcast: false,
+  megagroup: true,
+  accessHash: Long.fromNumber(30_000),
+} as unknown as tl.RawChannel;
+
+function commentPost(): Message {
+  return new Message(
+    {
+      _: 'message',
+      id: 7,
+      peerId: { _: 'peerChannel', channelId: 20 },
+      fromId: null,
+      date: 1_700_000_000,
+      message: 'news',
+      out: false,
+      replies: { _: 'messageReplies', comments: true, replies: 3, channelId: 30, maxId: 12, recentRepliers: [] },
+    } as unknown as tl.RawMessage,
+    PeersIndex.from({ users: [], chats: [rawChannel, rawGroup] }),
+  );
+}
+
+function commentClient(discussion: readonly number[] | null): {
+  client: TelegramClient;
+  sent: Array<{ peer: unknown; replyTo?: number }>;
+  commented: number[];
+} {
+  const sent: Array<{ peer: unknown; replyTo?: number }> = [];
+  const commented: number[] = [];
+  const client = {
+    resolvePeer: async () => ({ _: 'inputPeerChannel', channelId: 20, accessHash: Long.fromNumber(20_000) }),
+    call: async () => ({
+      _: 'messages.discussionMessage',
+      messages:
+        discussion === null
+          ? [{ _: 'messageEmpty', id: 0 }]
+          : discussion.map((id) => ({
+              _: 'message',
+              id,
+              peerId: { _: 'peerChannel', channelId: 30 },
+              date: 1_700_000_000,
+              message: `m${id}`,
+              out: false,
+            })),
+      maxId: discussion?.[0] ?? 0,
+      unreadCount: 0,
+      chats: [rawGroup],
+      users: [],
+    }),
+    getMessages: async () => [commentPost()],
+    sendMedia: async (peer: unknown, _media: unknown, params: { replyTo?: number }) => {
+      sent.push({ peer, ...(params.replyTo !== undefined && { replyTo: params.replyTo }) });
+      return { id: 98 };
+    },
+    commentMedia: async () => {
+      commented.push(1);
+      return { id: 99 };
+    },
+    sendMediaGroup: async (peer: unknown, _medias: unknown, params: { replyTo?: number }) => {
+      sent.push({ peer, ...(params.replyTo !== undefined && { replyTo: params.replyTo }) });
+      return [{ id: 98 }];
+    },
+    commentMediaGroup: async () => {
+      commented.push(1);
+      return [{ id: 99 }];
+    },
+  } as unknown as TelegramClient;
+  return { client, sent, commented };
+}
+
+const singleFile: UploadSpec = {
+  chatId: CHANNEL_ID,
+  commentTo: 7,
+  kind: 'document',
+  size: 1,
+  fileName: 'a.txt',
+  mime: 'text/plain',
+};
+
+const album: UploadGroupSpec = {
+  chatId: CHANNEL_ID,
+  commentTo: 7,
+  items: [
+    { kind: 'document', size: 1, fileName: 'a.txt', mime: 'text/plain' },
+    { kind: 'document', size: 1, fileName: 'b.txt', mime: 'text/plain' },
+  ],
+};
+
+describe('sendUploadedMedia comments', () => {
+  it('posts a top-level comment file at the thread root', async () => {
+    const { client, sent, commented } = commentClient([12, 10]);
+
+    const message = await sendUploadedMedia(client, singleFile, stream([[1]]));
+
+    expect(commented).toEqual([]);
+    expect(sent).toEqual([{ peer: GROUP_PEER, replyTo: 10 }]);
+    expect(message).toEqual({ id: 98 });
+  });
+
+  it('falls back to the channel for the first comment file', async () => {
+    const { client, sent, commented } = commentClient(null);
+
+    const message = await sendUploadedMedia(client, singleFile, stream([[1]]));
+
+    expect(sent).toEqual([]);
+    expect(commented).toEqual([1]);
+    expect(message).toEqual({ id: 99 });
+  });
+});
+
+describe('sendUploadedMediaGroup comments', () => {
+  it('posts a top-level comment album at the thread root', async () => {
+    const { client, sent, commented } = commentClient([12, 10]);
+
+    const messages = await sendUploadedMediaGroup(client, album, stream([[1], [2]]));
+
+    expect(commented).toEqual([]);
+    expect(sent).toEqual([{ peer: GROUP_PEER, replyTo: 10 }]);
+    expect(messages).toEqual([{ id: 98 }]);
+  });
+
+  it('falls back to the channel for the first comment album', async () => {
+    const { client, sent, commented } = commentClient(null);
+
+    const messages = await sendUploadedMediaGroup(client, album, stream([[1], [2]]));
+
+    expect(sent).toEqual([]);
+    expect(commented).toEqual([1]);
+    expect(messages).toEqual([{ id: 99 }]);
   });
 });

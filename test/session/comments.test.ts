@@ -101,11 +101,13 @@ function repliesContainer(messages: tl.TypeMessage[], count?: number): tl.messag
   } as unknown as tl.messages.RawChannelMessages;
 }
 
-function discussion(rootId: number | null): tl.messages.RawDiscussionMessage {
+function discussion(rootIds: number | null | readonly number[]): tl.messages.RawDiscussionMessage {
+  const ids = rootIds === null ? [] : typeof rootIds === 'number' ? [rootIds] : [...rootIds];
   return {
     _: 'messages.discussionMessage',
-    messages: rootId === null ? [{ _: 'messageEmpty', id: 0 }] : [rawMessage(rootId)],
-    maxId: rootId ?? undefined,
+    messages: ids.length === 0 ? [{ _: 'messageEmpty', id: 0 }] : ids.map((id) => rawMessage(id)),
+    // Newest first, as Telegram returns the thread-start window.
+    maxId: ids[0],
     unreadCount: 0,
     chats: [rawGroup],
     users: [rawUser],
@@ -218,6 +220,24 @@ describe('resolveDiscussion', () => {
     });
   });
 
+  it('takes the last message of the thread-start window as the root', async () => {
+    // Telegram returns the window newest-first, and the auto-forwarded channel
+    // post that started the thread is the last message. A grouped post brings
+    // its mirrored album along, so `messages[0]` is an album member.
+    const { client } = fakeClient({ discussionResult: discussion([12, 11, 10]) });
+    await expect(resolveDiscussion(client, CHANNEL_ID, 7)).resolves.toMatchObject({ rootId: 10 });
+  });
+
+  it('skips empty entries when picking the root', async () => {
+    const { client } = fakeClient({
+      discussionResult: {
+        ...discussion([12, 10]),
+        messages: [{ _: 'messageEmpty', id: 0 }, rawMessage(12), rawMessage(10)],
+      } as unknown as tl.messages.RawDiscussionMessage,
+    });
+    await expect(resolveDiscussion(client, CHANNEL_ID, 7)).resolves.toMatchObject({ rootId: 10 });
+  });
+
   it('treats a post without a thread as no discussion', async () => {
     const { client } = fakeClient({ discussionResult: discussion(null) });
     await expect(resolveDiscussion(client, CHANNEL_ID, 7)).resolves.toBeNull();
@@ -265,6 +285,17 @@ describe('readComments', () => {
     ]);
   });
 
+  it('asks for replies at the root of a multi-message thread-start window', async () => {
+    const { client, calls } = fakeClient({ discussionResult: discussion([12, 11, 10]) });
+    const result = await readComments(client, { chatId: CHANNEL_ID, messageId: 7, limit: 50 });
+
+    expect(result.discussion?.rootId).toBe(10);
+    expect(calls).toMatchObject([
+      { _: 'messages.getDiscussionMessage', msgId: 7 },
+      { _: 'messages.getReplies', msgId: 10 },
+    ]);
+  });
+
   it('skips the thread and command reads when no discussion exists', async () => {
     const { client, calls, fullChats } = fakeClient({ discussionResult: discussion(null) });
     const result = await readComments(client, { chatId: CHANNEL_ID, messageId: 7, limit: 50 });
@@ -294,14 +325,31 @@ describe('requireCommentPost', () => {
 });
 
 describe('dispatchRpc comments methods', () => {
-  it('sends a top-level comment through the channel, letting mtcute mirror it', async () => {
-    const { client, commented, calls } = fakeClient({});
+  it('sends a top-level comment to the thread root in the linked group', async () => {
+    const { client, sent, commented, calls } = fakeClient({});
     const result = (await rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })) as {
       message: { id: number };
     };
+    expect(commented).toEqual([]);
+    expect(sent).toEqual([
+      {
+        peer: { _: 'inputPeerChannel', channelId: 30, accessHash: Long.fromNumber(30_000) },
+        text: 'hi',
+        replyTo: 10,
+      },
+    ]);
+    expect(result.message.id).toBe(98);
+    expect(calls.map((call) => call._)).toEqual(['messages.getDiscussionMessage']);
+  });
+
+  it('posts the first comment through the channel when no thread exists', async () => {
+    const { client, commented, sent } = fakeClient({ discussionResult: discussion(null) });
+    const result = (await rpc(client, 'sendComment', { chatId: CHANNEL_ID, messageId: 7, text: 'hi' })) as {
+      message: { id: number };
+    };
+    expect(sent).toEqual([]);
     expect(commented).toEqual([{ postId: 7, text: 'hi' }]);
     expect(result.message.id).toBe(99);
-    expect(calls).toEqual([]);
   });
 
   it('sends a reply to a comment into the linked group', async () => {

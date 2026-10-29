@@ -25,7 +25,8 @@ interface CommentsViewProps {
   pending: readonly PendingMessage[];
   error: string | null;
   /**
-   * Comment ids with a reaction request in flight; their chips are disabled.
+   * Comment (or pinned post) ids with a reaction request in flight; their chips
+   * are disabled.
    */
   reactingIds: ReadonlySet<number>;
   /**
@@ -183,6 +184,8 @@ export function CommentsView({
             original={null}
             showQuote={false}
             showAvatar={false}
+            reacting={reactingIds.has(thread.post.id)}
+            onReact={onReact}
             voting={votingIds.has(thread.post.id)}
             onVote={onVote}
             pressingButton={pressingButtonIds.has(thread.post.id)}

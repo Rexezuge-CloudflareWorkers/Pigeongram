@@ -233,13 +233,24 @@ export function applyCommentEdit(thread: CommentsThread | null, message: Message
   return { ...thread, comments: replaceMessage(thread.comments, message) };
 }
 
+/**
+Replaces the reaction aggregates a reaction update points at: the pinned post
+when it names the channel post, a loaded comment when it names the discussion
+group. Comments and posts live in different chats, and an update for another
+message is left alone.
+*/
 export function applyCommentReactions(
   thread: CommentsThread | null,
   chatId: PeerId,
   messageId: number,
   reactions: MessageReactionDto[],
 ): CommentsThread | null {
-  if (!thread || thread.discussionChatId !== chatId) return thread;
+  if (!thread) return thread;
+  if (chatId === thread.chat.id) {
+    if (messageId !== thread.post.id) return thread;
+    return { ...thread, post: { ...thread.post, reactions } };
+  }
+  if (thread.discussionChatId !== chatId) return thread;
   if (thread.comments.every((comment) => comment.id !== messageId)) return thread;
   return { ...thread, comments: applyReactionUpdate(thread.comments, chatId, messageId, reactions) };
 }

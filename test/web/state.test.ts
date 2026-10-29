@@ -618,12 +618,17 @@ describe('comment state', () => {
     expect(applyCommentEdit(null, edited)).toBeNull();
   });
 
-  it('applies reactions only to a comment in the open discussion', () => {
+  it('applies reactions to the pinned post or to a comment in the open discussion', () => {
     const open = commentsThread();
     const reactions = [{ emoji: '👍', customEmojiId: null, count: 1, chosen: true }];
     expect(applyCommentReactions(open, GROUP, 502, reactions)?.comments.find((entry) => entry.id === 502)?.reactions).toEqual(reactions);
     expect(applyCommentReactions(open, GROUP, 999, reactions)).toBe(open);
+    expect(applyCommentReactions(open, 10, 100, reactions)?.post.reactions).toEqual(reactions);
+    expect(applyCommentReactions(open, 10, 999, reactions)).toBe(open);
+    // A comment id under the channel peer, or the post id under the group, is
+    // not a target: the two chats are separate namespaces.
     expect(applyCommentReactions(open, 10, 502, reactions)).toBe(open);
+    expect(applyCommentReactions(open, GROUP, 100, reactions)).toBe(open);
     expect(applyCommentReactions(null, GROUP, 502, reactions)).toBeNull();
   });
 

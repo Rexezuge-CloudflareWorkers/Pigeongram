@@ -47,7 +47,7 @@ interface MessageMenuProps {
   onForward?: (messages: readonly MessageDto[]) => void;
   /**
   Sets (or clears) a reaction on the anchor message; absent for views that do
-  not react (the comments view's post header).
+  not react (a preview chat).
   */
   onReact?: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**

@@ -18,7 +18,7 @@
   text-decoration: underline;
 }
 
-/* Reaction chips rendered without a handler (the comments screen's post header).
+/* Reaction chips rendered without a handler (a preview chat withholds them).
    `is-static`, not `static`, so Tailwind's `.static` utility cannot clobber it. */
 .message .reaction.is-static {
   cursor: default;
@@ -28,10 +28,17 @@
   border-color: transparent;
 }
 
-/* The post being discussed, pinned at the top of the comments screen. */
+/* The post being discussed opens the comments screen's scrolling list. The
+   wrapper is a column flex container so the bubble keeps the thread's own
+   shrink-to-fit width cap and left alignment; a block wrapper would stretch it
+   across the whole pane. The panel background and border mark it as context. */
+.comments-post {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .comments-post .message {
-  max-width: 100%;
-  align-self: stretch;
   background: var(--panel);
   border: 1px solid var(--border);
 }

@@ -387,7 +387,9 @@ group itself too, so `replyTo` names a comment in the thread. Reads never requir
 posting requires it, and Telegram's error surfaces to the SPA verbatim.
 
 Reactions on comments target the group and arrive live, and the SPA merges them into the open screen by
-matching the update's chat id and reply header against the thread. Reply counts on the post are only as fresh
+matching the update's chat id and reply header against the thread. Reactions on the pinned post target the
+channel post instead; the same fold routes an update by its chat id — the channel's for the post, the
+discussion group's for a comment — so both stay live. Reply counts on the post are only as fresh
 as the last load plus the caller's own sends: this TL layer has no reply-count update, so a comment from
 someone else does not bump the button until the channel thread reloads.
 

@@ -3550,6 +3550,52 @@ describe('App', () => {
       expect(calls).toEqual([{ method: 'sendVote', params: { chatId: channel.id, messageId: 7, options: [0] } }]);
     });
 
+    it('reacts to the pinned post and folds its live reactions in', async () => {
+      const sent: unknown[] = [];
+      const reactedPost = {
+        ...post,
+        reactions: [{ emoji: '👍', customEmojiId: null, count: 1, chosen: false }],
+      };
+      installCommentsFetch(
+        (call) => {
+          if (call.body?.method === 'getComments') {
+            return json({ comments: [], count: 0, discussionChatId: GROUP, discussionMessageId: ROOT });
+          }
+          if (call.body?.method !== 'sendReaction') {
+            return;
+          }
+
+          sent.push(call.body);
+          return json({ message: null });
+        },
+        () => json({ messages: [reactedPost] }),
+      );
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+
+      const pinned = threadSection().querySelector<HTMLElement>('.comments-post');
+      if (pinned === null) throw new Error('The pinned post is not rendered');
+      fireEvent.click(within(pinned).getByRole('button', { name: 'React 👍 (1)' }));
+
+      await waitFor(() => {
+        expect(within(pinned).getByRole('button', { name: 'React 👍 (2)' }).getAttribute('aria-pressed')).toBe('true');
+      });
+      expect(sent).toEqual([{ method: 'sendReaction', params: { chatId: channel.id, messageId: 7, emoji: '👍', customEmojiId: null } }]);
+
+      deliver({
+        type: 'reactions',
+        chatId: channel.id,
+        messageId: 7,
+        reactions: [{ emoji: '👍', customEmojiId: null, count: 5, chosen: true }],
+      });
+      await waitFor(() => {
+        expect(within(pinned).getByRole('button', { name: 'React 👍 (5)' })).toBeDefined();
+      });
+    });
+
     it('keeps the pinned comments screen at the bottom while comment media settles', async () => {
       installCommentsFetch((call) => {
         if (call.body?.method !== 'getComments') return;

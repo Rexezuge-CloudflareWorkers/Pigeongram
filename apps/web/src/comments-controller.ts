@@ -37,7 +37,8 @@ export interface CommentsController {
   */
   error: string | null;
   /**
-  Comment ids with a reaction request in flight; their chips are disabled.
+  Comment (or pinned post) ids with a reaction request in flight; their chips
+  are disabled.
   */
   reactingIds: ReadonlySet<number>;
   /**

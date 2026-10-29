@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { sendComment, sendReaction } from './api';
 import type { PostKey } from './comments-controller';
 import type { PendingMessage } from './outbox';
-import { applyReactionUpdate, mergeMessages, toggleReaction, updateCommentsThread } from './state';
+import { applyCommentReactions, mergeMessages, toggleReaction, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
 import type { MessageDto, MessageReactionDto, PeerId } from './types';
 import { sendUploadBatch } from './upload';
@@ -48,7 +48,8 @@ export interface CommentsSend {
   */
   pending: readonly PendingMessage[];
   /**
-  Comment ids with a reaction request in flight; their chips are disabled.
+  Comment (or pinned post) ids with a reaction request in flight; their chips
+  are disabled.
   */
   reactingIds: ReadonlySet<number>;
   send: (text: string, replyTo?: number) => Promise<void>;
@@ -61,6 +62,7 @@ export interface CommentsSend {
 
 export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onError }: UseCommentsSendOptions): CommentsSend {
   // The ids with a reaction request in flight; their chips are disabled.
+  // Comments and the pinned post share the set, like the vote and button ones.
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
   const outbox = useOutbox({ onError });
 
@@ -164,16 +166,12 @@ export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onE
     (message: MessageDto, reaction: MessageReactionDto): void => {
       if (!thread || reactingIds.has(message.id)) return;
       if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
-      const post = { chatId: thread.chat.id, messageId: thread.post.id };
       const before = message.reactions;
       const after = toggleReaction(before, reaction);
+      // The reaction may be on a comment or on the pinned post; the fold picks
+      // the one the update names (the channel post or the discussion group).
       const apply = (list: MessageReactionDto[]): void => {
-        setThread((current) =>
-          updateCommentsThread(current, post, (open) => ({
-            ...open,
-            comments: applyReactionUpdate(open.comments, message.chatId, message.id, list),
-          })),
-        );
+        setThread((current) => applyCommentReactions(current, message.chatId, message.id, list));
       };
       apply(after);
       setReactingIds((current) => new Set(current).add(message.id));

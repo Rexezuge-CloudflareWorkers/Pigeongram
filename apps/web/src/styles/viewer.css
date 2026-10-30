@@ -108,11 +108,35 @@
   padding: 4px clamp(44px, 6vw, 84px);
 }
 
-/* The photo stage owns pinch gestures, including touches that land in the
-   side padding reserved for the gallery arrows. Video keeps its browser
-   gestures so its native controls continue to work. */
-.media-viewer-stage.is-photo {
+/* Photos own pinch and pan, and photos and animations own the gallery swipe;
+   both need the browser's touch gestures handed to the pointer handlers.
+   Video keeps its browser gestures so its native controls continue to work. */
+.media-viewer-stage.is-photo,
+.media-viewer-stage.is-swipeable {
   touch-action: none;
+}
+
+/* The track carries the gallery's swipe translation; the photo's zoom
+   transform stays on the image inside it. The settle transition is only armed
+   for an aborted swipe, so committing to a neighbour mounts at rest. */
+.media-viewer-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.media-viewer-track.is-settling {
+  transition: transform 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-viewer-track.is-settling {
+    transition: none;
+  }
 }
 
 .media-viewer-media {

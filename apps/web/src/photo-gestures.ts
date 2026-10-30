@@ -101,16 +101,3 @@ export function movePinch(
     ),
   });
 }
-
-export function capturePointer(element: Element, pointerId: number): void {
-  if (typeof element.setPointerCapture === 'function') element.setPointerCapture(pointerId);
-}
-
-export function releasePointer(element: Element, pointerId: number): void {
-  if (typeof element.releasePointerCapture !== 'function') return;
-  try {
-    element.releasePointerCapture(pointerId);
-  } catch {
-    // The pointer may already be gone; release is best-effort.
-  }
-}

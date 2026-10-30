@@ -8,7 +8,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
-import { capturePointer, createTapTracker, movePinch, registerTap, releasePointer, DOUBLE_TAP_MS, type Gesture } from './photo-gestures';
+import { createTapTracker, movePinch, registerTap, DOUBLE_TAP_MS, type Gesture } from './photo-gestures';
+import { capturePointer, isControl, releasePointer } from './pointer';
 import {
   anchorPoint,
   APPROXIMATE,
@@ -337,8 +338,4 @@ export function usePhotoZoom({ enabled, mediaId, stageRef }: UsePhotoZoomOptions
     onDoubleClick,
     onLoad,
   };
-}
-
-function isControl(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest('button, a') !== null;
 }

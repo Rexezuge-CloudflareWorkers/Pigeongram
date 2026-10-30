@@ -42,6 +42,37 @@ function photo(id: number): MessageDto {
   });
 }
 
+function video(id: number, kind: 'video' | 'animation' = 'video'): MessageDto {
+  return message(id, {
+    kind,
+    fileName: kind === 'video' ? 'clip.mp4' : null,
+    mime: kind === 'video' ? 'video/mp4' : null,
+    size: 4096,
+    width: 1280,
+    height: 720,
+    duration: 4,
+  });
+}
+
+/**
+ * A touch drag across `target`, from a fixed point. The viewer's stage owns
+ * the handlers, so any element in it can start the gesture.
+ */
+function swipe(target: Element, dx: number, dy = 0, startX = 300, startY = 300): void {
+  const init = { pointerId: 1, pointerType: 'touch', clientX: startX, clientY: startY };
+  fireEvent.pointerDown(target, init);
+  fireEvent.pointerMove(target, { ...init, clientX: startX + dx, clientY: startY + dy });
+  fireEvent.pointerUp(target, { ...init, clientX: startX + dx, clientY: startY + dy });
+}
+
+function currentImageSrc(): string | null {
+  return screen.getByRole('img').getAttribute('src');
+}
+
+function counterText(): string | null {
+  return document.querySelector('.media-viewer-count')?.textContent ?? null;
+}
+
 function renderViewer(
   messages: readonly MessageDto[],
   initialMessageId = messages[0]?.id ?? 0,
@@ -212,5 +243,100 @@ describe('media viewer downloads', () => {
 
     const fallback = document.querySelector('.media-viewer-fallback');
     expect(fallback?.getAttribute('download')).toBe('photo-3.jpg');
+  });
+});
+
+describe('media viewer swipe', () => {
+  it('swipes left to the next photo and right back to the previous one', () => {
+    const image = renderViewer([photo(1), photo(2)]);
+
+    swipe(image, -100);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=2');
+    expect(counterText()).toBe('2 / 2');
+
+    swipe(screen.getByRole('img'), 100);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+    expect(counterText()).toBe('1 / 2');
+  });
+
+  it('follows the finger and settles back before the threshold', () => {
+    const image = renderViewer([photo(1), photo(2)]);
+    const track = document.querySelector<HTMLElement>('.media-viewer-track');
+    if (track === null) throw new Error('the viewer rendered no track');
+
+    fireEvent.pointerDown(image, { pointerId: 1, pointerType: 'touch', clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(image, { pointerId: 1, pointerType: 'touch', clientX: 240, clientY: 306 });
+    expect(track.style.transform).toBe('translate3d(-60px, 0, 0)');
+    expect(track.classList.contains('is-settling')).toBe(false);
+
+    fireEvent.pointerUp(image, { pointerId: 1, pointerType: 'touch', clientX: 240, clientY: 306 });
+    expect(track.style.transform).toBe('translate3d(0px, 0, 0)');
+    expect(track.classList.contains('is-settling')).toBe(true);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+  });
+
+  it('ignores a short or vertical drag', () => {
+    const image = renderViewer([photo(1), photo(2)]);
+
+    swipe(image, -40);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+
+    swipe(image, 5, -120);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+  });
+
+  it('resists but does not wrap at either end', () => {
+    const image = renderViewer([photo(1), photo(2)]);
+
+    fireEvent.pointerDown(image, { pointerId: 1, pointerType: 'touch', clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(image, { pointerId: 1, pointerType: 'touch', clientX: 400, clientY: 300 });
+    const track = document.querySelector<HTMLElement>('.media-viewer-track');
+    expect(track?.style.transform).toBe('translate3d(25px, 0, 0)');
+    fireEvent.pointerUp(image, { pointerId: 1, pointerType: 'touch', clientX: 400, clientY: 300 });
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next media' }));
+    swipe(screen.getByRole('img'), -100);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=2');
+  });
+
+  it('swipes an animation but leaves a video to its native controls', () => {
+    render(<MediaViewer messages={[photo(1), video(2, 'animation')]} initialMessageId={2} onClose={() => {}} />);
+    const animation = document.querySelector<HTMLVideoElement>('video.media-viewer-media');
+    if (animation === null) throw new Error('the viewer rendered no animation');
+    expect(animation.controls).toBe(false);
+
+    swipe(animation, 100);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+
+    cleanup();
+    render(<MediaViewer messages={[video(1), photo(2)]} initialMessageId={1} onClose={() => {}} />);
+    const videoElement = document.querySelector<HTMLVideoElement>('video.media-viewer-media');
+    if (videoElement === null) throw new Error('the viewer rendered no video');
+    expect(videoElement.controls).toBe(true);
+
+    swipe(videoElement, -100);
+    expect(document.querySelector('video.media-viewer-media')).toBe(videoElement);
+    expect(counterText()).toBe('1 / 2');
+  });
+
+  it('keeps the drag for panning while the photo is zoomed', () => {
+    const image = renderViewer([photo(1), photo(2)]);
+    fireEvent.doubleClick(image);
+
+    swipe(image, -100);
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+    expect(scaleOf(screen.getByRole('img'))).toBe(2);
+  });
+
+  it('does not close the viewer when a swipe ends on the backdrop', () => {
+    const onClose = vi.fn();
+    render(<MediaViewer messages={[video(1, 'animation'), photo(2)]} initialMessageId={1} onClose={onClose} />);
+    const stage = document.querySelector('.media-viewer-stage');
+    if (stage === null) throw new Error('the viewer rendered no stage');
+
+    swipe(stage, -40);
+    fireEvent.click(stage);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

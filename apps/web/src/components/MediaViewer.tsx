@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
 import { downloadFileName } from '../media-download';
 import type { MessageDto } from '../types';
+import { useGallerySwipe } from '../useGallerySwipe';
 import { usePhotoZoom } from '../usePhotoZoom';
 import { Icon } from './Icon';
 import { isViewableMedia } from './Media';
@@ -11,11 +12,11 @@ import { MessageText } from './MessageText';
 
 /**
 The full-page media viewer: one photo or video over the whole viewport, with
-its album's other visual items a click or arrow key away. The overlay is a
-portal so the thread's scroll container cannot clip it, and it stops pointer
-events at its root because React still bubbles portal events through the
-message bubble that opened it (a right-click here must not open the bubble's
-menu).
+its album's other visual items a click, arrow key or horizontal swipe away. The
+overlay is a portal so the thread's scroll container cannot clip it, and it
+stops pointer events at its root because React still bubbles portal events
+through the message bubble that opened it (a right-click here must not open the
+bubble's menu).
 
 The viewer closes on Escape, the close button or a click on the stage around
 the media; focus moves to the close button for the keyboard and returns to the
@@ -25,6 +26,10 @@ Photos zoom: the wheel and a double click (or double tap) zoom around the
 pointer, a pinch zooms around its midpoint, and a drag pans once zoomed. Videos
 keep their native controls, so zoom is attached to the photo only; the header's
 zoom buttons give the same control a keyboard and a discoverable surface.
+
+A swipe at the photo's 1x view (or on an animation) follows the finger and
+commits to the neighbour on release; a video keeps its native timeline
+gestures, and a zoomed photo keeps the drag for panning.
 */
 
 interface MediaViewerProps {
@@ -39,6 +44,7 @@ interface MediaViewerProps {
 
 export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewerProps) {
   const items = messages.filter((message) => isViewableMedia(message.media));
+  const itemCount = items.length;
   const initialIndex = Math.max(
     0,
     items.findIndex((message) => message.id === initialMessageId),
@@ -71,6 +77,24 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
     onDoubleClick,
     onLoad,
   } = usePhotoZoom({ enabled: photo, mediaId: current?.id ?? null, stageRef });
+
+  const navigate = useCallback(
+    (direction: 1 | -1): void => {
+      setIndex((value) => Math.min(itemCount - 1, Math.max(0, value + direction)));
+    },
+    [itemCount],
+  );
+
+  // Photos and animations swipe; a video keeps its native player gestures, so
+  // its timeline can still be scrubbed. A zoomed photo pans instead.
+  const swipeable = media !== null && (media.kind === 'photo' || media.kind === 'animation');
+  const swipe = useGallerySwipe({
+    enabled: swipeable && itemCount > 1 && !zoomed,
+    mediaId: current?.id ?? null,
+    canPrev: index > 0,
+    canNext: index < itemCount - 1,
+    onSwipe: navigate,
+  });
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -112,15 +136,15 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
       }
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        setIndex((value) => Math.max(0, value - 1));
+        navigate(-1);
       } else if (event.key === 'ArrowRight') {
         event.preventDefault();
-        setIndex((value) => Math.min(items.length - 1, value + 1));
+        navigate(1);
       }
     };
     addEventListener('keydown', onKeyDown, { capture: true });
     return () => removeEventListener('keydown', onKeyDown, { capture: true });
-  }, [items.length, onClose, photo, resetZoom, zoomIn, zoomOut]);
+  }, [navigate, onClose, photo, resetZoom, zoomIn, zoomOut]);
 
   if (!current || !media) return null;
 
@@ -141,9 +165,9 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
       <header className="media-viewer-head">
         <div className="media-viewer-title">
           <span className="media-viewer-name">{title}</span>
-          {items.length > 1 ? (
+          {itemCount > 1 ? (
             <span className="media-viewer-count">
-              {index + 1} / {items.length}
+              {index + 1} / {itemCount}
             </span>
           ) : null}
         </div>
@@ -177,61 +201,76 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
       </header>
       <div
         ref={stageRef}
-        className={`media-viewer-stage${photo ? ' is-photo' : ''}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
+        className={`media-viewer-stage${photo ? ' is-photo' : ''}${swipeable ? ' is-swipeable' : ''}`}
+        onPointerDown={(event) => {
+          onPointerDown(event);
+          swipe.onPointerDown(event);
+        }}
+        onPointerMove={(event) => {
+          onPointerMove(event);
+          swipe.onPointerMove(event);
+        }}
+        onPointerUp={(event) => {
+          onPointerUp(event);
+          swipe.onPointerUp(event);
+        }}
+        onPointerCancel={(event) => {
+          onPointerCancel(event);
+          swipe.onPointerCancel(event);
+        }}
         onDoubleClick={onDoubleClick}
         onClick={(event) => {
           const dragged = consumeDrag();
-          if (event.target === event.currentTarget && !dragged) onClose();
+          const swiped = swipe.consumeDrag();
+          if (event.target === event.currentTarget && !dragged && !swiped) onClose();
         }}
       >
-        {failed ? (
-          <a className="media-viewer-fallback" href={src} download={downloadName} target="_blank" rel="noreferrer">
-            <span>{title}</span>
-            {media.size === null ? null : <span className="media-viewer-fallback-size">{formatBytes(media.size)}</span>}
-          </a>
-        ) : media.kind === 'photo' ? (
-          <img
-            key={current.id}
-            ref={attachImage}
-            className={`media-viewer-media media-viewer-photo${zoomed ? ' is-zoomed' : ''}${panning ? ' is-panning' : ''}`}
-            style={photoStyle}
-            src={src}
-            alt={title}
-            width={media.width ?? undefined}
-            height={media.height ?? undefined}
-            draggable={false}
-            onLoad={onLoad}
-            onError={() => setFailedSrc(src)}
-          />
-        ) : (
-          <video
-            key={current.id}
-            className="media-viewer-media"
-            src={src}
-            poster={fileUrl(current.chatId, current.id, { thumb: true })}
-            width={media.width ?? undefined}
-            height={media.height ?? undefined}
-            controls={!animated}
-            autoPlay
-            loop={animated}
-            muted={animated}
-            playsInline
-            preload="metadata"
-            onError={() => setFailedSrc(src)}
-          />
-        )}
-        {items.length > 1 ? (
+        <div className={`media-viewer-track${swipe.settling ? ' is-settling' : ''}`} style={swipe.style}>
+          {failed ? (
+            <a className="media-viewer-fallback" href={src} download={downloadName} target="_blank" rel="noreferrer">
+              <span>{title}</span>
+              {media.size === null ? null : <span className="media-viewer-fallback-size">{formatBytes(media.size)}</span>}
+            </a>
+          ) : media.kind === 'photo' ? (
+            <img
+              key={current.id}
+              ref={attachImage}
+              className={`media-viewer-media media-viewer-photo${zoomed ? ' is-zoomed' : ''}${panning ? ' is-panning' : ''}`}
+              style={photoStyle}
+              src={src}
+              alt={title}
+              width={media.width ?? undefined}
+              height={media.height ?? undefined}
+              draggable={false}
+              onLoad={onLoad}
+              onError={() => setFailedSrc(src)}
+            />
+          ) : (
+            <video
+              key={current.id}
+              className="media-viewer-media"
+              src={src}
+              poster={fileUrl(current.chatId, current.id, { thumb: true })}
+              width={media.width ?? undefined}
+              height={media.height ?? undefined}
+              controls={!animated}
+              autoPlay
+              loop={animated}
+              muted={animated}
+              playsInline
+              preload="metadata"
+              onError={() => setFailedSrc(src)}
+            />
+          )}
+        </div>
+        {itemCount > 1 ? (
           <>
             <button
               type="button"
               className="media-viewer-nav prev"
               aria-label="Previous media"
               disabled={index === 0}
-              onClick={() => setIndex(index - 1)}
+              onClick={() => navigate(-1)}
             >
               <Icon name="arrow-left" size={24} />
             </button>
@@ -239,8 +278,8 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
               type="button"
               className="media-viewer-nav next"
               aria-label="Next media"
-              disabled={index === items.length - 1}
-              onClick={() => setIndex(index + 1)}
+              disabled={index === itemCount - 1}
+              onClick={() => navigate(1)}
             >
               <Icon name="arrow-right" size={24} />
             </button>

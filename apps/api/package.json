@@ -13,7 +13,7 @@
     "@pigeongram/backend-runtime": "workspace:*",
     "@pigeongram/backend-services": "workspace:*",
     "@pigeongram/shared": "workspace:*",
-    "hono": "^4.13.13",
+    "hono": "^4.13.14",
     "jose": "^6.2.13"
   },
   "devDependencies": {

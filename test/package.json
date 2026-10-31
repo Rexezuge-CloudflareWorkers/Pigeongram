@@ -6,7 +6,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mtcute/core": "0.32.5",
+    "@mtcute/core": "0.32.7",
     "@pigeongram/api": "workspace:*",
     "@pigeongram/backend-runtime": "workspace:*",
     "@pigeongram/backend-services": "workspace:*",

@@ -180,8 +180,8 @@ importers:
         specifier: 0.32.7
         version: 0.32.7
       '@mtcute/wasm':
-        specifier: 0.32.0
-        version: 0.32.0
+        specifier: 0.32.6
+        version: 0.32.6
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -1316,8 +1316,8 @@ packages:
   '@mtcute/tl-runtime@0.32.6':
     resolution: {integrity: sha512-5Y31HHeH3GoZAqtPulh5L12OEvpk7prf1jPWkN0lN8ifCImCo+txqM1OA0yOnkpcsfNkUI4J3r3kuIAFTrl38g==}
 
-  '@mtcute/wasm@0.32.0':
-    resolution: {integrity: sha512-Hkp+h7OYN1GPpJ3HYeQfBM/OgvF0oWCuS2OY0shwigQmNJib2gX7fIH+KDd5UsRNuHptWASawMjKA+wLnGpSvw==}
+  '@mtcute/wasm@0.32.6':
+    resolution: {integrity: sha512-vDq8YdLoaZQfDKmc/ANa3cBg0i+vkWn+LRFUPzv4dt24BNC695b1c0M8coI8+z4JcwaVFnzjBusXTe8bL0W2Qg==}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -4950,7 +4950,7 @@ snapshots:
       '@fuman/utils': 0.0.23
       long: 5.3.2
 
-  '@mtcute/wasm@0.32.0': {}
+  '@mtcute/wasm@0.32.6': {}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true

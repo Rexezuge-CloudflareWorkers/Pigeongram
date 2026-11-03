@@ -124,6 +124,21 @@ export function useSignedInNavigation({
     [findDialog],
   );
 
+  const prepareInitialRoute = useCallback(
+    async (route: Route): Promise<void> => {
+      if (route.view !== 'chat' && route.view !== 'comments') return;
+      if (resolveDialog(route.chatId) !== undefined) return;
+      try {
+        const result = await resolveChat({ chatId: route.chatId });
+        if (result.member) registerTransient(result.chat);
+      } catch (failure) {
+        if (failure instanceof ApiError && failure.status === 404) return;
+        onError(failure);
+      }
+    },
+    [onError, registerTransient, resolveDialog],
+  );
+
   const openChat = useCallback(
     (chat: ChatDto, target?: { postId?: number; commentId?: number }): void => {
       resolution.current += 1;
@@ -350,6 +365,7 @@ export function useSignedInNavigation({
 
   return {
     router,
+    prepareInitialRoute,
     canOpen,
     viewer,
     openViewer,

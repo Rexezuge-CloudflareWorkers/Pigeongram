@@ -66,6 +66,11 @@ export interface UseSignedInNavigationOptions {
 export interface SignedInNavigation {
   router: Router;
   /**
+   * Resolves the initial deep-link chat before the main dialog bootstrap is
+   * complete, allowing the thread to open while the sidebar loads.
+   */
+  prepareInitialRoute: (route: Route) => Promise<void>;
+  /**
    * Whether the route names something the signed-in account can open. The boot
    * asks before it reads the archive for a shared link.
    */

@@ -58,6 +58,7 @@ export interface Router {
    */
   route: () => Route;
   navigateTo: (route: Route, options?: { force?: boolean }) => void;
+  replaceTo: (route: Route) => void;
   /**
    * The view's back button: the same traversal as the browser's back gesture.
    */
@@ -226,6 +227,13 @@ export function useRouter({ onRoute, canOpen, onViewerEnter, onViewerLeave }: Ro
     replaceTo(parentRoute(routeRef.current));
   }, [replaceTo]);
 
+  const replaceRoute = useCallback(
+    (route: Route): void => {
+      replaceTo(route);
+    },
+    [replaceTo],
+  );
+
   const reset = useCallback((): void => {
     routeRef.current = { view: 'list' };
     depthRef.current = 0;
@@ -249,7 +257,7 @@ export function useRouter({ onRoute, canOpen, onViewerEnter, onViewerLeave }: Ro
 
   const route = useCallback((): Route => routeRef.current, []);
 
-  return { boot, route, navigateTo, back, reset, openViewer, closeViewer };
+  return { boot, route, navigateTo, replaceTo: replaceRoute, back, reset, openViewer, closeViewer };
 }
 
 function entryState(): EntryState | null {

@@ -181,6 +181,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     router: { boot: bootRouter, route: currentRoute, reset: resetRouter },
     router,
     canOpen,
+    prepareInitialRoute,
     viewer,
     openViewer,
     closeViewer,
@@ -221,25 +222,48 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     booted.current = true;
     void (async () => {
       if (initialMe) setMe(initialMe);
-      try {
-        // The account and the chat list come back in one request: the engine
-        // reads them at the same time, where separate requests would queue
-        // behind each other.
-        const boot = await fetchBootstrap();
-        setMe(boot.me ?? initialMe ?? null);
-        applyDialogs(boot.dialogs);
-      } catch {
-        // The combined read failed; the chat list on its own may still work,
-        // and it reports its own failure if it does not.
-        await loadDialogs();
+      const target = currentRoute();
+      const bootstrap = (async (): Promise<void> => {
+        try {
+          // The account and the chat list come back in one request. This read
+          // starts beside initial deep-link resolution so the thread does not
+          // wait for the sidebar to become usable.
+          const boot = await fetchBootstrap();
+          setMe(boot.me ?? initialMe ?? null);
+          applyDialogs(boot.dialogs);
+        } catch {
+          // The combined read failed; the chat list on its own may still work,
+          // and it reports its own failure if it does not.
+          await loadDialogs();
+        }
+      })();
+      const initial = prepareInitialRoute(target);
+      await Promise.race([bootstrap, initial]);
+      const deepLink = target.view === 'chat' || target.view === 'comments';
+      if (deepLink && canOpen(target)) {
+        // The target was resolved or found before the sidebar finished. Apply
+        // it now; the bootstrap continues in parallel and fills the sidebar.
+        bootRouter();
+        void (async () => {
+          await bootstrap;
+          if (canOpen(target)) return;
+          await loadArchive();
+          const resolved = findDialog(target.chatId);
+          if (resolved) {
+            setArchiveContext(resolved.archived);
+          } else {
+            router.replaceTo({ view: 'list' });
+          }
+        })();
+        return;
       }
       // A shared link may name a chat in the archive, which the chat list does
-      // not carry: the archive is read before the route gives up on it.
-      const target = currentRoute();
-      if (target.view === 'chat' && !canOpen(target)) await loadArchive();
+      // not carry: finish both initial reads before the archive fallback.
+      await Promise.all([bootstrap, initial]);
+      if (deepLink && !canOpen(target)) await loadArchive();
       bootRouter();
     })();
-  }, [initialMe, applyDialogs, loadDialogs, loadArchive, canOpen, bootRouter, currentRoute]);
+  }, [initialMe, applyDialogs, loadDialogs, loadArchive, canOpen, findDialog, bootRouter, currentRoute, prepareInitialRoute, router]);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {

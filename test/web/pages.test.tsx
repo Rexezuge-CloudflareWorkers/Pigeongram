@@ -396,6 +396,12 @@ function installSignedInFetch(
       case 'getHistory': {
         return options.history ? options.history(Number(params.chatId), params) : json({ messages: history });
       }
+      case 'resolveChat': {
+        const custom = options.rpc?.(call);
+        if (custom !== undefined) return custom;
+        const chat = dialogs.find((dialog) => dialog.chat.id === Number(params.chatId))?.chat;
+        return chat ? json({ chat, member: true }) : json({ error: 'Chat not found' }, 404);
+      }
       case 'readHistory': {
         return options.rpc?.(call) ?? json({});
       }
@@ -771,6 +777,58 @@ describe('App', () => {
       expect(await screen.findByText('oldest')).toBeDefined();
       expect(location.pathname).toBe('/chat/2');
       expect(globalThis.history.state).toMatchObject({ app: APP, depth: 1 });
+    });
+
+    it('opens a shared chat link before a slow chat-list bootstrap finishes', async () => {
+      globalThis.history.replaceState(null, '', '/chat/2');
+      let releaseBootstrap!: () => void;
+      const bootstrapReleased = new Promise<void>((resolve) => {
+        releaseBootstrap = resolve;
+      });
+      const answer = (call: FetchCall): Response => {
+        switch (call.body?.method) {
+          case 'getMe': {
+            return json({ me });
+          }
+          case 'getDialogs': {
+            return json({ dialogs });
+          }
+          case 'resolveChat': {
+            return json({ chat: dialogs[0].chat, member: true });
+          }
+          case 'getHistory': {
+            return json({ messages: history });
+          }
+          case 'getBotCommands': {
+            return json({ commands: [] });
+          }
+          default: {
+            return json({ error: `Unknown RPC method: ${String(call.body?.method)}` }, 404);
+          }
+        }
+      };
+      installFetch(async (call) => {
+        if (call.path === '/user/state') return json({ phase: 'authorized', authorized: true, me });
+        if (call.path !== '/user/rpc') throw new Error(`Unhandled request: ${call.path}`);
+        if (call.body?.method === 'resolveChat') return answer(call);
+        if (call.body?.method === 'batch') {
+          const methods = ((call.body.params as { calls: Array<{ method: string }> }).calls ?? []).map((item) => item.method);
+          if (methods.includes('getDialogs')) {
+            await bootstrapReleased;
+          }
+          return answerBatch(call, answer, () => {});
+        }
+        return answer(call);
+      });
+
+      render(<App />);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(() => expect(within(threadSection()).getByText('oldest')).toBeDefined());
+      expect(within(sidebar()).queryByText('Bob')).toBeNull();
+
+      releaseBootstrap();
+      expect(await within(sidebar()).findByText('Bob')).toBeDefined();
     });
 
     it('normalizes a linked post the window cannot produce to its chat', async () => {

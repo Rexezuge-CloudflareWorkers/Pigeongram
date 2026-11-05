@@ -1,0 +1,43 @@
+/* A plain single media/file message drops the bubble chrome; the meta floats
+   over the media and appears on hover or keyboard focus (and stays visible on
+   touch devices that have no hover). A small backdrop keeps it legible. */
+.message.bare {
+  position: relative;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  gap: 0;
+  border-radius: 0;
+}
+
+.message.bare .meta {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  align-self: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(14 22 33 / 72%);
+  color: rgb(233 238 243 / 88%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-out);
+  z-index: 1;
+}
+
+.message.bare .ticks {
+  color: rgb(233 238 243 / 72%);
+}
+
+.message.bare:hover .meta,
+.message.bare:focus-within .meta {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .message.bare .meta {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

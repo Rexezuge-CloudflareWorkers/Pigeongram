@@ -23,8 +23,20 @@ interface PendingMessageRowProps {
 
 export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageRowProps) {
   const message = pendingAsMessage(entry);
+  // A plain single-file send renders without the bubble; its outbox status and
+  // time float on hover/focus. A caption, reply, album count, or a failed send
+  // (which must keep Retry/Discard reachable) stays bubbled.
+  const bare =
+    entry.media !== null && entry.text.length === 0 && message.reply === null && entry.fileCount <= 1 && entry.status !== 'failed';
+  const meta = (
+    <span className="meta pending-meta" role="status" aria-live="polite">
+      {entry.status === 'failed' ? null : <Spinner inline size={11} color="currentColor" />}
+      {statusLabel(entry)}
+      {formatTime(entry.createdAt)}
+    </span>
+  );
   return (
-    <div className="message own pending">
+    <div className={`message own pending${bare ? ' bare' : ''}`}>
       {message.reply ? <MessageReplyQuote reply={message.reply} original={entry.replyPreview} /> : null}
       {entry.media ? <PendingMedia entry={entry} media={entry.media} /> : null}
       {entry.text ? (
@@ -32,11 +44,7 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
           <MessageText text={entry.text} entities={[]} />
         </div>
       ) : null}
-      <span className="meta pending-meta" role="status" aria-live="polite">
-        {entry.status === 'failed' ? null : <Spinner inline size={11} color="currentColor" />}
-        {statusLabel(entry)}
-        {formatTime(entry.createdAt)}
-      </span>
+      {meta}
       {entry.status === 'failed' ? (
         <div className="pending-actions">
           {entry.failure ? (

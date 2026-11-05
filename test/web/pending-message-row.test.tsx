@@ -84,11 +84,26 @@ afterEach(cleanup);
 
 describe('PendingMessageRow', () => {
   it('shows a sending bubble with its text and status', () => {
-    renderRow();
+    const { container } = renderRow();
 
     expect(screen.getByText('Hello')).not.toBeNull();
     expect(screen.getByRole('status').textContent).toContain('Sending…');
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+    expect(container.querySelector('.message')?.classList.contains('bare')).toBe(false);
+  });
+
+  it('renders a plain single-file send without bubble chrome and reveals meta on hover/focus via class', () => {
+    const { container } = renderRow({ text: '', media: media(), previewUrl: 'blob:photo' });
+    const row = container.querySelector('.message');
+    expect(row?.classList.contains('bare')).toBe(true);
+    expect(row?.querySelector('.meta.pending-meta')).not.toBeNull();
+    expect(container.querySelector('img.photo')).not.toBeNull();
+  });
+
+  it('keeps a failed single-file send bubbled so retry and discard stay reachable', () => {
+    const { container } = renderRow({ text: '', media: media(), previewUrl: 'blob:photo', status: 'failed', failure: 'Nope' });
+    expect(container.querySelector('.message')?.classList.contains('bare')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Retry' })).not.toBeNull();
   });
 
   it('labels each status the outbox reports', () => {

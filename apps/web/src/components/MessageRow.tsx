@@ -183,9 +183,40 @@ export function MessageRow({
     return true;
   };
 
+  // A plain single media/file message renders without the bubble chrome; the
+  // time/read check is revealed on hover/focus instead. Anything that adds
+  // context (caption, reply, forward, sender, reactions, buttons, web page) or
+  // needs the avatar gutter keeps the bubble. Polls and albums stay bubbled.
+  const hasCaption = !album && message.text.length > 0;
+  const hasExtras =
+    message.forward !== null ||
+    (showSender && message.senderName !== null) ||
+    (showQuote && message.reply !== null) ||
+    avatar !== null ||
+    message.reactions.length > 0 ||
+    (buttonMessage?.markup ?? null) !== null ||
+    message.webPage !== null;
+  const bare = !album && message.media !== null && message.poll === null && !message.service && !hasCaption && !hasExtras;
+
+  const meta = (
+    <span className="meta">
+      {message.views === null ? null : (
+        <span className="views" title={`${message.views.toLocaleString()} views`}>
+          <Icon name="eye" size={12} /> {formatCount(message.views)}
+        </span>
+      )}
+      {formatTime(message.date)}
+      {showStatus ? (
+        <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
+          <Icon name={read ? 'done-all' : 'check'} size={14} />
+        </span>
+      ) : null}
+    </span>
+  );
+
   const bubble = (
     <div
-      className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}`}
+      className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}${bare ? ' bare' : ''}`}
       data-message-id={message.id}
       data-message-ids={group.map((entry) => entry.id).join(' ')}
       onDoubleClick={() => {
@@ -224,79 +255,76 @@ export function MessageRow({
       onPointerUp={cancelPress}
       onPointerCancel={cancelPress}
     >
-      {message.forward ? <ForwardOrigin forward={message.forward} /> : null}
-      {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
-      {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
-      {album ? (
-        <MessageAlbum messages={group} onOpenMedia={(target) => onOpenMedia(target.id)} />
-      ) : message.poll ? (
-        <MessagePoll message={message} poll={message.poll} onVote={onVote} voting={voting} />
-      ) : message.media ? (
-        <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} />
-      ) : null}
-      {caption ? (
-        <div className="text">
-          <MessageText text={caption.text} entities={caption.entities} />
-        </div>
-      ) : !album && message.text ? (
-        <div className="text">
-          <MessageText text={message.text} entities={message.entities} />
-        </div>
-      ) : null}
-      {message.webPage ? <MessageWebPage message={message} page={message.webPage} /> : null}
-      {buttonMessage?.markup ? (
-        <MessageButtons message={buttonMessage} markup={buttonMessage.markup} pressing={pressingButton} onPress={onPressButton} />
-      ) : null}
-      {message.reactions.length > 0 ? (
-        <div className="reactions">
-          {message.reactions.map((reaction) => {
-            const title = reaction.emoji ?? 'Custom emoji';
-            const emoji = <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>;
-            const count = <span className="reaction-count">{reaction.count}</span>;
-            if (!onReact) {
-              return (
-                <span key={reactionKey(reaction)} className={`reaction is-static${reaction.chosen ? ' chosen' : ''}`} title={title}>
-                  {emoji}
-                  {count}
-                </span>
-              );
-            }
-            return (
-              <button
-                key={reactionKey(reaction)}
-                type="button"
-                className={`reaction${reaction.chosen ? ' chosen' : ''}`}
-                disabled={reacting}
-                title={title}
-                aria-label={`React ${title} (${String(reaction.count)})`}
-                aria-pressed={reaction.chosen}
-                onClick={() => onReact(message, reaction)}
-              >
-                {emoji}
-                {count}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      <span className="meta">
-        {message.views === null ? null : (
-          <span className="views" title={`${message.views.toLocaleString()} views`}>
-            <Icon name="eye" size={12} /> {formatCount(message.views)}
-          </span>
-        )}
-        {formatTime(message.date)}
-        {showStatus ? (
-          <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
-            <Icon name={read ? 'done-all' : 'check'} size={14} />
-          </span>
-        ) : null}
-      </span>
-      {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
-        <button type="button" className="comments-button inline-flex items-center gap-1.5" onClick={() => onOpenComments(message)}>
-          <Icon name="comment" size={14} /> {commentLabel(comments)}
-        </button>
-      ) : null}
+      {bare ? (
+        <>
+          {message.media ? <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} /> : null}
+          {meta}
+        </>
+      ) : (
+        <>
+          {message.forward ? <ForwardOrigin forward={message.forward} /> : null}
+          {showSender && message.senderName ? <span className="sender">{message.senderName}</span> : null}
+          {showQuote && message.reply ? <MessageReplyQuote reply={message.reply} original={original} onJump={onJump} /> : null}
+          {album ? (
+            <MessageAlbum messages={group} onOpenMedia={(target) => onOpenMedia(target.id)} />
+          ) : message.poll ? (
+            <MessagePoll message={message} poll={message.poll} onVote={onVote} voting={voting} />
+          ) : message.media ? (
+            <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} />
+          ) : null}
+          {caption ? (
+            <div className="text">
+              <MessageText text={caption.text} entities={caption.entities} />
+            </div>
+          ) : !album && message.text ? (
+            <div className="text">
+              <MessageText text={message.text} entities={message.entities} />
+            </div>
+          ) : null}
+          {message.webPage ? <MessageWebPage message={message} page={message.webPage} /> : null}
+          {buttonMessage?.markup ? (
+            <MessageButtons message={buttonMessage} markup={buttonMessage.markup} pressing={pressingButton} onPress={onPressButton} />
+          ) : null}
+          {message.reactions.length > 0 ? (
+            <div className="reactions">
+              {message.reactions.map((reaction) => {
+                const title = reaction.emoji ?? 'Custom emoji';
+                const emoji = <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>;
+                const count = <span className="reaction-count">{reaction.count}</span>;
+                if (!onReact) {
+                  return (
+                    <span key={reactionKey(reaction)} className={`reaction is-static${reaction.chosen ? ' chosen' : ''}`} title={title}>
+                      {emoji}
+                      {count}
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={reactionKey(reaction)}
+                    type="button"
+                    className={`reaction${reaction.chosen ? ' chosen' : ''}`}
+                    disabled={reacting}
+                    title={title}
+                    aria-label={`React ${title} (${String(reaction.count)})`}
+                    aria-pressed={reaction.chosen}
+                    onClick={() => onReact(message, reaction)}
+                  >
+                    {emoji}
+                    {count}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {meta}
+          {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
+            <button type="button" className="comments-button inline-flex items-center gap-1.5" onClick={() => onOpenComments(message)}>
+              <Icon name="comment" size={14} /> {commentLabel(comments)}
+            </button>
+          ) : null}
+        </>
+      )}
       {menu ? (
         <MessageMenu
           messages={group}

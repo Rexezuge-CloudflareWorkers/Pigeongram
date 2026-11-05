@@ -16,6 +16,7 @@
 @import './album.css' layer(components);
 @import './chat.css' layer(components);
 @import './thread.css' layer(components);
+@import './message-bare.css' layer(components);
 @import './buttons.css' layer(components);
 @import './comments.css' layer(components);
 @import './composer.css' layer(components);

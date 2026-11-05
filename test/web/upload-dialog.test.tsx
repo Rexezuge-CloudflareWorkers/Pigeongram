@@ -87,7 +87,7 @@ describe('Composer upload dialog', () => {
     expect(checkbox.checked).toBe(true);
     expect(checkbox.disabled).toBe(false);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Send album (2)' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send Album (2)' }));
 
     await waitFor(() => {
       expect(onAttach).toHaveBeenCalledWith({
@@ -130,7 +130,7 @@ describe('Composer upload dialog', () => {
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(10);
     expect(within(dialog).getByText('10 / 10')).toBeDefined();
     expect(within(dialog).getByRole('status').textContent).toContain('Only 10 files');
-    expect(within(dialog).getByRole('button', { name: 'Send album (10)' })).toBeDefined();
+    expect(within(dialog).getByRole('button', { name: 'Send Album (10)' })).toBeDefined();
   });
 
   it('leaves the draft and reply target alone when the dialog is cancelled', () => {

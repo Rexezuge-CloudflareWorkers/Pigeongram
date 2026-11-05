@@ -323,7 +323,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={openGlobalSearch}
-            aria-label="Search messages"
+            aria-label="Search Messages"
           >
             <Icon name="search" />
           </button>

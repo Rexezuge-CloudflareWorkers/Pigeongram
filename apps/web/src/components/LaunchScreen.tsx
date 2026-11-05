@@ -35,7 +35,7 @@ export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
             {error}
           </p>
           <button type="button" className="ghost" onClick={onRetry}>
-            Try again
+            Try Again
           </button>
         </section>
       ) : (

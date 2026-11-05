@@ -219,7 +219,7 @@ describe('MessagePoll', () => {
     fireEvent.click(screen.getByRole('button', { name: /Vote for Tea/ }));
     expect(onVote).toHaveBeenLastCalledWith(message(), null);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retract vote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retract Vote' }));
     expect(onVote).toHaveBeenLastCalledWith(message(), null);
   });
 

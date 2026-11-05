@@ -89,7 +89,7 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
           <span>{meta}</span>
           {interactive && chosen.length > 0 ? (
             <button type="button" className="poll-retract" disabled={voting} onClick={() => onVote(message, null)}>
-              Retract vote
+              Retract Vote
             </button>
           ) : null}
         </div>

@@ -6,7 +6,6 @@ import type { ChatDto, DialogDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { ChatMenu } from './ChatMenu';
 import { Icon } from './Icon';
-import { Spinner } from './Spinner';
 
 /**
  * How long a touch must hold a chat row before its context menu opens, and how
@@ -67,7 +66,27 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
   );
 
   if (loading && dialogs.length === 0) {
-    return <Spinner size={32} label="Loading chats…" padding="32px 0" />;
+    // The official clients shimmer placeholder rows rather than spin: the
+    // layout arrives complete and the photos fill in. The live region keeps
+    // the wait audible; the bones are decorative.
+    return (
+      <>
+        <span role="status" className="sr-only">
+          Loading chats…
+        </span>
+        <ul className="chat-skeleton" aria-hidden="true">
+          {Array.from({ length: 7 }, (_, index) => (
+            <li key={index} className="chat-skeleton-row">
+              <span className="skeleton skeleton-circle" />
+              <span className="skeleton-stack">
+                <span className="skeleton skeleton-line short" />
+                <span className="skeleton skeleton-line long" />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
   }
   const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
   if (rows.length === 0) {

@@ -82,9 +82,9 @@ describe('CallOverlay', () => {
     renderOverlay({ direction: 'incoming' });
 
     expect(screen.getByRole('status').textContent).toBe('Incoming call');
-    expect(screen.getByRole('button', { name: 'Answer the call' })).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Decline the call' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Cancel the call' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Answer The Call' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Decline The Call' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel The Call' })).toBeNull();
     expect(ringtone.start).toHaveBeenCalled();
   });
 
@@ -93,8 +93,8 @@ describe('CallOverlay', () => {
 
     expect(screen.getByRole('heading', { name: 'Bob' })).not.toBeNull();
     expect(screen.getByRole('status').textContent).toBe('Calling…');
-    expect(screen.getByRole('button', { name: 'Cancel the call' })).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Answer the call' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancel The Call' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Answer The Call' })).toBeNull();
   });
 
   it('falls back to an unknown title when the chat list does not know the peer', () => {
@@ -108,7 +108,7 @@ describe('CallOverlay', () => {
 
     expect(screen.getByText('Connecting…')).not.toBeNull();
     expect(screen.getByText('Connecting the call…')).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Cancel the call' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel The Call' })).toBeNull();
   });
 
   it('shows a failure and the key fingerprint beside the call', () => {
@@ -160,14 +160,14 @@ describe('CallOverlay', () => {
       vi.advanceTimersByTime(65_000);
     });
     expect(screen.getByRole('status').textContent).toBe('1:05');
-    expect(screen.getByRole('button', { name: 'Mute the microphone' }).getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByRole('button', { name: 'End the call' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Mute The Microphone' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'End The Call' })).not.toBeNull();
   });
 
   it('labels the button unmute when the microphone is muted', () => {
     renderOverlay({ phase: 'active', muted: true });
 
-    expect(screen.getByRole('button', { name: 'Unmute the microphone' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Unmute The Microphone' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('plays the remote audio once it arrives', () => {
@@ -188,7 +188,7 @@ describe('CallOverlay', () => {
 
     // The rejection is swallowed by the component; nothing is thrown into the
     // test and the overlay is still there.
-    expect(screen.getByRole('button', { name: 'End the call' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'End The Call' })).not.toBeNull();
   });
 
   it('says the call ended and dismisses itself after a moment', () => {

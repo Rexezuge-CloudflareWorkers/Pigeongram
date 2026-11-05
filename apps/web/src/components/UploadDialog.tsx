@@ -102,21 +102,21 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
     files.length === 0
       ? 'Send'
       : grouped && groupable && files.length > 1
-        ? `Send album (${files.length})`
+        ? `Send Album (${files.length})`
         : files.length > 1
-          ? `Send ${files.length} files`
+          ? `Send ${files.length} Files`
           : 'Send';
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className="dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}
     >
       <div
         ref={dialogRef}
-        className="flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-3xl border border-line bg-panel-2 shadow-2xl"
+        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-3xl border border-line bg-panel-2 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -163,7 +163,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
               disabled={files.length >= MAX_UPLOAD_ITEMS}
               onClick={() => fileRef.current?.click()}
             >
-              Add files
+              Add Files
             </button>
             <input
               ref={fileRef}

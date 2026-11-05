@@ -128,6 +128,10 @@ protocol,registry}`) and the mtcute integration
 
 ### Load-bearing details
 
+- **Multi-word button labels are Camel Case with spaces.** Every word is capitalised
+  (`Load Older Messages`, `Sign In With Cloudflare Access`, `Retract Vote`); single-word labels stay as they
+  are. Headings, prose, placeholders and non-button accessible names (dialogs, search boxes, lists, groups) keep
+  sentence case. Keep the accessible name in step with the visible label when both exist.
 - **The product was renamed to Pigeongram; `telegram-web-client` is the internal name.** Telegram's Terms of Service
   forbid a third-party product from using “Telegram” in its name, so every user-visible brand surface — the document
   title, the PWA `name`/`short_name`, the intro and offline eyebrow, and the Android app/launcher defaults — reads

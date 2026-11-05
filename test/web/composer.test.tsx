@@ -40,8 +40,8 @@ describe('Composer bot commands', () => {
   it('opens the full menu from the slash button and sends a picked command', () => {
     const { onSend } = renderComposer();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bot commands' }));
-    const menu = screen.getByRole('listbox', { name: 'Bot commands' });
+    fireEvent.click(screen.getByRole('button', { name: 'Bot Commands' }));
+    const menu = screen.getByRole('listbox', { name: 'Bot Commands' });
     expect(within(menu).getAllByRole('option')).toHaveLength(3);
 
     fireEvent.click(within(menu).getByRole('option', { name: /\/help/ }));
@@ -56,7 +56,7 @@ describe('Composer bot commands', () => {
     const { onSend } = renderComposer();
 
     fireEvent.change(textarea(), { target: { value: '/hel' } });
-    const menu = screen.getByRole('listbox', { name: 'Bot commands' });
+    const menu = screen.getByRole('listbox', { name: 'Bot Commands' });
     expect(
       within(menu)
         .getAllByRole('option')
@@ -87,7 +87,7 @@ describe('Composer bot commands', () => {
     const { onSend } = renderComposer();
 
     fireEvent.change(textarea(), { target: { value: '/start' } });
-    expect(screen.getByRole('listbox', { name: 'Bot commands' })).toBeDefined();
+    expect(screen.getByRole('listbox', { name: 'Bot Commands' })).toBeDefined();
 
     fireEvent.keyDown(textarea(), { key: 'Enter' });
 
@@ -100,12 +100,12 @@ describe('Composer bot commands', () => {
   it('closes the menu with Escape and hides the button without commands', () => {
     renderComposer();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bot commands' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bot Commands' }));
     fireEvent.keyDown(textarea(), { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
 
     cleanup();
     renderComposer([]);
-    expect(screen.queryByRole('button', { name: 'Bot commands' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Bot Commands' })).toBeNull();
   });
 });

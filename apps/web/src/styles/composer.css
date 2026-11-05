@@ -22,6 +22,20 @@
   line-height: 1;
   padding: 4px;
   color: var(--muted);
+  border-radius: 50%;
+  transition:
+    color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.composer .attach:hover:not(:disabled) {
+  background: var(--accent-softer);
+}
+
+.composer .attach:active:not(:disabled),
+.composer .slash:active:not(:disabled) {
+  transform: scale(0.88);
 }
 
 .composer .slash {
@@ -59,6 +73,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: menu-pop 160ms var(--ease-out);
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }
 
 .composer .command-menu button {

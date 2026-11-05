@@ -85,7 +85,7 @@ describe('Composer paste uploads', () => {
     const checkbox = within(dialog).getByRole('checkbox', { name: /Group Items/ }) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Send album (2)' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send Album (2)' }));
 
     await waitFor(() => {
       expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({ files: [first, second], grouped: true }));

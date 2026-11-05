@@ -182,7 +182,7 @@ on `main` with required checks **Typecheck**, **Lint**, **Format**, **God Files*
 3. Set the runtime secrets once per environment:
    `pnpm exec wrangler secret put TELEGRAM_API_ID`, `TELEGRAM_API_HASH`. Set the Access verifier vars
    (`TEAM_DOMAIN`, `POLICY_AUD`) before the worker deploy, per the repository-settings note above.
-4. Open the Pages URL. Anonymous visitors see the public intro; **Sign in with Cloudflare Access** navigates to
+4. Open the Pages URL. Anonymous visitors see the public intro; **Sign In With Cloudflare Access** navigates to
    `/user/login`, Access runs its login flow, and the worker sends the browser back to the path it came from (the SPA
    root by default). Once Access is through, the SPA shows the Telegram QR login while the account is not linked, then
    the chat list. The worker verifies the Access assertion on every `/user/*` request; `GET /api/health` is the

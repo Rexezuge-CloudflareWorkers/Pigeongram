@@ -98,14 +98,14 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className="dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
         ref={dialogRef}
-        className="relative w-full max-w-[380px] rounded-3xl border border-line bg-panel-2 p-6 shadow-2xl"
+        className="dialog-panel relative w-full max-w-[380px] rounded-3xl border border-line bg-panel-2 p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -115,7 +115,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
           type="button"
           className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onClose}
-          aria-label="Close the profile"
+          aria-label="Close The Profile"
         >
           <Icon name="close" />
         </button>

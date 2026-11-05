@@ -58,7 +58,7 @@ export function ThreadFooter({
           onClick={onJoin}
           disabled={preview.joining || preview.requested}
         >
-          {preview.joining ? 'Joining…' : preview.requested ? 'Request sent' : 'Join'}
+          {preview.joining ? 'Joining…' : preview.requested ? 'Request Sent' : 'Join'}
         </button>
       </div>
     );

@@ -3,21 +3,41 @@
 .message-menu {
   position: fixed;
   z-index: 40;
-  min-width: 160px;
+  min-width: 180px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 4px;
-  background: var(--panel);
+  background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+  animation: message-menu-in 160ms var(--ease-out);
+  transform-origin: top left;
+}
+
+@keyframes message-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
 }
 
 .message-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: left;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  transition:
+    background-color 120ms var(--ease-out),
+    transform 120ms var(--ease-out);
+}
+
+.message-menu-item:active {
+  transform: scale(0.98);
 }
 
 .message-menu-item:hover,

@@ -14,6 +14,7 @@
 .landing-hero {
   width: min(720px, 100%);
   text-align: center;
+  animation: card-in 420ms var(--ease-out);
 }
 
 .landing .eyebrow {
@@ -43,17 +44,27 @@
 .landing .cta {
   display: inline-block;
   margin-top: 28px;
-  padding: 12px 24px;
-  border-radius: 10px;
+  padding: 12px 28px;
+  border-radius: 999px;
   background: var(--accent);
   color: #08121c;
   font-weight: 600;
   text-decoration: none;
-  transition: filter 120ms ease;
+  box-shadow: 0 10px 30px rgb(94 181 247 / 35%);
+  transition:
+    filter 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out);
 }
 
 .landing .cta:hover {
   filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgb(94 181 247 / 45%);
+}
+
+.landing .cta:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .landing .cta:focus-visible {
@@ -76,8 +87,18 @@
   padding: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   text-align: left;
+  transition:
+    transform 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
+}
+
+.feature:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 35%);
 }
 
 .feature h2 {

@@ -34,6 +34,14 @@
   font-size: 12px;
   font-weight: 600;
   padding: 2px 0;
+  border-radius: 6px;
+  transition:
+    color 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.message .pending-actions button:active {
+  transform: scale(0.94);
 }
 
 .message .pending-actions button.discard {

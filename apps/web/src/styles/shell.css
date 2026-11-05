@@ -1,0 +1,190 @@
+/* Signed-in chrome: the shell layout, avatars, toasts and dialogs. */
+/* ---- signed-in shell ---------------------------------------------------- */
+
+/* The shell is the dynamic viewport (`100dvh`), which follows the browser's
+   auto-hiding chrome — Chrome on Android deliberately keeps the layout
+   viewport (`100%`) at the URL-bar-shown height. `useAppHeight`'s
+   `--app-height` caps it for what `dvh` misses: an overlaid keyboard (iOS
+   Safari) does not shrink it. The value is a cap and not the height on
+   purpose: a height a fraction of a pixel too large made the document
+   scrollable and put a scrollbar on a desktop, while a cap that is too large
+   simply does nothing. Do not fold the two back into one `height`. */
+.app {
+  height: 100%;
+  height: 100dvh;
+  max-height: var(--app-height, none);
+  display: grid;
+  /* The sidebar track is fluid: it starts at its compact width, follows the
+     window at 28vw, and stops at 480px so an ultrawide window gives the extra
+     space to the thread instead of stretching the chat previews. */
+  grid-template-columns: clamp(280px, 28vw, 480px) 1fr;
+}
+
+/* A grid child must not stretch the track past the viewport: unbreakable
+   titles, names and previews truncate or clip instead. */
+.app > * {
+  min-width: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---- mobile shell -------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .app.thread-open .sidebar {
+    display: none;
+  }
+
+  .app:not(.thread-open) .thread {
+    display: none;
+  }
+}
+
+/* ---- avatars ------------------------------------------------------------ */
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: rgb(255 255 255 / 92%);
+  background: linear-gradient(160deg, #5d8fc4, #28405c);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+}
+
+.avatar.small {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar.kind-bot {
+  background: linear-gradient(160deg, #7f97d1, #3d4f83);
+}
+
+.avatar.kind-group,
+.avatar.kind-supergroup {
+  background: linear-gradient(160deg, #57c785, #1f5f3a);
+}
+
+.avatar.kind-channel {
+  background: linear-gradient(160deg, #c184d4, #54284f);
+}
+
+/* ---- toast -------------------------------------------------------------- */
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, 90vw);
+}
+
+.toast {
+  max-width: 100%;
+  margin: 0;
+  background: #43262b;
+  border: 1px solid rgb(255 123 114 / 55%);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 45%);
+  animation: toast-in 240ms var(--ease-out);
+}
+
+.toast.notice {
+  background: #17293a;
+  border-color: rgb(94 181 247 / 45%);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- dialogs ------------------------------------------------------------- */
+
+/* The scrim fades and the surface pops: the entrance the official clients
+   give every modal, kept small so it reads as a reply to the tap. */
+.dialog-scrim {
+  animation: scrim-in 200ms ease-out;
+}
+
+.dialog-panel {
+  animation: dialog-in 240ms var(--ease-out);
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- reduced motion ------------------------------------------------------- */
+
+/* The animations above are ornament, never information: with reduced motion
+   they collapse to a plain swap. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

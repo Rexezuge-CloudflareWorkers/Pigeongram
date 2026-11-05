@@ -102,14 +102,14 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className="dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
     >
       <div
         ref={dialogRef}
-        className="w-full max-w-[380px] rounded-3xl border border-line bg-panel-2 p-6 shadow-2xl"
+        className="dialog-panel w-full max-w-[380px] rounded-3xl border border-line bg-panel-2 p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

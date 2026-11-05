@@ -198,8 +198,8 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
           <button
             type="button"
             className="slash"
-            aria-label="Bot commands"
-            title="Bot commands"
+            aria-label="Bot Commands"
+            title="Bot Commands"
             aria-haspopup="listbox"
             aria-expanded={showMenu}
             aria-controls={showMenu ? listId : undefined}
@@ -208,11 +208,11 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             <Icon name="slash" size={18} />
           </button>
         ) : null}
-        <button type="button" className="attach" aria-label="Attach files" title="Attach files" onClick={() => fileRef.current?.click()}>
+        <button type="button" className="attach" aria-label="Attach Files" title="Attach Files" onClick={() => fileRef.current?.click()}>
           <Icon name="attach" size={18} />
         </button>
         {showMenu ? (
-          <div className="command-menu" id={listId} role="listbox" aria-label="Bot commands">
+          <div className="command-menu" id={listId} role="listbox" aria-label="Bot Commands">
             {matches.map((command, index) => (
               <button
                 key={command.command}

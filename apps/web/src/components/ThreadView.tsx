@@ -15,6 +15,7 @@ import { Spinner } from './Spinner';
 import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
+import { ThreadPlaceholder } from './ThreadPlaceholder';
 
 /**
  * How long a read watermark is held back before it is reported: scrolling
@@ -217,13 +218,7 @@ export function ThreadView({
     reportVisible(element);
   }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, atLatest, positions, reportVisible]);
 
-  if (!chat) {
-    return (
-      <section className="thread empty">
-        <p className="muted">Select a chat to open it.</p>
-      </section>
-    );
-  }
+  if (!chat) return <ThreadPlaceholder />;
 
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
   const messageById = new Map(messages.map((message) => [message.id, message]));
@@ -318,7 +313,7 @@ export function ThreadView({
         >
           {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (
             <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
-              {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older messages'}
+              {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Messages'}
             </button>
           ) : null}
           {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
@@ -363,7 +358,7 @@ export function ThreadView({
           })}
           {!atLatest && messages.length > 0 ? (
             <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
-              {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load newer messages'}
+              {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load Newer Messages'}
             </button>
           ) : null}
           {pendingForChat.map((entry, index) => (

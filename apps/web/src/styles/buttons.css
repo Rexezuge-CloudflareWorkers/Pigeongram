@@ -33,6 +33,15 @@
   text-align: center;
   text-decoration: none;
   overflow-wrap: anywhere;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    filter 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.message .button:not(:disabled):active {
+  transform: scale(0.97);
 }
 
 .message .button:hover:not(:disabled) {

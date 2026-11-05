@@ -19,7 +19,7 @@ export function LandingPage() {
           chats live while a tab is attached.
         </p>
         <a className="cta" href={accessLoginUrl(returnTo)}>
-          Sign in with Cloudflare Access
+          Sign In With Cloudflare Access
         </a>
         <p className="muted small">Cloudflare Access is the front door. The account API is never publicly routable.</p>
       </section>

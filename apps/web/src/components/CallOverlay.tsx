@@ -128,7 +128,7 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onDecline}
-            aria-label="Decline the call"
+            aria-label="Decline The Call"
           >
             <Icon name="call-end" size={28} />
           </button>
@@ -136,7 +136,7 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-online text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onAccept}
-            aria-label="Answer the call"
+            aria-label="Answer The Call"
           >
             <Icon name="call" size={28} />
           </button>
@@ -148,7 +148,7 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
           type="button"
           className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onHangUp}
-          aria-label="Cancel the call"
+          aria-label="Cancel The Call"
         >
           <Icon name="call-end" size={28} />
         </button>
@@ -163,7 +163,7 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
             className="flex size-16 items-center justify-center rounded-full bg-panel-2 text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onToggleMute}
             aria-pressed={view.muted}
-            aria-label={view.muted ? 'Unmute the microphone' : 'Mute the microphone'}
+            aria-label={view.muted ? 'Unmute The Microphone' : 'Mute The Microphone'}
           >
             {view.muted ? <Icon name="mic-off" size={28} /> : <Icon name="mic" size={28} />}
           </button>
@@ -171,7 +171,7 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onHangUp}
-            aria-label="End the call"
+            aria-label="End The Call"
           >
             <Icon name="call-end" size={28} />
           </button>

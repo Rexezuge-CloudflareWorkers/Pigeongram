@@ -57,8 +57,8 @@ export function ReactionPicker({ reactions, expanded, disabled = false, onToggle
           data-message-menu-item
           disabled={disabled}
           aria-expanded={expanded}
-          aria-label={expanded ? 'Hide all reactions' : 'Show all reactions'}
-          title={expanded ? 'Hide all reactions' : 'Show all reactions'}
+          aria-label={expanded ? 'Hide All Reactions' : 'Show All Reactions'}
+          title={expanded ? 'Hide All Reactions' : 'Show All Reactions'}
           onClick={onToggle}
         >
           <Icon name={expanded ? 'close' : 'add-reaction'} size={18} />

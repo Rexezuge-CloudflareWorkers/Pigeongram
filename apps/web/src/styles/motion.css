@@ -1,0 +1,214 @@
+/* Motion system: shared entrance/exit keyframes beyond the per-surface ones
+ * in shell.css and thread.css. Every animation here moves transform/opacity
+ * only, and all of them collapse under the prefers-reduced-motion kill
+ * switch in shell.css (or run the no-anim fallback where one is given). */
+
+/* Exit keyframes: the reverse of the *-in entrances. Overlays pair an enter
+ * animation with a `.is-exiting` class that runs the matching *-out as
+ * Forwards so the component can stay mounted one beat longer. */
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+
+@keyframes scrim-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+
+@keyframes menu-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+@keyframes viewer-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes card-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+/* Pane swap when the open chat changes (the thread pane slides so the
+ * sidebar relationship stays legible on narrow windows). */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Only genuinely new messages animate; history re-renders without motion. */
+@keyframes message-in-upgraded {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Generic fade-up used by staggered list/thread entrances. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A soft pulse behind skeleton rows that lack the sheen. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.72;
+  }
+}
+
+/* The send button's tap feedback: a quick pop rather than a press scale. */
+@keyframes send-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(0.88);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Read ticks warm from grey to accent when a message becomes read. */
+@keyframes read-tick-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  45% {
+    transform: scale(1.25) rotate(-8deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* A reaction chip celebrates its first adoption. */
+@keyframes reaction-burst {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  45% {
+    transform: scale(1.18) rotate(6deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Unread badge count changes read as a single spring pop. */
+@keyframes badge-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.28);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The viewer image enters from its tile: the shared-element FLIP is run by
+ * JS against the live tile rect; this settles the overshoot. */
+@keyframes viewer-media-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The photo zooms and pans while zoomed; wiping it keeps only a settle. */
+@keyframes viewer-settle {
+  from {
+    transform: scale(1.04);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}

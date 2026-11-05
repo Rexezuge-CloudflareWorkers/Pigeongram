@@ -22,14 +22,16 @@ interface UserMenuProps {
   me: MeDto | null;
   connected: boolean;
   /**
-  The install offer, when the browser raised one.
-  */
+   The install offer, when the browser raised one.
+   */
   pwa: PwaState;
   onSignOut: () => Promise<void> | void;
   /**
-  Opens the archive: the chats the account archived.
-  */
+   Opens the archive: the chats the account archived.
+   */
   onOpenArchive: () => void;
+  onToggleTheme?: () => void;
+  theme?: 'dark' | 'light';
 }
 
 /**
@@ -43,7 +45,7 @@ function displayHandle(me: MeDto | null): string | undefined {
   return phone.startsWith('+') ? phone : `+${phone}`;
 }
 
-export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserMenuProps) {
+export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive, onToggleTheme, theme = 'dark' }: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -143,6 +145,18 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive }: UserM
             {handle ? <span className="truncate text-xs text-muted">{handle}</span> : null}
           </div>
           <div className="my-1 h-px bg-line" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+            onClick={() => {
+              setMenuOpen(false);
+              onToggleTheme?.();
+            }}
+          >
+            <Icon name={theme === 'dark' ? 'light-mode' : 'dark-mode'} className="text-muted" />
+            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
           <button
             type="button"
             role="menuitem"

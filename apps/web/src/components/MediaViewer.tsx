@@ -34,15 +34,16 @@ gestures, and a zoomed photo keeps the drag for panning.
 
 interface MediaViewerProps {
   /**
-  The clicked message's display group: a single message, or an album. Only the
-  visual members are navigable.
-  */
+   The clicked message's display group: a single message, or an album. Only the
+   visual members are navigable.
+   */
   messages: readonly MessageDto[];
   initialMessageId: number;
+  exiting?: boolean;
   onClose: () => void;
 }
 
-export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewerProps) {
+export function MediaViewer({ messages, initialMessageId, exiting = false, onClose }: MediaViewerProps) {
   const items = messages.filter((message) => isViewableMedia(message.media));
   const itemCount = items.length;
   const initialIndex = Math.max(
@@ -154,7 +155,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
 
   return createPortal(
     <div
-      className="media-viewer"
+      className={`media-viewer${exiting ? ' is-exiting' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label="Media viewer"
@@ -225,7 +226,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
           if (event.target === event.currentTarget && !dragged && !swiped) onClose();
         }}
       >
-        <div className={`media-viewer-track${swipe.settling ? ' is-settling' : ''}`} style={swipe.style}>
+        <div className={`media-viewer-track${swipe.settling ? ' is-settling' : ''} is-entering`} style={swipe.style}>
           {failed ? (
             <a className="media-viewer-fallback" href={src} download={downloadName} target="_blank" rel="noreferrer">
               <span>{title}</span>

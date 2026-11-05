@@ -44,44 +44,27 @@
   border-radius: 8px;
 }
 
+.composer .slash .icon {
+  transition: transform 180ms var(--spring);
+}
+
+.composer .slash[aria-expanded='true'] .icon {
+  transform: rotate(-2deg);
+}
+
+/* The expand/collapse control beside the attach button owns the menu, so the
+   command list no longer carries its own X. */
+
 .composer .attach:hover:not(:disabled),
 .composer .slash:hover:not(:disabled),
 .composer .slash[aria-expanded='true'] {
   color: var(--text);
 }
 
-.composer .slash[aria-expanded='true'] {
-  border-color: var(--accent);
-}
-
 .composer .attach:disabled,
 .composer .slash:disabled {
   opacity: 0.4;
   cursor: default;
-}
-
-.composer .command-menu-close {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: var(--muted);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  transition:
-    color 140ms var(--ease-out),
-    background-color 140ms var(--ease-out);
-}
-
-.composer .command-menu-close:hover {
-  color: var(--text);
-  background: var(--panel-2);
 }
 
 .composer .command-menu {
@@ -150,4 +133,63 @@
   field-sizing: content;
   max-height: 140px;
   overflow-y: auto;
+  transition:
+    border-color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    height 220ms var(--ease-out);
+}
+
+/* The mic↔send morph: the two icons cross-fade around a quarter turn, so
+   enabling the send reads as a transformation rather than a swap. */
+.composer .send-morph {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-softer);
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 160ms var(--ease-out),
+    opacity 160ms var(--ease-out);
+}
+
+.composer .send-morph:disabled {
+  color: var(--muted);
+  background: transparent;
+  opacity: 0.6;
+}
+
+.composer .send-morph:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.composer .send-morph .icon {
+  position: absolute;
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 160ms var(--spring);
+}
+
+.composer .send-morph .icon.is-send {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.composer .send-morph .icon.is-mic {
+  opacity: 0;
+  transform: rotate(-40deg) scale(0.85);
+}
+
+.composer .send-morph.is-mic .icon.is-mic {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.composer .send-morph.is-mic .icon.is-send {
+  opacity: 0;
+  transform: rotate(40deg) scale(0.85);
 }

@@ -116,6 +116,15 @@
   touch-action: none;
 }
 
+/* The viewer chrome itself fades against the dimmed stage. */
+.media-viewer {
+  animation: viewer-media-in 260ms var(--ease-out-strong);
+}
+
+.media-viewer.is-exiting {
+  animation: viewer-out 220ms var(--ease-out) forwards;
+}
+
 /* The track carries the gallery's swipe translation; the photo's zoom
    transform stays on the image inside it. The settle transition is only armed
    for an aborted swipe, so committing to a neighbour mounts at rest. */
@@ -130,12 +139,20 @@
 }
 
 .media-viewer-track.is-settling {
-  transition: transform 180ms ease-out;
+  transition: transform 260ms var(--spring);
+}
+
+.media-viewer-track.is-entering {
+  animation: viewer-settle 280ms var(--ease-out-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .media-viewer-track.is-settling {
     transition: none;
+  }
+
+  .media-viewer-track.is-entering {
+    animation: none;
   }
 }
 

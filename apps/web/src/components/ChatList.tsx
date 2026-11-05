@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { formatListStamp, previewOf } from '../format';
 import type { PendingMessage } from '../outbox';
 import { withPendingDialogs } from '../outbox';
@@ -14,6 +14,8 @@ import { Icon } from './Icon';
  */
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
+/** Horizontal swipe distance that reveals the row's quick actions. */
+const SWIPE_REVEAL_PX = 56;
 
 interface ChatListProps {
   dialogs: DialogDto[];
@@ -50,6 +52,8 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
    * should follow the current one.
    */
   const [menu, setMenu] = useState<ChatMenuState | null>(null);
+  const [swipedId, setSwipedId] = useState<PeerId | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   /**
    * A long press that matured already opened the menu; the click the browser
@@ -105,82 +109,131 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
   return (
     <>
       <ul className="chats">
-        {rows.map((dialog) => {
+        {rows.map((dialog, index) => {
           const last = dialog.lastMessage;
+          const isSwiped = swipedId === dialog.chat.id;
           return (
-            <li key={dialog.chat.id}>
-              <button
-                type="button"
-                className={`chat group${dialog.chat.id === activeChatId ? ' active' : ''}`}
-                onClick={() => {
-                  if (suppressClick.current) {
+            <li key={dialog.chat.id} className="chat-row-enter" style={{ ['--row-index' as string]: index }}>
+              <div className="chat-row">
+                {isSwiped && dialog.unread > 0 ? (
+                  <div className="chat-swipe-actions">
+                    <button
+                      type="button"
+                      className="swipe-btn"
+                      onClick={() => {
+                        onMarkRead?.(dialog.chat.id);
+                        setSwipedId(null);
+                        setSwipeOffset(0);
+                      }}
+                    >
+                      <Icon name="check" size={14} /> Read
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className={`chat group${dialog.chat.id === activeChatId ? ' active' : ''}${isSwiped ? ' is-swiping' : ''}`}
+                  style={isSwiped ? ({ transform: `translateX(${-SWIPE_REVEAL_PX}px)` } as CSSProperties) : undefined}
+                  onClick={() => {
+                    if (suppressClick.current) {
+                      suppressClick.current = false;
+                      return;
+                    }
+                    if (isSwiped) {
+                      setSwipedId(null);
+                      setSwipeOffset(0);
+                      return;
+                    }
+                    onSelect(dialog.chat);
+                  }}
+                  onContextMenu={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    openMenu(dialog, event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
+                    event.preventDefault();
+                  }}
+                  onPointerDown={(event) => {
                     suppressClick.current = false;
-                    return;
-                  }
-                  onSelect(dialog.chat);
-                }}
-                onContextMenu={(event) => {
-                  // Keyboard invocation (the Menu key, Shift+F10) reports no
-                  // pointer coordinates; open from the row's center instead.
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  openMenu(dialog, event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
-                  event.preventDefault();
-                }}
-                onPointerDown={(event) => {
-                  // A new gesture is never the lift of the previous long press.
-                  suppressClick.current = false;
-                  if (event.pointerType !== 'touch') return;
-                  cancelPress();
-                  const { clientX: x, clientY: y } = event;
-                  press.current = {
-                    x,
-                    y,
-                    timer: setTimeout(() => {
-                      press.current = null;
-                      suppressClick.current = true;
-                      openMenu(dialog, x, y);
-                    }, LONG_PRESS_MS),
-                  };
-                }}
-                onPointerMove={(event) => {
-                  const current = press.current;
-                  if (current === null) return;
-                  if (
-                    Math.abs(event.clientX - current.x) > LONG_PRESS_SLOP_PX ||
-                    Math.abs(event.clientY - current.y) > LONG_PRESS_SLOP_PX
-                  ) {
+                    if (event.pointerType !== 'touch') return;
                     cancelPress();
-                  }
-                }}
-                onPointerUp={cancelPress}
-                onPointerCancel={cancelPress}
-              >
-                <Avatar
-                  chatId={dialog.chat.id}
-                  photo={dialog.chat.photo}
-                  title={dialog.chat.title}
-                  kind={dialog.chat.kind}
-                  presence={dialog.chat.presence}
-                />
-                <span className="chat-body">
-                  <span className="chat-top">
-                    <span className="chat-title">{dialog.chat.title}</span>
-                    {last ? <span className="chat-stamp">{formatListStamp(last.date)}</span> : null}
-                  </span>
-                  <span className="chat-bottom">
-                    <span className="chat-preview">{last ? previewOf(last.text, last.media, last.poll) : '—'}</span>
-                    {/* The count and the pin share one slot: the count has priority,
+                    const { clientX: x, clientY: y } = event;
+                    press.current = {
+                      x,
+                      y,
+                      timer: setTimeout(() => {
+                        press.current = null;
+                        suppressClick.current = true;
+                        openMenu(
+                          {
+                            chat: dialog.chat,
+                            unread: dialog.unread,
+                            pinned: dialog.pinned,
+                            archived: dialog.archived,
+                            lastMessage: dialog.lastMessage,
+                          } as DialogDto,
+                          x,
+                          y,
+                        );
+                      }, LONG_PRESS_MS),
+                    };
+                    setSwipedId((current) => (current === dialog.chat.id ? null : current));
+                  }}
+                  onPointerMove={(event) => {
+                    const current = press.current;
+                    if (current === null) return;
+                    const dx = event.clientX - current.x;
+                    const dy = Math.abs(event.clientY - current.y);
+                    // A horizontal swipe left reveals mark-read.
+                    if (dx < -LONG_PRESS_SLOP_PX && Math.abs(dx) > dy * 1.2) {
+                      cancelPress();
+                      setSwipeOffset(Math.max(dx, -SWIPE_REVEAL_PX));
+                      if (dx <= -SWIPE_REVEAL_PX) {
+                        setSwipedId(dialog.chat.id);
+                      }
+                      return;
+                    }
+                    if (
+                      Math.abs(event.clientX - current.x) > LONG_PRESS_SLOP_PX ||
+                      Math.abs(event.clientY - current.y) > LONG_PRESS_SLOP_PX
+                    ) {
+                      cancelPress();
+                    }
+                  }}
+                  onPointerUp={() => {
+                    cancelPress();
+                    if (swipeOffset !== 0 && swipedId !== dialog.chat.id) setSwipeOffset(0);
+                  }}
+                  onPointerCancel={() => {
+                    cancelPress();
+                    setSwipeOffset(0);
+                  }}
+                >
+                  <Avatar
+                    chatId={dialog.chat.id}
+                    photo={dialog.chat.photo}
+                    title={dialog.chat.title}
+                    kind={dialog.chat.kind}
+                    presence={dialog.chat.presence}
+                  />
+                  <span className="chat-body">
+                    <span className="chat-top">
+                      <span className="chat-title">{dialog.chat.title}</span>
+                      {last ? <span className="chat-stamp">{formatListStamp(last.date)}</span> : null}
+                    </span>
+                    <span className="chat-bottom">
+                      <span className="chat-preview">{last ? previewOf(last.text, last.media, last.poll) : '—'}</span>
+                      {/* The count and the pin share one slot: the count has priority,
                         so an unread pinned chat drops the pin. */}
-                    {dialog.unread > 0 ? (
-                      <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span>
-                    ) : dialog.pinned ? (
-                      <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-muted">
-                        <Icon name="pin" size={14} />
-                      </span>
-                    ) : null}
+                      {dialog.unread > 0 ? (
+                        <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span>
+                      ) : dialog.pinned ? (
+                        <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-muted">
+                          <Icon name="pin" size={14} />
+                        </span>
+                      ) : null}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+              </div>
             </li>
           );
         })}

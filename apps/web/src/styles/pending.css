@@ -56,3 +56,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.message .pending-progress {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  overflow: hidden;
+}
+
+.message .pending-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 300ms var(--ease-out);
+}

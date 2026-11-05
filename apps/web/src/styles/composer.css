@@ -100,5 +100,8 @@
 .composer textarea {
   flex: 1;
   resize: none;
+  /* Grow with the draft up to the cap, then scroll inside the field. */
+  field-sizing: content;
   max-height: 140px;
+  overflow-y: auto;
 }

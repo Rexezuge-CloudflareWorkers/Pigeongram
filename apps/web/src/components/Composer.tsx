@@ -51,15 +51,29 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
   const showMenu = menuOpen && matches.length > 0;
 
   // Clicking outside the composer dismisses the menu without stealing the
-  // click from whatever the user aimed at.
+  // click from whatever the user aimed at. Capture phase keeps a child's
+  // stopPropagation from defeating the dismiss, and Escape is handled on the
+  // document so it works wherever focus has landed.
   useEffect(() => {
     if (!menuOpen) return;
-    const close = (event: PointerEvent): void => {
-      if (!(event.target instanceof Node)) return;
-      if (!formRef.current?.contains(event.target)) setMenuOpen(false);
+    const outside = (event: Event): void => {
+      if (!(event.target instanceof Node) || formRef.current?.contains(event.target)) return;
+      setMenuOpen(false);
     };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
+    const onEscape = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setMenuOpen(false);
+      textareaRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', outside, { capture: true });
+    document.addEventListener('click', outside, { capture: true });
+    document.addEventListener('keydown', onEscape, { capture: true });
+    return () => {
+      document.removeEventListener('pointerdown', outside, { capture: true });
+      document.removeEventListener('click', outside, { capture: true });
+      document.removeEventListener('keydown', onEscape, { capture: true });
+    };
   }, [menuOpen]);
 
   useLayoutEffect(() => {
@@ -213,6 +227,18 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
         </button>
         {showMenu ? (
           <div className="command-menu" id={listId} role="listbox" aria-label="Bot Commands">
+            <button
+              type="button"
+              className="command-menu-close"
+              aria-label="Close Bot Commands"
+              title="Close Bot Commands"
+              onClick={() => {
+                setMenuOpen(false);
+                textareaRef.current?.focus();
+              }}
+            >
+              <Icon name="close" size={14} />
+            </button>
             {matches.map((command, index) => (
               <button
                 key={command.command}

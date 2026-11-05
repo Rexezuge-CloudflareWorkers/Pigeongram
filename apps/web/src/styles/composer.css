@@ -60,6 +60,30 @@
   cursor: default;
 }
 
+.composer .command-menu-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  transition:
+    color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out);
+}
+
+.composer .command-menu-close:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
 .composer .command-menu {
   position: absolute;
   bottom: calc(100% + 8px);

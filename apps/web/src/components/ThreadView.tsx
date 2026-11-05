@@ -6,7 +6,7 @@ import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
-import type { MessageDto, PeerId } from '../types';
+import type { MessageDto, MessageReplyKeyboardButtonDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageRow } from './MessageRow';
@@ -37,6 +37,7 @@ export function ThreadView({
   error,
   botCommands,
   description,
+  replyKeyboard,
   reactingIds,
   votingIds,
   pressingButtonIds,
@@ -58,6 +59,7 @@ export function ThreadView({
   onForward,
   onVote,
   onPressButton,
+  onPressReplyKeyboard,
   onOpenComments,
   onOpenMedia,
   unreadDividerId,
@@ -253,6 +255,11 @@ export function ThreadView({
     setReplyingTo(null);
     return onAttach(request);
   };
+  const pressReplyKeyboard = (button: MessageReplyKeyboardButtonDto, replyTo?: number): void => {
+    // A keyboard send consumes the reply target like any other send.
+    setReplyingTo(null);
+    onPressReplyKeyboard(button, replyTo);
+  };
   const openComments = (message: MessageDto): void => {
     const element = scrollRef.current;
     if (element) positions.remember(readThreadPosition(element, chat.id));
@@ -381,9 +388,11 @@ export function ThreadView({
         onJoin={onJoin}
         replyTarget={replyTarget}
         botCommands={botCommands}
+        replyKeyboard={replyKeyboard}
         onCancelReply={() => setReplyingTo(null)}
         onSend={send}
         onAttach={attach}
+        onPressReplyKeyboard={pressReplyKeyboard}
       />
     </section>
   );

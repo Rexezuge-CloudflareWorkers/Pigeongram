@@ -152,6 +152,7 @@ export function pendingAsMessage(entry: PendingMessage): MessageDto {
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: pendingReply(entry),
     forward: null,
     views: null,

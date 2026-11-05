@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { fetchChatScreen } from './api';
 import { firstUnread } from './reading';
+import { foldKeyboardSeed } from './reply-keyboard';
 import { mergeMessages } from './state';
 import { cachedOpen, mergeCacheRefresh, ThreadCache } from './thread-cache';
 import type { OpenThreadResult } from './thread-controller';
@@ -9,7 +10,7 @@ import type { ThreadPositionMemory } from './thread-position';
 import type { ChatThread } from './thread-state';
 import { OPEN_LIMIT, supportsCommands, unreadWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { BotCommandDto, ChatDto, DialogDto } from './types';
+import type { BotCommandDto, ChatDto, DialogDto, MessageDto } from './types';
 
 /**
  * The opening half of the thread controller: the first read of a chat, the
@@ -25,6 +26,12 @@ interface UseThreadOpenOptions {
   thread: ChatThread | null;
   setThread: Dispatch<SetStateAction<ChatThread | null>>;
   positions: ThreadPositionMemory;
+  /**
+  Takes the newest markup-bearing message a read saw, or null when the open
+  starts or is reset: the composer's reply keyboard follows it. The controller
+  owns the state so a live message can advance it too.
+  */
+  setKeyboardSeed: (seed: MessageDto | null) => void;
 }
 
 interface ThreadOpening {
@@ -50,7 +57,15 @@ The empty slash-command menu, before a chat is opened.
 */
 const NO_COMMANDS: readonly BotCommandDto[] = [];
 
-export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOptions): ThreadOpening {
+/**
+The newest message a read carried that has a reply markup: the message whose
+keyboard the chat currently shows. Null when the read held none.
+*/
+function keyboardCandidate(messages: readonly MessageDto[]): MessageDto | null {
+  return messages.reduce<MessageDto | null>((seed, message) => foldKeyboardSeed(seed, message), null);
+}
+
+export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }: UseThreadOpenOptions): ThreadOpening {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
@@ -74,7 +89,8 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
     setError(null);
     setBotCommands(NO_COMMANDS);
     setDescription(null);
-  }, []);
+    setKeyboardSeed(null);
+  }, [setKeyboardSeed]);
 
   /**
   Reads the newest page beside a painted cache entry and folds it in. The same
@@ -91,6 +107,7 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
         if (sequence !== ticket.current) return;
         setBotCommands(screen.commands);
         setDescription(screen.description);
+        setKeyboardSeed(keyboardCandidate(screen.messages));
         setThread((current) =>
           current && current.chat.id === chat.id ? mergeCacheRefresh(current, screen.messages, dialog, openingReadInboxMaxId) : current,
         );
@@ -99,7 +116,7 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
         setError(failureText(failure));
       }
     },
-    [setThread],
+    [setThread, setKeyboardSeed],
   );
 
   const open = useCallback(
@@ -115,6 +132,7 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
       setError(null);
       setBotCommands(NO_COMMANDS);
       setDescription(null);
+      setKeyboardSeed(null);
 
       // A chat with unread messages opens at its own divider, not where the
       // last visit left it, and a linked post has its own landing rule: the
@@ -124,6 +142,7 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
       if (painted !== null) {
         setLoading(false);
         setThread(painted);
+        setKeyboardSeed(keyboardCandidate(painted.messages));
         void refresh(chat, dialog, painted.readInboxMaxId, sequence);
         return { messages: painted.messages, comments: null, commentsError: null };
       }
@@ -149,16 +168,20 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
         const unread = postId === null && dialog.unread > 0 ? unreadWindow(dialog.readInboxMaxId) : null;
         // The window, the chat's slash commands and — when a post is named —
         // its comments are one request: the engine reads them at the same
-        // time, where separate requests would queue behind each other.
+        // time, where separate requests would queue behind each other. A
+        // window around the unread divider is not the newest page, so the
+        // newest message rides along for the reply keyboard.
         const screen = await fetchChatScreen(chat.id, postId, {
           limit: OPEN_LIMIT,
           ...(postId !== null && { anchorId: postId }),
           ...(unread !== null && unread),
           withCommands: supportsCommands(chat.kind),
+          withLatest: unread !== null,
         });
         if (sequence !== ticket.current) return { messages: [], comments: null, commentsError: null };
         setBotCommands(screen.commands);
         setDescription(screen.description);
+        setKeyboardSeed(keyboardCandidate(screen.latestMessage === null ? screen.messages : [...screen.messages, screen.latestMessage]));
         const screenEnd = screen.messages.at(-1)?.id ?? null;
         // A live message can arrive while the window is in flight. If the
         // window was at the newest message when it was requested, those
@@ -195,7 +218,7 @@ export function useThreadOpen({ thread, setThread, positions }: UseThreadOpenOpt
         if (sequence === ticket.current) setLoading(false);
       }
     },
-    [positions, refresh, setThread],
+    [positions, refresh, setThread, setKeyboardSeed],
   );
 
   return { open, reset, loading, error, setError, botCommands, description };

@@ -10,6 +10,7 @@ import type {
   MessageMediaDto,
   MessagePollDto,
   MessageReplyDto,
+  MessageReplyKeyboardDto,
   UpdateEvent,
 } from '../../apps/web/src/types';
 
@@ -226,6 +227,7 @@ const history: MessageDto[] = [
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,
@@ -248,6 +250,7 @@ const history: MessageDto[] = [
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,
@@ -286,6 +289,7 @@ const carolHistory: MessageDto[] = [
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,
@@ -312,6 +316,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,
@@ -1385,6 +1390,84 @@ describe('App', () => {
         expect(screen.queryByRole('button', { name: 'Create' })).toBeNull();
       });
       expect(within(threadSection()).getByText('The keyboard is gone.')).toBeDefined();
+    });
+  });
+
+  describe('reply keyboards', () => {
+    const keyboardMarkup: MessageReplyKeyboardDto = {
+      kind: 'keyboard',
+      oneTime: false,
+      placeholder: 'Pick an option',
+      rows: [
+        [
+          { text: 'Menu', style: 'primary', kind: 'text' },
+          { text: 'Open app', style: null, kind: 'webview', url: 'https://example.com/app' },
+        ],
+        [{ text: 'Share number', style: null, kind: 'request_phone' }],
+      ],
+    };
+
+    const keyboardMessage = message({ id: 10, chatId: 2, senderName: 'Helper', text: 'Choose', replyKeyboard: keyboardMarkup });
+
+    function installKeyboardFetch(messages: MessageDto[], sent: FetchCall[]): void {
+      installSignedInFetch({
+        history: () => json({ messages }),
+        rpc: (call) => {
+          if (call.body?.method !== 'sendMessage') return;
+          sent.push(call);
+          const text = (call.body.params as { text?: string }).text ?? '';
+          return json({ message: message({ id: 11, chatId: 2, outgoing: true, text }) });
+        },
+      });
+    }
+
+    it('renders the chat keyboard above the composer and sends a button text', async () => {
+      const sent: FetchCall[] = [];
+      installKeyboardFetch([keyboardMessage], sent);
+      render(<App />);
+
+      fireEvent.click(await screen.findByText('Bob'));
+      const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
+      expect(within(keyboard).getByRole('button', { name: 'Menu' })).toBeDefined();
+      expect(within(keyboard).getByRole('link', { name: 'Open app' }).getAttribute('href')).toBe('https://example.com/app');
+      expect((within(keyboard).getByRole('button', { name: 'Share number' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByPlaceholderText('Pick an option')).toBeDefined();
+
+      fireEvent.click(within(keyboard).getByRole('button', { name: 'Menu' }));
+      await waitFor(() => {
+        expect(sent.map((call) => call.body?.params)).toEqual([{ chatId: 2, text: 'Menu', randomId: expect.any(String) }]);
+      });
+    });
+
+    it('hides a one-time keyboard once a button was pressed', async () => {
+      const sent: FetchCall[] = [];
+      installKeyboardFetch([{ ...keyboardMessage, replyKeyboard: { ...keyboardMarkup, oneTime: true } }], sent);
+      render(<App />);
+
+      fireEvent.click(await screen.findByText('Bob'));
+      const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
+      fireEvent.click(within(keyboard).getByRole('button', { name: 'Menu' }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole('group', { name: 'Bot keyboard' })).toBeNull();
+      });
+    });
+
+    it('removes the keyboard when a newer message removes it', async () => {
+      installKeyboardFetch([keyboardMessage], []);
+      render(<App />);
+
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByRole('group', { name: 'Bot keyboard' })).toBeDefined();
+
+      deliver({
+        type: 'new_message',
+        message: message({ id: 12, chatId: 2, senderName: 'Helper', text: 'All set.', replyKeyboard: { kind: 'hide' } }),
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole('group', { name: 'Bot keyboard' })).toBeNull();
+      });
     });
   });
 
@@ -2502,12 +2585,16 @@ describe('App', () => {
       stubLayout({ listHeight: 600, viewportHeight: 200 });
       installSignedInFetch({
         dialogs: [unreadDialog, carolDialog],
-        history: (chatId) =>
+        // The unread open also probes the newest message for the reply
+        // keyboard; this test drives the window read.
+        history: (chatId, params) =>
           chatId === 3
             ? json({ messages: carolHistory })
-            : new Promise<Response>((resolve) => {
-                release = resolve;
-              }),
+            : params.limit === 1
+              ? json({ messages: [] })
+              : new Promise<Response>((resolve) => {
+                  release = resolve;
+                }),
       });
 
       render(<App />);
@@ -2841,6 +2928,9 @@ describe('App', () => {
         installSignedInFetch({
           dialogs: [backlogDialog(1090)],
           history: (_chatId, params) => {
+            // The unread open also probes the newest message for the reply
+            // keyboard; the paging reads are the ones this test watches.
+            if (params.limit === 1) return json({ messages: [] });
             reads.push(params);
             if (params.offsetId === watermark) return json({ messages: page(991, 1040) });
             // The forward page lands below the viewport; the list grows by its
@@ -3813,6 +3903,44 @@ describe('App', () => {
       });
     });
 
+    it("shows the discussion group's reply keyboard and sends its text", async () => {
+      const sent: FetchCall[] = [];
+      const keyboardComment = comment({
+        id: ROOT + 1,
+        text: 'Pick one',
+        reply: replyHeader(ROOT),
+        replyKeyboard: {
+          kind: 'keyboard',
+          oneTime: false,
+          placeholder: 'Choose',
+          rows: [[{ text: 'Yes', style: null, kind: 'text' }]],
+        },
+      });
+      installCommentsFetch((call) => {
+        if (call.body?.method === 'getComments') {
+          return json({ comments: [keyboardComment], count: 1, discussionChatId: GROUP, discussionMessageId: ROOT });
+        }
+        if (call.body?.method !== 'sendComment') return;
+        sent.push(call);
+        return json({ message: comment({ id: 20, text: 'Yes', outgoing: true }) });
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Announcements'));
+      expect(await screen.findByText('A new feature shipped')).toBeDefined();
+      openComments();
+
+      const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
+      expect(screen.getByPlaceholderText('Choose')).toBeDefined();
+
+      fireEvent.click(within(keyboard).getByRole('button', { name: 'Yes' }));
+      await waitFor(() => {
+        expect(sent.map((call) => call.body?.params)).toEqual([
+          { chatId: channel.id, messageId: 7, text: 'Yes', randomId: expect.any(String) },
+        ]);
+      });
+    });
+
     it('loads older comments with the cursor getComments returned', async () => {
       const calls: FetchCall[] = [];
       installCommentsFetch((call) => {
@@ -4099,10 +4227,14 @@ describe('App', () => {
       let resolveHistory: ((messages: MessageDto[]) => void) | undefined;
       installSignedInFetch({
         dialogs: bobAndCarol,
-        history: () =>
-          new Promise<Response>((resolve) => {
-            resolveHistory = (messages) => resolve(json({ messages }));
-          }),
+        // The unread open also probes the newest message; this test drives the
+        // window read.
+        history: (_chatId, params) =>
+          params.limit === 1
+            ? json({ messages: [] })
+            : new Promise<Response>((resolve) => {
+                resolveHistory = (messages) => resolve(json({ messages }));
+              }),
       });
 
       render(<App />);
@@ -4123,10 +4255,14 @@ describe('App', () => {
       let resolveHistory: ((messages: MessageDto[]) => void) | undefined;
       installSignedInFetch({
         dialogs: bobAndCarol,
-        history: () =>
-          new Promise<Response>((resolve) => {
-            resolveHistory = (messages) => resolve(json({ messages }));
-          }),
+        // The unread open also probes the newest message; this test drives the
+        // window read.
+        history: (_chatId, params) =>
+          params.limit === 1
+            ? json({ messages: [] })
+            : new Promise<Response>((resolve) => {
+                resolveHistory = (messages) => resolve(json({ messages }));
+              }),
       });
 
       render(<App />);
@@ -4149,11 +4285,15 @@ describe('App', () => {
       let resolveBobHistory: ((messages: MessageDto[]) => void) | undefined;
       installSignedInFetch({
         dialogs: bobAndCarol,
-        history: (chatId) =>
+        // The probe is answered at once; the window response the user left
+        // behind is the one this test resolves.
+        history: (chatId, params) =>
           chatId === 2
-            ? new Promise<Response>((resolve) => {
-                resolveBobHistory = (messages) => resolve(json({ messages }));
-              })
+            ? params.limit === 1
+              ? json({ messages: [] })
+              : new Promise<Response>((resolve) => {
+                  resolveBobHistory = (messages) => resolve(json({ messages }));
+                })
             : json({ messages: carolHistory }),
       });
 

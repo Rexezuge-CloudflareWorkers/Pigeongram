@@ -386,10 +386,11 @@ export interface SendCommentResult {
   message: MessageDto;
 }
 
+/**
+Telegram's commands in their order — a group's are de-duplicated by name — and the empty-chat text: a bot's description, or a chat's about; null when none.
+*/
 export interface GetBotCommandsResult {
-  /** Telegram's commands in its order, de-duplicated by name for a group. */
   commands: BotCommandDto[];
-  /** The empty-chat text: a bot's description or a chat's about; null when none. */
   description: string | null;
 }
 

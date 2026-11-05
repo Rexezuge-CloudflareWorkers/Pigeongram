@@ -90,6 +90,13 @@
   font-size: 13px;
 }
 
+/* A reply keyboard and the composer are one input area: the keyboard carries
+   the separator from the messages above it, and the composer's own border
+   would double it. */
+.reply-keyboard + .composer {
+  border-top: none;
+}
+
 .composer textarea {
   flex: 1;
   resize: none;

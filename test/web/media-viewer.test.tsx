@@ -23,6 +23,7 @@ function message(id: number, media: MessageMediaDto): MessageDto {
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,

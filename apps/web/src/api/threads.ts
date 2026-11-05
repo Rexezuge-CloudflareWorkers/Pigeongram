@@ -30,6 +30,12 @@ interface ChatScreen {
   */
   messages: MessageDto[];
   /**
+  The chat's newest message, read beside a window that is not the newest page
+  so the composer knows which reply keyboard the chat shows. Null when the
+  window already is the newest page, or when the read failed.
+  */
+  latestMessage: MessageDto | null;
+  /**
   The chat's slash commands, empty for a chat without one.
   */
   commands: BotCommandDto[];
@@ -66,16 +72,23 @@ export async function fetchChatScreen(
     addOffset?: number;
     anchorId?: number;
     withCommands?: boolean;
+    withLatest?: boolean;
     commentsLimit?: number;
   } = {},
 ): Promise<ChatScreen> {
-  const { withCommands = false, commentsLimit = 50, ...history } = options;
+  const { withCommands = false, withLatest = false, commentsLimit = 50, ...history } = options;
   const calls: RpcBatchCall[] = [{ method: 'getHistory', params: { chatId, ...history } }];
   if (withCommands) {
     calls.push({ method: 'getBotCommands', params: { chatId } });
   }
   if (postId !== null) {
     calls.push({ method: 'getComments', params: { chatId, messageId: postId, limit: commentsLimit } });
+  }
+  // A window around an unread divider is not the newest page, but the chat's
+  // reply keyboard is the newest message's. One more read, inside the same
+  // event and over the same connection, answers which keyboard the chat shows.
+  if (withLatest) {
+    calls.push({ method: 'getHistory', params: { chatId, limit: 1 } });
   }
   const outcomes = await rpcBatch(calls);
   const messages = batchResult<GetHistoryResult>(outcomes[0], 'chat history').messages;
@@ -84,8 +97,11 @@ export async function fetchChatScreen(
   // empty thread keeps its generic prompt.
   const menu = outcomes[1]?.ok ? (outcomes[1].result as GetBotCommandsResult) : null;
   const commentsOutcome = postId === null ? undefined : outcomes[2];
+  const latestOutcome = withLatest ? outcomes.at(-1) : undefined;
   return {
     messages,
+    latestMessage:
+      latestOutcome === undefined || !latestOutcome.ok ? null : ((latestOutcome.result as GetHistoryResult).messages.at(-1) ?? null),
     commands: menu?.commands ?? [],
     description: menu?.description ?? null,
     comments: commentsOutcome?.ok ? (commentsOutcome.result as GetCommentsResult) : null,

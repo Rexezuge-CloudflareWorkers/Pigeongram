@@ -109,6 +109,7 @@ export function ThreadPane({
         reactingIds={comments.reactingIds}
         votingIds={comments.votingIds}
         pressingButtonIds={comments.pressingButtonIds}
+        replyKeyboard={comments.replyKeyboard}
         onBack={onBack}
         onLoadOlder={() => void comments.loadOlder()}
         onSend={comments.send}
@@ -119,6 +120,7 @@ export function ThreadPane({
         onForward={onForward}
         onVote={comments.vote}
         onPressButton={comments.pressButton}
+        onPressReplyKeyboard={comments.pressReplyKeyboardButton}
         onOpenMedia={(messageId) => onOpenMedia('comments', messageId)}
       />
     );
@@ -140,6 +142,7 @@ export function ThreadPane({
       error={threads.error}
       botCommands={threads.botCommands}
       description={threads.description}
+      replyKeyboard={threads.replyKeyboard}
       reactingIds={threads.reactingIds}
       votingIds={threads.votingIds}
       pressingButtonIds={threads.pressingButtonIds}
@@ -170,6 +173,7 @@ export function ThreadPane({
       onForward={onForward}
       onVote={threads.vote}
       onPressButton={threads.pressButton}
+      onPressReplyKeyboard={threads.pressReplyKeyboardButton}
       onReadThrough={onReadThrough}
       onOpenMedia={(messageId) => onOpenMedia('thread', messageId)}
       onOpenComments={onOpenComments}

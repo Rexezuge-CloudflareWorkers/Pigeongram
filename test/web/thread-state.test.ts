@@ -31,6 +31,7 @@ function message(id: number, text = `message ${id}`, overrides: Partial<MessageD
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,

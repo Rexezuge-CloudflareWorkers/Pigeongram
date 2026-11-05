@@ -98,11 +98,11 @@ describe('media viewer photo zoom', () => {
   it('toggles between 1x and 2x on double click', () => {
     const image = renderViewer([photo(1)]);
     expect(scaleOf(image)).toBe(1);
-    expect(button('Reset zoom').disabled).toBe(true);
+    expect(button('Reset Zoom').disabled).toBe(true);
 
     fireEvent.doubleClick(image);
     expect(scaleOf(image)).toBe(2);
-    expect(button('Reset zoom').disabled).toBe(false);
+    expect(button('Reset Zoom').disabled).toBe(false);
 
     fireEvent.doubleClick(image);
     expect(scaleOf(image)).toBe(1);
@@ -110,8 +110,8 @@ describe('media viewer photo zoom', () => {
 
   it('steps the toolbar between reset states and disables at the limits', () => {
     const image = renderViewer([photo(1)]);
-    const zoomIn = button('Zoom in');
-    const zoomOut = button('Zoom out');
+    const zoomIn = button('Zoom In');
+    const zoomOut = button('Zoom Out');
     expect(zoomOut.disabled).toBe(true);
 
     fireEvent.click(zoomIn);
@@ -121,7 +121,7 @@ describe('media viewer photo zoom', () => {
 
     fireEvent.click(zoomOut);
     expect(scaleOf(image)).toBe(1.5);
-    fireEvent.click(button('Reset zoom'));
+    fireEvent.click(button('Reset Zoom'));
     expect(scaleOf(image)).toBe(1);
 
     fireEvent.click(zoomIn);
@@ -184,10 +184,10 @@ describe('media viewer photo zoom', () => {
     fireEvent.doubleClick(first);
     expect(scaleOf(first)).toBe(2);
 
-    fireEvent.click(button('Next media'));
+    fireEvent.click(button('Next Media'));
     const second = screen.getByRole('img');
     expect(scaleOf(second)).toBe(1);
-    expect(button('Reset zoom').disabled).toBe(true);
+    expect(button('Reset Zoom').disabled).toBe(true);
   });
 
   it('leaves videos on their native controls', () => {
@@ -211,8 +211,8 @@ describe('media viewer photo zoom', () => {
 
     expect(document.querySelector('video.media-viewer-media')).not.toBeNull();
     expect(document.querySelector('img.media-viewer-photo')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
-    const link = screen.getByRole('link', { name: 'Download original' });
+    expect(screen.queryByRole('button', { name: 'Zoom In' })).toBeNull();
+    const link = screen.getByRole('link', { name: 'Download Original' });
     expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1');
     expect(link.getAttribute('download')).toBe('clip.mp4');
   });
@@ -222,7 +222,7 @@ describe('media viewer downloads', () => {
   it('offers the original photo under a name generated from its message id', () => {
     renderViewer([photo(7)]);
 
-    const link = screen.getByRole('link', { name: 'Download original' });
+    const link = screen.getByRole('link', { name: 'Download Original' });
     expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7');
     expect(link.getAttribute('href')).not.toContain('thumb=1');
     expect(link.getAttribute('download')).toBe('photo-7.jpg');
@@ -231,9 +231,9 @@ describe('media viewer downloads', () => {
 
   it('follows the gallery to the item on screen', () => {
     renderViewer([photo(1), photo(2)]);
-    fireEvent.click(button('Next media'));
+    fireEvent.click(button('Next Media'));
 
-    const link = screen.getByRole('link', { name: 'Download original' });
+    const link = screen.getByRole('link', { name: 'Download Original' });
     expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2');
     expect(link.getAttribute('download')).toBe('photo-2.jpg');
   });
@@ -296,7 +296,7 @@ describe('media viewer swipe', () => {
     fireEvent.pointerUp(image, { pointerId: 1, pointerType: 'touch', clientX: 400, clientY: 300 });
     expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next media' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next Media' }));
     swipe(screen.getByRole('img'), -100);
     expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=2');
   });

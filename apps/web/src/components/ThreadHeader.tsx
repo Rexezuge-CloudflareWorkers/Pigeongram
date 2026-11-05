@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { writeClipboard } from '../clipboard';
 import { launchTelegramApp, usernameAppLink } from '../links';
+import { formatPresence } from '../format';
 import type { ChatDto, PresenceDto } from '../types';
 import { useProfile } from '../useProfile';
 import { Avatar } from './Avatar';
@@ -80,6 +81,8 @@ export function ThreadHeader({
   const openerRef = useRef<HTMLElement | null>(null);
   const menuId = useId();
   const username = chat.username;
+  const presenceLabel = formatPresence(presence);
+  const isOnline = presence?.status === 'online';
 
   const closeProfile = useCallback((): void => {
     setProfileOpen(false);
@@ -149,7 +152,7 @@ export function ThreadHeader({
   return (
     <>
       <header className="thread-head">
-        <button type="button" className="back" onClick={onBack} aria-label="Back to chat list">
+        <button type="button" className="back" onClick={onBack} aria-label="Back To Chat List">
           <Icon name="arrow-left" />
         </button>
         {/* The picture and the name are two ways to the same profile, and each
@@ -158,7 +161,7 @@ export function ThreadHeader({
           type="button"
           className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={(event) => openProfile(event.currentTarget)}
-          aria-label={`View the profile of ${chat.title}`}
+          aria-label={`View The Profile Of ${chat.title}`}
         >
           <Avatar chatId={chat.id} photo={chat.photo} title={chat.title} kind={chat.kind} small presence={presence} />
         </button>
@@ -170,13 +173,16 @@ export function ThreadHeader({
           >
             {chat.title}
           </button>
+          {/* The official header always says where the peer stands; it rides
+              the same presence the avatar badge shows. */}
+          {presenceLabel === null ? null : <span className={`thread-presence${isOnline ? ' online' : ''}`}>{presenceLabel}</span>}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onSearch}
-            aria-label={`Search in ${chat.title}`}
+            aria-label={`Search In ${chat.title}`}
           >
             <Icon name="search" />
           </button>
@@ -199,7 +205,7 @@ export function ThreadHeader({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-controls={menuId}
-            aria-label={`Menu for ${chat.title}`}
+            aria-label={`Menu For ${chat.title}`}
           >
             <Icon name="more-vertical" />
           </button>
@@ -213,7 +219,7 @@ export function ThreadHeader({
           onKeyDown={onKeyDown}
           id={menuId}
           className="fixed z-50 w-[220px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-panel-2 p-2 shadow-2xl"
-          label={`Menu for ${chat.title}`}
+          label={`Menu For ${chat.title}`}
         >
           <button
             type="button"
@@ -235,7 +241,7 @@ export function ThreadHeader({
               onClick={() => void copyUsername()}
             >
               <Icon name="copy" className="text-muted" />
-              <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : `Copy @${username}`}</span>
+              <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy Failed' : `Copy @${username}`}</span>
             </button>
           ) : null}
           {username ? (
@@ -246,7 +252,7 @@ export function ThreadHeader({
               onClick={openInTelegram}
             >
               <Icon name="open-in-new" className="text-muted" />
-              <span>Open in Telegram</span>
+              <span>Open In Telegram</span>
             </button>
           ) : null}
           {canArchive ? (

@@ -75,7 +75,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onPointerDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
@@ -87,7 +87,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
         role="dialog"
         aria-modal="true"
         aria-label="Search messages"
-        className="flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
+        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -97,7 +97,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg"
-            aria-label="Close search"
+            aria-label="Close Search"
             onClick={onClose}
           >
             <Icon name="close" />
@@ -116,10 +116,10 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
           {chat === null ? null : (
             <div role="group" aria-label="Search scope" className="mt-2 flex gap-1 rounded-lg bg-panel-2 p-1 text-xs font-medium">
               <ScopeButton active={inChat} onClick={() => setScope({ kind: 'chat', chatId: chat.id })}>
-                This chat
+                This Chat
               </ScopeButton>
               <ScopeButton active={!inChat} onClick={() => setScope({ kind: 'all' })}>
-                All chats
+                All Chats
               </ScopeButton>
             </div>
           )}
@@ -167,7 +167,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
               disabled={loadingMore}
               onClick={loadMore}
             >
-              {loadingMore ? 'Loading…' : 'Load more results'}
+              {loadingMore ? 'Loading…' : 'Load More Results'}
             </button>
           ) : null}
         </div>

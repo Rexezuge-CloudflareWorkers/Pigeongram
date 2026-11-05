@@ -81,8 +81,8 @@ function renderHeader(
 }
 
 function openMenu(): HTMLElement {
-  fireEvent.click(screen.getByRole('button', { name: `Menu for ${chat.title}` }));
-  return screen.getByRole('menu', { name: `Menu for ${chat.title}` });
+  fireEvent.click(screen.getByRole('button', { name: `Menu For ${chat.title}` }));
+  return screen.getByRole('menu', { name: `Menu For ${chat.title}` });
 }
 
 describe('ThreadHeader', () => {
@@ -102,7 +102,7 @@ describe('ThreadHeader', () => {
     installProfileFetch();
     renderHeader();
 
-    fireEvent.click(screen.getByRole('button', { name: 'View the profile of Bob' }));
+    fireEvent.click(screen.getByRole('button', { name: 'View The Profile Of Bob' }));
 
     expect(await screen.findByRole('dialog')).toBeDefined();
   });
@@ -132,14 +132,14 @@ describe('ThreadHeader', () => {
 
     const menu = openMenu();
     expect(within(menu).getByRole('menuitem', { name: 'Copy @bob' })).toBeDefined();
-    expect(within(menu).getByRole('menuitem', { name: 'Open in Telegram' })).toBeDefined();
+    expect(within(menu).getByRole('menuitem', { name: 'Open In Telegram' })).toBeDefined();
 
     cleanup();
     renderHeader({ ...chat, username: null });
     const plain = openMenu();
     expect(within(plain).getByRole('menuitem', { name: 'View Profile' })).toBeDefined();
     expect(within(plain).queryByRole('menuitem', { name: 'Copy @bob' })).toBeNull();
-    expect(within(plain).queryByRole('menuitem', { name: 'Open in Telegram' })).toBeNull();
+    expect(within(plain).queryByRole('menuitem', { name: 'Open In Telegram' })).toBeNull();
   });
 
   it('copies the handle and says so on the item', async () => {
@@ -297,7 +297,7 @@ describe('ThreadHeader', () => {
     const onSearch = vi.fn();
     renderHeader(chat, { onSearch });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search in Bob' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Search In Bob' }));
 
     expect(onSearch).toHaveBeenCalledTimes(1);
   });

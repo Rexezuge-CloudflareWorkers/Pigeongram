@@ -28,9 +28,9 @@ export function JumpToLatest({ visible, busy, onJump }: JumpToLatestProps) {
   return (
     <button
       type="button"
-      className="absolute right-3 bottom-3 z-10 inline-flex size-10 items-center justify-center rounded-full border border-line bg-panel-2 text-muted shadow-lg transition-colors hover:bg-line hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-50"
-      aria-label="Jump to latest and mark as read"
-      title="Jump to latest and mark as read"
+      className="jump-to-latest absolute right-3 bottom-3 z-10 inline-flex size-10 items-center justify-center rounded-full border border-line bg-panel-2 text-muted shadow-lg transition-colors hover:bg-line hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-50"
+      aria-label="Jump To Latest And Mark As Read"
+      title="Jump To Latest And Mark As Read"
       aria-busy={busy}
       disabled={busy}
       onClick={onJump}

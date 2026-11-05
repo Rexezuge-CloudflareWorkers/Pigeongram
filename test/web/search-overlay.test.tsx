@@ -80,10 +80,10 @@ describe('SearchOverlay', () => {
     expect(await screen.findByText('Bob')).toBeDefined();
     await waitFor(() => expect(bridge.searchMessages).toHaveBeenCalledWith(2, 'chat', { limit: 50 }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'All chats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All Chats' }));
 
     await waitFor(() => expect(bridge.searchGlobal).toHaveBeenCalledWith('chat', { limit: 50 }));
-    expect(screen.getByRole('button', { name: 'All chats' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'All Chats' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('pages with the cursor the previous page returned', async () => {
@@ -95,14 +95,14 @@ describe('SearchOverlay', () => {
     render(<SearchOverlay chat={null} initialScope={{ kind: 'all' }} onOpenResult={() => {}} onClose={() => {}} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search messages' }), { target: { value: 'page' } });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Load more results' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Load More Results' }));
 
     expect(await screen.findByRole('button', { name: /second page/ })).toBeDefined();
     expect(bridge.searchGlobal).toHaveBeenLastCalledWith('page', {
       limit: 50,
       offset: { rate: 1, chatId: 2, messageId: 10 },
     });
-    expect(screen.queryByRole('button', { name: 'Load more results' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Load More Results' })).toBeNull();
   });
 
   it('clears the results when the query is emptied', async () => {

@@ -174,7 +174,7 @@ export function CommentsView({
   return (
     <section className="thread comments">
       <header className="thread-head">
-        <button type="button" className="back" onClick={onBack} aria-label="Back to the channel">
+        <button type="button" className="back" onClick={onBack} aria-label="Back To The Channel">
           <Icon name="arrow-left" />
         </button>
         <Avatar chatId={thread.chat.id} photo={thread.chat.photo} title={thread.chat.title} kind={thread.chat.kind} small />
@@ -215,7 +215,7 @@ export function CommentsView({
         <div className="day">{commentCountLabel(thread.count)}</div>
         {comments.length > 0 && thread.nextOffset ? (
           <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
-            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load older comments'}
+            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Comments'}
           </button>
         ) : null}
         {loading && comments.length === 0 ? <Spinner size={28} label="Loading comments…" padding="24px 0" /> : null}

@@ -58,7 +58,7 @@ export function MessageReplyQuote({
     return <div className="reply-quote">{content}</div>;
   }
   return (
-    <button type="button" className="reply-quote jumpable" title="Go to the replied message" onClick={() => onJump(jumpTarget)}>
+    <button type="button" className="reply-quote jumpable" title="Go To The Replied Message" onClick={() => onJump(jumpTarget)}>
       {content}
     </button>
   );
@@ -72,7 +72,7 @@ export function ComposerReply({ message, onCancel }: { message: MessageDto; onCa
         <span className="reply-name">Reply to {name}</span>
         <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
       </div>
-      <button type="button" className="reply-cancel" aria-label="Cancel reply" title="Cancel reply" onClick={onCancel}>
+      <button type="button" className="reply-cancel" aria-label="Cancel Reply" title="Cancel Reply" onClick={onCancel}>
         ×
       </button>
     </div>

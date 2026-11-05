@@ -595,7 +595,7 @@ describe('App', () => {
     const calls = installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
-    const signIn = screen.getByRole('link', { name: 'Sign in with Cloudflare Access' });
+    const signIn = screen.getByRole('link', { name: 'Sign In With Cloudflare Access' });
     expect(signIn.getAttribute('href')).toBe('/user/login');
     expect(calls.some((call) => call.path === '/user/login/qr')).toBe(false);
   });
@@ -606,7 +606,7 @@ describe('App', () => {
 
     render(<App />);
 
-    const signIn = await screen.findByRole('link', { name: 'Sign in with Cloudflare Access' });
+    const signIn = await screen.findByRole('link', { name: 'Sign In With Cloudflare Access' });
     expect(signIn.getAttribute('href')).toBe('/user/login?next=%2Fchat%2F2');
   });
 
@@ -633,7 +633,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: 'You are offline' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Sign in with Cloudflare Access' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Sign In With Cloudflare Access' })).toBeNull();
   });
 
   it('treats an Access login page as anonymous', async () => {
@@ -665,7 +665,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connection failed' })).toBeDefined();
     expect(screen.getByText('Session engine unreachable')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeDefined();
     expect(screen.queryByRole('status')).toBeNull();
   });
 
@@ -728,13 +728,13 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Use a phone number instead' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use A Phone Number Instead' }));
     fireEvent.change(screen.getByPlaceholderText('+15551234567'), { target: { value: '+15551234567' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send Code' }));
 
     expect(await screen.findByText(/login code to your Telegram app/)).toBeDefined();
     fireEvent.change(screen.getByPlaceholderText('Login code'), { target: { value: '12345' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Submit code' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Code' }));
 
     // The sign-in has to finish before the shell reads anything, so the
     // boot's own round trips are part of this wait.
@@ -853,7 +853,7 @@ describe('App', () => {
       expect(await screen.findByText('oldest')).toBeDefined();
 
       const back = vi.spyOn(globalThis.history, 'back').mockImplementation(() => {});
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chat List' }));
 
       expect(back).toHaveBeenCalledTimes(1);
       back.mockRestore();
@@ -1045,7 +1045,7 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(await screen.findByText('Helper'));
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Bot commands' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Bot Commands' }));
     expect(screen.getByRole('option', { name: /\/start/ })).toBeDefined();
   });
 
@@ -1554,7 +1554,7 @@ describe('App', () => {
         expect(within(threadSection()).getByText('4 votes')).toBeDefined();
       });
       expect(calls).toEqual([{ method: 'sendVote', params: { chatId: 2, messageId: 20, options: [1] } }]);
-      expect(screen.getByRole('button', { name: 'Retract vote' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Retract Vote' })).toBeDefined();
     });
 
     it('retracts the vote through the sendVote call', async () => {
@@ -1570,7 +1570,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      fireEvent.click(await screen.findByRole('button', { name: 'Retract vote' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Retract Vote' }));
 
       await waitFor(() => {
         expect(calls).toEqual([{ method: 'sendVote', params: { chatId: 2, messageId: 20, options: null } }]);
@@ -1671,7 +1671,7 @@ describe('App', () => {
       expect(within(threadSection()).getByTitle('Correct answer')).toBeDefined();
       expect(within(threadSection()).getByTitle('Wrong answer')).toBeDefined();
       expect(screen.queryByRole('button', { name: /^Vote for/ })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Retract vote' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Retract Vote' })).toBeNull();
     });
   });
 
@@ -1712,7 +1712,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByText('right back')).toBeDefined();
 
-      const quote = await within(threadSection()).findByTitle('Go to the replied message');
+      const quote = await within(threadSection()).findByTitle('Go To The Replied Message');
       expect(quote.textContent).toContain('Bob');
       expect(quote.textContent).toContain('see you');
 
@@ -2014,7 +2014,7 @@ describe('App', () => {
 
       fireEvent.click(within(threadSection()).getByRole('button', { name: 'Join' }));
       expect(await screen.findByText('Your join request was sent. An admin has to approve it.')).toBeDefined();
-      expect(within(threadSection()).getByRole('button', { name: 'Request sent' })).toBeDefined();
+      expect(within(threadSection()).getByRole('button', { name: 'Request Sent' })).toBeDefined();
       expect(screen.queryByPlaceholderText('Message')).toBeNull();
     });
 
@@ -2078,7 +2078,7 @@ describe('App', () => {
     Opens the overlay from the sidebar and types a query.
     */
     async function searchEverywhere(query: string): Promise<HTMLElement> {
-      fireEvent.click(await screen.findByRole('button', { name: 'Search messages' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Search Messages' }));
       const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
       fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Search messages' }), { target: { value: query } });
       return dialog;
@@ -2108,8 +2108,8 @@ describe('App', () => {
       });
       expect(jump).toBeDefined();
       // A transient chat has no folder in the list, so it cannot be archived.
-      fireEvent.click(screen.getByRole('button', { name: 'Menu for Carol' }));
-      expect(within(screen.getByRole('menu', { name: 'Menu for Carol' })).queryByRole('menuitem', { name: 'Archive Chat' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Menu For Carol' }));
+      expect(within(screen.getByRole('menu', { name: 'Menu For Carol' })).queryByRole('menuitem', { name: 'Archive Chat' })).toBeNull();
     });
 
     it('opens a search for a hashtag tapped in a message', async () => {
@@ -2143,7 +2143,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      fireEvent.click(await screen.findByRole('button', { name: 'Search in Bob' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Search In Bob' }));
 
       const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
       expect(within(dialog).getByText('Messages in Bob')).toBeDefined();
@@ -2295,12 +2295,12 @@ describe('App', () => {
       expect(await screen.findByText('oldest')).toBeDefined();
 
       const menu = openMessageMenu(10);
-      expect(within(menu).getByRole('menuitem', { name: 'Show all reactions' }).getAttribute('aria-expanded')).toBe('false');
+      expect(within(menu).getByRole('menuitem', { name: 'Show All Reactions' }).getAttribute('aria-expanded')).toBe('false');
       expect(within(menu).queryByRole('menuitemcheckbox', { name: 'React with 🦄' })).toBeNull();
 
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Show all reactions' }));
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Show All Reactions' }));
 
-      expect(within(menu).getByRole('menuitem', { name: 'Hide all reactions' }).getAttribute('aria-expanded')).toBe('true');
+      expect(within(menu).getByRole('menuitem', { name: 'Hide All Reactions' }).getAttribute('aria-expanded')).toBe('true');
       expect(within(menu).getByRole('menuitemcheckbox', { name: 'React with 👍' })).toBeDefined();
       fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: 'React with 🦄' }));
 
@@ -2733,7 +2733,7 @@ describe('App', () => {
       await waitFor(() => {
         expect(document.querySelector('.badge')).toBeNull();
       });
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chat List' }));
       await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
       fireEvent.click(screen.getByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
@@ -2798,7 +2798,7 @@ describe('App', () => {
       expect(ticks(10)).toBe('Read');
 
       // The dialog list folded the same update, so reopening keeps it.
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chat List' }));
       await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
       fireEvent.click(screen.getByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
@@ -2878,7 +2878,7 @@ describe('App', () => {
         render(<App />);
         fireEvent.click(await screen.findByText('Bob'));
         expect(await within(threadSection()).findByText('first unread')).toBeDefined();
-        const newer = within(threadSection()).getByRole('button', { name: 'Load newer messages' });
+        const newer = within(threadSection()).getByRole('button', { name: 'Load Newer Messages' });
 
         fireEvent.click(newer);
         expect(await within(threadSection()).findByText('message 1090')).toBeDefined();
@@ -2888,7 +2888,7 @@ describe('App', () => {
           offsetId: 1040,
           addOffset: -50,
         });
-        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+        expect(within(threadSection()).queryByRole('button', { name: 'Load Newer Messages' })).toBeNull();
       });
 
       it('jumps to the newest message and reads the whole chat', async () => {
@@ -2905,12 +2905,12 @@ describe('App', () => {
         expect(await within(threadSection()).findByText('first unread')).toBeDefined();
         expect(document.querySelector('.badge')?.textContent).toBe('99+');
 
-        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Jump to latest and mark as read' }));
+        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Jump To Latest And Mark As Read' }));
 
         expect(await within(threadSection()).findByText('message 1090')).toBeDefined();
         // The old backlog is left behind, not paged through one page at a time.
         expect(within(threadSection()).queryByText('first unread')).toBeNull();
-        expect(within(threadSection()).queryByRole('button', { name: 'Jump to latest and mark as read' })).toBeNull();
+        expect(within(threadSection()).queryByRole('button', { name: 'Jump To Latest And Mark As Read' })).toBeNull();
 
         // One read covers the whole chat, backlog included, so the receipt
         // carries no max id.
@@ -2954,7 +2954,7 @@ describe('App', () => {
 
         // The page reached the newest message, so the button and further
         // reads are gone.
-        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+        expect(within(threadSection()).queryByRole('button', { name: 'Load Newer Messages' })).toBeNull();
         fireEvent.scroll(scrollContainer());
         expect(reads).toHaveLength(2);
       });
@@ -2972,9 +2972,9 @@ describe('App', () => {
         deliver({ type: 'new_message', message: backlogMessage(1090, 'live newest') });
         expect(within(threadSection()).queryByText('live newest')).toBeNull();
 
-        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Load newer messages' }));
+        fireEvent.click(within(threadSection()).getByRole('button', { name: 'Load Newer Messages' }));
         expect(await within(threadSection()).findByText('live newest')).toBeDefined();
-        expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+        expect(within(threadSection()).queryByRole('button', { name: 'Load Newer Messages' })).toBeNull();
       });
     });
   });
@@ -3025,7 +3025,7 @@ describe('App', () => {
 
       // The short page was the start of history, so the button and further
       // reads are gone.
-      expect(screen.queryByRole('button', { name: 'Load older messages' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Load Older Messages' })).toBeNull();
       scrollContainer().scrollTop = 0;
       fireEvent.scroll(scrollContainer());
       expect(reads).toHaveLength(2);
@@ -3254,7 +3254,7 @@ describe('App', () => {
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
 
-      fireEvent.click(await within(threadSection()).findByTitle('Go to the replied message'));
+      fireEvent.click(await within(threadSection()).findByTitle('Go To The Replied Message'));
       const bubble = threadSection().querySelector(':scope [data-message-ids="20 21 22"]');
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
       expect(bubble?.classList.contains('reply-flash')).toBe(true);
@@ -3304,7 +3304,7 @@ describe('App', () => {
       expect(image.getAttribute('src')).toContain('/user/file?chatId=2&messageId=10');
       expect(image.getAttribute('src')).not.toContain('thumb=1');
 
-      const download = within(dialog).getByRole('link', { name: 'Download original' });
+      const download = within(dialog).getByRole('link', { name: 'Download Original' });
       expect(download.getAttribute('href')).toContain('/user/file?chatId=2&messageId=10');
       expect(download.getAttribute('href')).not.toContain('thumb=1');
       expect(download.getAttribute('download')).toBe('photo-10.jpg');
@@ -3348,10 +3348,10 @@ describe('App', () => {
       expect(within(dialog).getByText('2 / 3')).toBeDefined();
       expect(dialog.querySelector('img.media-viewer-media')?.getAttribute('src')).toContain('messageId=21');
 
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Next media' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Next Media' }));
       expect(within(dialog).getByText('3 / 3')).toBeDefined();
       expect(dialog.querySelector('video.media-viewer-media')?.getAttribute('src')).toContain('messageId=22');
-      expect((within(dialog).getByRole('button', { name: 'Next media' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((within(dialog).getByRole('button', { name: 'Next Media' }) as HTMLButtonElement).disabled).toBe(true);
 
       fireEvent.keyDown(document, { key: 'ArrowLeft' });
       expect(within(dialog).getByText('2 / 3')).toBeDefined();
@@ -3570,8 +3570,8 @@ describe('App', () => {
 
       // The channel itself has no command menu; this one comes from the
       // discussion group, read together with the comments.
-      fireEvent.click(screen.getByRole('button', { name: 'Bot commands' }));
-      const menu = screen.getByRole('listbox', { name: 'Bot commands' });
+      fireEvent.click(screen.getByRole('button', { name: 'Bot Commands' }));
+      const menu = screen.getByRole('listbox', { name: 'Bot Commands' });
       expect(within(menu).getByRole('option', { name: /\/rules/ })).toBeDefined();
     });
 
@@ -3969,7 +3969,7 @@ describe('App', () => {
       openComments();
       expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
 
-      fireEvent.click(screen.getByRole('button', { name: 'Load older comments' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load Older Comments' }));
       expect(await within(threadSection()).findByText('first ever')).toBeDefined();
       expect(calls).toHaveLength(2);
       expect(calls[1].body).toEqual({
@@ -3977,7 +3977,7 @@ describe('App', () => {
         params: { chatId: channel.id, messageId: 7, limit: 50, offsetId: ROOT + 1, offsetDate: 1_700_000_000 },
       });
       // The thread start is loaded, so the button goes away.
-      expect(screen.queryByRole('button', { name: 'Load older comments' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Load Older Comments' })).toBeNull();
     });
 
     it('loads the next older page as the reader approaches the top', async () => {
@@ -4008,7 +4008,7 @@ describe('App', () => {
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
       openComments();
       expect((await within(threadSection()).findAllByText('nice')).length).toBeGreaterThan(0);
-      expect(screen.getByRole('button', { name: 'Load older comments' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Load Older Comments' })).toBeDefined();
 
       // The screen opens at the bottom; only a scroll toward the top asks for
       // the next page.
@@ -4028,7 +4028,7 @@ describe('App', () => {
       expect(scrollContainer().scrollTop).toBe(50);
 
       // The cursor is gone, so there is no button and no further read.
-      expect(screen.queryByRole('button', { name: 'Load older comments' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Load Older Comments' })).toBeNull();
       scrollContainer().scrollTop = 0;
       fireEvent.scroll(scrollContainer());
       expect(calls).toHaveLength(2);
@@ -4278,7 +4278,7 @@ describe('App', () => {
       // There is no window to be behind, so the live message is the thread
       // rather than being dropped with the empty response.
       expect(within(threadSection()).getByText('racing in')).toBeDefined();
-      expect(within(threadSection()).queryByRole('button', { name: 'Load newer messages' })).toBeNull();
+      expect(within(threadSection()).queryByRole('button', { name: 'Load Newer Messages' })).toBeNull();
     });
 
     it('drops a history response for a chat the user has left', async () => {
@@ -4362,7 +4362,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await screen.findByRole('button', { name: 'Back to chat list' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Back To Chat List' })).toBeDefined();
       expect(threadSection().querySelector('[data-status="online"]')).toBeNull();
 
       deliver({ type: 'user_status', userId: 2, presence: { status: 'online', lastSeenAt: null } });
@@ -4401,8 +4401,8 @@ describe('App', () => {
     Moves the open chat through the menu and the confirmation that follows it.
     */
     async function moveChat(title: string, item: string, confirm: string): Promise<void> {
-      fireEvent.click(screen.getByRole('button', { name: `Menu for ${title}` }));
-      const menu = screen.getByRole('menu', { name: `Menu for ${title}` });
+      fireEvent.click(screen.getByRole('button', { name: `Menu For ${title}` }));
+      const menu = screen.getByRole('menu', { name: `Menu For ${title}` });
       fireEvent.click(within(menu).getByRole('menuitem', { name: item }));
       const dialog = await screen.findByRole('dialog');
       fireEvent.click(within(dialog).getByRole('button', { name: confirm }));
@@ -4449,7 +4449,7 @@ describe('App', () => {
       await openArchive();
       expect(await screen.findByText('Dave')).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chats' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chats' }));
 
       expect(await screen.findByText('Bob')).toBeDefined();
       expect(location.pathname).toBe('/');
@@ -4471,7 +4471,7 @@ describe('App', () => {
       expect(within(sidebar()).getByText('Dave')).toBeDefined();
       expect(within(sidebar()).queryByText('Bob')).toBeNull();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chat list' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chat List' }));
 
       await waitFor(() => expect(location.pathname).toBe('/archived'));
       expect(within(sidebar()).getByText('Archived Chats')).toBeDefined();
@@ -4485,7 +4485,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Dave'));
       expect(await screen.findByText('oldest')).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Back to chats' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Back To Chats' }));
 
       // The bar only leaves the archive list: the open message view is the
       // route's, so only the sidebar changes and the thread stays.
@@ -4521,7 +4521,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu For Bob' })).toBeDefined();
 
       await moveChat('Bob', 'Archive Chat', 'Archive');
 
@@ -4545,7 +4545,7 @@ describe('App', () => {
       render(<App />);
       await openArchive();
       fireEvent.click(await screen.findByText('Dave'));
-      expect(await screen.findByRole('button', { name: 'Menu for Dave' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu For Dave' })).toBeDefined();
 
       await moveChat('Dave', 'Unarchive Chat', 'Unarchive');
 
@@ -4567,7 +4567,7 @@ describe('App', () => {
 
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
-      expect(await screen.findByRole('button', { name: 'Menu for Bob' })).toBeDefined();
+      expect(await screen.findByRole('button', { name: 'Menu For Bob' })).toBeDefined();
 
       await moveChat('Bob', 'Archive Chat', 'Archive');
 

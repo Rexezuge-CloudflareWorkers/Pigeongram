@@ -72,7 +72,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onPointerDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
@@ -84,7 +84,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
+        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
-            aria-label="Close forward picker"
+            aria-label="Close Forward Picker"
             disabled={busy}
             onClick={onClose}
           >

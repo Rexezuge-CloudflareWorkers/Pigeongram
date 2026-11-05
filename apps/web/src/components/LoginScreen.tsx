@@ -42,12 +42,12 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
         {error ? <p className="error">{error}</p> : null}
         {phase === 'error' || error ? (
           <button type="button" className="ghost" onClick={onRetry}>
-            Start over
+            Start Over
           </button>
         ) : null}
         {qrVisible ? (
           <button type="button" className="ghost" onClick={() => setUsePhone(true)}>
-            Use a phone number instead
+            Use A Phone Number Instead
           </button>
         ) : null}
         <p className="muted small">
@@ -142,11 +142,11 @@ function PhoneForm({ onSubmit, onBack }: { onSubmit: (phone: string) => Promise<
             <Spinner inline size={14} color="currentColor" /> Sending…
           </>
         ) : (
-          'Send code'
+          'Send Code'
         )}
       </button>
       <button type="button" className="ghost" onClick={onBack} disabled={submitting}>
-        Use a QR code instead
+        Use A QR Code Instead
       </button>
     </form>
   );
@@ -191,11 +191,11 @@ function CodeForm({
             <Spinner inline size={14} color="currentColor" /> Checking…
           </>
         ) : (
-          'Submit code'
+          'Submit Code'
         )}
       </button>
       <button type="button" className="ghost" onClick={onRetry}>
-        Start over
+        Start Over
       </button>
     </form>
   );

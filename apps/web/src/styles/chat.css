@@ -14,12 +14,101 @@
   width: 100%;
   padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid rgba(37, 51, 63, 0.4);
+  border-bottom: 1px solid rgb(37 51 63 / 40%);
+  transition: background-color 150ms var(--ease-out);
 }
 
-.chat:hover,
-.chat.active {
+.chat:hover {
   background: var(--panel-2);
+}
+
+.chat:active {
+  background: var(--panel-3);
+}
+
+/* The selected row, the way the official clients mark it: a filled accent
+   slab with light text, so the open chat is unmistakable in the list. */
+.chat.active,
+.chat.active:hover,
+.chat.active:active {
+  background: var(--badge);
+  color: #fff;
+}
+
+.chat.active .chat-preview,
+.chat.active .chat-stamp {
+  color: rgb(255 255 255 / 78%);
+}
+
+.chat.active .badge {
+  background: #fff;
+  color: var(--badge);
+}
+
+/* The list's loading state, modelled on the official clients: rows of
+   shimmering placeholder bones instead of a lone spinner. */
+.chat-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 15%, rgb(255 255 255 / 6%) 50%, transparent 85%);
+  animation: skeleton-sheen 1.5s infinite;
+}
+
+.skeleton-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.skeleton-line {
+  height: 11px;
+  border-radius: 6px;
+}
+
+.skeleton-line.short {
+  width: 55%;
+}
+
+.skeleton-line.long {
+  width: 85%;
+}
+
+@keyframes skeleton-sheen {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .chat-body {
@@ -70,298 +159,19 @@
   font-size: 12px;
   font-weight: 700;
   padding: 1px 8px;
+  min-width: 22px;
+  text-align: center;
+  animation: badge-in 220ms var(--ease-out);
 }
 
-/* ---- thread ------------------------------------------------------------- */
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
 
-.thread {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-
-.thread.empty {
-  align-items: center;
-  justify-content: center;
-}
-
-.thread-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.thread-head .back {
-  color: var(--muted);
-  padding: 0 6px;
-}
-
-.thread-title {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* Both lines stay single-line: long titles truncate rather than stretching
-   the grid. */
-.thread-title strong,
-.thread-title > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Older pages are prepended; the view corrects the scroll position itself
-     (`usePrependAnchor`), so the browser must not also anchor and double it. */
-  overflow-anchor: none;
-  padding: 16px clamp(8px, 4vw, 28px);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.load-older,
-.load-newer {
-  align-self: center;
-  color: var(--accent);
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.day {
-  align-self: center;
-  color: var(--muted);
-  font-size: 12px;
-  margin: 12px 0 4px;
-  background: var(--panel);
-  padding: 2px 10px;
-  border-radius: 999px;
-}
-
-/* Where reading stopped when the chat opened: the thread jumps here instead
-   of the bottom, and the line stays put while the user reads past it. */
-.unread-divider {
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--accent);
-  font-size: 12px;
-  margin: 10px 0 2px;
-}
-
-.unread-divider::before,
-.unread-divider::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid currentcolor;
-  opacity: 0.45;
-}
-
-.message {
-  max-width: min(560px, 82%);
-  align-self: flex-start;
-  background: var(--panel-2);
-  border-radius: 12px;
-  padding: 8px 12px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  position: relative;
-  transition: box-shadow 200ms ease;
-}
-
-.message.own {
-  align-self: flex-end;
-  background: var(--own);
-}
-
-/* A group sender's avatar sits beside the bubble rather than inside it, so the
-   bubble keeps its own background and padding. The row reserves the avatar's
-   gutter in its width cap, keeping the bubble at its previous size. */
-.message-line {
-  align-self: flex-start;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: min(604px, calc(82% + 44px), 100%);
-}
-
-.message-line.own {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.message-line > .message {
-  align-self: auto;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.message.service {
-  align-self: center;
-  background: none;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.message .sender {
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.message .forward-origin {
-  color: var(--accent);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.message .forward-origin-link {
-  display: inline;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.message .forward-origin-link:hover,
-.message .forward-origin-link:focus-visible {
-  text-decoration: underline;
-}
-
-.message .text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.message .text a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.message .text a:hover {
-  text-decoration: underline;
-}
-
-/* A hashtag is a search affordance inside the body: it reads like a link but
-   is a button, so it keeps the text's flow instead of the control box. */
-.hashtag {
-  display: inline;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.hashtag:hover,
-.hashtag:focus-visible {
-  text-decoration: underline;
-}
-
-.message .text .spoiler {
-  background: rgba(233, 238, 243, 0.16);
-  border-radius: 4px;
-  cursor: pointer;
-  filter: blur(4px);
-  transition: filter 120ms ease;
-}
-
-.message .text .spoiler:hover,
-.message .text .spoiler:focus {
-  filter: blur(0);
-}
-
-.message .text code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.92em;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 4px;
-  padding: 0 4px;
-}
-
-.message .text pre {
-  margin: 4px 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-
-.message .text pre code {
-  background: none;
-  padding: 0;
-}
-
-.message .text blockquote {
-  margin: 4px 0;
-  padding: 2px 0 2px 10px;
-  border-left: 3px solid var(--accent);
-  color: rgba(233, 238, 243, 0.85);
-}
-
-.message .reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.message .reaction {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 13px;
-  background: rgba(14, 22, 33, 0.45);
-  border: 1px solid transparent;
-  color: inherit;
-}
-
-.message .reaction:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-.message .reaction.chosen {
-  border-color: var(--accent);
-  background: rgba(94, 181, 247, 0.18);
-}
-
-.message .reaction:disabled {
-  cursor: default;
-  opacity: 0.65;
-}
-
-.message .reaction-count {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.message .meta {
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  color: rgba(233, 238, 243, 0.55);
-  font-size: 11px;
-}
-
-/* Sent/single and read/double checks, tucked against the timestamp. The icon
-   is sized by the component; the old glyph's negative letter-spacing is gone. */

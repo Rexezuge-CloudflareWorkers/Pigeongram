@@ -322,6 +322,6 @@ export function MessageRow({
 }
 
 function commentLabel(comments: MessageCommentsDto): string {
-  if (comments.count === 0) return 'Leave a comment';
+  if (comments.count === 0) return 'Leave A Comment';
   return comments.count === 1 ? '1 comment' : `${comments.count} comments`;
 }

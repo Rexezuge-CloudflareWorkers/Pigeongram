@@ -22,7 +22,7 @@ export function OfflineScreen({ onRetry }: OfflineScreenProps) {
           The client cannot reach the server, so it cannot read your chats. It reconnects on its own as soon as the network is back.
         </p>
         <button type="button" className="cta" onClick={onRetry}>
-          Try again
+          Try Again
         </button>
       </section>
     </main>

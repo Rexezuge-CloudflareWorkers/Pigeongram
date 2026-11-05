@@ -1,0 +1,398 @@
+/* The thread: header, messages, bubbles and their motion. */
+/* ---- thread ------------------------------------------------------------- */
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.thread.empty {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* The placeholder the official clients leave in the reading pane. */
+.thread-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-softer);
+  border: 1px solid rgb(94 181 247 / 22%);
+  box-shadow: 0 0 60px rgb(94 181 247 / 12%);
+  margin-bottom: 6px;
+}
+
+.thread-empty-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.thread-empty-hint {
+  margin: 0;
+  font-size: 14px;
+}
+
+.thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.thread-head .back {
+  color: var(--muted);
+  padding: 0 6px;
+}
+
+.thread-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Where the peer stands, under their name; online takes the accent. */
+.thread-presence {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-presence.online {
+  color: var(--accent);
+}
+
+/* Both lines stay single-line: long titles truncate rather than stretching
+   the grid. */
+.thread-title strong,
+.thread-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Older pages are prepended; `usePrependAnchor` sets the position, so the browser must not anchor too. */
+  overflow-anchor: none;
+  padding: 16px clamp(8px, 4vw, 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* A whisper of texture, the way the official clients paper the chat background. */
+  background-image: radial-gradient(rgb(255 255 255 / 3%) 1px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+
+.load-older,
+.load-newer {
+  align-self: center;
+  color: var(--accent);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out);
+}
+
+.load-older:hover:not(:disabled),
+.load-newer:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: rgb(94 181 247 / 40%);
+}
+
+.day {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 12px 0 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 2px 12px;
+  border-radius: 999px;
+  animation: day-in 280ms var(--ease-out);
+}
+
+@keyframes day-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Where reading stopped when the chat opened; the line stays put past it. */
+.unread-divider {
+  align-self: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgb(94 181 247 / 30%);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 14px;
+  border-radius: 999px;
+  margin: 12px 0 2px;
+  animation: day-in 280ms var(--ease-out);
+}
+
+.message {
+  max-width: min(560px, 82%);
+  align-self: flex-start;
+  background: var(--panel-2);
+  border-radius: 14px;
+  padding: 8px 12px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  transition: box-shadow 200ms var(--ease-out);
+  animation: message-in 230ms var(--ease-out);
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+.message.own {
+  align-self: flex-end;
+  background: var(--own);
+}
+
+/* A group sender's avatar sits beside the bubble rather than inside it, so the
+   bubble keeps its own background and padding. The row reserves the avatar's
+   gutter in its width cap, keeping the bubble at its previous size. */
+.message-line {
+  align-self: flex-start;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(604px, calc(82% + 44px), 100%);
+}
+
+.message-line.own {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-line > .message {
+  align-self: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.message.service {
+  align-self: center;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.message .sender {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message .forward-origin {
+  color: var(--accent);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message .forward-origin-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.message .forward-origin-link:hover,
+.message .forward-origin-link:focus-visible {
+  text-decoration: underline;
+}
+
+.message .text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message .text a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.message .text a:hover {
+  text-decoration: underline;
+}
+
+/* A hashtag is a search affordance inside the body: it reads like a link but
+   is a button, so it keeps the text's flow instead of the control box. */
+.hashtag {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hashtag:hover,
+.hashtag:focus-visible {
+  text-decoration: underline;
+}
+
+.message .text .spoiler {
+  background: rgba(233, 238, 243, 0.16);
+  border-radius: 4px;
+  cursor: pointer;
+  filter: blur(4px);
+  transition: filter 120ms ease;
+}
+
+.message .text .spoiler:hover,
+.message .text .spoiler:focus {
+  filter: blur(0);
+}
+
+.message .text code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.message .text pre {
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.message .text pre code {
+  background: none;
+  padding: 0;
+}
+
+.message .text blockquote {
+  margin: 4px 0;
+  padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--accent);
+  color: rgba(233, 238, 243, 0.85);
+}
+
+.message .reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.message .reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: rgba(14, 22, 33, 0.45);
+  border: 1px solid transparent;
+  color: inherit;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+
+.message .reaction:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.message .reaction:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.message .reaction.chosen {
+  border-color: var(--accent);
+  background: rgba(94, 181, 247, 0.18);
+}
+
+.message .reaction:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.message .reaction-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.message .meta {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: rgba(233, 238, 243, 0.55);
+  font-size: 11px;
+}
+
+/* Sent/read checks; the read state takes the accent, as the official clients mark it. */
+.ticks {
+  display: inline-flex;
+  align-items: center;
+  color: rgb(233 238 243 / 55%);
+}
+
+.ticks.read {
+  color: var(--accent);
+}
+
+/* The catch-up control pops in rather than appears; pressing it visibly
+   pushes it down a hair. */
+.jump-to-latest {
+  animation: jump-in 220ms var(--ease-out);
+}
+
+.jump-to-latest:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+@keyframes jump-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.6);
+  }
+}

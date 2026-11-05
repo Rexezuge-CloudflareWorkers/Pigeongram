@@ -277,8 +277,8 @@ history backfill and no storage write on either path.
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus
 `pinned`/`muted` and `archived` (whether the chat sits in the account's archive — Telegram's peer folder `1`; every
 other chat is in folder `0`). When a chat has unread messages, the SPA opens at the first incoming message after the
-inbox watermark with about ten already-read messages of context above it, not at the bottom, and offers "Load newer
-messages" until the loaded range reaches the newest message. It renders a single check for sent own messages and a
+inbox watermark with about ten already-read messages of context above it, not at the bottom, and offers "Load Newer
+Messages" until the loaded range reaches the newest message. It renders a single check for sent own messages and a
 double check up to the outbox watermark. `readHistory`'s optional `maxId` reports how far the user actually scrolled
 (omitted, it reads the whole history — the comments screen's behavior). `ChatDto.presence` carries the peer's online
 state — see [Presence](#presence) below.
@@ -347,8 +347,8 @@ true; protected content can still be rejected by Telegram, in which case the err
 twenty-five messages, lands on the newer side so the post sits mid-window. The same parameter opens a chat with unread
 messages at its first unread: the SPA asks for a twenty-message opening page with `offsetId` at the read watermark and
 `addOffset: -5`, which puts about fifteen read messages above the divider and five into the backlog. Each
-"Load newer messages" step then reads 50 from the loaded range's newest message with `addOffset: -50`, and "Load older
-messages" reads 50 before the loaded range. A reopen of a fully-read chat paints the SPA's in-memory cached window
+"Load Newer Messages" step then reads 50 from the loaded range's newest message with `addOffset: -50`, and "Load Older
+Messages" reads 50 before the loaded range. A reopen of a fully-read chat paints the SPA's in-memory cached window
 first and revalidates its newest page beside it, so it does not wait for a read at all. `offsetId` alone is accepted
 (the link names the post but not its date, so the omitted date reads as 0).
 
@@ -568,7 +568,7 @@ curl -s localhost:8787/user/state                                # → phase "un
 With credentials in `.dev.vars`, open the SPA and scan the QR code from Telegram
 (Settings → Devices → Link Desktop Device).
 
-Both sign-in paths are available in the SPA: the QR code (primary) and, behind "Use a phone number instead",
+Both sign-in paths are available in the SPA: the QR code (primary) and, behind "Use A Phone Number Instead",
 the phone-number path (`sendCode` → code → optional 2FA). The phone path exists because a login code is valid
 for minutes rather than the QR token's ~30 seconds, and because it needs no camera — Telegram delivers the code
 to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` while a code is awaited
@@ -580,7 +580,7 @@ to your own app. `phase` reports the path: `qr`/`scanned` for the QR, `code` whi
 2. Deploy (`wrangler deploy` + secrets + the Access vars), then `GET /api/health` without a credential and
    `GET /user/state` through Cloudflare Access. A service token is the clean way to script the user API:
    `curl -H "CF-Access-Client-Id: …" -H "CF-Access-Client-Secret: …" https://<pages-host>/user/state`.
-   In a browser, the same round-trip is: intro → **Sign in with Cloudflare Access** → `/user/login` → back to `/`
+   In a browser, the same round-trip is: intro → **Sign In With Cloudflare Access** → `/user/login` → back to `/`
    (or the `next` path) → QR login.
 3. `POST /user/wake` answers with `totalWakes: 1, failedWakes: 0` and the DO returns to sleep; verify with
    `GET /user/stats` that `avgWakeMs` fits the plan's limits and `lastWakeAt` is recent.

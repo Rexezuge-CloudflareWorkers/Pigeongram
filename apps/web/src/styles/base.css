@@ -4,15 +4,25 @@
   --bg: #0e1621;
   --panel: #17212b;
   --panel-2: #1e2c3a;
+  --panel-3: #24344a;
   --border: #25333f;
+  --border-strong: #32455a;
   --text: #e9eef3;
   --muted: #7f91a4;
   --accent: #5eb5f7;
+  --accent-strong: #74c3ff;
+  /* The tint the official clients put behind a selected row and a hovered
+     control: the accent at a whisper of opacity. */
+  --accent-soft: rgb(94 181 247 / 16%);
+  --accent-softer: rgb(94 181 247 / 8%);
   --own: #2b5278;
   --badge: #3f8fd0;
   --danger: #ff7b72;
   --online: #4dcd5e;
   --warn: #e0a33c;
+  /* One easing for every press and pop in the app: quick to start, settled
+     without a bounce. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.25, 1);
 }
 
 * {
@@ -46,6 +56,11 @@ body {
     sans-serif;
 }
 
+/* Selection reads as the accent, the way the official clients mark one. */
+::selection {
+  background: rgb(94 181 247 / 35%);
+}
+
 /* No native long-press callout: a right-click is deliberately silent outside
    the message bubble, and iOS shows its callout for a long press on a link or
    an image without a `contextmenu` event the page could cancel. Editable fields
@@ -60,6 +75,41 @@ textarea,
   -webkit-touch-callout: default;
 }
 
+/* Every interactive element shows the same focus ring, so keyboard travel
+   through the app reads as one continuous path. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Overlay scrollbars, thin and dark: the official clients hide the track and
+   keep only a quiet thumb. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: content-box;
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -68,20 +118,28 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: default;
+}
+
 input,
 textarea {
   font: inherit;
   color: inherit;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 10px 12px;
   outline: none;
+  transition:
+    border-color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out);
 }
 
 input:focus,
 textarea:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(94 181 247 / 22%);
 }
 
 button[type='submit'] {
@@ -91,9 +149,21 @@ button[type='submit'] {
   gap: 6px;
   background: var(--accent);
   color: #08121c;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 16px;
   font-weight: 600;
+  transition:
+    filter 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    opacity 140ms var(--ease-out);
+}
+
+button[type='submit']:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+button[type='submit']:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 button[type='submit']:disabled {
@@ -103,14 +173,24 @@ button[type='submit']:disabled {
 
 button.ghost {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 6px 12px;
   color: var(--muted);
+  transition:
+    color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
 }
 
 button.ghost:hover {
   color: var(--text);
   border-color: var(--accent);
+  background: var(--accent-softer);
+}
+
+button.ghost:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .muted {
@@ -136,25 +216,40 @@ button.ghost:hover {
   display: grid;
   place-items: center;
   padding: 24px;
+  background: radial-gradient(60% 45% at 50% 0%, rgb(94 181 247 / 10%), transparent 70%);
 }
 
 .card {
   width: min(420px, 100%);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
   text-align: center;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+  animation: card-in 360ms var(--ease-out);
 }
 
 .card h1 {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .qr {
@@ -193,133 +288,4 @@ button.ghost:hover {
   flex-direction: column;
   gap: 10px;
   width: 100%;
-}
-
-/* ---- signed-in shell ---------------------------------------------------- */
-
-/* The shell is the dynamic viewport (`100dvh`), which follows the browser's
-   auto-hiding chrome — Chrome on Android deliberately keeps the layout
-   viewport (`100%`) at the URL-bar-shown height. `useAppHeight`'s
-   `--app-height` caps it for what `dvh` misses: an overlaid keyboard (iOS
-   Safari) does not shrink it. The value is a cap and not the height on
-   purpose: a height a fraction of a pixel too large made the document
-   scrollable and put a scrollbar on a desktop, while a cap that is too large
-   simply does nothing. Do not fold the two back into one `height`. */
-.app {
-  height: 100%;
-  height: 100dvh;
-  max-height: var(--app-height, none);
-  display: grid;
-  /* The sidebar track is fluid: it starts at its compact width, follows the
-     window at 28vw, and stops at 480px so an ultrawide window gives the extra
-     space to the thread instead of stretching the chat previews. */
-  grid-template-columns: clamp(280px, 28vw, 480px) 1fr;
-}
-
-/* A grid child must not stretch the track past the viewport: unbreakable
-   titles, names and previews truncate or clip instead. */
-.app > * {
-  min-width: 0;
-}
-
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-}
-
-.me {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-/* ---- mobile shell -------------------------------------------------------- */
-
-@media (max-width: 720px) {
-  .app {
-    grid-template-columns: 1fr;
-  }
-
-  .app.thread-open .sidebar {
-    display: none;
-  }
-
-  .app:not(.thread-open) .thread {
-    display: none;
-  }
-}
-
-/* ---- avatars ------------------------------------------------------------ */
-
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  background: linear-gradient(160deg, #4f7ea8, #2c4a66);
-  flex-shrink: 0;
-}
-
-.avatar.small {
-  width: 36px;
-  height: 36px;
-  font-size: 13px;
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.avatar.kind-bot {
-  background: linear-gradient(160deg, #6d8bc7, #40527e);
-}
-
-.avatar.kind-group,
-.avatar.kind-supergroup {
-  background: linear-gradient(160deg, #63a97d, #38664a);
-}
-
-.avatar.kind-channel {
-  background: linear-gradient(160deg, #b279c0, #663d72);
-}
-
-/* ---- toast -------------------------------------------------------------- */
-
-.toasts {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  max-width: min(560px, 90vw);
-}
-
-.toast {
-  max-width: 100%;
-  margin: 0;
-  background: #5b1f1f;
-  border: 1px solid var(--danger);
-  color: var(--text);
-  padding: 10px 16px;
-  border-radius: 10px;
-}
-
-.toast.notice {
-  background: #1c3a2a;
-  border-color: #3f7d5a;
 }

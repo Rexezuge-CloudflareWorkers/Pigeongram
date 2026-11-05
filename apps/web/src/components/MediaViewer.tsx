@@ -176,26 +176,26 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
             className="media-viewer-tool media-viewer-download"
             href={src}
             download={downloadName}
-            aria-label="Download original"
-            title="Download original"
+            aria-label="Download Original"
+            title="Download Original"
           >
             <Icon name="download" size={18} />
           </a>
           {photo ? (
             <div className="media-viewer-zoom" role="group" aria-label="Zoom">
-              <button type="button" className="media-viewer-tool" aria-label="Zoom out" disabled={!canZoomOut} onClick={zoomOut}>
+              <button type="button" className="media-viewer-tool" aria-label="Zoom Out" disabled={!canZoomOut} onClick={zoomOut}>
                 <Icon name="minus" size={18} />
               </button>
-              <button type="button" className="media-viewer-tool percent" aria-label="Reset zoom" disabled={!zoomed} onClick={resetZoom}>
+              <button type="button" className="media-viewer-tool percent" aria-label="Reset Zoom" disabled={!zoomed} onClick={resetZoom}>
                 {percent}%
               </button>
-              <button type="button" className="media-viewer-tool" aria-label="Zoom in" disabled={!canZoomIn} onClick={zoomIn}>
+              <button type="button" className="media-viewer-tool" aria-label="Zoom In" disabled={!canZoomIn} onClick={zoomIn}>
                 <Icon name="plus" size={18} />
               </button>
             </div>
           ) : null}
         </div>
-        <button ref={closeRef} type="button" className="media-viewer-close" aria-label="Close media viewer" onClick={onClose}>
+        <button ref={closeRef} type="button" className="media-viewer-close" aria-label="Close Media Viewer" onClick={onClose}>
           <Icon name="close" size={24} />
         </button>
       </header>
@@ -268,7 +268,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
             <button
               type="button"
               className="media-viewer-nav prev"
-              aria-label="Previous media"
+              aria-label="Previous Media"
               disabled={index === 0}
               onClick={() => navigate(-1)}
             >
@@ -277,7 +277,7 @@ export function MediaViewer({ messages, initialMessageId, onClose }: MediaViewer
             <button
               type="button"
               className="media-viewer-nav next"
-              aria-label="Next media"
+              aria-label="Next Media"
               disabled={index === itemCount - 1}
               onClick={() => navigate(1)}
             >

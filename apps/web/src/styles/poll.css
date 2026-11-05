@@ -32,10 +32,18 @@
   background: rgba(14, 22, 33, 0.45);
   text-align: left;
   overflow: hidden;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
 }
 
 .message .poll-answer:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+.message .poll-answer:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .message .poll-answer:disabled {
@@ -60,6 +68,7 @@
   inset: 0 auto 0 0;
   background: rgba(94, 181, 247, 0.18);
   pointer-events: none;
+  transition: width 600ms var(--ease-out);
 }
 
 .message .poll-answer-text {

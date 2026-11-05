@@ -1,6 +1,16 @@
 import type { PendingMessage } from './outbox';
+import type { ActiveReplyKeyboard } from './reply-keyboard';
 import type { ThreadPositionMemory } from './thread-position';
-import type { BotCommandDto, ChatDto, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, PresenceDto } from './types';
+import type {
+  BotCommandDto,
+  ChatDto,
+  MessageButtonDto,
+  MessageDto,
+  MessageReactionDto,
+  MessageReplyKeyboardButtonDto,
+  PeerId,
+  PresenceDto,
+} from './types';
 import type { UploadRequest } from './upload';
 
 /**
@@ -68,6 +78,12 @@ export interface ThreadViewProps {
    * group's description. Null when the chat has none.
    */
   description: string | null;
+  /**
+   * The chat's active reply keyboard, or null when it shows none. The active
+   * one is the newest message's markup, which may sit outside the loaded
+   * window.
+   */
+  replyKeyboard: ActiveReplyKeyboard | null;
   /**
    * Message ids with a reaction request in flight; their chips are disabled.
    */
@@ -154,6 +170,11 @@ export interface ThreadViewProps {
    * Presses an inline callback or copy button on a message.
    */
   onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
+  /**
+   * Presses a reply keyboard button. A text button sends its text; `replyTo`
+   * carries the composer's reply target so the send matches a typed one.
+   */
+  onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
   onOpenComments: (message: MessageDto) => void;
   /**
    * Opens the full-page viewer at a message's media (an album opens at the

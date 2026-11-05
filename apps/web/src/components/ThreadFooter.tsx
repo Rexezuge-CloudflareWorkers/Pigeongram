@@ -1,6 +1,8 @@
-import type { BotCommandDto, ChatDto, MessageDto } from '../types';
+import type { ActiveReplyKeyboard } from '../reply-keyboard';
+import type { BotCommandDto, ChatDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Composer } from './Composer';
+import { ReplyKeyboard } from './ReplyKeyboard';
 
 /**
  * The bottom of the thread: the composer, the Join action for a preview, or
@@ -19,12 +21,33 @@ interface ThreadFooterProps {
   onJoin: () => void;
   replyTarget: MessageDto | null;
   botCommands: readonly BotCommandDto[];
+  /**
+   * The chat's active reply keyboard, or null when it shows none. A keyboard
+   * only makes sense where the composer does, so it rides here.
+   */
+  replyKeyboard: ActiveReplyKeyboard | null;
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  /**
+   * Presses a reply keyboard button. The reply target rides along, so a
+   * keyboard send matches a typed one.
+   */
+  onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }
 
-export function ThreadFooter({ chat, preview, onJoin, replyTarget, botCommands, onCancelReply, onSend, onAttach }: ThreadFooterProps) {
+export function ThreadFooter({
+  chat,
+  preview,
+  onJoin,
+  replyTarget,
+  botCommands,
+  replyKeyboard,
+  onCancelReply,
+  onSend,
+  onAttach,
+  onPressReplyKeyboard,
+}: ThreadFooterProps) {
   if (preview !== null) {
     return (
       <div className="composer composer-notice flex items-center justify-between gap-3">
@@ -44,17 +67,24 @@ export function ThreadFooter({ chat, preview, onJoin, replyTarget, botCommands, 
     return <p className="composer composer-notice">{sendBlockedNotice(chat)}</p>;
   }
   return (
-    // A per-chat instance keeps a draft and an open command menu from leaking
-    // into the next thread.
-    <Composer
-      key={chat.id}
-      placeholder="Message"
-      replyTarget={replyTarget}
-      botCommands={botCommands}
-      onCancelReply={onCancelReply}
-      onSend={onSend}
-      onAttach={onAttach}
-    />
+    <>
+      {replyKeyboard ? (
+        <ReplyKeyboard keyboard={replyKeyboard} onPress={(button) => onPressReplyKeyboard(button, replyTarget?.id)} />
+      ) : null}
+      {/*
+      A per-chat instance keeps a draft and an open command menu from leaking
+      into the next thread.
+      */}
+      <Composer
+        key={chat.id}
+        placeholder={replyKeyboard?.keyboard.placeholder ?? 'Message'}
+        replyTarget={replyTarget}
+        botCommands={botCommands}
+        onCancelReply={onCancelReply}
+        onSend={onSend}
+        onAttach={onAttach}
+      />
+    </>
   );
 }
 

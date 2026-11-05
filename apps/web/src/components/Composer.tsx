@@ -72,16 +72,20 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
     element.setSelectionRange(caret, caret);
   }, [draft]);
 
-  const submit = (): void => {
-    const text = draft.trim();
-    if (!text) return;
+  const sendText = (text: string): void => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
     const replyTo = replyTarget?.id;
     setMenuOpen(false);
     setDraft('');
     textareaRef.current?.focus();
     // The outbox owns failures: the pending bubble keeps the text and offers
     // Retry, so restoring the draft here would duplicate the message.
-    void Promise.resolve(onSend(text, replyTo)).catch(() => {});
+    void Promise.resolve(onSend(trimmed, replyTo)).catch(() => {});
+  };
+
+  const submit = (): void => {
+    sendText(draft);
   };
 
   const attach = (files: File[], grouped: boolean): void => {
@@ -121,7 +125,20 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
     });
   };
 
+  /**
+  Selecting a command sends it at once, as the official clients do; adding an
+  argument is the `complete` path (Tab) instead. The composer is cleared like
+  any other send, so a picked command never lingers as a draft.
+  */
   const pick = (command: BotCommandDto): void => {
+    sendText(`/${command.command}`);
+  };
+
+  /**
+  Completes the highlighted command into the draft, for a command that takes an
+  argument: the caret lands after the inserted text so typing continues there.
+  */
+  const complete = (command: BotCommandDto): void => {
     const inserted = `/${command.command} `;
     const element = textareaRef.current;
     if (slashQuery(draft) !== null || element === null) {
@@ -241,13 +258,21 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
                 setMenuOpen(false);
                 return;
               }
-              if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+              if (event.key === 'Tab') {
                 const command = matches[active];
-                // A fully typed command is ready to send; a prefix is completed.
-                const exact = command !== undefined && draft === `/${command.command}`;
-                if (event.key === 'Tab' || !exact) {
+                if (command) {
                   event.preventDefault();
-                  if (command) pick(command);
+                  complete(command);
+                }
+                return;
+              }
+              if (event.key === 'Enter' && !event.shiftKey) {
+                // Selection is the action: the highlighted command is sent,
+                // and an exactly typed command wins over the highlight.
+                const command = matches.find((candidate) => draft === `/${candidate.command}`) ?? matches[active];
+                if (command) {
+                  event.preventDefault();
+                  pick(command);
                   return;
                 }
               }

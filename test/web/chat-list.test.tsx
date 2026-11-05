@@ -53,6 +53,7 @@ function message(text: string): MessageDto {
     webPage: null,
     poll: null,
     markup: null,
+    replyKeyboard: null,
     reply: null,
     forward: null,
     views: null,

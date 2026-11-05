@@ -325,6 +325,13 @@ dropping them. `pressCallbackButton` decodes `data` (at most Telegram's 64 bytes
 rather than a toast, and whether it asked to open a `url`. Bots can remove or replace a keyboard with `edit_message`,
 which already replaces the whole message DTO, so no extra update type is needed.
 
+A message's reply keyboard — the custom keyboard a bot shows in place of the composer — arrives apart from `markup`
+as `replyKeyboard`: a `keyboard` carrying Telegram's rows of `MessageReplyKeyboardButtonDto` (a text button sends its
+text, a web view button opens its Mini App, and the contact/location/poll/peer requests are carried so the SPA can
+show them disabled), the one-time flag and Telegram's composer placeholder; a `hide` removal; or a `force_reply`
+request. The keyboard belongs to the chat rather than to the bubble, so the SPA shows the newest message's markup —
+including one the socket delivered while the loaded window is behind a backlog.
+
 `groupedId` marks album membership: Telegram delivers one album as several messages that share that id, and
 the SPA renders them as one bubble while every message stays addressable for reactions, replies and read
 receipts. Telegram stores album reactions on the first message, so the UI exposes that one; `getHistory`

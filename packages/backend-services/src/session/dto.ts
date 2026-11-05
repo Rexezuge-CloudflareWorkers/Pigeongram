@@ -1,6 +1,6 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
 import { serviceText } from './service-text';
-import { toMessageMarkupDto } from './markup';
+import { toMessageMarkupDto, toMessageReplyKeyboardDto } from './markup';
 import { presenceOfPeer } from './presence';
 import { toMessageWebPageDto } from './web-page';
 import type {
@@ -238,6 +238,7 @@ export function toMessageDto(message: Message): MessageDto {
     webPage: toMessageWebPageDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     markup: toMessageMarkupDto(message),
+    replyKeyboard: toMessageReplyKeyboardDto(message),
     reply: toMessageReplyDto(message),
     forward: toMessageForwardDto(message),
     views: message.views,

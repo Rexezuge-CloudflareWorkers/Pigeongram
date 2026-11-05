@@ -37,7 +37,7 @@ function textarea(): HTMLTextAreaElement {
 }
 
 describe('Composer bot commands', () => {
-  it('opens the full menu from the slash button and inserts a picked command', () => {
+  it('opens the full menu from the slash button and sends a picked command', () => {
     const { onSend } = renderComposer();
 
     fireEvent.click(screen.getByRole('button', { name: 'Bot commands' }));
@@ -46,13 +46,13 @@ describe('Composer bot commands', () => {
 
     fireEvent.click(within(menu).getByRole('option', { name: /\/help/ }));
 
-    expect(textarea().value).toBe('/help ');
+    expect(onSend).toHaveBeenCalledWith('/help', undefined);
+    expect(textarea().value).toBe('');
     expect(textarea()).toBe(document.activeElement);
-    expect(onSend).not.toHaveBeenCalled();
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
-  it('filters while typing and picks the highlighted command with the keyboard', () => {
+  it('filters while typing and sends the highlighted command with Enter', () => {
     const { onSend } = renderComposer();
 
     fireEvent.change(textarea(), { target: { value: '/hel' } });
@@ -66,7 +66,19 @@ describe('Composer bot commands', () => {
     fireEvent.keyDown(textarea(), { key: 'ArrowDown' });
     fireEvent.keyDown(textarea(), { key: 'Enter' });
 
-    expect(textarea().value).toBe('/hello ');
+    expect(onSend).toHaveBeenCalledWith('/hello', undefined);
+    expect(textarea().value).toBe('');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('completes the highlighted command on Tab without sending it', () => {
+    const { onSend } = renderComposer();
+
+    fireEvent.change(textarea(), { target: { value: '/hel' } });
+    fireEvent.keyDown(textarea(), { key: 'Tab' });
+
+    expect(textarea().value).toBe('/help ');
+    expect(textarea().selectionStart).toBe('/help '.length);
     expect(onSend).not.toHaveBeenCalled();
     expect(screen.queryByRole('listbox')).toBeNull();
   });
@@ -82,6 +94,7 @@ describe('Composer bot commands', () => {
     await waitFor(() => {
       expect(onSend).toHaveBeenCalledWith('/start', undefined);
     });
+    expect(textarea().value).toBe('');
   });
 
   it('closes the menu with Escape and hides the button without commands', () => {

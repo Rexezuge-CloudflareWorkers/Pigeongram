@@ -3,7 +3,7 @@ import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { readHistory } from './api';
 import { applyCommentEdit, applyCommentMessage, applyCommentReactions, isThreadComment, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
-import type { UpdateEvent } from './types';
+import type { MessageDto, UpdateEvent } from './types';
 import type { CommentsPolling } from './useCommentsPoll';
 
 /**
@@ -12,16 +12,26 @@ thread. The controller composes it and keeps the loaded window and cursor; a
 live fold never rewinds a page the view already holds.
 */
 
+/**
+The folds the live half runs beside its own: the controller's poll handling and
+its reply-keyboard seed, which a message decides even when the loaded thread
+cannot show it yet.
+*/
+interface CommentsFolds extends Pick<CommentsPolling, 'applyPoll' | 'refreshPoll'> {
+  applyKeyboard: (message: MessageDto, edited?: boolean) => void;
+}
+
 export function useCommentsUpdates(
   threadRef: RefObject<CommentsThread | null>,
   setThread: Dispatch<SetStateAction<CommentsThread | null>>,
-  polling: Pick<CommentsPolling, 'applyPoll' | 'refreshPoll'>,
+  folds: CommentsFolds,
 ): (update: UpdateEvent) => void {
-  const { applyPoll, refreshPoll } = polling;
+  const { applyPoll, refreshPoll, applyKeyboard } = folds;
 
   return useCallback(
     (update: UpdateEvent): void => {
       if (update.type === 'new_message') {
+        applyKeyboard(update.message);
         const open = threadRef.current;
         if (open && isThreadComment(open, update.message)) {
           void readHistory(update.message.chatId).catch(() => {
@@ -32,6 +42,7 @@ export function useCommentsUpdates(
         return;
       }
       if (update.type === 'edit_message') {
+        applyKeyboard(update.message, true);
         setThread((current) => applyCommentEdit(current, update.message));
         return;
       }
@@ -55,6 +66,6 @@ export function useCommentsUpdates(
         else applyPoll(update, update.poll);
       }
     },
-    [applyPoll, refreshPoll, setThread, threadRef],
+    [applyKeyboard, applyPoll, refreshPoll, setThread, threadRef],
   );
 }

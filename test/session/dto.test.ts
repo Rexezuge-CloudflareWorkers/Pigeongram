@@ -284,6 +284,7 @@ describe('toMessageDto', () => {
       webPage: null,
       poll: null,
       markup: null,
+      replyKeyboard: null,
       reply: null,
       forward: null,
       views: null,
@@ -398,21 +399,77 @@ describe('toMessageDto', () => {
     });
   });
 
-  it('leaves reply keyboards to the composer', () => {
+  it('maps a reply keyboard into composer buttons', () => {
     const dto = toMessageDto(
       message({
         replyMarkup: {
           _: 'replyKeyboardMarkup',
+          singleUse: true,
+          placeholder: 'Pick a language',
           rows: [
             {
               _: 'keyboardButtonRow',
-              buttons: [{ _: 'keyboardButton', text: 'Yes', type: { _: 'buttonTypeDefault' } }],
+              buttons: [
+                {
+                  _: 'keyboardButton',
+                  text: 'English',
+                  type: { _: 'buttonTypeDefault' },
+                  style: { _: 'keyboardButtonStyle', bgPrimary: true },
+                },
+                { _: 'keyboardButton', text: 'Open app', type: { _: 'buttonTypeSimpleWebView', url: 'https://example.com/app' } },
+              ],
+            },
+            {
+              _: 'keyboardButtonRow',
+              buttons: [
+                { _: 'keyboardButton', text: 'Share number', type: { _: 'buttonTypeRequestPhone' } },
+                { _: 'keyboardButton', text: 'Share location', type: { _: 'buttonTypeRequestGeoLocation' } },
+                { _: 'keyboardButton', text: 'Make a poll', type: { _: 'buttonTypeRequestPoll' } },
+                {
+                  _: 'keyboardButton',
+                  text: 'Pick a chat',
+                  type: { _: 'buttonTypeRequestPeer', buttonId: 1, peerType: { _: 'requestPeerTypeUser' }, maxQuantity: 1 },
+                },
+              ],
             },
           ],
         },
       }),
     );
+
+    // A reply keyboard is a composer thing: it never renders under the bubble.
     expect(dto.markup).toBeNull();
+    expect(dto.replyKeyboard).toEqual({
+      kind: 'keyboard',
+      oneTime: true,
+      placeholder: 'Pick a language',
+      rows: [
+        [
+          { text: 'English', style: 'primary', kind: 'text' },
+          { text: 'Open app', style: null, kind: 'webview', url: 'https://example.com/app' },
+        ],
+        [
+          { text: 'Share number', style: null, kind: 'request_phone' },
+          { text: 'Share location', style: null, kind: 'request_geo' },
+          { text: 'Make a poll', style: null, kind: 'request_poll' },
+          { text: 'Pick a chat', style: null, kind: 'request_peer' },
+        ],
+      ],
+    });
+  });
+
+  it('maps reply keyboard removal and force-reply requests', () => {
+    const hidden = toMessageDto(message({ replyMarkup: { _: 'replyKeyboardHide' } }));
+    expect(hidden.replyKeyboard).toEqual({ kind: 'hide' });
+
+    const forced = toMessageDto(message({ replyMarkup: { _: 'replyKeyboardForceReply', placeholder: 'Type a reply' } }));
+    expect(forced.replyKeyboard).toEqual({ kind: 'force_reply', placeholder: 'Type a reply' });
+  });
+
+  it('leaves a message without a markup without either keyboard', () => {
+    const dto = toMessageDto(message({}));
+    expect(dto.markup).toBeNull();
+    expect(dto.replyKeyboard).toBeNull();
   });
 
   it('carries album membership as a decimal string', () => {

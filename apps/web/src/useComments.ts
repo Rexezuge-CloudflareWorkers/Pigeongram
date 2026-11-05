@@ -1,9 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fetchComments, readHistory } from './api';
 import type { CommentsController, PostKey, PrefetchedComments } from './comments-controller';
+import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
 import { mergeMessages, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
-import type { ChatDto, GetCommentsResult, MessageDto, PeerId } from './types';
+import type { ChatDto, GetCommentsResult, MessageDto, MessageReplyKeyboardButtonDto, PeerId } from './types';
 import { useCommentsPoll } from './useCommentsPoll';
 import { useCommentsSend } from './useCommentsSend';
 import { useCommentsUpdates } from './useCommentsUpdates';
@@ -56,6 +57,8 @@ interface UseCommentsOptions {
 
 export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOptions): CommentsController {
   const [thread, setThread] = useState<CommentsThread | null>(null);
+  const [keyboardSeed, setKeyboardSeed] = useState<MessageDto | null>(null);
+  const [dismissedKeyboardId, setDismissedKeyboardId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +77,22 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   const { applyPoll, refreshPoll, votingIds, vote } = useCommentsPoll(threadRef, setThread, onError);
   const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
 
+  // The discussion group shows the newest reply keyboard a message carried —
+  // even one the loaded window cannot show yet, which the seed stands in for —
+  // and a dismissed one-time keyboard stays hidden until a newer message
+  // replaces it.
+  const replyKeyboard = useMemo(() => {
+    const active = activeReplyKeyboard(thread?.comments ?? [], keyboardSeed);
+    return active !== null && active.messageId === dismissedKeyboardId ? null : active;
+  }, [thread?.comments, keyboardSeed, dismissedKeyboardId]);
+
+  /**
+  Advances the reply-keyboard seed with a message from a read or an update.
+  */
+  const applyKeyboard = useCallback((message: MessageDto, edited = false): void => {
+    setKeyboardSeed((current) => foldKeyboardSeed(current, message, edited));
+  }, []);
+
   /**
   Folds a read of the thread into the open window and reports the read to
   Telegram. An already-loaded older-pages cursor stays put: a refresh can
@@ -81,6 +100,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   already holds.
   */
   const applyComments = useCallback((post: PostKey, result: GetCommentsResult): void => {
+    setKeyboardSeed((current) => result.comments.reduce<MessageDto | null>((seed, message) => foldKeyboardSeed(seed, message), current));
     setThread((current) =>
       updateCommentsThread(current, post, (open) => ({
         ...open,
@@ -112,6 +132,10 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   const open = useCallback(
     async (chat: ChatDto, message: MessageDto, prefetched?: PrefetchedComments): Promise<void> => {
       const count = message.comments?.count ?? 0;
+      // A fresh open re-reads the thread, so the previous post's keyboard —
+      // and a dismissal of it — must not survive into the next one.
+      setKeyboardSeed(null);
+      setDismissedKeyboardId(null);
       // Reopening the same post keeps the loaded window and its cursor and
       // just re-reads it; another post starts from scratch.
       setThread((current) =>
@@ -150,6 +174,8 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
 
   const close = useCallback((): void => {
     setThread(null);
+    setKeyboardSeed(null);
+    setDismissedKeyboardId(null);
     setError(null);
   }, []);
 
@@ -190,7 +216,21 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     onCommentSent,
     onError,
   });
-  const applyUpdate = useCommentsUpdates(threadRef, setThread, { applyPoll, refreshPoll });
+  const applyUpdate = useCommentsUpdates(threadRef, setThread, { applyPoll, refreshPoll, applyKeyboard });
+
+  /**
+  Presses a reply keyboard button of the discussion group: a text button
+  sends its text, exactly as typing and sending it would, and a one-time
+  keyboard hides once pressed.
+  */
+  const pressReplyKeyboardButton = useCallback(
+    (button: MessageReplyKeyboardButtonDto, replyTo?: number): void => {
+      if (replyKeyboard === null || button.kind !== 'text') return;
+      if (replyKeyboard.keyboard.oneTime) setDismissedKeyboardId(replyKeyboard.messageId);
+      void send(button.text, replyTo);
+    },
+    [replyKeyboard, send],
+  );
 
   return {
     thread,
@@ -201,6 +241,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     reactingIds,
     votingIds,
     pressingButtonIds,
+    replyKeyboard,
     open,
     close,
     loadOlder,
@@ -212,6 +253,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     react,
     vote,
     pressButton,
+    pressReplyKeyboardButton,
     applyUpdate,
   };
 }

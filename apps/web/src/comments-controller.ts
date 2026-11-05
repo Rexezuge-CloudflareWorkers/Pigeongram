@@ -1,6 +1,16 @@
 import type { PendingMessage } from './outbox';
+import type { ActiveReplyKeyboard } from './reply-keyboard';
 import type { CommentsThread } from './state';
-import type { ChatDto, GetCommentsResult, MessageButtonDto, MessageDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type {
+  ChatDto,
+  GetCommentsResult,
+  MessageButtonDto,
+  MessageDto,
+  MessageReactionDto,
+  MessageReplyKeyboardButtonDto,
+  PeerId,
+  UpdateEvent,
+} from './types';
 import type { UploadRequest } from './upload';
 
 /**
@@ -51,6 +61,10 @@ export interface CommentsController {
   */
   pressingButtonIds: ReadonlySet<number>;
   /**
+  The discussion group's active reply keyboard, or null when it shows none.
+  */
+  replyKeyboard: ActiveReplyKeyboard | null;
+  /**
    * Opens a post's comment thread. A caller that already read the thread —
    * together with the chat's window — hands the outcome over, so the screen
    * does not ask for it a second time.
@@ -73,6 +87,11 @@ export interface CommentsController {
   Presses an inline callback or copy button on the pinned post or a comment.
   */
   pressButton: (message: MessageDto, button: MessageButtonDto) => void;
+  /**
+  Presses a reply keyboard button of the discussion group. A text button
+  sends its text; `replyTo` carries the composer's reply target.
+  */
+  pressReplyKeyboardButton: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
   /**
   Folds one socket update into the open thread. `App`'s update handler
   forwards every event; updates that are not comments pass through.

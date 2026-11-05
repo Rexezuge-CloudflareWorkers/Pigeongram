@@ -1,5 +1,6 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fetchPollResults, sendMessage, sendReaction } from './api';
+import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
 import {
   applyCommentCountDelta,
   applyReactionUpdate,
@@ -11,11 +12,21 @@ import {
   updateThreadPoll,
 } from './state';
 import type { PollUpdateTarget } from './state';
-import type { ThreadController } from './thread-controller';
+import type { OpenThreadResult, ThreadController } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
 import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages } from './thread-state';
 import type { ChatThread } from './thread-state';
-import type { ChatDto, MessageDto, MessagePollDto, MessageReactionDto, PeerId, UpdateEvent } from './types';
+import type { OpenThreadOptions } from './thread-window';
+import type {
+  ChatDto,
+  DialogDto,
+  MessageDto,
+  MessagePollDto,
+  MessageReactionDto,
+  MessageReplyKeyboardButtonDto,
+  PeerId,
+  UpdateEvent,
+} from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
@@ -51,10 +62,20 @@ interface UseThreadOptions {
 
 export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
+  const [keyboardSeed, setKeyboardSeed] = useState<MessageDto | null>(null);
+  const [dismissedKeyboardId, setDismissedKeyboardId] = useState<number | null>(null);
   const [reactingIds, setReactingIds] = useState<ReadonlySet<number>>(new Set());
   const positions = useThreadPositionMemory();
   const outbox = useOutbox({ onError });
-  const { open, reset: resetOpen, loading, error, setError, botCommands, description } = useThreadOpen({ thread, setThread, positions });
+  const {
+    open,
+    reset: resetOpen,
+    loading,
+    error,
+    setError,
+    botCommands,
+    description,
+  } = useThreadOpen({ thread, setThread, positions, setKeyboardSeed });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -64,13 +85,36 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     threadRef.current = thread;
   }, [thread]);
 
+  // The chat shows the newest reply markup a message carried — even one the
+  // loaded range cannot show yet, which is what the seed stands in for — and a
+  // dismissed one-time keyboard stays hidden until a newer message replaces it.
+  const replyKeyboard = useMemo(() => {
+    const active = activeReplyKeyboard(thread?.messages ?? [], keyboardSeed);
+    return active !== null && active.messageId === dismissedKeyboardId ? null : active;
+  }, [thread?.messages, keyboardSeed, dismissedKeyboardId]);
+
   const { loadingOlder, loadingNewer, loadOlder, loadNewer, jumpToLatest } = useThreadPaging({ threadRef, setThread, setError });
 
   const close = useCallback((): void => {
     resetOpen();
     positions.forget();
+    setKeyboardSeed(null);
+    setDismissedKeyboardId(null);
     setThread(null);
   }, [positions, resetOpen]);
+
+  /**
+  Opens a chat, forgetting which one-time keyboard the previous visit dismissed:
+  the same keyboard shows again on a fresh open, as it does in the official
+  clients.
+  */
+  const openThread = useCallback(
+    (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
+      setDismissedKeyboardId(null);
+      return open(dialog, options);
+    },
+    [open],
+  );
 
   const updateChat = useCallback((chat: ChatDto): void => {
     setThread((current) => (current && current.chat.id === chat.id ? { ...current, chat } : current));
@@ -147,6 +191,20 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     [thread, outbox, onSent],
   );
 
+  /**
+  Presses a reply keyboard button: a text button sends its text, exactly as
+  typing and sending it would, and a one-time keyboard hides once pressed.
+  The remaining kinds are handled by the view (web views) or shown disabled.
+  */
+  const pressReplyKeyboardButton = useCallback(
+    (button: MessageReplyKeyboardButtonDto, replyTo?: number): void => {
+      if (replyKeyboard === null || button.kind !== 'text') return;
+      if (replyKeyboard.keyboard.oneTime) setDismissedKeyboardId(replyKeyboard.messageId);
+      void send(button.text, replyTo);
+    },
+    [replyKeyboard, send],
+  );
+
   const react = useCallback(
     (message: MessageDto, reaction: MessageReactionDto): void => {
       if (reactingIds.has(message.id)) return;
@@ -221,10 +279,15 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
 
   const applyUpdate = useCallback((update: UpdateEvent): void => {
     if (update.type === 'new_message') {
+      // The reply keyboard belongs to the chat, not to the window: a message
+      // that carries a markup decides it even when the loaded range is behind
+      // a backlog and the message itself waits for paging.
+      setKeyboardSeed((current) => foldKeyboardSeed(current, update.message));
       setThread((current) => applyThreadNewMessage(current, update.message));
       return;
     }
     if (update.type === 'edit_message') {
+      setKeyboardSeed((current) => foldKeyboardSeed(current, update.message, true));
       setThread((current) => applyThreadEdit(current, update.message));
       return;
     }
@@ -259,10 +322,11 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     error,
     botCommands,
     description,
+    replyKeyboard,
     reactingIds,
     votingIds,
     pressingButtonIds,
-    open,
+    open: openThread,
     close,
     updateChat,
     loadOlder,
@@ -276,6 +340,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     react,
     vote,
     pressButton,
+    pressReplyKeyboardButton,
     setReadWatermark,
     bumpCommentCount,
     positions,

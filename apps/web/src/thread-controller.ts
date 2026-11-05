@@ -1,4 +1,5 @@
 import type { PendingMessage } from './outbox';
+import type { ActiveReplyKeyboard } from './reply-keyboard';
 import type { ChatThread } from './thread-state';
 import type { ThreadPositionMemory } from './thread-position';
 import type { OpenThreadOptions } from './thread-window';
@@ -10,6 +11,7 @@ import type {
   MessageButtonDto,
   MessageDto,
   MessageReactionDto,
+  MessageReplyKeyboardButtonDto,
   PeerId,
   UpdateEvent,
 } from './types';
@@ -67,6 +69,11 @@ export interface ThreadController {
   */
   description: string | null;
   /**
+  The chat's active reply keyboard, or null when it shows none. The active one
+  is the newest message's markup, which may sit outside the loaded window.
+  */
+  replyKeyboard: ActiveReplyKeyboard | null;
+  /**
   Message ids with a reaction request in flight; their chips are disabled.
   */
   reactingIds: ReadonlySet<number>;
@@ -120,6 +127,12 @@ export interface ThreadController {
   Presses an inline callback or copy button on a message.
   */
   pressButton: (message: MessageDto, button: MessageButtonDto) => void;
+  /**
+  Presses a reply keyboard button. A text button sends its text; `replyTo`
+  carries the composer's reply target so the send matches a typed one. The
+  remaining kinds are handled by the view or shown disabled.
+  */
+  pressReplyKeyboardButton: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
   /**
   Advances the open thread's read watermark, for a read the view reported or
   the server confirmed.

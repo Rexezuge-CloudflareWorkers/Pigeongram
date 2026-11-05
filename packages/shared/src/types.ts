@@ -284,11 +284,59 @@ export type MessageButtonDto = {
 
 /**
 A message's inline keyboard: button rows in Telegram's order. Reply keyboards
-(and force-reply/hide markups) are not carried yet.
+(and force-reply/hide markups) do not render under the bubble; the chat's
+current one rides in `MessageDto.replyKeyboard`.
 */
 export interface MessageMarkupDto {
   rows: MessageButtonDto[][];
 }
+
+/**
+One button of a reply keyboard — the custom keyboard a bot shows in place of
+the composer. Text buttons send their text as a message; a web view button
+opens a Mini App; the remaining kinds are carried so the UI can show them
+disabled instead of silently dropping them.
+*/
+export type MessageReplyKeyboardButtonDto = {
+  text: string;
+  style: MessageButtonStyle | null;
+} & (
+  | { kind: 'text' }
+  | { kind: 'webview'; url: string }
+  | { kind: 'request_phone' }
+  | { kind: 'request_geo' }
+  | { kind: 'request_poll' }
+  | { kind: 'request_peer' }
+  | { kind: 'unsupported' }
+);
+
+/**
+The reply markup a message carries, as the composer sees it: a custom keyboard
+shown above the composer, its removal, or a request to reply to the message.
+
+The keyboard belongs to the chat, not to the bubble: the chat shows the markup
+of its newest message that carries one, so the SPA derives the active keyboard
+from the thread.
+*/
+export type MessageReplyKeyboardDto =
+  | {
+      kind: 'keyboard';
+      /**
+      Button rows in Telegram's order.
+      */
+      rows: MessageReplyKeyboardButtonDto[][];
+      /**
+      Whether Telegram asks the keyboard to hide once a button has been pressed.
+      */
+      oneTime: boolean;
+      /**
+      Placeholder Telegram wants the composer to show while the keyboard is
+      active, or null to keep the composer's own.
+      */
+      placeholder: string | null;
+    }
+  | { kind: 'hide' }
+  | { kind: 'force_reply'; placeholder: string | null };
 
 /**
 The message a message replies to, mapped from Telegram's reply header.
@@ -464,6 +512,12 @@ export interface MessageDto {
   The message's inline keyboard, or null when it has none.
   */
   markup: MessageMarkupDto | null;
+  /**
+  The reply keyboard (or its removal) this message carries, or null when it
+  carries none. The chat's active keyboard is the newest message's, so the SPA
+  derives it from the thread rather than rendering it under the bubble.
+  */
+  replyKeyboard: MessageReplyKeyboardDto | null;
   /**
   The message this one replies to, or null for a plain message.
   */

@@ -3,16 +3,18 @@ import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { commentWebLink, messageWebLink } from '../links';
 import type { PendingMessage } from '../outbox';
+import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { CommentsThread } from '../state';
 import { isNearTop, usePrependAnchor } from '../thread-paging';
 import { settleToBottom } from '../thread-position';
-import type { MessageButtonDto, MessageDto, MessageReactionDto } from '../types';
+import type { MessageButtonDto, MessageDto, MessageReactionDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { Icon } from './Icon';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
+import { ReplyKeyboard } from './ReplyKeyboard';
 import { Spinner } from './Spinner';
 
 interface CommentsViewProps {
@@ -58,6 +60,15 @@ interface CommentsViewProps {
    */
   onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   /**
+   * The discussion group's active reply keyboard, or null when it shows none.
+   */
+  replyKeyboard: ActiveReplyKeyboard | null;
+  /**
+   * Presses a reply keyboard button. The reply target rides along, so a
+   * keyboard send matches a typed one.
+   */
+  onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
+  /**
    * Opens the full-page viewer at a message's media (an album opens at the
    * clicked member).
    */
@@ -88,6 +99,8 @@ export function CommentsView({
   onForward,
   onVote,
   onPressButton,
+  replyKeyboard,
+  onPressReplyKeyboard,
   onOpenMedia,
 }: CommentsViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -151,6 +164,11 @@ export function CommentsView({
   const attach = (request: UploadRequest): Promise<void> => {
     setReplyingTo(null);
     return onAttach(request);
+  };
+  const pressReplyKeyboard = (button: MessageReplyKeyboardButtonDto, replyTo?: number): void => {
+    // A keyboard send consumes the reply target like any other send.
+    setReplyingTo(null);
+    onPressReplyKeyboard(button, replyTo);
   };
 
   return (
@@ -246,8 +264,9 @@ export function CommentsView({
         ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
+      {replyKeyboard ? <ReplyKeyboard keyboard={replyKeyboard} onPress={(button) => pressReplyKeyboard(button, replyTarget?.id)} /> : null}
       <Composer
-        placeholder="Comment"
+        placeholder={replyKeyboard?.keyboard.placeholder ?? 'Comment'}
         replyTarget={replyTarget}
         botCommands={thread.botCommands}
         onCancelReply={() => setReplyingTo(null)}

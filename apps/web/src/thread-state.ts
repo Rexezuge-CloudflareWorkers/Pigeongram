@@ -102,7 +102,7 @@ export function applyThreadNewMessage(thread: ChatThread | null, message: Messag
   }
   // An inside-window fold replaces an already-loaded row; marking it new would
   // replay the entrance animation on an existing bubble.
-  const newArrival = !insideWindow && !thread.messages.some((candidate) => candidate.id === message.id);
+  const newArrival = !insideWindow && thread.messages.every((candidate) => candidate.id !== message.id);
   const newMessageIds = newArrival ? new Set(thread.newMessageIds).add(message.id) : thread.newMessageIds;
   return {
     ...thread,
@@ -126,7 +126,7 @@ export function applyThreadSentMessages(thread: ChatThread | null, chatId: PeerI
   // A send the reader made lands past the window and is the reader's own
   // action; the held live message behind a gap waits, so only ids the thread
   // did not already hold can be new.
-  const fresh = messages.filter((message) => !thread.messages.some((candidate) => candidate.id === message.id));
+  const fresh = messages.filter((message) => thread.messages.every((candidate) => candidate.id !== message.id));
   let newMessageIds = thread.newMessageIds;
   if (fresh.length > 0) {
     const next = new Set(newMessageIds);

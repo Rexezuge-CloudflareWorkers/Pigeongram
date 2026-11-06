@@ -41,8 +41,13 @@ const PHOTO = { type: 'photo', fileSize: SIZE, thumbnails: [] as unknown[] };
  * module's small fixture so cases that need to cross a 1 MB part block can
  * pass their own.
  */
-function fakeClient(media: unknown, peer: unknown = null, size = SIZE): { client: TelegramClient; requests: DownloadParams[] } {
+function fakeClient(
+  media: unknown,
+  peer: unknown = null,
+  size = SIZE,
+): { client: TelegramClient; requests: DownloadParams[]; locations: FileLocation[] } {
   const requests: DownloadParams[] = [];
+  const locations: FileLocation[] = [];
   const client = {
     async getMessages(): Promise<unknown[]> {
       return [{ media }];
@@ -50,8 +55,9 @@ function fakeClient(media: unknown, peer: unknown = null, size = SIZE): { client
     async getPeer(): Promise<unknown> {
       return peer;
     },
-    downloadAsIterable(_location: FileLocation, params: DownloadParams) {
+    downloadAsIterable(location: FileLocation, params: DownloadParams) {
       requests.push(params);
+      locations.push(location);
       const start = params.offset ?? 0;
       return (async function* () {
         for (let at = start; at < size; at += CHUNK) {
@@ -62,7 +68,7 @@ function fakeClient(media: unknown, peer: unknown = null, size = SIZE): { client
       })();
     },
   };
-  return { client: client as unknown as TelegramClient, requests };
+  return { client: client as unknown as TelegramClient, requests, locations };
 }
 
 async function body(download: { stream: ReadableStream<Uint8Array> }): Promise<Uint8Array> {
@@ -96,6 +102,43 @@ function webpageMedia(page: Record<string, unknown> = {}): WebPageMedia {
     },
   } as unknown as tl.RawMessageMediaWebPage;
   return new WebPageMedia(raw);
+}
+
+/**
+ * A document-backed video carrying alternative qualities: the primary plus
+ * one larger and one smaller alt, so `max` and index selection are visible
+ * as distinct file sizes on the streams the engine opens. `type`, `raw` and
+ * `media` are the raw TL pieces the engine reads; everything else is the
+ * file-location surface the rest of the harness (`VIDEO`-shaped media)
+ * already speaks.
+ */
+function videoWithAlternatives(): Record<string, unknown> {
+  const document = (id: number, w: number, h: number, size: number) => ({
+    _: 'document',
+    id: Long.fromNumber(id),
+    accessHash: Long.fromNumber(id),
+    fileReference: new Uint8Array([id % 256]),
+    date: 1_700_000_000,
+    mimeType: 'video/mp4',
+    size,
+    dcId: 2,
+    attributes: [{ _: 'documentAttributeVideo', w, h, duration: 12, supportsStreaming: true }],
+  });
+  const primary = document(1, 1280, 720, 9000);
+  const rawMedia = {
+    _: 'messageMediaDocument',
+    document: primary,
+    altDocuments: [document(2, 1920, 1080, 9500), document(3, 640, 360, 8000)],
+  };
+  return {
+    ...VIDEO,
+    type: 'video',
+    raw: primary,
+    media: rawMedia,
+    mimeType: 'video/mp4',
+    fileSize: 9000,
+    thumbnails: [{ isVideo: false, fileSize: 50 }],
+  };
 }
 
 describe('streamMessageMedia', () => {
@@ -193,6 +236,44 @@ describe('streamMessageMedia', () => {
   it('rejects a link preview without a photo', async () => {
     const { client } = fakeClient(webpageMedia({ photo: undefined }));
     await expect(streamMessageMedia(client, 1, 2)).rejects.toThrow('no downloadable media');
+  });
+
+  it('streams the alternative quality named by its index', async () => {
+    const { client, locations } = fakeClient(videoWithAlternatives());
+    const download = await streamMessageMedia(client, 1, 2, { quality: 1 });
+
+    // Index 1 is the first alternative (1920x1080, 9500 bytes), not the primary.
+    expect(locations[0]?.fileSize).toBe(9500);
+    expect(download).toMatchObject({ mime: 'video/mp4', size: 9500, length: 9500, status: 200 });
+  });
+
+  it('resolves max to the largest variant for downloads', async () => {
+    const { client, locations } = fakeClient(videoWithAlternatives());
+    const download = await streamMessageMedia(client, 1, 2, { quality: 'max' });
+
+    expect(locations[0]?.fileSize).toBe(9500);
+    expect(download).toMatchObject({ size: 9500, length: 9500, status: 200 });
+  });
+
+  it('rejects a quality index past the last variant', async () => {
+    const { client } = fakeClient(videoWithAlternatives());
+    await expect(streamMessageMedia(client, 1, 2, { quality: 7 })).rejects.toThrow('out of range');
+  });
+
+  it('serves the primary when a quality is requested but no alternative exists', async () => {
+    const { client, locations } = fakeClient(VIDEO);
+    const download = await streamMessageMedia(client, 1, 2, { quality: 'max' });
+
+    expect(locations[0]).toBe(VIDEO);
+    expect(download).toMatchObject({ size: SIZE, length: SIZE, status: 200 });
+  });
+
+  it('serves a ranged alternative with its own size in content-range', async () => {
+    const { client, locations } = fakeClient(videoWithAlternatives(), null, 9500);
+    const download = await streamMessageMedia(client, 1, 2, { quality: 1, range: { start: 100, end: 199 } });
+
+    expect(locations[0]?.fileSize).toBe(9500);
+    expect(download).toMatchObject({ status: 206, length: 100, contentRange: 'bytes 100-199/9500' });
   });
 });
 

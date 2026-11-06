@@ -35,6 +35,7 @@ export function ThreadView({
   loadingOlder,
   loadingNewer,
   hasMoreOlder,
+  newMessageIds,
   pending,
   error,
   botCommands,
@@ -321,7 +322,6 @@ export function ThreadView({
           {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
           {groups.map((group, index) => {
             const anchor = group[0];
-            const msgIndex = Math.min(index, 10);
             return (
               <Fragment key={anchor.id}>
                 {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
@@ -341,7 +341,7 @@ export function ThreadView({
                       ? (messageById.get(anchor.reply.messageId) ?? null)
                       : null
                   }
-                  msgIndex={msgIndex}
+                  isNew={group.some((message) => newMessageIds.has(message.id))}
                   reacting={reactingIds.has(anchor.id)}
                   onReact={preview === null ? onReact : undefined}
                   voting={votingIds.has(anchor.id)}

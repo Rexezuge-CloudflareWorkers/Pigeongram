@@ -78,7 +78,8 @@ export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onE
       setThread((current) =>
         updateCommentsThread(current, post, (candidate) => {
           if (candidate.comments.some((loaded) => loaded.id === comment.id)) return candidate;
-          return { ...candidate, comments: mergeMessages(candidate.comments, [comment]), count: candidate.count + 1 };
+          const newMessageIds = new Set(candidate.newMessageIds).add(comment.id);
+          return { ...candidate, comments: mergeMessages(candidate.comments, [comment]), count: candidate.count + 1, newMessageIds };
         }),
       );
       onCommentSent(open.chat.id, open.post.id, comment);

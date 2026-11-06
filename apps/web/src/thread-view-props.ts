@@ -62,6 +62,12 @@ export interface ThreadViewProps {
    */
   hasMoreOlder: boolean;
   /**
+   * Ids of messages that arrived after the window landed and so animate in.
+   * The view passes each group through as `isNew` when its first member is in
+   * this set; history, paging and cache paints render without motion.
+   */
+  newMessageIds: ReadonlySet<number>;
+  /**
    * Messages still on their way to Telegram, in submission order. The view
    * filters them to the open chat and renders them after the loaded list.
    */

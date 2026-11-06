@@ -150,6 +150,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
               comments: [],
               count,
               nextOffset: null,
+              newMessageIds: new Set(),
             },
       );
       setError(null);

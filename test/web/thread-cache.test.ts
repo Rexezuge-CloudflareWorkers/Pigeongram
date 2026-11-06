@@ -51,6 +51,7 @@ function thread(overrides: Partial<ChatThread> = {}): ChatThread {
     hasMoreOlder: true,
     windowEndId: 20,
     latestMessageId: 20,
+    newMessageIds: new Set(),
     ...overrides,
   };
 }

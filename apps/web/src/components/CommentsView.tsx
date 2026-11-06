@@ -239,6 +239,7 @@ export function CommentsView({
                     : null
                 }
                 showQuote={quoteVisible(anchor, thread, commentById)}
+                isNew={group.some((message) => thread.newMessageIds.has(message.id))}
                 reacting={reactingIds.has(anchor.id)}
                 onReact={onReact}
                 voting={votingIds.has(anchor.id)}

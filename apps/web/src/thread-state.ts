@@ -53,11 +53,18 @@ export interface ChatThread {
   */
   windowEndId: number | null;
   /**
-  The newest message known to exist in the chat: the dialog's last message,
-  advanced by live messages and sends. Comparing it with `windowEndId` is what
-  tells the view whether the loaded range reaches the newest message.
-  */
+   The newest message known to exist in the chat: the dialog's last message,
+   advanced by live messages and sends. Comparing it with `windowEndId` is what
+   tells the view whether the loaded range reaches the newest message.
+   */
   latestMessageId: number | null;
+  /**
+   Ids of messages that arrived after the window landed — a live message, or
+   one the caller just sent — and that the view should animate in. History
+   reads and paging never add to it, and it is cleared on every open, so a
+   re-mount does not replay the entrance animation.
+   */
+  newMessageIds: ReadonlySet<number>;
 }
 
 /**
@@ -93,11 +100,16 @@ export function applyThreadNewMessage(thread: ChatThread | null, message: Messag
   if (!threadReachesLatest(thread) && !insideWindow) {
     return { ...thread, latestMessageId };
   }
+  // An inside-window fold replaces an already-loaded row; marking it new would
+  // replay the entrance animation on an existing bubble.
+  const newArrival = !insideWindow && !thread.messages.some((candidate) => candidate.id === message.id);
+  const newMessageIds = newArrival ? new Set(thread.newMessageIds).add(message.id) : thread.newMessageIds;
   return {
     ...thread,
     latestMessageId,
     windowEndId: Math.max(thread.windowEndId, message.id),
     messages: mergeMessages(thread.messages, [message]),
+    newMessageIds,
   };
 }
 
@@ -106,15 +118,27 @@ Folds the messages the caller just sent into the thread. They always show — a
 send is the reader's own action — and they advance the newest-known cursor. The
 contiguous end only follows while the range already reached the newest: a send
 made from inside a backlog sits beyond the gap that forward paging has to fill.
+The ids animate in, but an id the thread already held does not re-animate.
 */
 export function applyThreadSentMessages(thread: ChatThread | null, chatId: PeerId, messages: readonly MessageDto[]): ChatThread | null {
   if (!thread || thread.chat.id !== chatId || messages.length === 0) return thread;
   const newest = messages.reduce((id, message) => Math.max(id, message.id), 0);
+  // A send the reader made lands past the window and is the reader's own
+  // action; the held live message behind a gap waits, so only ids the thread
+  // did not already hold can be new.
+  const fresh = messages.filter((message) => !thread.messages.some((candidate) => candidate.id === message.id));
+  let newMessageIds = thread.newMessageIds;
+  if (fresh.length > 0) {
+    const next = new Set(newMessageIds);
+    for (const message of fresh) next.add(message.id);
+    newMessageIds = next;
+  }
   return {
     ...thread,
     latestMessageId: Math.max(thread.latestMessageId ?? 0, newest),
     ...(threadReachesLatest(thread) && { windowEndId: Math.max(thread.windowEndId ?? 0, newest) }),
     messages: mergeMessages(thread.messages, [...messages]),
+    newMessageIds,
   };
 }
 

@@ -184,9 +184,16 @@ export interface CommentsThread {
   */
   count: number;
   /**
-  Cursor for older comments; null when the thread start is loaded.
-  */
+   Cursor for older comments; null when the thread start is loaded.
+   */
   nextOffset: { id: number; date: number } | null;
+  /**
+   Ids of comments that arrived after the screen opened — a live comment, or
+   one the caller just sent — and that the view should animate in. History
+   reads and paging never add to it, and it is cleared on every open, so a
+   re-mount does not replay the entrance animation.
+   */
+  newMessageIds: ReadonlySet<number>;
 }
 
 /**
@@ -224,7 +231,8 @@ comment can arrive by socket after the send response already merged it).
 export function applyCommentMessage(thread: CommentsThread | null, message: MessageDto): CommentsThread | null {
   if (!thread || !isThreadComment(thread, message)) return thread;
   if (thread.comments.some((comment) => comment.id === message.id)) return thread;
-  return { ...thread, comments: mergeMessages(thread.comments, [message]), count: thread.count + 1 };
+  const newMessageIds = new Set(thread.newMessageIds).add(message.id);
+  return { ...thread, comments: mergeMessages(thread.comments, [message]), count: thread.count + 1, newMessageIds };
 }
 
 export function applyCommentEdit(thread: CommentsThread | null, message: MessageDto): CommentsThread | null {

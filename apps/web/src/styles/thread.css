@@ -165,10 +165,11 @@
   transition:
     box-shadow 200ms var(--ease-out),
     transform 220ms var(--ease-out);
-  /* `data-new` is set only for the first mount of a message that arrived
-     after the window landed; the stagger delay lives on the same node. */
+  /* Only rows whose message arrived after the window landed animate. The
+   * fill keeps the bubble at the keyframe's start during any delay, so it
+   * fades in instead of flashing visible first. */
   animation: message-in 260ms var(--ease-out-strong);
-  animation-delay: calc(min(var(--msg-index, 0), 10) * 22ms);
+  animation-fill-mode: backwards;
 }
 
 .message[data-new='false'] {

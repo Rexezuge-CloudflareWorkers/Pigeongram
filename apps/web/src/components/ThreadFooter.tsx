@@ -92,6 +92,6 @@ explains itself, everything else was restricted by the chat's admins.
 */
 function sendBlockedNotice(chat: ChatDto): string {
   return chat.kind === 'channel'
-    ? 'Only admins can post in this channel.'
+    ? 'Only Admins Can Post In This Channel.'
     : 'The admins of this chat have restricted your ability to send messages.';
 }

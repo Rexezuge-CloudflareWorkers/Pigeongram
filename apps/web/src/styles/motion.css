@@ -91,10 +91,10 @@
 }
 
 /* Only genuinely new messages animate; history re-renders without motion. */
-@keyframes message-in-upgraded {
+@keyframes message-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.97);
+    transform: translateY(10px);
   }
 
   to {
@@ -125,6 +125,29 @@
 
   50% {
     opacity: 0.72;
+  }
+}
+
+/* The shared skeleton sheen: one sweep rule for the list bones and the
+ * thread bones alike, so the two loading surfaces cannot drift. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 15%, rgb(255 255 255 / 6%) 50%, transparent 85%);
+  animation: skeleton-sheen 1.5s infinite;
+}
+
+@keyframes skeleton-sheen {
+  to {
+    transform: translateX(100%);
   }
 }
 
@@ -211,4 +234,38 @@
   to {
     transform: scale(1);
   }
+}
+
+.thread-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.thread-skeleton-row {
+  display: flex;
+}
+
+.thread-skeleton-row.own {
+  justify-content: flex-end;
+}
+
+.thread-skeleton-row-enter {
+  animation: fade-in-up 260ms var(--ease-out-strong);
+  animation-delay: calc(var(--row-index, 0) * 22ms);
+  animation-fill-mode: both;
+}
+
+.skeleton-bubble {
+  width: min(200px, 55%);
+  height: 44px;
+  border-radius: 14px;
+}
+
+.skeleton-bubble.wide {
+  width: min(280px, 70%);
+  height: 120px;
 }

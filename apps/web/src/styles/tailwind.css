@@ -25,12 +25,15 @@
 @import './poll.css' layer(components);
 @import './replies.css' layer(components);
 @import './viewer.css' layer(components);
+@import './motion.css' layer(components);
 
 /* Scan the SPA sources explicitly; the CSS lives one directory below `src/`. */
 @source '../**/*.{ts,tsx}';
 
 /* Bridge the app's existing palette into Tailwind's color namespace, so new
- * utilities can say `text-muted` or `bg-panel` instead of arbitrary values. */
+ * utilities can say `text-muted` or `bg-panel` instead of arbitrary values.
+ * The motion tokens follow the same rule: a shared easing or duration stays
+ * named once in `base.css` and is referenced from utilities the same way. */
 @theme inline {
   --color-accent: var(--accent);
   --color-muted: var(--muted);
@@ -43,4 +46,11 @@
   --color-danger: var(--danger);
   --color-online: var(--online);
   --color-warn: var(--warn);
+  --ease-out: var(--ease-out);
+  --ease-out-strong: var(--ease-out-strong);
+  --ease-spring: var(--spring);
+  --duration-instant: var(--dur-instant);
+  --duration-fast: var(--dur-fast);
+  --duration-base: var(--dur-base);
+  --duration-slow: var(--dur-slow);
 }

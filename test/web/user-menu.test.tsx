@@ -58,11 +58,14 @@ describe('UserMenu', () => {
     expect(screen.queryByRole('menu', { name: 'Account menu' })).toBeNull();
 
     const menu = openMenu(trigger);
-    const item = within(menu).getByRole('menuitem', { name: 'Archived Chats' }) as HTMLButtonElement;
+    // The first item is now the Light Mode toggle; Archived Chats follows.
+    const archiveItem = within(menu).getByRole('menuitem', { name: 'Archived Chats' }) as HTMLButtonElement;
+    const themeItem = within(menu).getByRole('menuitem', { name: 'Light Mode' }) as HTMLButtonElement;
 
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(within(menu).getByText('@ada')).toBeDefined();
-    expect(document.activeElement).toBe(item);
+    expect(document.activeElement).toBe(themeItem);
+    expect(archiveItem).toBeDefined();
     expect(onSignOut).not.toHaveBeenCalled();
   });
 

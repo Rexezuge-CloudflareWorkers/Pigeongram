@@ -219,7 +219,7 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             aria-controls={showMenu ? listId : undefined}
             onClick={toggleMenu}
           >
-            <Icon name="slash" size={18} />
+            <Icon name={showMenu ? 'expand-more' : 'keyboard-arrow-up'} size={18} />
           </button>
         ) : null}
         <button type="button" className="attach" aria-label="Attach Files" title="Attach Files" onClick={() => fileRef.current?.click()}>
@@ -227,18 +227,6 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
         </button>
         {showMenu ? (
           <div className="command-menu" id={listId} role="listbox" aria-label="Bot Commands">
-            <button
-              type="button"
-              className="command-menu-close"
-              aria-label="Close Bot Commands"
-              title="Close Bot Commands"
-              onClick={() => {
-                setMenuOpen(false);
-                textareaRef.current?.focus();
-              }}
-            >
-              <Icon name="close" size={14} />
-            </button>
             {matches.map((command, index) => (
               <button
                 key={command.command}
@@ -316,8 +304,15 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             submit();
           }}
         />
-        <button type="submit" aria-label="Send" title="Send" disabled={draft.trim().length === 0}>
-          <Icon name="send" size={18} />
+        <button
+          type="submit"
+          aria-label="Send"
+          title="Send"
+          className={`send-morph${draft.trim() ? '' : ' is-mic'}`}
+          disabled={draft.trim().length === 0}
+        >
+          <Icon name="send" size={18} className="is-send" />
+          <Icon name="mic" size={18} className="is-mic" />
         </button>
       </form>
       {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}

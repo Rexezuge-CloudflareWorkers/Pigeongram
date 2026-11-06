@@ -7,6 +7,45 @@
   flex: 1;
 }
 
+.chat-row {
+  position: relative;
+  touch-action: pan-y;
+}
+
+.chat-swipe-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+  padding-right: 14px;
+}
+
+.chat-swipe-actions .swipe-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--badge);
+}
+
+.chat-row .chat {
+  position: relative;
+  transition:
+    background-color 150ms var(--ease-out),
+    transform 220ms var(--ease-out);
+}
+
+.chat-row .chat.is-swiping {
+  transition: none;
+}
+
 .chat {
   display: flex;
   align-items: center;
@@ -161,7 +200,16 @@
   padding: 1px 8px;
   min-width: 22px;
   text-align: center;
-  animation: badge-in 220ms var(--ease-out);
+  animation: badge-in 220ms var(--spring);
+}
+
+.badge.popped {
+  animation: badge-pop 300ms var(--spring);
+}
+
+.chat-row-enter {
+  animation: fade-in-up 260ms var(--ease-out-strong);
+  animation-delay: calc(var(--row-index, 0) * 22ms);
 }
 
 @keyframes badge-in {

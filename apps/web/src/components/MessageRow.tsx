@@ -13,6 +13,7 @@ import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
 import { MessageReplyQuote } from './ReplyQuote';
 import { MessageText } from './MessageText';
+import { useMessageGestures } from './useMessageGestures';
 import { MessageWebPage } from './WebPagePreview';
 
 /**
@@ -28,7 +29,8 @@ bubble — sender, reply header, reactions and timestamp — matching Telegram,
 which stores album reactions on the first message and treats it as the main one.
 
 The bubble's actions live in a context menu (right-click, or a long press on
-touch); a double-click stays as the quick reply path.
+touch); a double-click stays as the quick reply path. A horizontal swipe to
+the right replies as well.
 */
 
 /**
@@ -153,6 +155,7 @@ export function MessageRow({
   const downloadable = group.length === 1 && isDownloadable(message);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const { swipeOffset, burstKey, dragReply, resetSwipe, burst } = useMessageGestures();
 
   // A long press must not outlive the row (a live update can unmount it).
   useEffect(
@@ -218,22 +221,32 @@ export function MessageRow({
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}${bare ? ' bare' : ''}`}
       data-message-id={message.id}
+      data-new="true"
       data-message-ids={group.map((entry) => entry.id).join(' ')}
+      style={swipeOffset === 0 ? undefined : { transform: `translateX(${String(swipeOffset)}px)` }}
       onDoubleClick={() => {
         if (!message.service && onReply) onReply(message);
       }}
       onContextMenu={(event) => {
-        // Keyboard invocation (the Menu key, Shift+F10) reports no pointer
-        // coordinates; open from the bubble's center instead of the corner.
         const rect = event.currentTarget.getBoundingClientRect();
         const opened = openMenu(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
         if (opened) event.preventDefault();
       }}
+      onPointerMove={(event) => {
+        const current = press.current;
+        if (current === null) return;
+        const dx = event.clientX - current.x;
+        const dy = Math.abs(event.clientY - current.y);
+        if (Math.abs(dx) > LONG_PRESS_SLOP_PX || Math.abs(event.clientY - current.y) > LONG_PRESS_SLOP_PX) {
+          cancelPress();
+        }
+        // A predominantly horizontal drag past the slop is a swipe-to-reply.
+        if (dx > LONG_PRESS_SLOP_PX && dx > dy * 1.2 && onReply && !message.service) {
+          dragReply(dx, () => onReply(message));
+        }
+      }}
       onPointerDown={(event) => {
-        if (event.pointerType !== 'touch') return;
-        // Descendant controls (reaction chips, links, players) keep their own
-        // gestures; a press on them is not a message menu.
-        if ((event.target as Element).closest('button, a, audio, video, input, textarea')) return;
+        if (event.pointerType !== 'touch' || (event.target as Element).closest('button, a, audio, video, input, textarea')) return;
         cancelPress();
         const { clientX: x, clientY: y } = event;
         press.current = {
@@ -245,15 +258,14 @@ export function MessageRow({
           }, LONG_PRESS_MS),
         };
       }}
-      onPointerMove={(event) => {
-        const current = press.current;
-        if (current === null) return;
-        if (Math.abs(event.clientX - current.x) > LONG_PRESS_SLOP_PX || Math.abs(event.clientY - current.y) > LONG_PRESS_SLOP_PX) {
-          cancelPress();
-        }
+      onPointerUp={() => {
+        cancelPress();
+        resetSwipe();
       }}
-      onPointerUp={cancelPress}
-      onPointerCancel={cancelPress}
+      onPointerCancel={() => {
+        cancelPress();
+        resetSwipe();
+      }}
     >
       {bare ? (
         <>
@@ -303,12 +315,15 @@ export function MessageRow({
                   <button
                     key={reactionKey(reaction)}
                     type="button"
-                    className={`reaction${reaction.chosen ? ' chosen' : ''}`}
+                    className={`reaction${reaction.chosen ? ' chosen' : ''}${burstKey === reactionKey(reaction) ? ' burst' : ''}`}
                     disabled={reacting}
                     title={title}
                     aria-label={`React ${title} (${String(reaction.count)})`}
                     aria-pressed={reaction.chosen}
-                    onClick={() => onReact(message, reaction)}
+                    onClick={() => {
+                      if (!reaction.chosen) burst(reactionKey(reaction));
+                      onReact(message, reaction);
+                    }}
                   >
                     {emoji}
                     {count}

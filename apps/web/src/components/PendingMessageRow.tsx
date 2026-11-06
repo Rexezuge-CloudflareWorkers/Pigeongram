@@ -45,6 +45,11 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
         </div>
       ) : null}
       {meta}
+      {entry.status === 'uploading' && entry.progress !== null ? (
+        <span className="pending-progress" aria-hidden="true">
+          <span className="pending-progress-bar" style={{ width: `${Math.round(entry.progress * 100)}%` }} />
+        </span>
+      ) : null}
       {entry.status === 'failed' ? (
         <div className="pending-actions">
           {entry.failure ? (

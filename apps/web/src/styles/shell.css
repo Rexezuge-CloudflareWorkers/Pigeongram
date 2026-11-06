@@ -127,9 +127,17 @@
   animation: toast-in 240ms var(--ease-out);
 }
 
+.toast.is-exiting {
+  animation: toast-out 220ms var(--ease-out) forwards;
+}
+
 .toast.notice {
   background: #17293a;
   border-color: rgb(94 181 247 / 45%);
+}
+
+.toast-swipe-track {
+  touch-action: pan-x;
 }
 
 @keyframes toast-in {
@@ -154,6 +162,14 @@
 
 .dialog-panel {
   animation: dialog-in 240ms var(--ease-out);
+}
+
+.dialog-scrim.is-exiting {
+  animation: scrim-out 200ms ease-out forwards;
+}
+
+.dialog-panel.is-exiting {
+  animation: dialog-out 220ms var(--ease-out) forwards;
 }
 
 @keyframes scrim-in {

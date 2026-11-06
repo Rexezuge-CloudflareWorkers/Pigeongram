@@ -18,6 +18,9 @@ import { MediaViewer } from './MediaViewer';
 import { SearchOverlay } from './SearchOverlay';
 import { ThreadPane } from './ThreadPane';
 import { Toasts } from './Toasts';
+import { useDropNotice } from './useDropNotice';
+import { useExitAnimation } from './useExitAnimation';
+import { useTheme } from './useTheme';
 import { UserMenu } from './UserMenu';
 
 /**
@@ -55,8 +58,8 @@ interface SignedInShellProps {
 
 export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: SignedInShellProps) {
   const [me, setMe] = useState<MeDto | null>(initialMe);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { notice, notify } = useDropNotice();
+  const { theme, setTheme } = useTheme();
   /**
   Whether the sidebar is browsing the archive. The route owns the archive
   screen (`/archived`), and a chat opened from it keeps the context: the list
@@ -68,26 +71,6 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
   hashtag, the query it carries. Null while the overlay is closed.
   */
   const [search, setSearch] = useState<{ scope: SearchScope; query?: string } | null>(null);
-
-  /**
-  Shows a short informational toast (a bot's callback answer, a clipboard
-  confirmation) and refreshes its dismissal timer.
-  */
-  const notify = useCallback((text: string): void => {
-    setNotice(text);
-    if (noticeTimer.current !== null) clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => {
-      setNotice(null);
-      noticeTimer.current = null;
-    }, 4000);
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (noticeTimer.current !== null) clearTimeout(noticeTimer.current);
-    },
-    [],
-  );
 
   /**
   The chat list: the main chats and the archive, in one list. The controller
@@ -314,11 +297,21 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     resetRouter,
   ]);
 
+  const viewerExit = useExitAnimation(viewer.viewer !== null, 240);
+
   return (
-    <div className={`app${selected ? ' thread-open' : ''}`}>
+    <div className={`app${selected ? ' thread-open' : ''}`} data-theme={theme}>
       <aside className="sidebar">
         <header className="me">
-          <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={handleLogout} onOpenArchive={openArchive} />
+          <UserMenu
+            me={me}
+            connected={connected}
+            pwa={pwa}
+            onSignOut={handleLogout}
+            onOpenArchive={openArchive}
+            onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+            theme={theme}
+          />
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -363,8 +356,13 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
             if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
           }}
         />
-        {viewer.viewer ? (
-          <MediaViewer messages={viewer.viewer.messages} initialMessageId={viewer.viewer.initialMessageId} onClose={closeViewer} />
+        {viewerExit.mounted && viewer.viewer ? (
+          <MediaViewer
+            messages={viewer.viewer.messages}
+            initialMessageId={viewer.viewer.initialMessageId}
+            exiting={viewerExit.exiting}
+            onClose={closeViewer}
+          />
         ) : null}
       </TelegramLinkProvider>
       {forwarding.target ? (

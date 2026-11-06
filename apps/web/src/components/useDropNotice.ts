@@ -13,10 +13,12 @@ export function useDropNotice(): { notice: string | null; notify: (text: string)
 
   const clearNotice = useCallback((): void => {
     setNotice(null);
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+    if (timerRef.current === null) {
+      return;
     }
+
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
   }, []);
 
   const notify = useCallback(

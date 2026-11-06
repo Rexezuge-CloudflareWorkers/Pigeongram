@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { isDownloadable } from '../media-download';
@@ -156,7 +156,6 @@ export function MessageRow({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   const { swipeOffset, burstKey, dragReply, resetSwipe, burst } = useMessageGestures();
-  const seenBubble = useRef(false);
 
   // A long press must not outlive the row (a live update can unmount it).
   useEffect(
@@ -165,13 +164,6 @@ export function MessageRow({
     },
     [],
   );
-
-  // A live bubble keeps its entrance once; a row that was already in the
-  // window when the thread opened does not animate.
-  const isNew = !seenBubble.current;
-  useEffect(() => {
-    seenBubble.current = true;
-  }, []);
 
   const cancelPress = (): void => {
     if (press.current === null) return;
@@ -229,9 +221,9 @@ export function MessageRow({
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}${bare ? ' bare' : ''}`}
       data-message-id={message.id}
-      data-new={isNew ? 'true' : 'false'}
+      data-new="true"
       data-message-ids={group.map((entry) => entry.id).join(' ')}
-      style={swipeOffset !== 0 ? ({ transform: `translateX(${String(swipeOffset)}px)` } as CSSProperties) : undefined}
+      style={swipeOffset === 0 ? undefined : { transform: `translateX(${String(swipeOffset)}px)` }}
       onDoubleClick={() => {
         if (!message.service && onReply) onReply(message);
       }}
@@ -254,8 +246,7 @@ export function MessageRow({
         }
       }}
       onPointerDown={(event) => {
-        if (event.pointerType !== 'touch') return;
-        if ((event.target as Element).closest('button, a, audio, video, input, textarea')) return;
+        if (event.pointerType !== 'touch' || (event.target as Element).closest('button, a, audio, video, input, textarea')) return;
         cancelPress();
         const { clientX: x, clientY: y } = event;
         press.current = {

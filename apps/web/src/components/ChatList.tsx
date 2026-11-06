@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatListStamp, previewOf } from '../format';
 import type { PendingMessage } from '../outbox';
 import { withPendingDialogs } from '../outbox';
@@ -14,7 +14,9 @@ import { Icon } from './Icon';
  */
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
-/** Horizontal swipe distance that reveals the row's quick actions. */
+/**
+Horizontal swipe distance that reveals the row's quick actions.
+*/
 const SWIPE_REVEAL_PX = 56;
 
 interface ChatListProps {
@@ -133,7 +135,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                 <button
                   type="button"
                   className={`chat group${dialog.chat.id === activeChatId ? ' active' : ''}${isSwiped ? ' is-swiping' : ''}`}
-                  style={isSwiped ? ({ transform: `translateX(${-SWIPE_REVEAL_PX}px)` } as CSSProperties) : undefined}
+                  style={isSwiped ? { transform: `translateX(${-SWIPE_REVEAL_PX}px)` } : undefined}
                   onClick={() => {
                     if (suppressClick.current) {
                       suppressClick.current = false;

@@ -30,12 +30,14 @@ export function useMessageGestures(): {
     if (dx <= 0) return;
     const offset = Math.min(dx * 0.35, SWIPE_REPLY_PX);
     setSwipeOffset(offset);
-    if (dx >= SWIPE_REPLY_PX) {
-      onReply();
-      setSwipeOffset(0);
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate?.(10);
-      }
+    if (dx < SWIPE_REPLY_PX) {
+      return;
+    }
+
+    onReply();
+    setSwipeOffset(0);
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate?.(10);
     }
   };
 

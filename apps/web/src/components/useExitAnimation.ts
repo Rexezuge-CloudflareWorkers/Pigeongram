@@ -8,16 +8,13 @@ import { useEffect, useState } from 'react';
  * class while it is true and the parent keeps rendering them.
  */
 export function useExitAnimation(visible: boolean, exitMs = 200): { mounted: boolean; exiting: boolean } {
-  const [mounted, setMounted] = useState(visible);
-  const exiting = mounted && !visible;
+  const [phase, setPhase] = useState<'mounted' | 'closed'>(visible ? 'mounted' : 'closed');
+  const exiting = phase === 'mounted' && !visible;
   useEffect(() => {
-    if (visible) {
-      setMounted(true);
-      return;
-    }
-    if (!mounted) return;
-    const timer = setTimeout(() => setMounted(false), exitMs);
+    if (phase !== 'mounted' || visible) return;
+    const timer = setTimeout(() => setPhase('closed'), exitMs);
     return () => clearTimeout(timer);
-  }, [visible, mounted, exitMs]);
+  }, [phase, visible, exitMs]);
+  const mounted = phase === 'mounted' || visible;
   return { mounted, exiting };
 }

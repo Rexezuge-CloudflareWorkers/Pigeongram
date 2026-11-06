@@ -212,8 +212,8 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
           <button
             type="button"
             className="slash"
-            aria-label={showMenu ? 'Collapse Bot Commands' : 'Expand Bot Commands'}
-            title={showMenu ? 'Collapse' : 'Expand'}
+            aria-label="Bot Commands"
+            title="Bot Commands"
             aria-haspopup="listbox"
             aria-expanded={showMenu}
             aria-controls={showMenu ? listId : undefined}
@@ -306,8 +306,8 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
         />
         <button
           type="submit"
-          aria-label={draft.trim() ? 'Send Message' : 'Voice Message'}
-          title={draft.trim() ? 'Send' : 'Voice Message'}
+          aria-label="Send"
+          title="Send"
           className={`send-morph${draft.trim() ? '' : ' is-mic'}`}
           disabled={draft.trim().length === 0}
         >

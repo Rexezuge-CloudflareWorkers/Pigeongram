@@ -11,7 +11,7 @@ export type AppTheme = 'dark' | 'light';
 export function useTheme(): { theme: AppTheme; setTheme: React.Dispatch<React.SetStateAction<AppTheme>> } {
   const [theme, setTheme] = useState<AppTheme>(() => {
     try {
-      return window.localStorage.getItem('pigeongram-theme') === 'light' ? 'light' : 'dark';
+      return localStorage.getItem('pigeongram-theme') === 'light' ? 'light' : 'dark';
     } catch {
       return 'dark';
     }
@@ -19,9 +19,11 @@ export function useTheme(): { theme: AppTheme; setTheme: React.Dispatch<React.Se
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('pigeongram-theme', theme);
+      localStorage.setItem('pigeongram-theme', theme);
     } catch {
-      /* non-blocking */
+      /*
+      non-blocking
+      */
     }
     document.documentElement.dataset['theme'] = theme;
   }, [theme]);

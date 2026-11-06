@@ -22,19 +22,19 @@ const NOTICE_MS = 4000;
 The app's toasts: the failure on top, the notice below it.
 
 Split out of `App.tsx` so the shell stays readable: the app owns the two
-messages, this renders them. The exit beat runs through `useExitAnimation`,
-and the noticeable one (the notice) dismisses itself — matching the shell's
-timer in `SignedInShell` — while the error waits for a replacement.
+messages, this renders them. The exit beat runs through `useExitAnimation`;
+the notice dismisses itself after NOTICE_MS (matching the shell's timer),
+while the error waits for a replacement.
 */
 export function Toasts({ error, notice }: ToastsProps) {
-  const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
-  const visibleNotice = notice !== null && notice !== dismissedNotice ? notice : null;
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const visibleNotice = notice !== null && notice !== dismissed ? notice : null;
   const noticeExit = useExitAnimation(visibleNotice !== null);
   const errorExit = useExitAnimation(error !== null);
 
   useEffect(() => {
     if (notice === null) return;
-    const timer = setTimeout(() => setDismissedNotice(notice), NOTICE_MS);
+    const timer = setTimeout(() => setDismissed(notice), NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);
 

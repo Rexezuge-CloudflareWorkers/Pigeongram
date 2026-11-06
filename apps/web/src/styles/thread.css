@@ -14,7 +14,6 @@
   padding: 24px;
 }
 
-/* The placeholder the official clients leave in the reading pane. */
 .thread-empty-mark {
   display: grid;
   place-items: center;
@@ -59,7 +58,6 @@
   min-width: 0;
 }
 
-/* Where the peer stands, under their name; online takes the accent. */
 .thread-presence {
   font-size: 12px;
   color: var(--muted);
@@ -72,8 +70,6 @@
   color: var(--accent);
 }
 
-/* Both lines stay single-line: long titles truncate rather than stretching
-   the grid. */
 .thread-title strong,
 .thread-title > span {
   overflow: hidden;
@@ -85,14 +81,11 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Older pages are prepended; `usePrependAnchor` sets the position, so the browser must not anchor too. */
   overflow-anchor: none;
   padding: 16px clamp(8px, 4vw, 28px);
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* The chat backdrop: official Telegram wallpapers layer a dot lattice over
-     a soft wash; this is that treatment without a photo asset. */
   background-color: var(--bg);
   background-image:
     radial-gradient(rgb(255 255 255 / 3%) 1px, transparent 1.5px),
@@ -144,7 +137,6 @@
   }
 }
 
-/* Where reading stopped when the chat opened; the line stays put past it. */
 .unread-divider {
   align-self: center;
   color: var(--accent);
@@ -175,8 +167,8 @@
     transform 220ms var(--ease-out);
   /* `data-new` is set only for the first mount of a message that arrived
      after the window landed; the stagger delay lives on the same node. */
-  animation: message-in-upgraded 240ms var(--ease-out);
-  animation-delay: calc(var(--msg-index, 0) * 18ms);
+  animation: message-in 260ms var(--ease-out-strong);
+  animation-delay: calc(min(var(--msg-index, 0), 10) * 22ms);
 }
 
 .message[data-new='false'] {
@@ -376,7 +368,6 @@
   font-size: 11px;
 }
 
-/* Sent/read checks; the read state takes the accent, as the official clients mark it. */
 .ticks {
   display: inline-flex;
   align-items: center;

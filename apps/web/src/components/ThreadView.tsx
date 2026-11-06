@@ -16,6 +16,7 @@ import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
 import { ThreadPlaceholder } from './ThreadPlaceholder';
+import { ThreadSkeleton } from './ThreadSkeleton';
 
 /**
  * How long a read watermark is held back before it is reported: scrolling
@@ -285,9 +286,9 @@ export function ThreadView({
         onCall={onCall}
         callActive={callActive}
       />
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div key={chat.id} className="relative flex min-h-0 flex-1 flex-col">
         <div
-          className="messages"
+          className="messages thread-pane-in"
           ref={scrollRef}
           onScroll={(event) => {
             // Until this chat's window has landed, the position is the loading
@@ -316,10 +317,11 @@ export function ThreadView({
               {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Messages'}
             </button>
           ) : null}
-          {loading ? <Spinner size={28} label="Loading messages…" padding="24px 0" /> : null}
+          {loading && messages.length === 0 ? <ThreadSkeleton /> : null}
           {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
           {groups.map((group, index) => {
             const anchor = group[0];
+            const msgIndex = Math.min(index, 10);
             return (
               <Fragment key={anchor.id}>
                 {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
@@ -339,6 +341,7 @@ export function ThreadView({
                       ? (messageById.get(anchor.reply.messageId) ?? null)
                       : null
                   }
+                  msgIndex={msgIndex}
                   reacting={reactingIds.has(anchor.id)}
                   onReact={preview === null ? onReact : undefined}
                   voting={votingIds.has(anchor.id)}

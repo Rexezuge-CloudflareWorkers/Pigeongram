@@ -52,6 +52,10 @@ export interface MessageRowProps {
   */
   original: MessageDto | null;
   /**
+  Entrance stagger step (capped by the caller).
+  */
+  msgIndex?: number;
+  /**
   Whether the reply quote renders (default true); the comments view hides it
   for headers that point at the thread's root, which Telegram shows bare.
   */
@@ -116,6 +120,7 @@ export function MessageRow({
   group,
   chat,
   original,
+  msgIndex,
   showQuote = true,
   showAvatar = false,
   reacting = false,
@@ -217,13 +222,20 @@ export function MessageRow({
     </span>
   );
 
+  const bubbleStyle =
+    swipeOffset === 0
+      ? msgIndex !== undefined
+        ? { ['--msg-index' as string]: msgIndex }
+        : undefined
+      : { transform: `translateX(${String(swipeOffset)}px)` };
+
   const bubble = (
     <div
       className={`message${own ? ' own' : ''}${message.service ? ' service' : ''}${bare ? ' bare' : ''}`}
       data-message-id={message.id}
       data-new="true"
       data-message-ids={group.map((entry) => entry.id).join(' ')}
-      style={swipeOffset === 0 ? undefined : { transform: `translateX(${String(swipeOffset)}px)` }}
+      style={bubbleStyle}
       onDoubleClick={() => {
         if (!message.service && onReply) onReply(message);
       }}

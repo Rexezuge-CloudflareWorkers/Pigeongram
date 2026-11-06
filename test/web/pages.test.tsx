@@ -4230,7 +4230,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Announcements'));
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
 
-      expect(within(threadSection()).getByText('Only admins can post in this channel.')).toBeDefined();
+      expect(within(threadSection()).getByText('Only Admins Can Post In This Channel.')).toBeDefined();
       expect(screen.queryByPlaceholderText('Message')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Attach a file' })).toBeNull();
@@ -4244,7 +4244,7 @@ describe('App', () => {
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
 
       expect(screen.getByPlaceholderText('Message')).toBeDefined();
-      expect(screen.queryByText('Only admins can post in this channel.')).toBeNull();
+      expect(screen.queryByText('Only Admins Can Post In This Channel.')).toBeNull();
     });
 
     it('explains a revoked send permission in a group', async () => {

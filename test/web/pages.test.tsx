@@ -3520,6 +3520,95 @@ describe('App', () => {
       expect(calls[0].body).toEqual({ method: 'getComments', params: { chatId: channel.id, messageId: 7, limit: 50 } });
     });
 
+    it('opens the comments screen from a deep link with comments read in the open batch', async () => {
+      globalThis.history.replaceState(null, '', `/chat/${String(channel.id)}/post/7/comments`);
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        return json({
+          comments: commentList,
+          count: 2,
+          discussionChatId: GROUP,
+          discussionMessageId: ROOT,
+        });
+      });
+
+      render(<App />);
+
+      expect(await screen.findByText('Comments')).toBeDefined();
+      // 'nice' appears again as the second comment's reply quote.
+      expect(within(threadSection()).getAllByText('nice').length).toBeGreaterThan(0);
+      expect(within(threadSection()).getByText('congrats')).toBeDefined();
+      expect(screen.getByPlaceholderText('Comment')).toBeDefined();
+      // A channel takes no command-menu read, so the stranded batch index
+      // used to discard the successful comments outcome.
+      expect(screen.queryByText('The comments could not be read')).toBeNull();
+    });
+
+    it('opens the comments screen from a deep link when the batch carries a command read too', async () => {
+      const group: ChatDto = {
+        id: -1_000_000_000_040,
+        kind: 'group',
+        title: 'Gambit Fans',
+        username: null,
+        photo: null,
+        canSendMessages: true,
+        presence: null,
+      };
+      const groupPost = message({
+        id: 9,
+        chatId: group.id,
+        text: 'Opening post',
+        comments: { hasComments: true, count: 1, discussionChatId: -1_000_000_000_050 },
+      });
+      globalThis.history.replaceState(null, '', `/chat/${String(group.id)}/post/9/comments`);
+      installSignedInFetch({
+        dialogs: [
+          {
+            chat: group,
+            lastMessage: dialogMessage(groupPost),
+            unread: 0,
+            readInboxMaxId: 9,
+            readOutboxMaxId: 0,
+            pinned: false,
+            muted: false,
+            archived: false,
+          },
+        ],
+        history: () => json({ messages: [groupPost] }),
+        rpc: (call) =>
+          call.body?.method === 'getComments'
+            ? json({
+                comments: [comment({ id: ROOT + 1, text: 'first', reply: replyHeader(ROOT) })],
+                count: 1,
+                discussionChatId: GROUP,
+                discussionMessageId: ROOT,
+              })
+            : call.body?.method === 'getBotCommands'
+              ? json({ commands: [{ name: 'roll', description: 'Roll the dice' }], description: null })
+              : undefined,
+      });
+
+      render(<App />);
+
+      expect(await screen.findByText('Comments')).toBeDefined();
+      expect(within(threadSection()).getByText('first')).toBeDefined();
+      expect(screen.queryByText('The comments could not be read')).toBeNull();
+    });
+
+    it('reports a batched comments read that failed on a deep link', async () => {
+      globalThis.history.replaceState(null, '', `/chat/${String(channel.id)}/post/7/comments`);
+      installCommentsFetch((call) => {
+        if (call.body?.method !== 'getComments') return;
+        return json({ error: 'The discussion group is gone' }, 404);
+      });
+
+      render(<App />);
+
+      expect(await screen.findByText('Comments')).toBeDefined();
+      expect(screen.getByText('The discussion group is gone')).toBeDefined();
+      expect(screen.queryByText('The comments could not be read')).toBeNull();
+    });
+
     it('shows an out-of-window reply quote and keeps the thread root bare', async () => {
       const resolved = {
         ...replyHeader(ROOT + 40),

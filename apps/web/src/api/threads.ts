@@ -78,9 +78,11 @@ export async function fetchChatScreen(
 ): Promise<ChatScreen> {
   const { withCommands = false, withLatest = false, commentsLimit = 50, ...history } = options;
   const calls: RpcBatchCall[] = [{ method: 'getHistory', params: { chatId, ...history } }];
+  const commandsIndex = withCommands ? calls.length : undefined;
   if (withCommands) {
     calls.push({ method: 'getBotCommands', params: { chatId } });
   }
+  const commentsIndex = postId === null ? undefined : calls.length;
   if (postId !== null) {
     calls.push({ method: 'getComments', params: { chatId, messageId: postId, limit: commentsLimit } });
   }
@@ -95,8 +97,9 @@ export async function fetchChatScreen(
   // A chat without a command menu is normal, and a failed lookup is no
   // worse than an empty one: the composer simply offers no menu and the
   // empty thread keeps its generic prompt.
-  const menu = outcomes[1]?.ok ? (outcomes[1].result as GetBotCommandsResult) : null;
-  const commentsOutcome = postId === null ? undefined : outcomes[2];
+  const commandsOutcome = commandsIndex === undefined ? undefined : outcomes[commandsIndex];
+  const menu = commandsOutcome?.ok ? (commandsOutcome.result as GetBotCommandsResult) : null;
+  const commentsOutcome = commentsIndex === undefined ? undefined : outcomes[commentsIndex];
   const latestOutcome = withLatest ? outcomes.at(-1) : undefined;
   return {
     messages,

@@ -1,4 +1,5 @@
-import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice } from '@mtcute/core';
+import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice, tl } from '@mtcute/core';
+import { Document as MtDocument } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
@@ -40,6 +41,13 @@ export interface MediaDownload {
 export interface MessageMediaOptions {
   thumb?: boolean;
   range?: { start: number; end: number | null };
+  /**
+  Stream variant for a video: `0` is the primary document, `1..n` select
+  Telegram's alternative qualities in order, and `max` resolves to the largest
+  variant. Resolved server-side from the message; the client never carries file
+  references. Ignored for non-video media and thumbnails.
+  */
+  quality?: number | 'max';
 }
 
 /**
@@ -50,7 +58,10 @@ export interface MessageMediaOptions {
  * for a video or the preview of a photo. A `range` produces a partial
  * response from the closest block-aligned offset, which is what lets `<video>`
  * seek without downloading the whole file (`media-stream.ts` cuts the window
- * itself, for the reason documented there).
+ * itself, for the reason documented there). `quality` selects a video variant
+ * server-side (`0` primary, `1..n` alternatives, `max` largest); downloads ask
+ * for `max` so they always fetch the highest quality, while playback uses the
+ * chosen variant.
  */
 export async function streamMessageMedia(
   client: TelegramClient,
@@ -72,15 +83,14 @@ export async function streamMessageMedia(
     return fullDownload(client, thumb, 'image/jpeg', false);
   }
 
-  const photo = file.type === 'photo';
-  const mime = photo ? 'image/jpeg' : file.mimeType;
+  const target = resolveQuality(file, message.media, options.quality);
   // Photos are served whole: their `fileSize` is derived from Telegram's size
   // list, which is good enough for bounds but not for a `content-range`
   // promise. Videos and documents carry exact sizes and support seeking.
-  if (photo || !options.range) {
-    return fullDownload(client, file, mime, !photo);
+  if (!target.exactSize || !options.range) {
+    return fullDownload(client, target.location, target.mime, target.exactSize);
   }
-  return rangedDownload(client, file, mime, options.range, mediaWindowBytes);
+  return rangedDownload(client, target.location, target.mime, options.range, mediaWindowBytes);
 }
 
 /**
@@ -222,6 +232,78 @@ function downloadableMedia(media: MessageMedia): DownloadableMedia | null {
       return null;
     }
   }
+}
+
+interface QualityTarget {
+  location: FileLocation;
+  /**
+  MIME type to serve the bytes as.
+  */
+  mime: string;
+  /**
+  Whether the location's `fileSize` is the exact byte length (videos and
+  documents). Photos derive a size from Telegram's size list, so it is used for
+  bounds but never promised as `content-length`.
+  */
+  exactSize: boolean;
+}
+
+/**
+Picks the file to stream for a requested video quality. Only a document-backed
+video with Telegram alternative qualities is eligible; every other request
+serves the primary file, so an inapplicable `quality` (e.g. on a photo or a
+download of a non-video) never breaks.
+*/
+function resolveQuality(file: DownloadableMedia, media: MessageMedia, quality: number | 'max' | undefined): QualityTarget {
+  if (quality === undefined) return targetOf(file);
+  if (file.type !== 'video' || media?.type !== 'document') return targetOf(file);
+  const rawMedia = file.media;
+  const alts = (rawMedia?.altDocuments ?? []).filter((document): document is tl.RawDocument => document._ === 'document');
+  if (alts.length === 0) return targetOf(file);
+  const variants: tl.RawDocument[] = [file.raw, ...alts];
+  const chosen = quality === 'max' ? maxVariant(variants) : variantByIndex(variants, quality);
+  if (chosen === file.raw) return targetOf(file);
+  // A generic document location streams the chosen TL document the same way as
+  // the primary; it carries the file reference and size mtcute needs.
+  return { location: new MtDocument(chosen), mime: chosen.mimeType || 'video/mp4', exactSize: true };
+}
+
+function targetOf(file: DownloadableMedia): QualityTarget {
+  const photo = file.type === 'photo';
+  return { location: file, mime: photo ? 'image/jpeg' : file.mimeType, exactSize: !photo };
+}
+
+function variantByIndex(variants: readonly tl.RawDocument[], index: number): tl.RawDocument {
+  if (!Number.isSafeInteger(index) || index < 0 || index >= variants.length) {
+    throw new EngineError('quality is out of range', 400);
+  }
+  return variants[index];
+}
+
+function maxVariant(variants: readonly tl.RawDocument[]): tl.RawDocument {
+  let best = variants[0];
+  let bestPixels = videoPixels(best);
+  let bestSize = typeof best.size === 'number' ? best.size : 0;
+  for (const variant of variants.slice(1)) {
+    const pixels = videoPixels(variant);
+    const size = typeof variant.size === 'number' ? variant.size : 0;
+    if (pixels <= bestPixels && (pixels !== bestPixels || size <= bestSize)) continue;
+    best = variant;
+    bestPixels = pixels;
+    bestSize = size;
+  }
+  return best;
+}
+
+function videoPixels(document: tl.RawDocument): number {
+  const video = document.attributes.find(
+    (attribute): attribute is tl.RawDocumentAttributeVideo => attribute._ === 'documentAttributeVideo',
+  );
+  if (video) return video.w * video.h;
+  const image = document.attributes.find(
+    (attribute): attribute is tl.RawDocumentAttributeImageSize => attribute._ === 'documentAttributeImageSize',
+  );
+  return image ? image.w * image.h : 0;
 }
 
 function pickThumbnail(thumbnails: ReadonlyArray<Thumbnail>): Thumbnail | null {

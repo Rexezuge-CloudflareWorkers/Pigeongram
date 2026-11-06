@@ -98,6 +98,32 @@
   cursor: default;
 }
 
+.media-viewer-quality {
+  display: inline-flex;
+  align-items: center;
+}
+
+.media-viewer-quality-select {
+  display: block;
+  appearance: auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.media-viewer-quality-select option {
+  color: #111;
+  background: #fff;
+}
+
 .media-viewer-stage {
   position: relative;
   min-height: 0;

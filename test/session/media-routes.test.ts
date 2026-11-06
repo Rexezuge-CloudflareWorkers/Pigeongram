@@ -87,6 +87,23 @@ describe('fileResponse', () => {
     }
   });
 
+  it('forwards a numeric stream quality and max for downloads', async () => {
+    const { driver, streamMessageMedia } = stubDriver(download());
+    const quality = target('/user/file?chatId=1&messageId=2&quality=1');
+    await fileResponse(driver, quality.request, quality.url);
+    expect(streamMessageMedia).toHaveBeenCalledWith(1, 2, { quality: 1 });
+
+    const max = target('/user/file?chatId=1&messageId=2&quality=max');
+    await fileResponse(driver, max.request, max.url);
+    expect(streamMessageMedia).toHaveBeenLastCalledWith(1, 2, { quality: 'max' });
+  });
+
+  it('rejects an invalid quality value', async () => {
+    const { driver } = stubDriver(download());
+    const { request, url } = target('/user/file?chatId=1&messageId=2&quality=nope');
+    await expect(fileResponse(driver, request, url)).rejects.toMatchObject({ status: 400 });
+  });
+
   it('answers a poster request from the thumbnail', async () => {
     const { driver, streamMessageMedia } = stubDriver(download({ mime: 'image/jpeg', length: null }));
     const { request, url } = target('/user/file?chatId=1&messageId=2&thumb=1');

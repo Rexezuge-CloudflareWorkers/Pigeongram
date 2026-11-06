@@ -676,6 +676,15 @@ describe('SessionEngine (route table over the seams)', () => {
     expect(driver.streamMessageMedia).toHaveBeenCalledWith(2, 3, { range: { start: 0, end: 3 } });
   });
 
+  it('forwards a stream quality for the file route', async () => {
+    const { engine, driver } = createSeamedHarness();
+
+    const response = await engine.fetch(request('GET', '/user/file?chatId=2&messageId=3&quality=max'));
+
+    expect(response.status).toBe(200);
+    expect(driver.streamMessageMedia).toHaveBeenCalledWith(2, 3, { quality: 'max' });
+  });
+
   it('serves an avatar and then answers the repeat from the cache', async () => {
     const { engine, driver } = createSeamedHarness();
 

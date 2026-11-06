@@ -43,11 +43,12 @@ export function isDownloadable(message: MessageDto): boolean {
 /**
  * Starts the download through a temporary same-origin anchor, inside the
  * caller's user gesture. The `/user/file` request carries the Access session
- * cookie like every other bridge request, so no worker change is needed.
+ * cookie like every other bridge request, so no worker change is needed. A
+ * download always asks for the maximum-quality variant.
  */
 export function downloadMedia(message: MessageDto): void {
   const anchor = document.createElement('a');
-  anchor.href = fileUrl(message.chatId, message.id);
+  anchor.href = fileUrl(message.chatId, message.id, { quality: 'max' });
   anchor.download = downloadFileName(message);
   anchor.rel = 'noreferrer';
   // eslint-disable-next-line unicorn/prefer-dom-node-append -- the Workers `Element.append` overload the test project's types merge in accepts no nodes, so `appendChild` is the form both projects type-check.

@@ -65,7 +65,7 @@ describe('document links', () => {
     const { container } = render(<MessageMedia message={message(media)} media={media} onOpen={() => {}} />);
 
     const link = container.querySelector('a.document');
-    expect(link?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10');
+    expect(link?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10&quality=max');
     expect(link?.getAttribute('download')).toBe('notes.pdf');
     const icon = link?.querySelector('svg[data-icon="download"]');
     expect(icon).not.toBeNull();

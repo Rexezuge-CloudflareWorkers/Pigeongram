@@ -1,9 +1,11 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { readClipboard } from '../clipboard';
-import type { BotCommandDto, MessageDto } from '../types';
+import type { ActiveReplyKeyboard } from '../reply-keyboard';
+import type { BotCommandDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Icon } from './Icon';
 import { ComposerReply } from './ReplyQuote';
+import { ReplyKeyboard } from './ReplyKeyboard';
 import { UploadDialog } from './UploadDialog';
 
 /**
@@ -26,12 +28,23 @@ interface ComposerProps {
   The slash-command menu for the open chat; empty hides it.
   */
   botCommands?: readonly BotCommandDto[];
+  replyKeyboard?: ActiveReplyKeyboard | null;
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  onPressReplyKeyboard?: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }
 
-export function Composer({ placeholder, replyTarget, botCommands, onCancelReply, onSend, onAttach }: ComposerProps) {
+export function Composer({
+  placeholder,
+  replyTarget,
+  botCommands,
+  replyKeyboard,
+  onCancelReply,
+  onSend,
+  onAttach,
+  onPressReplyKeyboard,
+}: ComposerProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,6 +55,7 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeCommand, setActiveCommand] = useState(0);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [replyKeyboardCollapsed, setReplyKeyboardCollapsed] = useState(true);
   const listId = useId();
   const commands = botCommands ?? NO_COMMANDS;
 
@@ -177,6 +191,9 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
 
   return (
     <>
+      {replyKeyboard && !replyKeyboardCollapsed && onPressReplyKeyboard ? (
+        <ReplyKeyboard keyboard={replyKeyboard} onPress={(button) => onPressReplyKeyboard(button, replyTarget?.id)} />
+      ) : null}
       <form
         ref={formRef}
         className="composer"
@@ -219,7 +236,7 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             aria-controls={showMenu ? listId : undefined}
             onClick={toggleMenu}
           >
-            <Icon name={showMenu ? 'expand-more' : 'keyboard-arrow-up'} size={18} />
+            <Icon name="slash" size={18} />
           </button>
         ) : null}
         <button type="button" className="attach" aria-label="Attach Files" title="Attach Files" onClick={() => fileRef.current?.click()}>
@@ -304,6 +321,18 @@ export function Composer({ placeholder, replyTarget, botCommands, onCancelReply,
             submit();
           }}
         />
+        {replyKeyboard ? (
+          <button
+            type="button"
+            className="slash"
+            aria-label={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
+            title={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
+            aria-expanded={!replyKeyboardCollapsed}
+            onClick={() => setReplyKeyboardCollapsed((collapsed) => !collapsed)}
+          >
+            <Icon name={replyKeyboardCollapsed ? 'keyboard-arrow-up' : 'expand-more'} size={18} />
+          </button>
+        ) : null}
         <button
           type="submit"
           aria-label="Send"

@@ -4516,6 +4516,26 @@ describe('App', () => {
       expect(calls.some((call) => (call.body?.params as { archived?: boolean } | undefined)?.archived === true)).toBe(true);
     });
 
+    it('keeps the open chat when the archive opens from the menu', async () => {
+      const calls = installSignedInFetch({ archivedDialogs: [archivedDialog] });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await within(threadSection()).findByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/2');
+
+      await openArchive();
+
+      // The archive is a sidebar view: the open thread and its route stay, and
+      // the archived chats appear beside them.
+      expect(await within(sidebar()).findByText('Dave')).toBeDefined();
+      expect(within(sidebar()).getByText('Archived Chats')).toBeDefined();
+      expect(within(sidebar()).queryByText('Bob')).toBeNull();
+      expect(within(threadSection()).getByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/2');
+      expect(calls.some((call) => (call.body?.params as { archived?: boolean } | undefined)?.archived === true)).toBe(true);
+    });
+
     it('says so when the archive is empty', async () => {
       installSignedInFetch();
 
@@ -4574,9 +4594,10 @@ describe('App', () => {
       installSignedInFetch({ archivedDialogs: [archivedDialog] });
 
       render(<App />);
-      await openArchive();
-      fireEvent.click(await screen.findByText('Dave'));
+      fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByText('oldest')).toBeDefined();
+      await openArchive();
+      expect(await within(sidebar()).findByText('Dave')).toBeDefined();
 
       fireEvent.click(screen.getByRole('button', { name: 'Back To Chats' }));
 
@@ -4585,7 +4606,7 @@ describe('App', () => {
       await waitFor(() => expect(within(sidebar()).queryByText('Archived Chats')).toBeNull());
       expect(within(sidebar()).getByText('Bob')).toBeDefined();
       expect(within(threadSection()).getByText('oldest')).toBeDefined();
-      expect(location.pathname).toBe('/chat/4');
+      expect(location.pathname).toBe('/chat/2');
     });
 
     it('opens an archived chat from a shared link', async () => {
@@ -4603,7 +4624,7 @@ describe('App', () => {
       expect(await within(sidebar()).findByText('Archived Chats')).toBeDefined();
     });
 
-    it('archives a chat and takes it out of the chat list', async () => {
+    it('archives the open chat and shows it in the archive sidebar', async () => {
       const calls = installSignedInFetch({
         rpc: (call) => {
           if (call.body?.method !== 'setArchived') return;
@@ -4618,7 +4639,12 @@ describe('App', () => {
 
       await moveChat('Bob', 'Archive Chat', 'Archive');
 
-      await waitFor(() => expect(within(sidebar()).queryByText('Bob')).toBeNull());
+      // The open chat moved to the archive, so the sidebar shows the archive
+      // with that chat while the thread stays open.
+      await waitFor(() => expect(within(sidebar()).getByText('Archived Chats')).toBeDefined());
+      expect(within(sidebar()).getByText('Bob')).toBeDefined();
+      expect(within(threadSection()).getByText('oldest')).toBeDefined();
+      expect(location.pathname).toBe('/chat/2');
       const move = calls.find((call) => call.body?.method === 'setArchived');
       expect(move?.body?.params).toEqual({ chatId: 2, archived: true });
       expect(await screen.findByText('Chat Archived')).toBeDefined();

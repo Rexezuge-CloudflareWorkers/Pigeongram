@@ -63,7 +63,7 @@ describe('media downloads', () => {
     expect(downloadFileName(message({ ...video, fileName: null }))).toBe('video-10.mkv');
   });
 
-  it('downloads the original bytes, never the thumbnail', () => {
+  it('downloads the original bytes at maximum quality, never the thumbnail', () => {
     const clicked: HTMLAnchorElement[] = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       clicked.push(this);
@@ -72,7 +72,7 @@ describe('media downloads', () => {
     downloadMedia(message(photo));
 
     expect(clicked).toHaveLength(1);
-    expect(clicked[0]?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10');
+    expect(clicked[0]?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10&quality=max');
     expect(clicked[0]?.getAttribute('href')).not.toContain('thumb=1');
     expect(clicked[0]?.getAttribute('download')).toBe('photo-10.jpg');
   });

@@ -6,14 +6,15 @@ import { Icon } from './Icon';
 
 /**
 The fallback for media the browser cannot preview: a named file with its size,
-downloaded through the same `/user/file` route the players use.
+downloaded through the same `/user/file` route the players use. A download always
+asks for the maximum-quality variant.
 */
 export function DocumentLink({ message }: { message: MessageDto }) {
   const media = message.media;
   return (
     <a
       className="document"
-      href={fileUrl(message.chatId, message.id)}
+      href={fileUrl(message.chatId, message.id, { quality: 'max' })}
       download={downloadFileName(message)}
       target="_blank"
       rel="noreferrer"

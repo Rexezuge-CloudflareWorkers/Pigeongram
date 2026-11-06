@@ -190,7 +190,7 @@ describe('media viewer photo zoom', () => {
     expect(button('Reset Zoom').disabled).toBe(true);
   });
 
-  it('leaves videos on their native controls', () => {
+  it('leaves videos on their native controls and downloads the maximum quality', () => {
     render(
       <MediaViewer
         messages={[
@@ -213,17 +213,17 @@ describe('media viewer photo zoom', () => {
     expect(document.querySelector('img.media-viewer-photo')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Zoom In' })).toBeNull();
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1&quality=max');
     expect(link.getAttribute('download')).toBe('clip.mp4');
   });
 });
 
 describe('media viewer downloads', () => {
-  it('offers the original photo under a name generated from its message id', () => {
+  it('offers the original photo at maximum quality under a generated name', () => {
     renderViewer([photo(7)]);
 
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7&quality=max');
     expect(link.getAttribute('href')).not.toContain('thumb=1');
     expect(link.getAttribute('download')).toBe('photo-7.jpg');
     expect(link.querySelector('svg[data-icon="download"]')).not.toBeNull();
@@ -234,7 +234,7 @@ describe('media viewer downloads', () => {
     fireEvent.click(button('Next Media'));
 
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2&quality=max');
     expect(link.getAttribute('download')).toBe('photo-2.jpg');
   });
 
@@ -244,6 +244,79 @@ describe('media viewer downloads', () => {
 
     const fallback = document.querySelector('.media-viewer-fallback');
     expect(fallback?.getAttribute('download')).toBe('photo-3.jpg');
+  });
+});
+
+describe('media viewer quality', () => {
+  function videoWithQualities(id: number): MessageDto {
+    return message(id, {
+      kind: 'video',
+      fileName: 'clip.mp4',
+      mime: 'video/mp4',
+      size: 4096,
+      width: 1280,
+      height: 720,
+      duration: 4,
+      qualities: [
+        { index: 0, width: 1280, height: 720, size: 4096, codec: 'avc1' },
+        { index: 1, width: 854, height: 480, size: 2048, codec: 'avc1' },
+      ],
+    });
+  }
+
+  it('streams the selected quality and still downloads the maximum quality', () => {
+    render(<MediaViewer messages={[videoWithQualities(1)]} initialMessageId={1} onClose={() => {}} />);
+
+    const player = document.querySelector<HTMLVideoElement>('video.media-viewer-media');
+    expect(player?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=1');
+
+    const select = screen.getByRole('combobox', { name: 'Video quality' });
+    fireEvent.change(select, { target: { value: '1' } });
+
+    expect(document.querySelector<HTMLVideoElement>('video.media-viewer-media')?.getAttribute('src')).toBe(
+      '/user/file?chatId=2&messageId=1&quality=1',
+    );
+    expect(screen.getByRole('link', { name: 'Download Original' }).getAttribute('href')).toBe(
+      '/user/file?chatId=2&messageId=1&quality=max',
+    );
+  });
+
+  it('does not show a selector when there is only one quality or for animations', () => {
+    render(
+      <MediaViewer
+        messages={[
+          message(1, {
+            kind: 'video',
+            fileName: 'clip.mp4',
+            mime: 'video/mp4',
+            size: 4096,
+            width: 1280,
+            height: 720,
+            duration: 4,
+            qualities: [{ index: 0, width: 1280, height: 720, size: 4096, codec: 'avc1' }],
+          }),
+          message(2, {
+            kind: 'animation',
+            fileName: null,
+            mime: 'video/mp4',
+            size: 1024,
+            width: 320,
+            height: 240,
+            duration: 2,
+            qualities: [
+              { index: 0, width: 320, height: 240, size: 1024, codec: 'avc1' },
+              { index: 1, width: 160, height: 120, size: 512, codec: 'avc1' },
+            ],
+          }),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole('combobox', { name: 'Video quality' })).toBeNull();
+    fireEvent.click(button('Next Media'));
+    expect(screen.queryByRole('combobox', { name: 'Video quality' })).toBeNull();
   });
 });
 

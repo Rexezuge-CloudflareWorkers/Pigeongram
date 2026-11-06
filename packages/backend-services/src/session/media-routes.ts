@@ -20,9 +20,11 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const messageId = requireMessageId(url.searchParams.get('messageId'));
   const range = parseRange(request.headers.get('range'));
+  const quality = parseQuality(url.searchParams.get('quality'));
   const download = await driver.streamMessageMedia(chatId, messageId, {
     ...(url.searchParams.get('thumb') === '1' && { thumb: true }),
     ...(range && { range }),
+    ...(quality !== null && { quality }),
   });
   return mediaResponse(download, FILE_CACHE_SECONDS);
 }
@@ -148,4 +150,25 @@ function requireMessageId(value: string | null): number {
     throw new EngineError('messageId query parameter is required', 400);
   }
   return messageId;
+}
+
+function parseQuality(value: string | null): number | 'max' | null {
+  let quality: number | 'max' | null = null;
+  if (value === 'max') {
+    quality = 'max';
+  } else if (value !== null) {
+    quality = parseQualityIndex(value);
+  }
+  return quality;
+}
+
+function parseQualityIndex(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new EngineError('quality must be max or a non-negative integer', 400);
+  }
+  const index = Number(value);
+  if (!Number.isSafeInteger(index) || index < 0) {
+    throw new EngineError('quality must be max or a non-negative integer', 400);
+  }
+  return index;
 }

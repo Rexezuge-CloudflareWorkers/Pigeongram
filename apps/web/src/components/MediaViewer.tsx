@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { fileUrl } from '../api';
 import { formatBytes, mediaPreview } from '../format';
 import { downloadFileName } from '../media-download';
-import type { MessageDto } from '../types';
+import type { MessageDto, VideoQualityDto } from '../types';
 import { useGallerySwipe } from '../useGallerySwipe';
 import { usePhotoZoom } from '../usePhotoZoom';
 import { Icon } from './Icon';
@@ -29,7 +29,9 @@ zoom buttons give the same control a keyboard and a discoverable surface.
 
 A swipe at the photo's 1x view (or on an animation) follows the finger and
 commits to the neighbour on release; a video keeps its native timeline
-gestures, and a zoomed photo keeps the drag for panning.
+gestures, and a zoomed photo keeps the drag for panning. A video with
+alternative qualities exposes a stream-quality selector; playback uses the
+chosen variant, while a download always fetches the maximum-quality variant.
 */
 
 interface MediaViewerProps {
@@ -52,12 +54,19 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   );
   const [index, setIndex] = useState(initialIndex);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [streamQuality, setStreamQuality] = useState<number | 'auto'>('auto');
   const closeRef = useRef<HTMLButtonElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const current = items[index];
   const media = current?.media ?? null;
-  const src = current ? fileUrl(current.chatId, current.id) : '';
-  const failed = failedSrc === src;
+  const animated = media?.kind === 'animation';
+  const qualities = !animated && media?.kind === 'video' ? (media.qualities ?? []) : [];
+  const showQuality = qualities.length >= 2;
+  const selectedQuality =
+    showQuality && streamQuality !== 'auto' && qualities.some((quality) => quality.index === streamQuality) ? streamQuality : 'auto';
+  const streamSrc = current ? fileUrl(current.chatId, current.id, selectedQuality === 'auto' ? {} : { quality: selectedQuality }) : '';
+  const downloadSrc = current ? fileUrl(current.chatId, current.id, { quality: 'max' }) : '';
+  const failed = failedSrc === streamSrc;
   const photo = media?.kind === 'photo' && !failed;
   const {
     attachImage,
@@ -150,7 +159,6 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   if (!current || !media) return null;
 
   const title = media.fileName ?? mediaPreview(media.kind);
-  const animated = media.kind === 'animation';
   const downloadName = downloadFileName(current);
 
   return createPortal(
@@ -175,13 +183,39 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
         <div className="media-viewer-tools">
           <a
             className="media-viewer-tool media-viewer-download"
-            href={src}
+            href={downloadSrc}
             download={downloadName}
             aria-label="Download Original"
             title="Download Original"
           >
             <Icon name="download" size={18} />
           </a>
+          {showQuality ? (
+            <label className="media-viewer-quality">
+              <span className="sr-only">Video quality</span>
+              <select
+                className="media-viewer-tool media-viewer-quality-select"
+                aria-label="Video quality"
+                value={selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  if (value === 'auto') {
+                    setStreamQuality('auto');
+                    return;
+                  }
+                  const index = Number(value);
+                  if (Number.isSafeInteger(index)) setStreamQuality(index);
+                }}
+              >
+                <option value="auto">Auto</option>
+                {qualities.map((quality) => (
+                  <option key={quality.index} value={String(quality.index)}>
+                    {qualityLabel(quality)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {photo ? (
             <div className="media-viewer-zoom" role="group" aria-label="Zoom">
               <button type="button" className="media-viewer-tool" aria-label="Zoom Out" disabled={!canZoomOut} onClick={zoomOut}>
@@ -228,7 +262,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
       >
         <div className={`media-viewer-track${swipe.settling ? ' is-settling' : ''} is-entering`} style={swipe.style}>
           {failed ? (
-            <a className="media-viewer-fallback" href={src} download={downloadName} target="_blank" rel="noreferrer">
+            <a className="media-viewer-fallback" href={downloadSrc} download={downloadName} target="_blank" rel="noreferrer">
               <span>{title}</span>
               {media.size === null ? null : <span className="media-viewer-fallback-size">{formatBytes(media.size)}</span>}
             </a>
@@ -238,19 +272,19 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
               ref={attachImage}
               className={`media-viewer-media media-viewer-photo${zoomed ? ' is-zoomed' : ''}${panning ? ' is-panning' : ''}`}
               style={photoStyle}
-              src={src}
+              src={streamSrc}
               alt={title}
               width={media.width ?? undefined}
               height={media.height ?? undefined}
               draggable={false}
               onLoad={onLoad}
-              onError={() => setFailedSrc(src)}
+              onError={() => setFailedSrc(streamSrc)}
             />
           ) : (
             <video
-              key={current.id}
+              key={`${current.id}:${selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}`}
               className="media-viewer-media"
-              src={src}
+              src={streamSrc}
               poster={fileUrl(current.chatId, current.id, { thumb: true })}
               width={media.width ?? undefined}
               height={media.height ?? undefined}
@@ -260,7 +294,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
               muted={animated}
               playsInline
               preload="metadata"
-              onError={() => setFailedSrc(src)}
+              onError={() => setFailedSrc(streamSrc)}
             />
           )}
         </div>
@@ -295,4 +329,11 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
     </div>,
     document.body,
   );
+}
+
+function qualityLabel(quality: VideoQualityDto): string {
+  if (quality.height) return `${quality.height}p`;
+  if (quality.width && quality.height) return `${quality.width}×${quality.height}`;
+  if (quality.width) return `${quality.width}w`;
+  return `Quality ${quality.index + 1}`;
 }

@@ -543,6 +543,27 @@ GIF-style silent video.
 */
 export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';
 
+/**
+One streamable variant of a video. `index` is the selector for `/user/file`
+(`quality=<index>`): `0` is the primary document, `1..n` are Telegram's
+alternative qualities in order. The engine resolves it server-side; the client
+never carries file references.
+*/
+export interface VideoQualityDto {
+  index: number;
+  width: number | null;
+  height: number | null;
+  /**
+  Byte size when known.
+  */
+  size: number | null;
+  /**
+  Codec hint (e.g. `avc1`, `vp9`/`av01` via the container), when Telegram
+  reports it.
+  */
+  codec: string | null;
+}
+
 export interface MessageMediaDto {
   kind: MessageMediaKind;
   /**
@@ -563,6 +584,12 @@ export interface MessageMediaDto {
   Duration in seconds for videos/audio/voice.
   */
   duration: number | null;
+  /**
+  Streamable video variants, primary first, when the video has alternatives.
+  Present only for non-animation videos with at least two variants; omitted
+  otherwise, so the UI shows no quality selector and playback behaves as before.
+  */
+  qualities?: VideoQualityDto[];
 }
 
 /**

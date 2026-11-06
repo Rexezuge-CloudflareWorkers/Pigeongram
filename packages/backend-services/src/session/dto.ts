@@ -3,6 +3,7 @@ import { serviceText } from './service-text';
 import { toMessageMarkupDto, toMessageReplyKeyboardDto } from './markup';
 import { presenceOfPeer } from './presence';
 import { toMessageWebPageDto } from './web-page';
+import { videoQualities } from './dto-video';
 import type {
   ChatDto,
   DialogDto,
@@ -225,7 +226,7 @@ export function toMessageDto(message: Message): MessageDto {
     id: message.id,
     chatId: message.chat.id,
     groupedId: message.groupedId?.toString() ?? null,
-    senderId: typeof sender?.id === 'number' ? sender.id : null,
+    senderId: sender === null ? 0 : sender.id,
     senderName,
     senderPhoto: sender === null ? null : photoVersion(sender),
     outgoing: message.isOutgoing,
@@ -234,7 +235,7 @@ export function toMessageDto(message: Message): MessageDto {
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
-    media: toMessageMediaDto(media),
+    media: toMessageMediaDto(media, { qualities: true }),
     webPage: toMessageWebPageDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     markup: toMessageMarkupDto(message),
@@ -246,7 +247,7 @@ export function toMessageDto(message: Message): MessageDto {
   };
 }
 
-function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
+function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean } = {}): MessageMediaDto | null {
   if (!media) return null;
   switch (media.type) {
     case 'photo': {
@@ -261,7 +262,7 @@ function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
       };
     }
     case 'video': {
-      return {
+      const dto: MessageMediaDto = {
         kind: media.isAnimation ? 'animation' : 'video',
         fileName: media.fileName,
         mime: media.mimeType,
@@ -270,6 +271,11 @@ function toMessageMediaDto(media: MessageMedia): MessageMediaDto | null {
         height: media.height,
         duration: media.duration,
       };
+      if (options.qualities && !media.isAnimation) {
+        const qualities = videoQualities(media);
+        if (qualities.length >= 2) dto.qualities = qualities;
+      }
+      return dto;
     }
     case 'audio':
     case 'voice': {

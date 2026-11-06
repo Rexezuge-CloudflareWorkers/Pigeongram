@@ -157,6 +157,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
         hasMoreOlder: true,
         windowEndId: null,
         latestMessageId: dialog.lastMessage?.id ?? null,
+        newMessageIds: new Set(),
       });
       setLoading(true);
       try {

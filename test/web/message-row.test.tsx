@@ -59,6 +59,18 @@ function renderRow(group: MessageDto[], overrides: Partial<Parameters<typeof Mes
   return render(<MessageRow group={group} chat={chat} original={null} onOpenMedia={vi.fn()} {...overrides} />);
 }
 
+describe('MessageRow newness', () => {
+  it('renders without the entrance animation unless the message is marked new', () => {
+    const { container } = renderRow([message()]);
+    expect(container.querySelector('[data-message-id="10"]')?.getAttribute('data-new')).toBe('false');
+  });
+
+  it('animates only when the message arrived after the window landed', () => {
+    const { container } = renderRow([message()], { isNew: true });
+    expect(container.querySelector('[data-message-id="10"]')?.getAttribute('data-new')).toBe('true');
+  });
+});
+
 describe('MessageRow bare media rendering', () => {
   it('renders a plain single photo without bubble chrome and keeps hover meta in the DOM', () => {
     const { container } = renderRow([message()]);

@@ -51,6 +51,7 @@ function thread(overrides: Partial<ChatThread> = {}): ChatThread {
     hasMoreOlder: true,
     windowEndId: 3,
     latestMessageId: 3,
+    newMessageIds: new Set(),
     ...overrides,
   };
 }
@@ -74,6 +75,7 @@ describe('live thread updates', () => {
     expect(next?.messages).toEqual(current.messages);
     expect(next?.windowEndId).toBe(3);
     expect(next?.latestMessageId).toBe(11);
+    expect(next?.newMessageIds.size).toBe(0);
   });
 
   it('folds a new message in once the range has reached the newest one', () => {
@@ -83,6 +85,7 @@ describe('live thread updates', () => {
     expect(next?.messages.map((entry) => entry.id)).toEqual([1, 2, 3, 11]);
     expect(next?.windowEndId).toBe(11);
     expect(next?.latestMessageId).toBe(11);
+    expect(next?.newMessageIds.has(11)).toBe(true);
   });
 
   it('folds a message that belongs inside the loaded window even while behind', () => {
@@ -91,6 +94,9 @@ describe('live thread updates', () => {
 
     expect(next?.messages.find((entry) => entry.id === 2)?.text).toBe('late copy');
     expect(next?.windowEndId).toBe(10);
+    // An inside-window fold replaces an already-loaded row; it must not
+    // re-animate an existing bubble.
+    expect(next?.newMessageIds.size).toBe(0);
   });
 
   it('always shows a sent message, but leaves the contiguous end behind the gap', () => {
@@ -100,6 +106,7 @@ describe('live thread updates', () => {
     expect(next?.messages.map((entry) => entry.id)).toEqual([1, 2, 3, 11]);
     expect(next?.windowEndId).toBe(3);
     expect(next?.latestMessageId).toBe(11);
+    expect(next?.newMessageIds.has(11)).toBe(true);
   });
 
   it('advances the contiguous end with a send made at the newest message', () => {
@@ -108,6 +115,20 @@ describe('live thread updates', () => {
 
     expect(next?.windowEndId).toBe(11);
     expect(next?.messages.map((entry) => entry.id)).toEqual([1, 2, 3, 11]);
+    expect(next?.newMessageIds.has(11)).toBe(true);
+  });
+
+  it('does not re-animate a message the thread already held', () => {
+    const current = thread({ windowEndId: 10, latestMessageId: 10 });
+    const next = applyThreadSentMessages(current, 1, [message(3, 'again', { outgoing: true })]);
+
+    expect(next?.newMessageIds.size).toBe(0);
+  });
+
+  it('marks neither held-back live messages nor edits as new', () => {
+    const behind = thread({ windowEndId: 3, latestMessageId: 10 });
+    expect(applyThreadNewMessage(behind, message(11))?.newMessageIds.size).toBe(0);
+    expect(applyThreadEdit(behind, message(2, 'edited'))?.newMessageIds.size).toBe(0);
   });
 
   it('ignores an edit beyond the loaded window instead of creating a gap', () => {

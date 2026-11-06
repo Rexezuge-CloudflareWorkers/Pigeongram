@@ -7,6 +7,12 @@ import { CommentsView } from './CommentsView';
 import { ThreadView } from './ThreadView';
 
 /**
+ * The `newMessageIds` of no thread: the state between chats carries no
+ * arrival bookkeeping, so nothing animates there.
+ */
+const NO_NEW_MESSAGE_IDS: ReadonlySet<number> = new Set();
+
+/**
  * The conversation pane: the comments screen when it is open, the chat thread
  * otherwise. Split out of `App.tsx` so the app shell stays readable (and under
  * the god-file cap) while the two views keep their own props.
@@ -138,6 +144,7 @@ export function ThreadPane({
       loadingOlder={threads.loadingOlder}
       loadingNewer={threads.loadingNewer}
       hasMoreOlder={threads.thread?.hasMoreOlder ?? false}
+      newMessageIds={threads.thread?.newMessageIds ?? NO_NEW_MESSAGE_IDS}
       pending={threads.pending}
       error={threads.error}
       botCommands={threads.botCommands}

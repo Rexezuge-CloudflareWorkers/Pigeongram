@@ -89,6 +89,8 @@ export function cachedOpen(cached: ChatThread | null, dialog: DialogDto): ChatTh
     // id keeps a live message that arrives before the refresh from being
     // appended across the gap the refresh is about to fill.
     latestMessageId: Math.max(cached.latestMessageId ?? 0, newest),
+    // A painted window is a fresh open: none of its rows animate.
+    newMessageIds: new Set(),
   };
 }
 

@@ -315,6 +315,7 @@ describe('thread state', () => {
       hasMoreOlder: true,
       windowEndId: 1,
       latestMessageId: 1,
+      newMessageIds: new Set<number>(),
     };
     const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
     expect(foreign).toBe(thread);
@@ -338,6 +339,7 @@ describe('thread state', () => {
       hasMoreOlder: true,
       windowEndId: 1,
       latestMessageId: 1,
+      newMessageIds: new Set<number>(),
     };
     expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
     expect(updateThread(null, 1, (messages) => messages)).toBeNull();
@@ -429,6 +431,7 @@ describe('poll state', () => {
       hasMoreOlder: true,
       windowEndId: 5,
       latestMessageId: 5,
+      newMessageIds: new Set<number>(),
     };
     const fresh = { ...POLL, totalVoters: 9 };
     const named = updateThreadPoll(thread, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);
@@ -452,6 +455,7 @@ describe('poll state', () => {
       comments: [comment],
       count: 1,
       nextOffset: null,
+      newMessageIds: new Set<number>(),
     };
     const fresh = { ...POLL, totalVoters: 9 };
 
@@ -586,6 +590,7 @@ describe('comment state', () => {
       comments: [comment(501, 500), comment(502, 501)],
       count: 2,
       nextOffset: null,
+      newMessageIds: new Set(),
       ...overrides,
     };
   }
@@ -665,6 +670,7 @@ describe('read and key helpers', () => {
       hasMoreOlder: false,
       windowEndId: null,
       latestMessageId: null,
+      newMessageIds: new Set(),
     };
   }
 

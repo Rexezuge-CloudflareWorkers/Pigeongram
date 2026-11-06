@@ -1427,6 +1427,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Show Bot Keyboard' }));
       const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
       expect(within(keyboard).getByRole('button', { name: 'Menu' })).toBeDefined();
       expect(within(keyboard).getByRole('link', { name: 'Open app' }).getAttribute('href')).toBe('https://example.com/app');
@@ -1445,6 +1446,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Show Bot Keyboard' }));
       const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
       fireEvent.click(within(keyboard).getByRole('button', { name: 'Menu' }));
 
@@ -1458,6 +1460,7 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(await screen.findByText('Bob'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Show Bot Keyboard' }));
       expect(await screen.findByRole('group', { name: 'Bot keyboard' })).toBeDefined();
 
       deliver({
@@ -3930,6 +3933,7 @@ describe('App', () => {
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
       openComments();
 
+      fireEvent.click(await screen.findByRole('button', { name: 'Show Bot Keyboard' }));
       const keyboard = await screen.findByRole('group', { name: 'Bot keyboard' });
       expect(screen.getByPlaceholderText('Choose')).toBeDefined();
 

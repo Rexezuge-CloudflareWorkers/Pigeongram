@@ -14,7 +14,6 @@ import { Composer } from './Composer';
 import { Icon } from './Icon';
 import { MessageRow } from './MessageRow';
 import { PendingMessageRow } from './PendingMessageRow';
-import { ReplyKeyboard } from './ReplyKeyboard';
 import { Spinner } from './Spinner';
 
 interface CommentsViewProps {
@@ -264,14 +263,15 @@ export function CommentsView({
         ))}
       </div>
       {error ? <p className="error pad">{error}</p> : null}
-      {replyKeyboard ? <ReplyKeyboard keyboard={replyKeyboard} onPress={(button) => pressReplyKeyboard(button, replyTarget?.id)} /> : null}
       <Composer
         placeholder={replyKeyboard?.keyboard.placeholder ?? 'Comment'}
         replyTarget={replyTarget}
         botCommands={thread.botCommands}
+        replyKeyboard={replyKeyboard}
         onCancelReply={() => setReplyingTo(null)}
         onSend={send}
         onAttach={attach}
+        onPressReplyKeyboard={pressReplyKeyboard}
       />
     </section>
   );

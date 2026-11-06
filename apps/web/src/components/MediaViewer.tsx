@@ -333,7 +333,6 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
 
 function qualityLabel(quality: VideoQualityDto): string {
   if (quality.height) return `${quality.height}p`;
-  if (quality.width && quality.height) return `${quality.width}×${quality.height}`;
   if (quality.width) return `${quality.width}w`;
   return `Quality ${quality.index + 1}`;
 }

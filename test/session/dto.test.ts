@@ -816,6 +816,58 @@ describe('toMessageDto', () => {
     });
   });
 
+  it('maps a video alternative qualities into the media DTO', () => {
+    const altDocument = (id: number, w: number, h: number, size: number) => ({
+      _: 'document',
+      id: Long.fromNumber(id),
+      accessHash: Long.fromNumber(id * 11),
+      fileReference: new Uint8Array([id]),
+      date: 1_700_000_000,
+      mimeType: 'video/mp4',
+      size,
+      dcId: 2,
+      attributes: [{ _: 'documentAttributeVideo', w, h, duration: 12, supportsStreaming: true, videoCodec: 'avc1' }],
+    });
+    const video = message({
+      media: {
+        _: 'messageMediaDocument',
+        document: {
+          _: 'document',
+          id: Long.fromNumber(9),
+          accessHash: Long.fromNumber(99),
+          fileReference: new Uint8Array([3]),
+          date: 1_700_000_000,
+          mimeType: 'video/mp4',
+          size: 4096,
+          dcId: 2,
+          attributes: [
+            { _: 'documentAttributeVideo', w: 1280, h: 720, duration: 12, supportsStreaming: true, videoCodec: 'avc1' },
+            { _: 'documentAttributeFilename', fileName: 'clip.mp4' },
+          ],
+        },
+        altDocuments: [
+          { _: 'documentEmpty', id: Long.fromNumber(0), date: 0 },
+          altDocument(10, 854, 480, 2048),
+          altDocument(11, 640, 360, 1024),
+        ],
+      },
+    });
+    expect(toMessageDto(video).media).toEqual({
+      kind: 'video',
+      fileName: 'clip.mp4',
+      mime: 'video/mp4',
+      size: 4096,
+      width: 1280,
+      height: 720,
+      duration: 12,
+      qualities: [
+        { index: 0, width: 1280, height: 720, size: 4096, codec: 'avc1' },
+        { index: 1, width: 854, height: 480, size: 2048, codec: 'avc1' },
+        { index: 2, width: 640, height: 360, size: 1024, codec: 'avc1' },
+      ],
+    });
+  });
+
   it('maps a sticker document into the media DTO with its size', () => {
     const sticker = message({
       media: {

@@ -1,10 +1,13 @@
 import type { tl } from '@mtcute/core';
 import type { VideoQualityDto } from '@pigeongram/shared';
+import { variantDocuments } from './video-variants';
 
 /**
  * Streamable variants of a video: the primary document (index 0) followed by
- * Telegram's alternative qualities, when the message carries them. A variant whose
- * attributes cannot be read is skipped rather than taking the message down.
+ * Telegram's alternative qualities, when the message carries them. A variant
+ * whose attributes cannot be read is skipped rather than taking the message
+ * down. The vector is `variantDocuments`' so the index here is the one the
+ * streaming engine resolves.
  */
 export function videoQualities(media: {
   raw: tl.RawDocument;
@@ -12,14 +15,11 @@ export function videoQualities(media: {
   height: number;
   media?: tl.RawMessageMediaDocument;
 }): VideoQualityDto[] {
-  const alt = media.media?.altDocuments ?? [];
-  if (alt.length === 0) return [];
-  const variants: VideoQualityDto[] = [{ index: 0, ...qualityOf(media.raw, media.width, media.height) }];
-  for (const [index, document] of alt.entries()) {
-    if (document._ !== 'document') continue;
-    variants.push({ index: index + 1, ...qualityOf(document) });
-  }
-  return variants;
+  if (!media.media?.altDocuments?.length) return [];
+  return variantDocuments(media).map((document, index) => ({
+    index,
+    ...qualityOf(document, index === 0 ? media.width : undefined, index === 0 ? media.height : undefined),
+  }));
 }
 
 function qualityOf(document: tl.RawDocument, fallbackWidth?: number, fallbackHeight?: number): Omit<VideoQualityDto, 'index'> {

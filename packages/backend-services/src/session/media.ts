@@ -3,7 +3,9 @@ import { Document as MtDocument } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
+import { log } from './log';
 import { windowedStream } from './media-stream';
+import { variantDocuments } from './video-variants';
 import { webPagePhoto } from './web-page';
 
 /**
@@ -83,7 +85,7 @@ export async function streamMessageMedia(
     return fullDownload(client, thumb, 'image/jpeg', false);
   }
 
-  const target = resolveQuality(file, message.media, options.quality);
+  const target = resolveQuality(file, options.quality);
   // Photos are served whole: their `fileSize` is derived from Telegram's size
   // list, which is good enough for bounds but not for a `content-range`
   // promise. Videos and documents carry exact sizes and support seeking.
@@ -257,18 +259,24 @@ interface QualityTarget {
 }
 
 /**
-Picks the file to stream for a requested video quality. Only a document-backed
-video with Telegram alternative qualities is eligible; every other request
-serves the primary file, so an inapplicable `quality` (e.g. on a photo or a
-download of a non-video) never breaks.
+Picks the file to stream for a requested video quality. `file.media` carries
+the raw `messageMediaDocument` for a document-backed video, which is the only
+shape that can have alternative qualities. Every other request serves the
+primary file, so an inapplicable `quality` (e.g. on a photo or a download of a
+non-video) never breaks. When a quality *is* requested for a video but no
+variant resolves, the fallback is logged: a silently ignored selection looks
+like a broken resolution switch.
 */
-function resolveQuality(file: DownloadableMedia, media: MessageMedia, quality: number | 'max' | undefined): QualityTarget {
+function resolveQuality(file: DownloadableMedia, quality: number | 'max' | undefined): QualityTarget {
   if (quality === undefined) return targetOf(file);
-  if (file.type !== 'video' || media?.type !== 'document') return targetOf(file);
-  const rawMedia = file.media;
-  const alts = (rawMedia?.altDocuments ?? []).filter((document): document is tl.RawDocument => document._ === 'document');
-  if (alts.length === 0) return targetOf(file);
-  const variants: tl.RawDocument[] = [file.raw, ...alts];
+  if (file.type !== 'video') return targetOf(file);
+  const rawMedia = (file as { media?: tl.RawMessageMediaDocument }).media;
+  if (rawMedia?._ !== 'messageMediaDocument') return targetOf(file);
+  const variants = variantDocuments(file);
+  if (variants.length === 1) {
+    log.warn('media.quality_ignored', { quality, reason: 'no_alternative_qualities' });
+    return targetOf(file);
+  }
   const chosen = quality === 'max' ? maxVariant(variants) : variantByIndex(variants, quality);
   if (chosen === file.raw) return targetOf(file);
   // A generic document location streams the chosen TL document the same way as

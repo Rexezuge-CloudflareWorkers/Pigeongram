@@ -167,7 +167,7 @@ describe('streamMessageMedia', () => {
     // for bounds, not for a `content-range`.
     const download = await streamMessageMedia(client, 1, 2, { range: { start: 5, end: 9 } });
 
-    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: null, status: 200, contentRange: null });
+    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: SIZE, status: 200, contentRange: null });
     await expect(body(download)).resolves.toEqual(bytesAt(0, SIZE));
   });
 
@@ -175,7 +175,7 @@ describe('streamMessageMedia', () => {
     const { client, requests } = fakeClient(VIDEO);
     const download = await streamMessageMedia(client, 1, 2, { thumb: true });
 
-    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: null, status: 200 });
+    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: 50, status: 200 });
     // The thumbnail location, not the video's.
     expect(requests[0]?.fileSize).toBe(50);
   });
@@ -186,7 +186,7 @@ describe('streamMessageMedia', () => {
 
     // A preview photo is a photo: served whole, as JPEG, with no
     // content-length promise derived from Telegram's size list.
-    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: null, status: 200, contentRange: null });
+    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: SIZE, status: 200, contentRange: null });
     await expect(body(download)).resolves.toEqual(bytesAt(0, SIZE));
   });
 

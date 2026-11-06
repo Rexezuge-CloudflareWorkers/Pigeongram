@@ -35,7 +35,16 @@ interface ComposerProps {
   onPressReplyKeyboard?: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }
 
-export function Composer({ placeholder, replyTarget, botCommands, replyKeyboard, onCancelReply, onSend, onAttach, onPressReplyKeyboard }: ComposerProps) {
+export function Composer({
+  placeholder,
+  replyTarget,
+  botCommands,
+  replyKeyboard,
+  onCancelReply,
+  onSend,
+  onAttach,
+  onPressReplyKeyboard,
+}: ComposerProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

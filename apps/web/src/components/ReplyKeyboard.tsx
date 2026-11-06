@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import { launchTelegramApp, miniAppDeepLink } from '../links';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { MessageReplyKeyboardButtonDto } from '../types';
-import { Icon } from './Icon';
 
 /**
 The chat's reply keyboard: the custom keyboard a bot shows above the composer.
@@ -13,9 +11,6 @@ app (a browser tab cannot inject the signed `initData` a Mini App needs), and
 anything else opens as a normal link. The remaining kinds — a contact, a
 location, a poll or a peer request — need Telegram's own UI and are shown
 disabled instead of silently dropped.
-
-The reader can collapse the keyboard with the hide control or with Escape; it
-reappears when a newer message carries a fresh keyboard.
 */
 
 interface ReplyKeyboardProps {
@@ -24,37 +19,8 @@ interface ReplyKeyboardProps {
 }
 
 export function ReplyKeyboard({ keyboard, onPress }: ReplyKeyboardProps) {
-  // Track which keyboard (by message id) the reader collapsed, so a newly
-  // delivered keyboard reappears automatically, matching Telegram.
-  const [hiddenFor, setHiddenFor] = useState<number | null>(null);
-  const hidden = hiddenFor === keyboard.messageId;
-
-  useEffect(() => {
-    if (hidden) return;
-    const onEscape = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setHiddenFor(keyboard.messageId);
-    };
-    document.addEventListener('keydown', onEscape, { capture: true });
-    return () => document.removeEventListener('keydown', onEscape, { capture: true });
-  }, [hidden, keyboard.messageId]);
-
-  if (hidden) return null;
-
   return (
     <div className="reply-keyboard flex flex-col gap-1.5 border-t border-line bg-panel px-3 py-2" role="group" aria-label="Bot keyboard">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className="reply-keyboard-hide inline-flex items-center justify-center rounded-full p-1 text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          aria-label="Hide Keyboard"
-          title="Hide Keyboard"
-          onClick={() => setHiddenFor(keyboard.messageId)}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </div>
       {keyboard.keyboard.rows.map((row, rowIndex) => (
         <div className="flex gap-1.5" key={rowIndex}>
           {row.map((button, buttonIndex) => (

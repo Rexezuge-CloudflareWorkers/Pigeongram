@@ -2,7 +2,6 @@ import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { BotCommandDto, ChatDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Composer } from './Composer';
-import { ReplyKeyboard } from './ReplyKeyboard';
 
 /**
  * The bottom of the thread: the composer, the Join action for a preview, or
@@ -68,9 +67,6 @@ export function ThreadFooter({
   }
   return (
     <>
-      {replyKeyboard ? (
-        <ReplyKeyboard keyboard={replyKeyboard} onPress={(button) => onPressReplyKeyboard(button, replyTarget?.id)} />
-      ) : null}
       {/*
       A per-chat instance keeps a draft and an open command menu from leaking
       into the next thread.
@@ -80,9 +76,11 @@ export function ThreadFooter({
         placeholder={replyKeyboard?.keyboard.placeholder ?? 'Message'}
         replyTarget={replyTarget}
         botCommands={botCommands}
+        replyKeyboard={replyKeyboard}
         onCancelReply={onCancelReply}
         onSend={onSend}
         onAttach={onAttach}
+        onPressReplyKeyboard={onPressReplyKeyboard}
       />
     </>
   );

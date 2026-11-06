@@ -160,12 +160,20 @@ async function collect(chunks: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
  * window runs to the end of the file.
  */
 function fullDownload(client: TelegramClient, location: FileLocation, mime: string, exactSize: boolean): MediaDownload {
-  const size = exactSize ? (location.fileSize ?? null) : null;
+  // `size` is the trustworthy total behind `accept-ranges`/`content-range`
+  // (seeking); it stays gated on `exactSize`, since a derived photo size is
+  // not a promise a browser can seek against. `length` is this response's body
+  // in bytes, and a full download always serves exactly `fileSize` of them, so
+  // it is promised whenever Telegram gave us a size — including photos, whose
+  // download otherwise shows as "streaming" with no total. The stream is cut
+  // to the same count so the two cannot disagree.
+  const fileSize = location.fileSize ?? null;
+  const size = exactSize ? fileSize : null;
   return {
-    stream: windowedStream(client, location, { offset: 0, drop: 0, length: size }),
+    stream: windowedStream(client, location, { offset: 0, drop: 0, length: fileSize }),
     mime,
     size,
-    length: size,
+    length: fileSize,
     status: 200,
     contentRange: null,
   };

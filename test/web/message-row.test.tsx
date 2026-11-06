@@ -62,12 +62,12 @@ function renderRow(group: MessageDto[], overrides: Partial<Parameters<typeof Mes
 describe('MessageRow newness', () => {
   it('renders without the entrance animation unless the message is marked new', () => {
     const { container } = renderRow([message()]);
-    expect(container.querySelector('[data-message-id="10"]')?.dataset.new).toBe('false');
+    expect((container.querySelector('[data-message-id="10"]') as HTMLElement | null)?.dataset.new).toBe('false');
   });
 
   it('animates only when the message arrived after the window landed', () => {
     const { container } = renderRow([message()], { isNew: true });
-    expect(container.querySelector('[data-message-id="10"]')?.dataset.new).toBe('true');
+    expect((container.querySelector('[data-message-id="10"]') as HTMLElement | null)?.dataset.new).toBe('true');
   });
 });
 

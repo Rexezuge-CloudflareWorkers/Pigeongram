@@ -236,10 +236,19 @@ export function useSignedInNavigation({
 
   /**
    * Opens the archive: the screen of the chats the account archived.
+   *
+   * A thread that is already open stays open: switching to the archive only
+   * changes the sidebar, the same way "Back To Chats" leaves an open archived
+   * chat in place. Without an open thread the archive is its own screen.
    */
   const openArchive = useCallback((): void => {
+    if (openChatId !== null) {
+      onArchiveContext(true);
+      void loadArchive();
+      return;
+    }
     router.navigateTo({ view: 'archived' });
-  }, [router]);
+  }, [loadArchive, onArchiveContext, openChatId, router]);
 
   const leaveArchive = useCallback(
     (): void => (router.route().view === 'archived' ? router.back() : onArchiveContext(false)),

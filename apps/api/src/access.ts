@@ -80,7 +80,7 @@ function rejection(error: string, code: 'access' | 'access_config', status: 401 
  */
 export async function requireAccess(request: Request, env: CloudflareEnv): Promise<Response | null> {
   if (env.ACCESS_DEV_BYPASS === 'true') {
-    if (env.ENVIRONMENT === 'production') {
+    if ((env.ENVIRONMENT ?? '').toLowerCase() === 'production') {
       log.error('access.bypass_in_production');
       return rejection('ACCESS_DEV_BYPASS must not be enabled in production', 'access_config', 503);
     }

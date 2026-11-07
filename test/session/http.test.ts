@@ -112,6 +112,6 @@ describe('errorResponse', () => {
   it('turns anything else into a 500', async () => {
     const response = errorResponse(new Error('boom'));
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: 'boom', code: 'internal' });
+    await expect(response.json()).resolves.toEqual({ error: 'Internal server error', code: 'internal' });
   });
 });

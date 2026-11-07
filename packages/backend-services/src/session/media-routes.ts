@@ -58,7 +58,8 @@ export async function uploadResponse(driver: TelegramDriver, request: Request, u
     const spec = parseUploadSpec(url, request, config);
     const body = request.body;
     if (!body) throw new EngineError('Upload body is required', 400);
-    const message = await driver.sendUpload(spec, body, request.signal);
+    const counted = countedUploadBody(request, spec.size as number, config.maxUploadBytes);
+    const message = await driver.sendUpload(spec, counted, request.signal);
     return Response.json({ message });
   } catch (error) {
     // Refusing an upload while the browser is still streaming the body leaves
@@ -74,12 +75,48 @@ export async function uploadGroupResponse(driver: TelegramDriver, request: Reque
     const spec = parseUploadGroupSpec(url, request, config);
     const body = request.body;
     if (!body) throw new EngineError('Upload body is required', 400);
-    const messages = await driver.sendUploadGroup(spec, body, request.signal);
+    const total = spec.items.reduce((sum, item) => sum + item.size, 0);
+    const counted = countedUploadBody(request, total, config.maxUploadBytes);
+    const messages = await driver.sendUploadGroup(spec, counted, request.signal);
     return Response.json({ messages });
   } catch (error) {
     await discardBody(request);
     throw error;
   }
+}
+
+function countedUploadBody(request: Request, declared: number, cap: number): ReadableStream<Uint8Array> {
+  const body = request.body;
+  if (!body) throw new EngineError('Upload body is required', 400);
+  const reader = body.getReader();
+  let count = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        if (count !== declared) {
+          controller.error(new EngineError('Upload body length does not match the declared size', 400));
+          return;
+        }
+        controller.close();
+        return;
+      }
+      count += value.byteLength;
+      if (count > cap) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Already gone.
+        }
+        controller.error(new EngineError('Uploads are limited to the configured maximum', 413));
+        return;
+      }
+      controller.enqueue(value);
+    },
+    cancel() {
+      void reader.cancel().catch(() => {});
+    },
+  });
 }
 
 /**
@@ -94,10 +131,20 @@ async function discardBody(request: Request): Promise<void> {
   }
 }
 
+function isImageMime(mime: string): boolean {
+  const lower = mime.toLowerCase();
+  if (lower === 'image/svg+xml') return false;
+  return lower.startsWith('image/');
+}
+
 function mediaResponse(download: MediaDownload, cacheSeconds: number): Response {
   const headers: Record<string, string> = {
     'content-type': download.mime,
     'cache-control': `private, max-age=${cacheSeconds}`,
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': 'sandbox',
+    'cross-origin-resource-policy': 'same-origin',
+    'content-disposition': isImageMime(download.mime) ? 'inline' : 'attachment',
   };
   if (download.length !== null) headers['content-length'] = String(download.length);
   if (download.size !== null) headers['accept-ranges'] = 'bytes';
@@ -120,6 +167,10 @@ function avatarBytes(mime: string, bytes: Uint8Array): Response {
       'content-type': mime,
       'content-length': String(body.byteLength),
       'cache-control': `private, max-age=${AVATAR_CACHE_SECONDS}`,
+      'x-content-type-options': 'nosniff',
+      'content-security-policy': 'sandbox',
+      'cross-origin-resource-policy': 'same-origin',
+      'content-disposition': 'inline',
     },
   });
 }

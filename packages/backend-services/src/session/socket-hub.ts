@@ -1,5 +1,6 @@
 import type { ClientSocketMessage, ServerSocketMessage } from '../types';
 import { decodeBase64 } from './base64';
+import { isOriginAllowed, originRejection } from './origin';
 import { MAX_SIGNALING_BYTES } from './call-params';
 import { log } from './log';
 
@@ -54,7 +55,10 @@ export class UpdatesSocketHub {
    * itself: a socket that never speaks the protocol must not open a connection
    * (and must not consume a broadcast of the engine's answer).
    */
-  accept(): Response {
+  accept(request?: Request): Response {
+    if (request !== undefined && !isOriginAllowed(request)) {
+      return originRejection();
+    }
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.state.acceptWebSocket(server);

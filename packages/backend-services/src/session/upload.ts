@@ -2,7 +2,7 @@ import type { InputMediaLike, Message } from '@mtcute/core';
 import { InputMedia } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { MessageDto } from '../types';
-import { requireCommentPost, requireDiscussion, resolveDiscussion } from './comments';
+import { resolveCommentTarget } from './comments';
 import { toMessageDto } from './dto';
 import { EngineError } from './errors';
 import type { UploadGroupSpec, UploadMediaSpec, UploadSpec } from './upload-spec';
@@ -35,17 +35,15 @@ export async function sendUploadedMedia(
   };
 
   if (spec.commentTo !== undefined) {
-    const post = await requireCommentPost(client, spec.chatId, spec.commentTo);
+    const { post, discussion } = await resolveCommentTarget(client, spec.chatId, spec.commentTo, spec.replyTo);
     if (spec.replyTo !== undefined) {
-      const discussion = await requireDiscussion(client, spec.chatId, spec.commentTo);
-      return toMessageDto(await client.sendMedia(discussion.peer, media, { ...params, replyTo: spec.replyTo }));
+      return toMessageDto(await client.sendMedia(discussion!.peer, media, { ...params, replyTo: spec.replyTo }));
     }
     // A top-level comment replies to the thread root. mtcute's `commentMedia`
     // resolves that root itself but takes the first message of the
     // thread-start window, which is a comment (or an album member) once the
     // window carries more than the root. Without a thread yet, `commentMedia`
     // covers the first comment Telegram accepts through the channel.
-    const discussion = await resolveDiscussion(client, spec.chatId, spec.commentTo);
     return discussion === null
       ? toMessageDto(await client.commentMedia(post, media, params))
       : toMessageDto(await client.sendMedia(discussion.peer, media, { ...params, replyTo: discussion.rootId }));
@@ -89,17 +87,15 @@ export async function sendUploadedMediaGroup(
         ...(spec.replyTo !== undefined && { replyTo: spec.replyTo }),
       });
     } else {
-      const post = await requireCommentPost(client, spec.chatId, spec.commentTo);
+      const { post, discussion } = await resolveCommentTarget(client, spec.chatId, spec.commentTo, spec.replyTo);
       if (spec.replyTo === undefined) {
         // Same root rule as the single-file path above.
-        const discussion = await resolveDiscussion(client, spec.chatId, spec.commentTo);
         messages =
           discussion === null
             ? await client.commentMediaGroup(post, medias, params)
             : await client.sendMediaGroup(discussion.peer, medias, { ...params, replyTo: discussion.rootId });
       } else {
-        const discussion = await requireDiscussion(client, spec.chatId, spec.commentTo);
-        messages = await client.sendMediaGroup(discussion.peer, medias, { ...params, replyTo: spec.replyTo });
+        messages = await client.sendMediaGroup(discussion!.peer, medias, { ...params, replyTo: spec.replyTo });
       }
     }
     // Telegram lists the album's messages in update order; sorting keeps the

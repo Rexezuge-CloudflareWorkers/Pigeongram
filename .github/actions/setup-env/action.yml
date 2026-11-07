@@ -13,6 +13,31 @@ runs:
         node-version: '24'
         cache: pnpm
 
+    # The workspace links the `@rexezuge/*` packages from a sibling checkout
+    # (`overrides` in pnpm-workspace.yaml), and a link resolves to the package's
+    # built `dist/`. A runner has no sibling checkout, so materialize one before
+    # `pnpm install` tries to resolve the overrides. `SDK_REF` is a repository
+    # variable so a deployment can pin the SDK revision it ships with; it
+    # defaults to the SDK's main branch.
+    - name: Checkout SDK
+      uses: actions/checkout@v6
+      with:
+        repository: Rexezuge-CloudflareWorkers/SDK
+        ref: ${{ vars.SDK_REF || 'main' }}
+        path: ../SDK
+
+    - name: Install SDK Dependencies
+      uses: ./.github/actions/retry-step
+      with:
+        command: pnpm --dir ../SDK install --frozen-lockfile
+        max_attempts: '3'
+
+    - name: Build SDK
+      uses: ./.github/actions/retry-step
+      with:
+        command: pnpm --dir ../SDK build
+        max_attempts: '2'
+
     - name: Install Dependencies
       uses: ./.github/actions/retry-step
       with:

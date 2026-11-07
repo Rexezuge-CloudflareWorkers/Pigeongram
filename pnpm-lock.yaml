@@ -4,6 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@rexezuge/errors': link:../SDK/packages/errors
+  '@rexezuge/http': link:../SDK/packages/http
+  '@rexezuge/runtime': link:../SDK/packages/runtime
+  '@rexezuge/shared': link:../SDK/packages/shared
+  '@rexezuge/web': link:../SDK/packages/web
+
 importers:
 
   .:
@@ -216,6 +223,12 @@ importers:
       '@pigeongram/web':
         specifier: workspace:*
         version: link:../apps/web
+      '@rexezuge/errors':
+        specifier: link:../../SDK/packages/errors
+        version: link:../../SDK/packages/errors
+      '@rexezuge/web':
+        specifier: link:../../SDK/packages/web
+        version: link:../../SDK/packages/web
       react:
         specifier: ^19.2.8
         version: 19.3.1
@@ -1357,12 +1370,6 @@ packages:
 
   '@rexezuge/d1@1.9.2':
     resolution: {integrity: sha512-/9YPjn2WEKs53iY3upw7Yix6w4ANw6+CqhebuMVWqCOcoMSVd510JnQgQhGa2LqXOKqXEbkmDxjZopfVrD9aiw==}
-
-  '@rexezuge/errors@1.9.2':
-    resolution: {integrity: sha512-2LBY01Ly8ZJH8YF3pqTfYGFF56WslywFiC3HeeEXSBSD0nKXA6WsELUa/xPbMXIhKnVz8z+UtgshuHsHlSMOeg==}
-
-  '@rexezuge/shared@1.9.2':
-    resolution: {integrity: sha512-B9PsD8vbAOSNa5TRlH7eXMVTSDxq3KZ+v3eU9SyWyywbtSc21AZkjHjqBoEQkfx3IkfFnBFa6jg5x/PagBtMLA==}
 
   '@rexezuge/tooling@1.9.2':
     resolution: {integrity: sha512-8C6J7r5NFwtoODwWo/3LPwcbngIf0p/8EZQZjJYrWUMjVT/qM8dYM3pk0Em6T5f1VyWA0L/IlPLnfX4awx3nxQ==}
@@ -4950,12 +4957,8 @@ snapshots:
 
   '@rexezuge/d1@1.9.2':
     dependencies:
-      '@rexezuge/errors': 1.9.2
-      '@rexezuge/shared': 1.9.2
-
-  '@rexezuge/errors@1.9.2': {}
-
-  '@rexezuge/shared@1.9.2': {}
+      '@rexezuge/errors': link:../SDK/packages/errors
+      '@rexezuge/shared': link:../SDK/packages/shared
 
   '@rexezuge/tooling@1.9.2(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-prettier@5.5.7(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(prettier@3.9.10))(eslint-plugin-regexp@3.3.3(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-sonarjs@4.2.2(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-unicorn@76.0.0(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(globals@17.14.0)(jsonc-parser@3.3.1)(prettier@3.9.10)(typescript-eslint@8.71.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)':
     dependencies:

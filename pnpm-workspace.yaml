@@ -7,6 +7,20 @@ packages:
   # import the worker package it exercises.
   - 'test'
 
+# The `@rexezuge/*` packages are developed in the sibling SDK checkout and
+# linked rather than installed from the registry: this repository consumes the
+# unreleased 1.9.3 line, whose `@rexezuge/web` API client forwards a caller's
+# `cache` mode and treats the React peers as optional. pnpm 11 reads overrides
+# from this file, not the root package.json's `pnpm` field. Local setup:
+# `pnpm --dir ../SDK install && pnpm --dir ../SDK build` before `pnpm install`.
+# CI materializes the sibling checkout in `.github/actions/setup-env`.
+overrides:
+  '@rexezuge/errors': 'link:../SDK/packages/errors'
+  '@rexezuge/http': 'link:../SDK/packages/http'
+  '@rexezuge/runtime': 'link:../SDK/packages/runtime'
+  '@rexezuge/shared': 'link:../SDK/packages/shared'
+  '@rexezuge/web': 'link:../SDK/packages/web'
+
 # pnpm 11 refuses to run dependency build scripts unless allowlisted. esbuild and
 # workerd are what Vite/Vitest/Wrangler need; without them installs succeed but
 # binaries are missing at runtime.

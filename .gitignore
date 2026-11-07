@@ -2,6 +2,9 @@ wrangler.jsonc
 worker-configuration.d.ts
 .commandcode/
 
+# Agent-authored planning and work logs. Local to the checkout; never committed.
+local/
+
 node_modules/
 dist/
 coverage/

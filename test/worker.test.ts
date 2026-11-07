@@ -134,7 +134,7 @@ describe('worker entry', () => {
     // request passed the Access gate.
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining('Session engine unreachable') as string,
+      error: expect.stringContaining('Session Engine Unreachable') as string,
       code: 'unavailable',
     });
   });
@@ -182,7 +182,7 @@ describe('worker entry', () => {
   it('honors the local-development bypass outside production', async () => {
     const response = await call('/user/state', { ACCESS_DEV_BYPASS: 'true' });
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('Session engine unreachable') as string });
+    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('Session Engine Unreachable') as string });
   });
 
   it('refuses the development bypass in production', async () => {

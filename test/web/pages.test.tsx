@@ -659,12 +659,12 @@ describe('App', () => {
   });
 
   it('surfaces a bridge failure on the access probe with a retry', async () => {
-    installFetch(() => json({ error: 'Session engine unreachable' }, 503));
+    installFetch(() => json({ error: 'Session Engine Unreachable' }, 503));
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Connection failed' })).toBeDefined();
-    expect(screen.getByText('Session engine unreachable')).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Connection Failed' })).toBeDefined();
+    expect(screen.getByText('Session Engine Unreachable')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Try Again' })).toBeDefined();
     expect(screen.queryByRole('status')).toBeNull();
   });

@@ -1,3 +1,5 @@
+import { ServiceError } from '@rexezuge/errors';
+
 /**
  * The machine-readable half of a bridge failure.
  *
@@ -20,15 +22,29 @@ export type EngineErrorCode =
 
 /**
 An error the engine maps onto an HTTP status for the bridge.
+
+It extends the family's `ServiceError`, so the worker edge, the Durable Object
+and the SPA all branch on one taxonomy. `type` carries the coarse bridge code
+rather than the SDK class name — a caller keys on `not_found`, not on
+`EngineError` — and `expose` is always on because every engine message is
+written for the client. An unknown failure never becomes an `EngineError`; the
+boundary maps it to the masked `internal` response.
 */
-export class EngineError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-    readonly code: EngineErrorCode = codeForStatus(status),
-  ) {
-    super(message);
+export class EngineError extends ServiceError {
+  constructor(message: string, status = 400, code: EngineErrorCode = codeForStatus(status)) {
+    super(status, code, message, { expose: true });
     this.name = 'EngineError';
+  }
+
+  /**
+   * The bridge code as its narrowed type.
+   *
+   * `ServiceError.type` is a plain string so a subclass can name any stable
+   * code; this getter gives the engine's own callers the union back without a
+   * cast at every `failure.code` read.
+   */
+  get code(): EngineErrorCode {
+    return this.type as EngineErrorCode;
   }
 }
 

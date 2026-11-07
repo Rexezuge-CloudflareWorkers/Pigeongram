@@ -216,7 +216,7 @@ describe('SessionEngine (request handling)', () => {
     const { engine } = createHarness();
     const response = await engine.fetch(request('GET', '/user/nope'));
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toMatchObject({ error: 'Not found', code: 'not_found' });
+    await expect(response.json()).resolves.toMatchObject({ Exception: { Type: 'not_found', Message: 'Not found' } });
   });
 
   it('400s a non-JSON body', async () => {
@@ -248,7 +248,7 @@ describe('SessionEngine (request handling)', () => {
     const response = await engine.fetch(request('POST', '/user/login/phone', { phone: 'call me maybe' }));
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining('international') as string,
+      Exception: { Type: 'validation', Message: expect.stringContaining('international') as string },
     });
   });
 
@@ -287,7 +287,7 @@ describe('SessionEngine (request handling)', () => {
     const response = await engine.fetch(uploadRequest('chatId=1&kind=document&size=11', '01234567890'));
     expect(response.status).toBe(413);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining('limited') as string,
+      Exception: { Type: 'validation', Message: expect.stringContaining('limited') as string },
     });
   });
 
@@ -333,7 +333,7 @@ describe('SessionEngine (request handling)', () => {
     const response = await engine.fetch(uploadGroupRequest(`chatId=1&manifest=${manifest}`, '012345678901'));
     expect(response.status).toBe(413);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining('limited') as string,
+      Exception: { Type: 'validation', Message: expect.stringContaining('limited') as string },
     });
   });
 
@@ -354,7 +354,7 @@ describe('SessionEngine (configured client)', () => {
     const response = await engine.fetch(request('POST', '/user/rpc', { method: 'doesNotExist' }));
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
-      error: expect.stringContaining('doesNotExist') as string,
+      Exception: { Type: 'not_found', Message: expect.stringContaining('doesNotExist') as string },
     });
   });
 
@@ -368,7 +368,9 @@ describe('SessionEngine (configured client)', () => {
     const { engine } = createHarness(FAKE_CREDENTIALS);
     const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getMe', params: 'garbage' }));
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({ error: expect.stringContaining('object') as string });
+    await expect(response.json()).resolves.toMatchObject({
+      Exception: { Type: 'validation', Message: expect.stringContaining('object') as string },
+    });
   });
 
   it('completes a logout when the write budget refuses the snapshot delete', async () => {
@@ -515,8 +517,10 @@ describe('SessionEngine (storage write budget)', () => {
     const response = errorResponse(new Error('Exceeded allowed rows written in Durable Objects free tier'));
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
-      code: 'storage_write_quota',
-      error: expect.stringContaining('00:00 UTC'),
+      Exception: {
+        Type: 'storage_write_quota',
+        Message: expect.stringContaining('00:00 UTC') as string,
+      },
     });
   });
 
@@ -748,12 +752,12 @@ describe('SessionEngine (route table over the seams)', () => {
     for (const [method, path] of wrongVerbs) {
       const response = await engine.fetch(request(method, path));
       expect(response.status, `${method} ${path}`).toBe(405);
-      await expect(response.json()).resolves.toMatchObject({ error: 'Method not allowed', code: 'validation' });
+      await expect(response.json()).resolves.toMatchObject({ Exception: { Type: 'validation', Message: 'Method not allowed' } });
     }
 
     const missing = await engine.fetch(request('GET', '/user/nope'));
     expect(missing.status).toBe(404);
-    await expect(missing.json()).resolves.toMatchObject({ error: 'Not found', code: 'not_found' });
+    await expect(missing.json()).resolves.toMatchObject({ Exception: { Type: 'not_found', Message: 'Not found' } });
   });
 
   it('completes a QR login when the write budget refuses the snapshot', async () => {

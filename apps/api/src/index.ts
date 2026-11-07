@@ -5,6 +5,8 @@ import { errorResponse } from '@pigeongram/backend-services/session/http';
 import { isOriginAllowed } from '@pigeongram/backend-services/session/origin';
 import { log } from '@pigeongram/backend-services/session/log';
 import { parseUploadGroupSpec, parseUploadSpec } from '@pigeongram/backend-services/session/upload-spec';
+import { EnvParser } from '@pigeongram/backend-runtime/config';
+import { CORRELATION_ID_HEADER, DEFAULT_RATE_LIMIT_PER_MINUTE } from '@pigeongram/backend-runtime/constants';
 import { requireAccess } from './access';
 import { checkRateLimit, rateLimitKey } from './rate-limit';
 
@@ -13,11 +15,11 @@ import { checkRateLimit, rateLimitKey } from './rate-limit';
 const app = new Hono<{ Bindings: CloudflareEnv; Variables: { correlationId: string } }>();
 
 app.use('*', async (c, next) => {
-  const correlationId = c.req.header('x-correlation-id') ?? crypto.randomUUID();
+  const correlationId = c.req.header(CORRELATION_ID_HEADER) ?? crypto.randomUUID();
   c.set('correlationId', correlationId);
   await next();
   if (!c.res) return;
-  c.res.headers.set('x-correlation-id', correlationId);
+  c.res.headers.set(CORRELATION_ID_HEADER, correlationId);
   if (!c.res.headers.has('x-content-type-options')) c.res.headers.set('x-content-type-options', 'nosniff');
   if (!c.res.headers.has('x-frame-options')) c.res.headers.set('x-frame-options', 'DENY');
   if (!c.res.headers.has('referrer-policy')) c.res.headers.set('referrer-policy', 'no-referrer');
@@ -44,7 +46,7 @@ app.get('/api/health', (c) => c.json({ status: 'ok', service: 'telegram-web-clie
 app.use('/user/*', async (c, next) => {
   const rejection = await requireAccess(c.req.raw, c.env);
   if (rejection) {
-    rejection.headers.set('x-correlation-id', c.get('correlationId'));
+    rejection.headers.set(CORRELATION_ID_HEADER, c.get('correlationId'));
     return rejection;
   }
   await next();
@@ -55,15 +57,15 @@ app.use('/user/*', async (c, next) => {
   const isWebSocketUpgrade = method === 'GET' && new URL(c.req.url).pathname === '/user/updates';
   if ((method === 'POST' || isWebSocketUpgrade) && !isOriginAllowed(c.req.raw, c.env)) {
     const response = Response.json({ error: 'Origin not allowed', code: 'access' }, { status: 403 });
-    response.headers.set('x-correlation-id', c.get('correlationId'));
+    response.headers.set(CORRELATION_ID_HEADER, c.get('correlationId'));
     return response;
   }
-  const limit = Number(c.env.RATE_LIMIT_PER_MINUTE ?? '60');
-  const result = checkRateLimit(rateLimitKey(c.req.raw, null), Number.isFinite(limit) && limit > 0 ? limit : 60);
+  const limit = EnvParser.positiveInt(c.env, 'RATE_LIMIT_PER_MINUTE', String(DEFAULT_RATE_LIMIT_PER_MINUTE));
+  const result = checkRateLimit(rateLimitKey(c.req.raw, null), limit);
   if (!result.allowed) {
     const response = Response.json({ error: 'Too many requests', code: 'access' }, { status: 429 });
     response.headers.set('retry-after', String(result.retryAfterSeconds));
-    response.headers.set('x-correlation-id', c.get('correlationId'));
+    response.headers.set(CORRELATION_ID_HEADER, c.get('correlationId'));
     return response;
   }
   await next();
@@ -119,14 +121,14 @@ app.all('/user/*', async (c) => {
     const id = c.env.SESSION_ENGINE.idFromName(ENGINE_OBJECT_NAME);
     const stub = c.env.SESSION_ENGINE.get(id);
     const request = new Request(c.req.raw);
-    request.headers.set('x-correlation-id', correlationId);
+    request.headers.set(CORRELATION_ID_HEADER, correlationId);
     const response = await stub.fetch(request);
     await discardRequestBody(c.req.raw);
     return withCorrelationId(response, correlationId);
   } catch (error) {
     log.error('worker.engine_unreachable', { error, correlationId });
     const response = Response.json({ error: 'Session Engine Unreachable', code: 'unavailable', correlationId }, { status: 503 });
-    response.headers.set('x-correlation-id', correlationId);
+    response.headers.set(CORRELATION_ID_HEADER, correlationId);
     return response;
   }
 });
@@ -134,7 +136,7 @@ app.all('/user/*', async (c) => {
 function withCorrelationId(response: Response, correlationId: string): Response {
   // Durable Object subrequest responses have immutable headers in Workers.
   const headers = new Headers(response.headers);
-  headers.set('x-correlation-id', correlationId);
+  headers.set(CORRELATION_ID_HEADER, correlationId);
   const init: ResponseInit & { webSocket?: WebSocket | null } = {
     status: response.status,
     statusText: response.statusText,

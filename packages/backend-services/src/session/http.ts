@@ -1,5 +1,6 @@
+import { ServiceError } from '@rexezuge/errors';
+import { toErrorResponse } from '@rexezuge/http';
 import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
-import { EngineConfigError } from '@pigeongram/provider-clients/mtproto/client';
 import { log } from './log';
 
 /**
@@ -61,23 +62,35 @@ export async function readJsonBody(request: Request): Promise<Record<string, unk
 }
 
 /**
-Maps engine errors onto the bridge's JSON error responses.
+Maps engine errors onto the family's canonical `{Exception:{Type,Message}}`
+response.
+
+The correlation id is deliberately not written into the body: it travels as the
+`x-correlation-id` header the edge sets, so the bridge payload stays the
+caller's contract rather than a transport envelope. The id is still accepted
+here for the log line that accompanies an unexpected failure.
 */
 export function errorResponse(error: unknown, correlationId?: string): Response {
-  const withCorrelation = (body: Record<string, unknown>): Record<string, unknown> =>
-    correlationId === undefined ? body : { ...body, correlationId };
-  if (error instanceof EngineError) {
-    return Response.json(withCorrelation({ error: error.message, code: error.code }), { status: error.status });
-  }
-  if (error instanceof EngineConfigError) {
-    return Response.json(withCorrelation({ error: error.message, code: 'config' }), { status: 503 });
-  }
+  const serviceError = mapToServiceError(error, correlationId);
+  return toErrorResponse(serviceError, (body, status, headers) => Response.json(body, { status, headers }));
+}
+
+/**
+Normalizes a caught value into the taxonomy before the mapper sees it.
+
+`EngineError` and `EngineConfigError` are already `ServiceError`s and pass
+through. An exhausted write budget is a raw runtime failure with its own
+readable form, and anything else is an unknown failure whose message must not
+reach the client.
+*/
+function mapToServiceError(error: unknown, correlationId?: string): ServiceError {
+  if (error instanceof ServiceError) return error;
   if (isStorageWriteQuotaError(error)) {
     // The account is over the Free plan's daily row budget. Reads keep
     // working, so the failure gets its own code instead of a generic 500.
     log.warn('storage.quota_exhausted', { correlationId });
-    return Response.json(withCorrelation({ code: 'storage_write_quota', error: STORAGE_WRITE_QUOTA_MESSAGE }), { status: 503 });
+    return new EngineError(STORAGE_WRITE_QUOTA_MESSAGE, 503, 'storage_write_quota');
   }
   log.error('request.failed', { error, correlationId });
-  return Response.json(withCorrelation({ error: 'Internal server error', code: 'internal' }), { status: 500 });
+  return new EngineError('Internal server error', 500, 'internal');
 }

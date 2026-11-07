@@ -1,3 +1,5 @@
+import { ServiceError } from '@rexezuge/errors';
+import { EnvParser } from '@rexezuge/runtime/config/EnvParser';
 import { BaseTelegramClient, TelegramClient } from '@mtcute/core/client.js';
 import { WorkerCryptoProvider } from './crypto';
 import { WorkerPlatform } from './platform';
@@ -7,10 +9,15 @@ import { WorkersWsTransport } from './transport';
 
 /**
 Raised when the worker is deployed without Telegram API credentials.
+
+A `ServiceError` rather than a bare `Error`: the bridge boundary answers it as
+`503 config` through the same mapper as every other typed failure, and a bare
+error would arrive at the client as a masked 500 that hides the one message an
+operator can act on.
 */
-export class EngineConfigError extends Error {
+export class EngineConfigError extends ServiceError {
   constructor(message: string) {
-    super(message);
+    super(503, 'config', message, { expose: true });
     this.name = 'EngineConfigError';
   }
 }
@@ -24,13 +31,23 @@ export interface MtBundle {
   storage: TelegramStorageProvider;
 }
 
-export function readApiCredentials(env: CloudflareEnv): { apiId: number; apiHash: string } {
-  const apiIdRaw = (env.TELEGRAM_API_ID ?? '').trim();
-  const apiHash = (env.TELEGRAM_API_HASH ?? '').trim();
-  const apiId = Number(apiIdRaw);
-  if (!apiIdRaw || !Number.isSafeInteger(apiId) || apiId <= 0) {
+/**
+ * The two secret-backed values the mtcute client needs. Narrowed from
+ * `CloudflareEnv` so a test can supply just the pair it is exercising.
+ */
+export interface ApiCredentialEnv {
+  readonly TELEGRAM_API_ID?: string;
+  readonly TELEGRAM_API_HASH?: string;
+}
+
+export function readApiCredentials(env: ApiCredentialEnv): { apiId: number; apiHash: string } {
+  // `positiveInt` answers the fallback for every unusable value, so `0` is the
+  // one sentinel that means "absent, malformed or out of range" at once.
+  const apiId = EnvParser.positiveInt(env, 'TELEGRAM_API_ID', '0');
+  if (apiId <= 0) {
     throw new EngineConfigError('TELEGRAM_API_ID is not configured — set it with `wrangler secret put TELEGRAM_API_ID`.');
   }
+  const apiHash = EnvParser.readString(env, 'TELEGRAM_API_HASH')?.trim() ?? '';
   if (!apiHash) {
     throw new EngineConfigError('TELEGRAM_API_HASH is not configured — set it with `wrangler secret put TELEGRAM_API_HASH`.');
   }

@@ -1,6 +1,7 @@
+import { ServiceError } from '@rexezuge/errors';
 import { describe, expect, it } from 'vitest';
 import { EngineConfigError } from '../../packages/provider-clients/src/mtproto/client';
-import { EngineError } from '../../packages/backend-services/src/session/errors';
+import { EngineError, STORAGE_WRITE_QUOTA_MESSAGE } from '../../packages/backend-services/src/session/errors';
 import { errorResponse, MAX_JSON_BODY_BYTES, readJsonBody } from '../../packages/backend-services/src/session/http';
 
 /**
@@ -73,7 +74,12 @@ describe('errorResponse', () => {
   it('keeps an engine error status and derives its code', async () => {
     const response = errorResponse(new EngineError('bad input', 409));
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: 'bad input', code: 'conflict' });
+    await expect(response.json()).resolves.toEqual({ Exception: { Type: 'conflict', Message: 'bad input' } });
+  });
+
+  it('answers in the family taxonomy', () => {
+    expect(new EngineError('bad input')).toBeInstanceOf(ServiceError);
+    expect(new EngineConfigError('missing')).toBeInstanceOf(ServiceError);
   });
 
   it('classifies statuses a caller can act on', async () => {
@@ -87,31 +93,48 @@ describe('errorResponse', () => {
     ];
     for (const [status, code] of cases) {
       const response = errorResponse(new EngineError('failure', status));
-      await expect(response.json(), String(status)).resolves.toMatchObject({ code });
+      await expect(response.json(), String(status)).resolves.toMatchObject({ Exception: { Type: code } });
     }
   });
 
   it('lets a call site name a more specific code', async () => {
     const response = errorResponse(new EngineError('over budget', 503, 'storage_write_quota'));
 
-    await expect(response.json()).resolves.toEqual({ error: 'over budget', code: 'storage_write_quota' });
+    await expect(response.json()).resolves.toEqual({
+      Exception: { Type: 'storage_write_quota', Message: 'over budget' },
+    });
   });
 
   it('maps a configuration failure to 503', async () => {
     const response = errorResponse(new EngineConfigError('TELEGRAM_API_ID is missing'));
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ error: 'TELEGRAM_API_ID is missing', code: 'config' });
+    await expect(response.json()).resolves.toEqual({
+      Exception: { Type: 'config', Message: 'TELEGRAM_API_ID is missing' },
+    });
   });
 
   it('gives the write quota its own code', async () => {
     const response = errorResponse(new Error('Exceeded allowed rows written in Durable Objects free tier'));
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({ code: 'storage_write_quota' });
+    await expect(response.json()).resolves.toEqual({
+      Exception: { Type: 'storage_write_quota', Message: STORAGE_WRITE_QUOTA_MESSAGE },
+    });
   });
 
-  it('turns anything else into a 500', async () => {
+  it('turns anything else into a masked 500', async () => {
     const response = errorResponse(new Error('boom'));
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: 'Internal server error', code: 'internal' });
+    await expect(response.json()).resolves.toEqual({
+      Exception: { Type: 'internal', Message: 'Internal server error' },
+    });
+  });
+
+  it('keeps the correlation id out of the body', async () => {
+    const response = errorResponse(new EngineError('bad input', 400), 'correlation-1');
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(body).not.toHaveProperty('correlationId');
+    expect(body).not.toHaveProperty('code');
+    expect(body).not.toHaveProperty('error');
   });
 });

@@ -145,19 +145,29 @@ export function requireBoolean(value: unknown, name: string): boolean {
  * Reusing it on a retry is what makes the retry idempotent: Telegram drops a
  * duplicate send whose random id it has already accepted.
  */
+/**
+ * Parses a decimal 64-bit integer into a `Long`, throwing an `EngineError`
+ * with the given message on any failure. The single implementation behind
+ * `optionalRandomId`, `requireCallId` and `requireFingerprint`, so the
+ * try/catch shape lives in one place.
+ */
+export function parseLong(value: string, errorMessage: string): Long {
+  try {
+    const parsed = Long.fromString(value);
+    if (parsed.toString() !== value) throw new Error('out of range');
+    return parsed;
+  } catch {
+    throw new EngineError(errorMessage, 400);
+  }
+}
+
 export function optionalRandomId(value: unknown): Long | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string' || !/^[1-9]\d{0,18}$/.test(value)) {
     throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
   }
-  const parsed = ((): Long => {
-    try {
-      return Long.fromString(value);
-    } catch {
-      throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
-    }
-  })();
-  if (parsed.isNegative() || parsed.toString() !== value) {
+  const parsed = parseLong(value, 'randomId must be a positive decimal 64-bit integer');
+  if (parsed.isNegative()) {
     throw new EngineError('randomId must be a positive decimal 64-bit integer', 400);
   }
   return parsed;

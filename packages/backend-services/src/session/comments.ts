@@ -85,6 +85,27 @@ export async function requireDiscussion(client: TelegramClient, chatId: number, 
  * comments when the post carries the `comments` flag, and the SPA can only
  * show the button for such posts, but the bridge never trusts the caller.
  */
+/**
+ * Resolves everything a comment send needs: the post being commented on and,
+ * when the comment is a reply to an existing comment, the discussion thread it
+ * lives in. A top-level comment (no `replyTo`) may have no thread yet, so the
+ * discussion is resolved lazily and may be null.
+ */
+export async function resolveCommentTarget(
+  client: TelegramClient,
+  chatId: number,
+  messageId: number,
+  replyTo: number | undefined,
+): Promise<{ post: Message; discussion: Discussion | null }> {
+  const post = await requireCommentPost(client, chatId, messageId);
+  if (replyTo === undefined) {
+    const discussion = await resolveDiscussion(client, chatId, messageId);
+    return { post, discussion };
+  }
+  const discussion = await requireDiscussion(client, chatId, messageId);
+  return { post, discussion };
+}
+
 export async function requireCommentPost(client: TelegramClient, chatId: number, messageId: number): Promise<Message> {
   const [post] = await client.getMessages(chatId, [messageId]);
   if (!post || !post.replies?.hasComments) {

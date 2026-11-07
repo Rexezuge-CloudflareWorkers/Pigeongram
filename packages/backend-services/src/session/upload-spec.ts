@@ -2,7 +2,7 @@ import { Long } from '@mtcute/core';
 import type { UploadKind } from '../types';
 import type { UploadConfig } from './config';
 import { EngineError } from './errors';
-import { optionalRandomId } from './params';
+import { optionalRandomId, requirePeerId } from './params';
 
 /**
  * Parsing and validation for the raw-body upload routes.
@@ -287,13 +287,6 @@ function parseQuantity(value: string | null): number | null {
 
 function parseNumber(value: string | null): number {
   return value === null ? NaN : Number(value);
-}
-
-function requirePeerId(value: number): number {
-  if (!Number.isSafeInteger(value) || value === 0) {
-    throw new EngineError('chatId query parameter is required', 400);
-  }
-  return value;
 }
 
 function parseCaption(value: string | null): string | null {

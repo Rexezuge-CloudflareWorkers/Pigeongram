@@ -2,6 +2,7 @@ import { Long } from '@mtcute/core';
 import type { CallDiscardReason } from '../call-types';
 import { decodeBase64 } from './base64';
 import { EngineError } from './errors';
+import { parseLong } from './params';
 
 /**
  * Validation for the calls half of the bridge's parameters.
@@ -81,17 +82,7 @@ export function requireCallId(value: unknown): Long {
   if (typeof value !== 'string' || !/^-?\d{1,19}$/.test(value)) {
     throw new EngineError('callId must be a decimal Telegram call id', 400);
   }
-  const parsed = ((): Long => {
-    try {
-      return Long.fromString(value);
-    } catch {
-      throw new EngineError('callId must be a decimal Telegram call id', 400);
-    }
-  })();
-  if (parsed.toString() !== value) {
-    throw new EngineError('callId must be a decimal Telegram call id', 400);
-  }
-  return parsed;
+  return parseLong(value, 'callId must be a decimal Telegram call id');
 }
 
 /**
@@ -101,17 +92,7 @@ export function requireFingerprint(value: unknown): Long {
   if (typeof value !== 'string' || !/^-?\d{1,19}$/.test(value)) {
     throw new EngineError('keyFingerprint must be a decimal 64-bit integer', 400);
   }
-  const parsed = ((): Long => {
-    try {
-      return Long.fromString(value);
-    } catch {
-      throw new EngineError('keyFingerprint must be a decimal 64-bit integer', 400);
-    }
-  })();
-  if (parsed.toString() !== value) {
-    throw new EngineError('keyFingerprint must be a decimal 64-bit integer', 400);
-  }
-  return parsed;
+  return parseLong(value, 'keyFingerprint must be a decimal 64-bit integer');
 }
 
 /**

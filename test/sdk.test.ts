@@ -3,14 +3,13 @@ import { HttpStatusError } from '@rexezuge/web/api';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The `@rexezuge/*` packages are linked from the sibling SDK checkout, not
- * installed from the registry. Node resolves a `link:` dependency to its real
- * path, so every workspace package that imports `@rexezuge/errors` must see the
- * same module instance — otherwise `instanceof ServiceError` silently answers
- * `false` for an error thrown by the API client. Vite's `resolve.dedupe` covers
- * the SPA bundle; this test covers the Node side, where the shared suite runs.
+ * `@rexezuge/web` and `@rexezuge/errors` are published packages, and the API
+ * client throws the latter's `ServiceError` subclasses. pnpm must resolve one
+ * copy of `@rexezuge/errors` for the workspace and for the client's own
+ * dependency: two copies would make `instanceof ServiceError` silently answer
+ * `false` for an error the client threw.
  */
-describe('linked @rexezuge packages', () => {
+describe('@rexezuge packages', () => {
   it('share a single ServiceError class across packages', () => {
     const error = new HttpStatusError(418, 'Teapot', 'teapot');
 

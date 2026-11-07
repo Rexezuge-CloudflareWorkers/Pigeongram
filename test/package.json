@@ -13,8 +13,8 @@
     "@pigeongram/provider-clients": "workspace:*",
     "@pigeongram/shared": "workspace:*",
     "@pigeongram/web": "workspace:*",
-    "@rexezuge/errors": "1.9.3",
-    "@rexezuge/web": "1.9.3",
+    "@rexezuge/errors": "1.9.4",
+    "@rexezuge/web": "1.9.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

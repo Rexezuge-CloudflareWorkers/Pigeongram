@@ -18,14 +18,6 @@ import { pwaIconsPlugin } from './build/pwa/plugin';
 const branding = readBranding(process.env);
 
 export default defineWebViteConfig({
-  resolve: {
-    // The `@rexezuge/*` packages are linked from the sibling SDK checkout
-    // (`overrides` in pnpm-workspace.yaml). Without deduping, Vite can resolve a
-    // transitive `@rexezuge/errors` through the linked package's own
-    // node_modules and the SPA through this workspace, producing two
-    // `ServiceError` classes and a failing `instanceof` at runtime.
-    dedupe: ['@rexezuge/errors', '@rexezuge/shared'],
-  },
   plugins: [
     react(),
     tailwindcss(),

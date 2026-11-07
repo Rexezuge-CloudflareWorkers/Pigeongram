@@ -36,6 +36,12 @@ interface CloudflareEnv {
    */
   ACCESS_DEV_BYPASS?: string;
   /**
+   * The identity the dev bypass authenticates as. Only read when
+   * `ACCESS_DEV_BYPASS` is enabled outside production, so a deployment that
+   * sets it by accident still fails closed.
+   */
+  ACCESS_DEV_EMAIL?: string;
+  /**
    Comma-separated list of trusted browser origins for CSRF checks.
    */
   ALLOWED_ORIGINS?: string;
@@ -48,3 +54,12 @@ interface CloudflareEnv {
    */
   RATE_LIMIT_PER_MINUTE?: string;
 }
+
+/**
+ * The generated file declares `Env` and `CloudflareEnv` as two interfaces over
+ * the same base, so a hand-written amendment to `CloudflareEnv` would not be
+ * visible through the `Env` name the kit's worker bases take. This merge makes
+ * the two names one surface: the secrets above are members of both.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- declaration merging, not a new empty shape
+interface Env extends CloudflareEnv {}

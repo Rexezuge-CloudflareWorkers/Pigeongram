@@ -1,3 +1,5 @@
+import { base64ToBytes, bytesToBase64 } from '@rexezuge/shared';
+
 /**
  * Base64 for the byte payloads a call carries.
  *
@@ -5,41 +7,31 @@
  * packets have to travel as text. The engine already decodes callback data
  * this way; this module is the shared pair, so the encoding and the decoding
  * cannot drift apart.
+ *
+ * The codec is the family's: a direct 3-byte-to-4-char table on the encode
+ * side and `atob` on the decode side, with no allocation of a binary string
+ * for the whole payload. The local guard stays because this module's contract
+ * is `null` for malformed input — a caller turns that into a 400 with its own
+ * wording — while `base64ToBytes` throws by design.
  */
 
 /**
  * Decodes a base64 string into bytes.
  *
- * Returns `null` when the string is not base64 at all — the caller turns that
- * into a 400 with its own wording.
+ * Returns `null` when the string is not base64 at all.
  */
 export function decodeBase64(value: string): Uint8Array | null {
   if (value.length % 4 !== 0 || !/^[A-Z0-9+/]*={0,2}$/i.test(value)) return null;
-  let binary: string;
   try {
-    binary = atob(value);
+    return base64ToBytes(value);
   } catch {
     return null;
   }
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
 }
 
 /**
  * Encodes bytes as base64.
- *
- * The chunked build keeps a long payload off the argument list: spreading a
- * few hundred bytes is fine, but a signalling packet can be larger and the
- * engine's memory is the Free plan's 128 MB.
  */
 export function encodeBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const CHUNK = 0x80_00;
-  for (let offset = 0; offset < bytes.length; offset += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + CHUNK));
-  }
-  return btoa(binary);
+  return bytesToBase64(bytes);
 }

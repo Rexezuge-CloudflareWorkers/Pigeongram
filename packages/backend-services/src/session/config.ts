@@ -7,6 +7,8 @@
  * never inside a request handler.
  */
 
+import { EnvParser } from '@pigeongram/backend-runtime/config';
+
 /**
  * The alarm cadence when `WAKE_INTERVAL_SECONDS` is absent or unusable.
  */
@@ -84,11 +86,16 @@ export function readEngineConfig(env: EngineEnv): EngineConfig {
 }
 
 function readWakeIntervalSeconds(env: EngineEnv): number {
-  const parsed = Number(env.WAKE_INTERVAL_SECONDS ?? '');
+  // `EnvParser.readString` keeps the raw value: the cadence may be fractional
+  // (`30.5`), which the integer readers would reject even though `setAlarm`
+  // accepts it.
+  const parsed = Number(EnvParser.readString(env, 'WAKE_INTERVAL_SECONDS') ?? '');
   return Number.isFinite(parsed) && parsed >= MIN_WAKE_INTERVAL_SECONDS ? parsed : DEFAULT_WAKE_INTERVAL_SECONDS;
 }
 
 function readMaxUploadBytes(env: EngineEnv): number {
-  const parsed = Number(env.UPLOAD_MAX_BYTES ?? '');
+  // Fractional byte counts are floored rather than rejected, so a deployment
+  // that sets `1048576.5` still gets the cap it meant.
+  const parsed = Number(EnvParser.readString(env, 'UPLOAD_MAX_BYTES') ?? '');
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_MAX_UPLOAD_BYTES;
 }

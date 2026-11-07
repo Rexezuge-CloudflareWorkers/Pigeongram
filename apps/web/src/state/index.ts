@@ -1,6 +1,6 @@
-import { toDialogMessage } from './dialog-message';
-import { continuesAlbum, countUnreadGroupsBetween } from './groups';
-import type { ChatThread } from './thread-state';
+import { toDialogMessage } from '../dialog-message';
+import { continuesAlbum, countUnreadGroupsBetween } from '../groups';
+import type { ChatThread } from '../thread-state';
 import type {
   BotCommandDto,
   ChatDto,
@@ -11,7 +11,7 @@ import type {
   PeerId,
   PresenceDto,
   UpdateEvent,
-} from './types';
+} from '../types';
 
 /**
  * Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.

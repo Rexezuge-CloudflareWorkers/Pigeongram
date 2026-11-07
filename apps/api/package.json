@@ -14,7 +14,7 @@
     "@pigeongram/backend-services": "workspace:*",
     "@pigeongram/shared": "workspace:*",
     "hono": "^4.13.14",
-    "jose": "^6.2.13"
+    "jose": "^6.2.15"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

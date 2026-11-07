@@ -655,9 +655,11 @@ with Telegram's own clients.**
 ```bash
 pnpm exec tsx scripts/prepare-wrangler-config.ts
 pnpm exec wrangler deploy
-pnpm exec wrangler secret put TELEGRAM_API_ID
-pnpm exec wrangler secret put TELEGRAM_API_HASH
 ```
+
+Continuous Deployment provisions `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`, using repository secrets when configured
+and defaulting to `2496` and `8da85b0d5bfe62527e5b244c209159c3` otherwise. For a manual deployment, set both secrets
+with `pnpm exec wrangler secret put` before starting the worker.
 
 The worker verifies Cloudflare Access on `/user/*`, so the deployment also needs both verifier vars — through
 `WRANGLER_VARS_PATCH_JSON` in CD or the dashboard:

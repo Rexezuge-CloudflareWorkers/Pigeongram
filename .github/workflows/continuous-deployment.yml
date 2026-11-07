@@ -3,9 +3,9 @@
 # `github/workflows/continuous-deployment.yml` and the sibling repos' copies; the
 # removed steps are the ones this repo has no machinery for:
 #   * Initialize Cloudflare Secrets — no Secrets Store bindings; the runtime
-#     secrets (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`) are set once per
-#     environment with `wrangler secret put`, per README.md. The Access
-#     verifier vars (`TEAM_DOMAIN`, `POLICY_AUD`) come from
+#     secrets (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`) are provisioned below,
+#     using repository secrets when configured and Telegram's default test
+#     credentials otherwise. The Access verifier vars (`TEAM_DOMAIN`, `POLICY_AUD`) come from
 #     `WRANGLER_VARS_PATCH_JSON`; without them the worker's `/user/*` answers
 #     503 `access_config`. `/api/health` is public and unaffected.
 #   * Apply Database Migration — no D1; the DO's SQLite is migrated by the
@@ -68,6 +68,16 @@ jobs:
           WRANGLER_VARS_PATCH_JSON: ${{ vars.WRANGLER_VARS_PATCH_JSON }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Configure Telegram API Secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID || '2496' }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH || '8da85b0d5bfe62527e5b244c209159c3' }}
+        run: |
+          printf '%s' "$TELEGRAM_API_ID" | pnpm exec wrangler secret put TELEGRAM_API_ID
+          printf '%s' "$TELEGRAM_API_HASH" | pnpm exec wrangler secret put TELEGRAM_API_HASH
 
       # A gate, not a rehearsal. Separate from the deploy below and deliberately
       # **not** retried: a dry run that fails is a real defect — a bundle over

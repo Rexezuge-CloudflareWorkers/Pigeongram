@@ -246,8 +246,15 @@ function parseRequiredQuantity(value: unknown, name: string): number {
 }
 
 function checkDeclaredLength(request: Request, size: number): void {
-  const declared = parseQuantity(request.headers.get('content-length'));
-  if (declared !== null && declared !== size) {
+  const raw = request.headers.get('content-length');
+  if (raw === null) {
+    throw new EngineError('content-length header is required', 400);
+  }
+  const declared = parseQuantity(raw);
+  if (declared === null) {
+    throw new EngineError('content-length header is required', 400);
+  }
+  if (declared !== size) {
     throw new EngineError('content-length does not match the declared size', 400);
   }
 }

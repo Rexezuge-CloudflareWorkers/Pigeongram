@@ -137,7 +137,11 @@ describe('uploadGroupResponse', () => {
     const sendUploadGroup = vi.fn(async (_spec: UploadGroupSpec, _body: ReadableStream<Uint8Array>) => [{ id: 2 }, { id: 1 }]);
     const driver = { sendUploadGroup } as unknown as TelegramDriver;
     const { url } = target(`/user/upload-group?chatId=1&manifest=${manifest}`);
-    const upload = new Request(url, { method: 'POST', body: 'abcde', headers: { 'content-type': 'application/octet-stream' } });
+    const upload = new Request(url, {
+      method: 'POST',
+      body: 'abcde',
+      headers: { 'content-type': 'application/octet-stream', 'content-length': '5' },
+    });
 
     const response = await uploadGroupResponse(driver, upload, url, { maxUploadBytes: 100 });
 
@@ -151,8 +155,9 @@ describe('uploadGroupResponse', () => {
         { kind: 'document', size: 3, fileName: 'b.txt' },
       ],
     });
-    // The route passes the live request stream, not a buffered copy.
-    expect(sendUploadGroup.mock.calls[0]?.[1]).toBe(upload.body);
+    // The route wraps the request stream in a byte-counting reader, so the
+    // driver no longer sees the original stream object.
+    expect(sendUploadGroup.mock.calls[0]?.[1]).toBeInstanceOf(ReadableStream);
   });
 
   it('400s an invalid manifest before the driver sees it', async () => {

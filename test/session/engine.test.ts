@@ -105,12 +105,19 @@ function createSocket(): FakeSocket {
 function request(method: string, path: string, body?: unknown): Request {
   return new Request(`https://session-engine.internal${path}`, {
     method,
-    ...(body !== undefined && { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    headers: { origin: 'https://session-engine.internal', ...(body !== undefined && { 'content-type': 'application/json' }) },
+    ...(body !== undefined && { body: JSON.stringify(body) }),
   });
 }
 
 function uploadRequest(query: string, body: string, headers: Record<string, string> = {}): Request {
-  return new Request(`https://session-engine.internal/user/upload?${query}`, { method: 'POST', body, headers });
+  const merged: Record<string, string> = { origin: 'https://session-engine.internal', ...headers };
+  if (merged['content-length'] === undefined) merged['content-length'] = String(Buffer.byteLength(body));
+  return new Request(`https://session-engine.internal/user/upload?${query}`, {
+    method: 'POST',
+    body,
+    headers: merged,
+  });
 }
 
 function groupManifest(items: unknown[]): string {
@@ -118,7 +125,13 @@ function groupManifest(items: unknown[]): string {
 }
 
 function uploadGroupRequest(query: string, body: string, headers: Record<string, string> = {}): Request {
-  return new Request(`https://session-engine.internal/user/upload-group?${query}`, { method: 'POST', body, headers });
+  const merged: Record<string, string> = { origin: 'https://session-engine.internal', ...headers };
+  if (merged['content-length'] === undefined) merged['content-length'] = String(Buffer.byteLength(body));
+  return new Request(`https://session-engine.internal/user/upload-group?${query}`, {
+    method: 'POST',
+    body,
+    headers: merged,
+  });
 }
 
 const FAKE_CREDENTIALS: TestEnv = {
@@ -203,7 +216,7 @@ describe('SessionEngine (request handling)', () => {
     const { engine } = createHarness();
     const response = await engine.fetch(request('GET', '/user/nope'));
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: 'Not found', code: 'not_found' });
+    await expect(response.json()).resolves.toMatchObject({ error: 'Not found', code: 'not_found' });
   });
 
   it('400s a non-JSON body', async () => {
@@ -212,6 +225,7 @@ describe('SessionEngine (request handling)', () => {
       new Request('https://session-engine.internal/user/login/password', {
         method: 'POST',
         body: 'not json',
+        headers: { origin: 'https://session-engine.internal' },
       }),
     );
     expect(response.status).toBe(400);
@@ -734,12 +748,12 @@ describe('SessionEngine (route table over the seams)', () => {
     for (const [method, path] of wrongVerbs) {
       const response = await engine.fetch(request(method, path));
       expect(response.status, `${method} ${path}`).toBe(405);
-      await expect(response.json()).resolves.toEqual({ error: 'Method not allowed', code: 'validation' });
+      await expect(response.json()).resolves.toMatchObject({ error: 'Method not allowed', code: 'validation' });
     }
 
     const missing = await engine.fetch(request('GET', '/user/nope'));
     expect(missing.status).toBe(404);
-    await expect(missing.json()).resolves.toEqual({ error: 'Not found', code: 'not_found' });
+    await expect(missing.json()).resolves.toMatchObject({ error: 'Not found', code: 'not_found' });
   });
 
   it('completes a QR login when the write budget refuses the snapshot', async () => {

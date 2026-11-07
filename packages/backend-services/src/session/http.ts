@@ -63,20 +63,21 @@ export async function readJsonBody(request: Request): Promise<Record<string, unk
 /**
 Maps engine errors onto the bridge's JSON error responses.
 */
-export function errorResponse(error: unknown): Response {
+export function errorResponse(error: unknown, correlationId?: string): Response {
+  const withCorrelation = (body: Record<string, unknown>): Record<string, unknown> =>
+    correlationId === undefined ? body : { ...body, correlationId };
   if (error instanceof EngineError) {
-    return Response.json({ error: error.message, code: error.code }, { status: error.status });
+    return Response.json(withCorrelation({ error: error.message, code: error.code }), { status: error.status });
   }
   if (error instanceof EngineConfigError) {
-    return Response.json({ error: error.message, code: 'config' }, { status: 503 });
+    return Response.json(withCorrelation({ error: error.message, code: 'config' }), { status: 503 });
   }
   if (isStorageWriteQuotaError(error)) {
     // The account is over the Free plan's daily row budget. Reads keep
     // working, so the failure gets its own code instead of a generic 500.
-    log.warn('storage.quota_exhausted');
-    return Response.json({ code: 'storage_write_quota', error: STORAGE_WRITE_QUOTA_MESSAGE }, { status: 503 });
+    log.warn('storage.quota_exhausted', { correlationId });
+    return Response.json(withCorrelation({ code: 'storage_write_quota', error: STORAGE_WRITE_QUOTA_MESSAGE }), { status: 503 });
   }
-  log.error('request.failed', { error });
-  const message = error instanceof Error ? error.message : String(error);
-  return Response.json({ error: message, code: 'internal' }, { status: 500 });
+  log.error('request.failed', { error, correlationId });
+  return Response.json(withCorrelation({ error: 'Internal server error', code: 'internal' }), { status: 500 });
 }

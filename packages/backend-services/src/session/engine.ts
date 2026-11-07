@@ -8,6 +8,7 @@ import { errorResponse, readJsonBody } from './http';
 import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
 import { SessionLifecycle } from './lifecycle';
+import { isOriginAllowed, originRejection } from './origin';
 import { log } from './log';
 import { avatarResponse, fileResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
@@ -69,6 +70,7 @@ export interface EngineDeps {
  */
 export class SessionEngine {
   private readonly config: EngineConfig;
+  private readonly env: CloudflareEnv;
   private readonly store: EngineStore;
   private readonly avatars: AvatarCache;
   private readonly driver: TelegramDriver;
@@ -83,6 +85,7 @@ export class SessionEngine {
     env: CloudflareEnv,
     deps: EngineDeps = {},
   ) {
+    this.env = env;
     const now = deps.now ?? (() => Date.now());
     this.config = readEngineConfig(env);
     this.store = deps.store ?? new EngineStore(state.storage.sql);
@@ -151,20 +154,31 @@ export class SessionEngine {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    const correlationId = request.headers.get('x-correlation-id') ?? crypto.randomUUID();
+    const isWebSocketUpgrade = request.method === 'GET' && url.pathname === '/user/updates';
+    if ((request.method === 'POST' || isWebSocketUpgrade) && !isOriginAllowed(request, this.env)) {
+      const response = originRejection();
+      response.headers.set('x-correlation-id', correlationId);
+      return response;
+    }
     try {
       // A request is the only chance to repair a cadence that a failed alarm
       // write left behind; an alarm that already exists is left alone.
       await this.lifecycle.ensureArmed();
-      return await this.route(request, url);
+      const response = await this.route(request, url);
+      response.headers.set('x-correlation-id', correlationId);
+      return response;
     } catch (error) {
-      return errorResponse(error);
+      const response = errorResponse(error, correlationId);
+      response.headers.set('x-correlation-id', correlationId);
+      return response;
     }
   }
 
   private async route(request: Request, url: URL): Promise<Response> {
     switch (`${request.method} ${url.pathname}`) {
       case 'GET /user/updates': {
-        return this.hub.accept();
+        return this.hub.accept(request);
       }
       case 'GET /user/state': {
         return Response.json(await this.stateSnapshot());

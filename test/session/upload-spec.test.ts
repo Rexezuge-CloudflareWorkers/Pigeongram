@@ -13,7 +13,11 @@ function encode(value: unknown): string {
 
 function request(query: string, body = 'abcdef', headers: Record<string, string> = {}): { url: URL; request: Request } {
   const url = new URL(`https://session-engine.internal/user/upload-group?${query}`);
-  return { url, request: new Request(url, { method: 'POST', body, headers }) };
+  const merged: Record<string, string> = { ...headers };
+  if (merged['content-length'] === undefined && merged['Content-Length'] === undefined) {
+    merged['content-length'] = String(Buffer.byteLength(body));
+  }
+  return { url, request: new Request(url, { method: 'POST', body, headers: merged }) };
 }
 
 const config = { maxUploadBytes: 100 };
@@ -51,7 +55,7 @@ describe('parseUploadGroupSpec', () => {
 
   it('accepts visual media together but not a document mixed with one', () => {
     const visualMedia = [item({ kind: 'photo' }), item({ kind: 'video' }), item({ kind: 'animation' })];
-    const visual = request(`chatId=1&manifest=${encode(visualMedia)}`);
+    const visual = request(`chatId=1&manifest=${encode(visualMedia)}`, 'abcdef', { 'content-length': '9' });
     expect(() => parseUploadGroupSpec(visual.url, visual.request, config)).not.toThrow();
 
     const mixedMedia = [item({ kind: 'document' }), item({ kind: 'photo' })];
@@ -113,7 +117,7 @@ describe('parseUploadGroupSpec', () => {
 describe('parseUploadSpec random id', () => {
   function single(query: string): { url: URL; request: Request } {
     const url = new URL(`https://session-engine.internal/user/upload?${query}`);
-    return { url, request: new Request(url, { method: 'POST', body: 'abcdef' }) };
+    return { url, request: new Request(url, { method: 'POST', body: 'abcdef', headers: { 'content-length': '6' } }) };
   }
 
   it('keeps the client-chosen random id, so a retry is idempotent', () => {

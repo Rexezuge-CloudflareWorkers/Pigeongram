@@ -2,13 +2,35 @@ import { Hono } from 'hono';
 import { ENGINE_OBJECT_NAME } from '@pigeongram/backend-services';
 import { readEngineConfig } from '@pigeongram/backend-services/session/config';
 import { errorResponse } from '@pigeongram/backend-services/session/http';
+import { isOriginAllowed } from '@pigeongram/backend-services/session/origin';
 import { log } from '@pigeongram/backend-services/session/log';
 import { parseUploadGroupSpec, parseUploadSpec } from '@pigeongram/backend-services/session/upload-spec';
 import { requireAccess } from './access';
+import { checkRateLimit, rateLimitKey } from './rate-limit';
 
 // Wrangler discovers the Durable Object class through this re-export.
 
-const app = new Hono<{ Bindings: CloudflareEnv }>();
+const app = new Hono<{ Bindings: CloudflareEnv; Variables: { correlationId: string } }>();
+
+app.use('*', async (c, next) => {
+  const correlationId = c.req.header('x-correlation-id') ?? crypto.randomUUID();
+  c.set('correlationId', correlationId);
+  await next();
+  if (!c.res) return;
+  c.res.headers.set('x-correlation-id', correlationId);
+  if (!c.res.headers.has('x-content-type-options')) c.res.headers.set('x-content-type-options', 'nosniff');
+  if (!c.res.headers.has('x-frame-options')) c.res.headers.set('x-frame-options', 'DENY');
+  if (!c.res.headers.has('referrer-policy')) c.res.headers.set('referrer-policy', 'no-referrer');
+  if (!c.res.headers.has('permissions-policy')) c.res.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  const environment = (c.env.ENVIRONMENT ?? '').toLowerCase();
+  if (environment === 'production' && !c.res.headers.has('strict-transport-security')) {
+    c.res.headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+  }
+  // Content-Security-Policy frame-ancestors as the modern equivalent.
+  if (!c.res.headers.has('content-security-policy')) {
+    c.res.headers.set('content-security-policy', "frame-ancestors 'none'");
+  }
+});
 
 /**
  * Public liveness. The `/api/*` plane carries no Cloudflare Access gate and no
@@ -18,36 +40,43 @@ app.get('/api/health', (c) => c.json({ status: 'ok', service: 'telegram-web-clie
 
 /**
  * Cloudflare Access gate for `/user/*`.
- *
- * Access authenticates the browser at the Pages edge and forwards a signed
- * `Cf-Access-Jwt-Assertion` header; this verifies that token before anything
- * reaches the session engine. The check lives in the worker, not the Pages
- * Function, because the worker is the last reachable point before the Durable
- * Object — a misconfigured proxy must not expose the account's session.
  */
 app.use('/user/*', async (c, next) => {
   const rejection = await requireAccess(c.req.raw, c.env);
-  if (rejection) return rejection;
+  if (rejection) {
+    rejection.headers.set('x-correlation-id', c.get('correlationId'));
+    return rejection;
+  }
   await next();
+});
+
+app.use('/user/*', async (c, next) => {
+  const method = c.req.method;
+  const isWebSocketUpgrade = method === 'GET' && new URL(c.req.url).pathname === '/user/updates';
+  if ((method === 'POST' || isWebSocketUpgrade) && !isOriginAllowed(c.req.raw, c.env)) {
+    const response = Response.json({ error: 'Origin not allowed', code: 'access' }, { status: 403 });
+    response.headers.set('x-correlation-id', c.get('correlationId'));
+    return response;
+  }
+  const limit = Number(c.env.RATE_LIMIT_PER_MINUTE ?? '60');
+  const result = checkRateLimit(rateLimitKey(c.req.raw, null), Number.isFinite(limit) && limit > 0 ? limit : 60);
+  if (!result.allowed) {
+    const response = Response.json({ error: 'Too many requests', code: 'access' }, { status: 429 });
+    response.headers.set('retry-after', String(result.retryAfterSeconds));
+    response.headers.set('x-correlation-id', c.get('correlationId'));
+    return response;
+  }
+  await next();
+  if (c.res && !c.res.headers.has('cache-control')) {
+    c.res.headers.set('cache-control', 'no-store');
+  }
 });
 
 /**
  * Cloudflare Access entry point.
- *
- * The public intro page cannot know whether an Access session exists until it
- * probes `/user/state`, so its sign-in button navigates here. Access runs its
- * login flow and redirects back to this URL; the route then returns the
- * browser to the SPA, preserving the path the visitor arrived on.
  */
 app.get('/user/login', (c) => c.redirect(safeReturnPath(c.req.raw)));
 
-/**
- * Reads the `next` parameter of the Access entry point.
- *
- * Only a same-origin absolute path is allowed: a protocol-relative URL, a
- * backslash (which browsers normalize to a slash) or a scheme would turn the
- * login endpoint into an open redirect.
- */
 function safeReturnPath(request: Request): string {
   const next = new URL(request.url).searchParams.get('next');
   if (next === null || !next.startsWith('/') || next.startsWith('//') || next.includes('\\') || /[\r\n]/.test(next)) {
@@ -60,58 +89,46 @@ function safeReturnPath(request: Request): string {
   } catch {
     return '/';
   }
-  if (target.origin !== origin) return '/';
-  // Returning to the entry point itself would make the browser follow an
-  // endless redirect loop.
-  if (target.pathname === '/user/login' || target.pathname.startsWith('/user/login/')) return '/';
+  if (target.origin !== origin || target.pathname === '/user/login' || target.pathname.startsWith('/user/login/')) return '/';
   return `${target.pathname}${target.search}${target.hash}`;
 }
 
-/**
- * Upload pre-flight.
- *
- * workerd reads a request body after the response it belongs to has been sent
- * whenever a Durable Object answers without consuming that body
- * (cloudflare/workerd#918); the uncaught exception can reset the object. So
- * the engine's own parser runs here as well: malformed and oversized uploads
- * are rejected at the edge, and only uploads the engine will actually stream
- * into mtcute ever cross the service binding.
- */
 app.post('/user/upload', async (c, next) => {
+  const correlationId = c.get('correlationId');
   try {
     parseUploadSpec(new URL(c.req.url), c.req.raw, readEngineConfig(c.env));
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, correlationId);
   }
   await next();
 });
 
 app.post('/user/upload-group', async (c, next) => {
+  const correlationId = c.get('correlationId');
   try {
     parseUploadGroupSpec(new URL(c.req.url), c.req.raw, readEngineConfig(c.env));
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, correlationId);
   }
   await next();
 });
 
-/**
-Everything else in `/user/*` lives in the session engine Durable Object.
-*/
 app.all('/user/*', async (c) => {
+  const correlationId = c.get('correlationId');
   try {
     const id = c.env.SESSION_ENGINE.idFromName(ENGINE_OBJECT_NAME);
     const stub = c.env.SESSION_ENGINE.get(id);
-    const response = await stub.fetch(c.req.raw);
-    // An engine failure can leave the upload half-read; cancelling the body
-    // stops workerd's pending pump from reading a stream whose response is
-    // already on its way out.
+    const request = new Request(c.req.raw);
+    request.headers.set('x-correlation-id', correlationId);
+    const response = await stub.fetch(request);
+    response.headers.set('x-correlation-id', correlationId);
     await discardRequestBody(c.req.raw);
     return response;
   } catch (error) {
-    log.error('worker.engine_unreachable', { error });
-    const message = error instanceof Error ? error.message : String(error);
-    return c.json({ error: `Session engine unreachable: ${message}`, code: 'unavailable' }, 503);
+    log.error('worker.engine_unreachable', { error, correlationId });
+    const response = Response.json({ error: 'Session engine unreachable', code: 'unavailable', correlationId }, { status: 503 });
+    response.headers.set('x-correlation-id', correlationId);
+    return response;
   }
 });
 

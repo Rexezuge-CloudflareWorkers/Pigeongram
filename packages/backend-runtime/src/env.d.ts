@@ -35,4 +35,16 @@ interface CloudflareEnv {
    * deployment's vars.
    */
   ACCESS_DEV_BYPASS?: string;
+  /**
+   Comma-separated list of trusted browser origins for CSRF checks.
+   */
+  ALLOWED_ORIGINS?: string;
+  /**
+   The Pages origin serving the SPA, trusted for CSRF checks.
+   */
+  PAGES_ORIGIN?: string;
+  /**
+   Rate limit per minute per client for `/user/*`.
+   */
+  RATE_LIMIT_PER_MINUTE?: string;
 }

@@ -121,16 +121,28 @@ app.all('/user/*', async (c) => {
     const request = new Request(c.req.raw);
     request.headers.set('x-correlation-id', correlationId);
     const response = await stub.fetch(request);
-    response.headers.set('x-correlation-id', correlationId);
     await discardRequestBody(c.req.raw);
-    return response;
+    return withCorrelationId(response, correlationId);
   } catch (error) {
     log.error('worker.engine_unreachable', { error, correlationId });
-    const response = Response.json({ error: 'Session engine unreachable', code: 'unavailable', correlationId }, { status: 503 });
+    const response = Response.json({ error: 'Session Engine Unreachable', code: 'unavailable', correlationId }, { status: 503 });
     response.headers.set('x-correlation-id', correlationId);
     return response;
   }
 });
+
+function withCorrelationId(response: Response, correlationId: string): Response {
+  // Durable Object subrequest responses have immutable headers in Workers.
+  const headers = new Headers(response.headers);
+  headers.set('x-correlation-id', correlationId);
+  const init: ResponseInit & { webSocket?: WebSocket | null } = {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  };
+  if (response.webSocket) init.webSocket = response.webSocket;
+  return new Response(response.body, init);
+}
 
 async function discardRequestBody(request: Request): Promise<void> {
   try {

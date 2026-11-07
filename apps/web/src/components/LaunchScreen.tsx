@@ -30,7 +30,7 @@ export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
       </div>
       {error ? (
         <section className="launch-error">
-          <h1>Connection failed</h1>
+          <h1>Connection Failed</h1>
           <p className="status" role="alert">
             {error}
           </p>

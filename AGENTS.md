@@ -13,7 +13,8 @@ while a browser socket is attached it holds the session live and pushes updates.
 React front end (public intro, QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
 and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
 One account, single user, Free-tier-first: the 10 ms CPU per invocation and the 100,000 rows written/day limits are the
-constraints the session engine is measured against. `docs/session-engine.md` is the engine's runbook.
+constraints the session engine is measured against. `docs/SESSION_ENGINE.md` is the engine's runbook. Deployment
+configuration and first-deploy steps live in `docs/DEPLOYMENT.md`.
 
 ## Commands
 
@@ -32,9 +33,26 @@ honours the `packageManager` pin). Every command below also works as `volta run 
 | `pnpm run checks:fast`            | typecheck + lint + format:check + god-files                                                                       |
 | `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                                                   |
 
-Local dev: `cp .dev.vars.example .dev.vars` (secrets are gitignored), materialize the config
-(`pnpm exec tsx scripts/prepare-wrangler-config.ts`), then `pnpm exec wrangler dev` (worker, port 8787) and
-`pnpm --filter @pigeongram/web dev` (SPA, port 5173, `/api` and `/user` proxied to the worker).
+## Local development
+
+Node 24 and pnpm 11 are required. Install dependencies and create the gitignored local variables file:
+
+```bash
+pnpm install
+cp .dev.vars.example .dev.vars
+```
+
+Add `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` to `.dev.vars`, then start the worker and SPA in separate terminals:
+
+```bash
+pnpm exec tsx scripts/prepare-wrangler-config.ts
+pnpm exec wrangler dev
+pnpm --filter @pigeongram/web dev
+```
+
+The worker runs on port 8787 and the SPA on port 5173. The SPA proxies `/api` and `/user` to the local worker.
+Local development uses the example's `ACCESS_DEV_BYPASS` value; it is honored only outside production and must never
+be configured on a deployment.
 
 ## Architecture & invariants
 
@@ -123,7 +141,7 @@ protocol,registry}`) and the mtcute integration
      not have the family default (`CACHE`) added to its config.
      On a `@rexezuge/tooling` bump, diff and re-sync these files.
 - `scripts/android/` — this repository's own, **not** a kit copy: one entrypoint per Android Build workflow step, with
-  each step's rules exported for `test/android/`. Leave this directory out of the tooling re-sync; `docs/android.md`
+  each step's rules exported for `test/android/`. Leave this directory out of the tooling re-sync; `docs/ANDROID.md`
   names the entrypoints.
 
 ### Load-bearing details
@@ -418,7 +436,7 @@ verification are in place; what remains needs the owner. In order: (1) **M1 acce
 account, one measured wake cycle — after `api_id`/`api_hash` exist; (2) the **72 h soak** at the 300 s cadence once the
 deployment is up; (3) the
 **`telegram-tt` fork** behind the existing bridge contract, once the Pages hostname is behind the Access application and
-its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs/session-engine.md`. Later concerns:
+its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs/SESSION_ENGINE.md`. Later concerns:
 Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's
 point-in-time recovery is the current answer), coverage floors, integration tests, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.
@@ -427,7 +445,7 @@ point-in-time recovery is the current answer), coverage floors, integration test
 registry, the `call`/`call_signaling` updates, the socket relay), the call UX (the overlay, the ringtone, the
 thread header's ☎) and the media plane (the browser-side Diffie-Hellman exchange, the documented packet envelope,
 the WebRTC peer connection) are all implemented. A call **between two instances of this client** works. A call
-**with Telegram's own clients does not yet**, for two reasons, both in `docs/session-engine.md` under _Milestone 4_:
+**with Telegram's own clients does not yet**, for two reasons, both in `docs/SESSION_ENGINE.md` under _Milestone 4_:
 the payload inside the encrypted signalling envelope is this client's own format (Telegram's native clients speak
 tgcalls' message format, which is not publicly specified), and the byte order of the key fingerprint is ambiguous in
 Telegram's documentation. Both need a real account to settle.

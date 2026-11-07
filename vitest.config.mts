@@ -22,13 +22,77 @@ export default defineRepoVitestConfig({
 
   coverageExclude: ['apps/web/src/main.tsx'],
 
-  // The flat floor W2 lands on: every metric at 80%, measured over the whole
-  // suite. A regression in any one metric fails `test:coverage`, so new code
-  // arrives with its tests rather than borrowing the suite's headroom.
+  // Per-module coverage floors (Phase 4.1): the single global 80% gate is
+  // replaced by per-area floors that start at or below current coverage and
+  // ratchet upward. A global safety net sits underneath so no area can silently
+  // regress below it.
   thresholds: {
-    lines: 80,
-    statements: 80,
-    branches: 80,
-    functions: 80,
+    // Global safety net.
+    lines: 75,
+    statements: 75,
+    branches: 70,
+    functions: 75,
+
+    // Pure validation / DTO layer.
+    'packages/shared/src/**': {
+      statements: 80,
+      branches: 75,
+      functions: 80,
+      lines: 80,
+    },
+
+    // Security-critical session engine paths.
+    'packages/backend-services/src/session/{engine,lifecycle,media,upload,media-routes,socket-hub}.ts': {
+      statements: 78,
+      branches: 70,
+      functions: 78,
+      lines: 78,
+    },
+
+    // Calls subsystem (phased ratchet from a low base).
+    'packages/backend-services/src/session/call*.ts': {
+      statements: 60,
+      branches: 55,
+      functions: 60,
+      lines: 60,
+    },
+    'packages/backend-services/src/session/calls/**': {
+      statements: 60,
+      branches: 55,
+      functions: 60,
+      lines: 60,
+    },
+
+    // Driver (pre-split gateway-level tests).
+    'packages/backend-services/src/session/driver.ts': {
+      statements: 70,
+      branches: 65,
+      functions: 70,
+      lines: 70,
+    },
+
+    // Pure reducers in the SPA.
+    'apps/web/src/state/**': {
+      statements: 85,
+      branches: 80,
+      functions: 85,
+      lines: 85,
+    },
+
+    // Hooks (low branch base).
+    'apps/web/src/use*.ts': {
+      statements: 70,
+      branches: 60,
+      functions: 70,
+      lines: 70,
+    },
+
+    // Components.
+    'apps/web/src/components/**': {
+      statements: 55,
+      branches: 50,
+      functions: 55,
+      lines: 55,
+    },
   },
 });

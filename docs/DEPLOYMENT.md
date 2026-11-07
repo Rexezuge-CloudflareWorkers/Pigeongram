@@ -19,10 +19,11 @@ directly: the application uses WebSockets, which require the Pages-to-Worker ser
 
 Set these repository secrets:
 
-| Secret                  | Purpose                        |
-| ----------------------- | ------------------------------ |
-| `CLOUDFLARE_API_TOKEN`  | Deploys Workers and Pages      |
-| `CLOUDFLARE_ACCOUNT_ID` | Selects the Cloudflare account |
+| Secret                                  | Purpose                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`                  | Deploys Workers and Pages                                                                       |
+| `CLOUDFLARE_ACCOUNT_ID`                 | Selects the Cloudflare account                                                                  |
+| `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` | Optional Telegram API credentials; CD defaults to `2496` and `8da85b0d5bfe62527e5b244c209159c3` |
 
 Set these repository variables:
 
@@ -44,12 +45,9 @@ The Access variables are public configuration, not secrets:
 `TEAM_DOMAIN` is found in **Zero Trust → Settings**. `POLICY_AUD` is the Access application's **Application Audience
 (AUD) Tag** under **Zero Trust → Access controls → Applications → the Pages application → Additional settings**.
 
-Set the runtime secrets in the target Worker environment:
-
-```bash
-pnpm exec wrangler secret put TELEGRAM_API_ID
-pnpm exec wrangler secret put TELEGRAM_API_HASH
-```
+Continuous Deployment provisions the runtime secrets on every Worker deploy. Set repository secrets
+`TELEGRAM_API_ID` and `TELEGRAM_API_HASH` to override the defaults; otherwise CD uses `2496` and
+`8da85b0d5bfe62527e5b244c209159c3`.
 
 Never set `ACCESS_DEV_BYPASS` on a deployment. It is for local development only.
 

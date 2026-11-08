@@ -28,4 +28,17 @@ export default [
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs['recommended-latest'].rules,
   },
+
+  // The SPA consumes the workspace contract instead of mirroring it. The
+  // canonical `apps/web` boundary bans every `@pigeongram/*` package, so the
+  // two type-only barrels are the deliberate exception: they re-export the
+  // DTOs and method shapes from `@pigeongram/shared` and emit no runtime code.
+  // Every other SPA file stays under the ban.
+  {
+    files: ['apps/web/src/types.ts', 'apps/web/src/call-types.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];

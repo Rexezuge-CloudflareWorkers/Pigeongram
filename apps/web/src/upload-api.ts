@@ -1,4 +1,4 @@
-import { ApiError, apiError } from './api-error';
+import { HttpStatusError } from '@rexezuge/web/api';
 import type { PeerId, SendMessageResult, SendUploadGroupResult, UploadKind } from './types';
 
 /**
@@ -120,12 +120,33 @@ function sendUpload<T>(path: string, body: Blob, onProgress?: (fraction: number)
         resolve(payload as T);
         return;
       }
-      reject(apiError(xhr.status, payload));
+      reject(uploadFailure(xhr.status, payload));
     });
-    xhr.addEventListener('error', () => reject(new ApiError('Upload failed — network error', 0)));
-    xhr.addEventListener('abort', () => reject(new ApiError('Upload cancelled', 0)));
+    xhr.addEventListener('error', () => reject(new HttpStatusError(0, 'Upload failed — network error', null)));
+    xhr.addEventListener('abort', () => reject(new HttpStatusError(0, 'Upload cancelled', null)));
     xhr.send(body);
   });
+}
+
+/**
+Turns an upload failure body into the family's error type.
+
+The engine answers with the canonical `{Exception:{Type,Message}}` envelope;
+the legacy `{error, code}` shape is still read during the transition. XHR
+cannot use the shared JSON client (it is the only transport that reports
+upload progress), so this small decoder mirrors the client's rule.
+*/
+function uploadFailure(status: number, payload: unknown): HttpStatusError {
+  const record = payload !== null && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+  const exception = record.Exception !== null && typeof record.Exception === 'object' ? (record.Exception as Record<string, unknown>) : {};
+  const message =
+    typeof exception.Message === 'string'
+      ? exception.Message
+      : typeof record.error === 'string'
+        ? record.error
+        : `Upload failed (${status})`;
+  const type = typeof exception.Type === 'string' ? exception.Type : typeof record.code === 'string' ? record.code : null;
+  return new HttpStatusError(status, message, type);
 }
 
 function encodeManifest(items: readonly UploadGroupItem[]): string {

@@ -1,5 +1,6 @@
+import { ServiceError } from '@rexezuge/errors';
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, cancelLogin, getState, isAuthError, startPhoneLogin, startQr, submitLoginCode, submitPassword } from './api';
+import { cancelLogin, getState, isAuthError, startPhoneLogin, startQr, submitLoginCode, submitPassword } from './api';
 import type { EngineStateDto } from './types';
 
 const POLL_INTERVAL_MS = 2500;
@@ -74,7 +75,7 @@ export function useLoginFlow(): LoginFlowState {
     try {
       next = await getState();
     } catch (failure) {
-      if (failure instanceof ApiError) {
+      if (failure instanceof ServiceError) {
         // The bridge answered: Access rejected the session, so the reader is
         // outside the front door. The network is up by definition.
         if (isAuthError(failure)) {

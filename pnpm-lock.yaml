@@ -102,9 +102,15 @@ importers:
       '@pigeongram/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@rexezuge/errors':
+        specifier: 1.9.4
+        version: 1.9.4
       '@rexezuge/shared':
         specifier: 1.9.4
         version: 1.9.4
+      '@rexezuge/web':
+        specifier: 1.9.4
+        version: 1.9.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0

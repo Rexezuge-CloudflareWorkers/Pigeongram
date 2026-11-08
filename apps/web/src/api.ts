@@ -1,4 +1,5 @@
-import { ApiError } from './api-error';
+import { ServiceError } from '@rexezuge/errors';
+import { HttpStatusError } from '@rexezuge/web/api';
 import { request } from './api/request';
 import type { EngineStateDto } from './types';
 
@@ -8,8 +9,6 @@ import type { EngineStateDto } from './types';
  * `api/`. Screens keep importing `./api`; the split is about file size, not
  * about a second calling convention.
  */
-
-export { ApiError } from './api-error';
 
 export { fetchArchivedDialogs, fetchBootstrap, fetchDialogs, fetchProfile, joinChat, resolveChat, setArchived } from './api/chats';
 export {
@@ -57,20 +56,34 @@ here means the worker did not receive a valid assertion, so the page falls
 back to the public intro.
 */
 export function isAuthError(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+  return error instanceof ServiceError && (error.status === 401 || error.status === 403);
 }
 
 /**
 Reads the engine snapshot, which doubles as the Access probe.
 
 An Access login page can answer `200` with HTML when its redirect is followed
-same-origin; the JSON parser yields `null`, which is not engine state. Throw a
-non-`ApiError` so `useLoginFlow` treats it exactly like the cross-origin
-redirect it stands in for.
+same-origin; the shared client reports that as a malformed-body
+`HttpStatusError`, which is not engine state. A request that never produced a
+response at all (the Access redirect's CORS failure, or a dead network)
+arrives wrapped in a `ServiceError`. Both become a `TypeError` so
+`useLoginFlow` can treat them exactly like the cross-origin redirect they
+stand in for, and still distinguish them from a bridge error.
 */
 export async function getState(): Promise<EngineStateDto> {
-  const state = await request<EngineStateDto | null>('/user/state', { cache: 'no-store' });
-  if (state === null || typeof state.authorized !== 'boolean') {
+  let state: EngineStateDto | undefined;
+  try {
+    state = await request<EngineStateDto | undefined>('/user/state', { cache: 'no-store' });
+  } catch (failure) {
+    if (failure instanceof HttpStatusError && failure.status === 200) {
+      throw new TypeError('The /user/state response is not an engine snapshot');
+    }
+    if (failure instanceof ServiceError && failure.cause instanceof TypeError) {
+      throw failure.cause;
+    }
+    throw failure;
+  }
+  if (!state || typeof state.authorized !== 'boolean') {
     throw new TypeError('The /user/state response is not an engine snapshot');
   }
   return state;
@@ -81,13 +94,13 @@ export const startQr = (): Promise<EngineStateDto> => request<EngineStateDto>('/
 export const startPhoneLogin = (phone: string): Promise<EngineStateDto> =>
   request<EngineStateDto>('/user/login/phone', {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: { phone },
   });
 
 export const submitLoginCode = (code: string): Promise<EngineStateDto> =>
   request<EngineStateDto>('/user/login/code', {
     method: 'POST',
-    body: JSON.stringify({ code }),
+    body: { code },
   });
 
 export const cancelLogin = (): Promise<EngineStateDto> => request<EngineStateDto>('/user/login/cancel', { method: 'POST' });
@@ -95,7 +108,7 @@ export const cancelLogin = (): Promise<EngineStateDto> => request<EngineStateDto
 export const submitPassword = (password: string): Promise<EngineStateDto> =>
   request<EngineStateDto>('/user/login/password', {
     method: 'POST',
-    body: JSON.stringify({ password }),
+    body: { password },
   });
 
 export const logout = (): Promise<{ ok: true }> => request('/user/logout', { method: 'POST' });
@@ -145,5 +158,3 @@ const CODE_DELIVERY: Record<string, string> = {
   sms_word: 'by SMS',
   sms_phrase: 'by SMS',
 };
-
-export { type UpdateEvent } from './types';

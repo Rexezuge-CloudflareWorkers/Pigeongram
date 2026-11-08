@@ -48,7 +48,7 @@ export function isDownloadable(message: MessageDto): boolean {
  */
 export function downloadMedia(message: MessageDto): void {
   const anchor = document.createElement('a');
-  anchor.href = fileUrl(message.chatId, message.id, { quality: 'max' });
+  anchor.href = fileUrl(message.chatId, message.id, { quality: 'max', download: true });
   anchor.download = downloadFileName(message);
   anchor.rel = 'noreferrer';
   // eslint-disable-next-line unicorn/prefer-dom-node-append -- the Workers `Element.append` overload the test project's types merge in accepts no nodes, so `appendChild` is the form both projects type-check.

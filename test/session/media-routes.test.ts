@@ -49,10 +49,28 @@ describe('fileResponse', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('video/mp4');
     expect(response.headers.get('content-length')).toBe('4');
+    expect(response.headers.get('content-disposition')).toBe('attachment');
     expect(response.headers.get('accept-ranges')).toBe('bytes');
     expect(response.headers.get('content-range')).toBeNull();
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]));
     expect(streamMessageMedia).toHaveBeenCalledWith(1, 2, {});
+  });
+
+  it('forces inline image media into a browser download when requested', async () => {
+    const { url, request } = target('/user/file?chatId=1&messageId=2&download=1');
+    const { driver: imageDriver } = stubDriver(download({ mime: 'image/jpeg' }));
+
+    const response = await fileResponse(imageDriver, request, url);
+
+    expect(response.headers.get('content-disposition')).toBe('attachment');
+    expect(response.headers.get('content-length')).toBe('4');
+  });
+
+  it('keeps ordinary image media inline', async () => {
+    const { request, url } = target('/user/file?chatId=1&messageId=2');
+    const response = await fileResponse(stubDriver(download({ mime: 'image/jpeg' })).driver, request, url);
+
+    expect(response.headers.get('content-disposition')).toBe('inline');
   });
 
   it('forwards a bounded range and its 206 metadata', async () => {

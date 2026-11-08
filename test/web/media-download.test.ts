@@ -72,7 +72,7 @@ describe('media downloads', () => {
     downloadMedia(message(photo));
 
     expect(clicked).toHaveLength(1);
-    expect(clicked[0]?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10&quality=max');
+    expect(clicked[0]?.getAttribute('href')).toBe('/user/file?chatId=2&messageId=10&quality=max&download=1');
     expect(clicked[0]?.getAttribute('href')).not.toContain('thumb=1');
     expect(clicked[0]?.getAttribute('download')).toBe('photo-10.jpg');
   });

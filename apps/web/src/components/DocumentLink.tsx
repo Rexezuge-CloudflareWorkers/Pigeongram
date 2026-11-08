@@ -14,7 +14,7 @@ export function DocumentLink({ message }: { message: MessageDto }) {
   return (
     <a
       className="document"
-      href={fileUrl(message.chatId, message.id, { quality: 'max' })}
+      href={fileUrl(message.chatId, message.id, { quality: 'max', download: true })}
       download={downloadFileName(message)}
       target="_blank"
       rel="noreferrer"

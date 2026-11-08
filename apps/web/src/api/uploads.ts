@@ -12,7 +12,7 @@ export { uploadFile, uploadGroup } from '../upload-api';
 export function fileUrl(
   chatId: PeerId,
   messageId: number,
-  options: { thumb?: boolean; version?: string; quality?: number | 'max' } = {},
+  options: { thumb?: boolean; version?: string; quality?: number | 'max'; download?: boolean } = {},
 ): string {
   const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId) });
   if (options.thumb) params.set('thumb', '1');
@@ -22,6 +22,7 @@ export function fileUrl(
   // Stream variant resolved server-side: omit for default playback, `max` for a
   // download that must always be the highest quality.
   if (options.quality !== undefined) params.set('quality', String(options.quality));
+  if (options.download) params.set('download', '1');
   return `/user/file?${params.toString()}`;
 }
 

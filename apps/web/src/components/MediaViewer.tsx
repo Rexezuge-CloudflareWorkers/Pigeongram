@@ -65,7 +65,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   const selectedQuality =
     showQuality && streamQuality !== 'auto' && qualities.some((quality) => quality.index === streamQuality) ? streamQuality : 'auto';
   const streamSrc = current ? fileUrl(current.chatId, current.id, selectedQuality === 'auto' ? {} : { quality: selectedQuality }) : '';
-  const downloadSrc = current ? fileUrl(current.chatId, current.id, { quality: 'max' }) : '';
+  const downloadSrc = current ? fileUrl(current.chatId, current.id, { quality: 'max', download: true }) : '';
   const failed = failedSrc === streamSrc;
   const photo = media?.kind === 'photo' && !failed;
   const {

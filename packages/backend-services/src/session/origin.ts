@@ -74,5 +74,6 @@ export function isOriginAllowed(request: Request, env: OriginEnv = {}): boolean 
 }
 
 export function originRejection(): Response {
-  return Response.json({ error: 'Origin not allowed', code: 'access' }, { status: 403 });
+  // The family's canonical envelope; the edge adds the correlation header.
+  return Response.json({ Exception: { Type: 'access', Message: 'Origin not allowed' } }, { status: 403 });
 }

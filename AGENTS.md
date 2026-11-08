@@ -51,8 +51,8 @@ pnpm --filter @pigeongram/web dev
 ```
 
 The worker runs on port 8787 and the SPA on port 5173. The SPA proxies `/api` and `/user` to the local worker.
-Local development uses the example's `ACCESS_DEV_BYPASS` value; it is honored only outside production and must never
-be configured on a deployment.
+Local development uses the example's `ACCESS_DEV_BYPASS` value with `ACCESS_DEV_EMAIL` as the identity it
+authenticates as; the bypass is honored only outside production and must never be configured on a deployment.
 
 ## Architecture & invariants
 
@@ -248,7 +248,8 @@ protocol,registry}`) and the mtcute integration
   lands back in the SPA instead of on the engine. The Access app must be a **self-hosted** app on the Pages hostname,
   not a Worker-destination app: the latter
   rejects WebSocket upgrades. `ACCESS_DEV_BYPASS` skips verification only while `ENVIRONMENT !== "production"` and
-  belongs in `.dev.vars` only. Do not add an `/api/*` catch-all that forwards to the DO: the public plane must never
+  belongs in `.dev.vars` only; `ACCESS_DEV_EMAIL` is the identity it authenticates as, so a bypass with no address
+  fails closed rather than opening the account plane. Do not add an `/api/*` catch-all that forwards to the DO: the public plane must never
   reach the account API.
 - **Storage is mtcute's storage over the DO's SQLite, but only mtcute's session state is durable.** `session/mtproto/sqlite.ts`
   adapts `ctx.storage.sql` to `ISqliteDatabase` (`transactionSync` backs mtcute's `driver.save()`); `key_value` (the

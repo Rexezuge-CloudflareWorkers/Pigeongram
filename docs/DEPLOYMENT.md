@@ -49,7 +49,8 @@ Continuous Deployment provisions the runtime secrets on every Worker deploy. Set
 `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` to override the defaults; otherwise CD uses `2496` and
 `8da85b0d5bfe62527e5b244c209159c3`.
 
-Never set `ACCESS_DEV_BYPASS` on a deployment. It is for local development only.
+Never set `ACCESS_DEV_BYPASS` on a deployment. It is for local development only, and `ACCESS_DEV_EMAIL` is the
+identity it authenticates as; a bypass with no address fails closed.
 
 ## First deploy
 

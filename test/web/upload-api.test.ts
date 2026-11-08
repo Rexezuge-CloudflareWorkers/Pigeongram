@@ -131,14 +131,24 @@ describe('uploadFile', () => {
     await expect(pending).resolves.toEqual({ message: { id: 1 } });
   });
 
-  it('turns a failed status into an ApiError with the server body', async () => {
+  it('turns a failed status into an HttpStatusError with the server body', async () => {
     const pending = uploadFile(INPUT, new Blob(['abc']));
     const xhr = FakeXhr.instances[0]!;
     xhr.status = 413;
     xhr.response = { code: 'payload_too_large', error: 'Too large' };
     xhr.emit('load');
 
-    await expect(pending).rejects.toMatchObject({ status: 413, code: 'payload_too_large', message: 'Too large' });
+    await expect(pending).rejects.toMatchObject({ status: 413, type: 'payload_too_large', message: 'Too large' });
+  });
+
+  it('reads the canonical envelope on a failed upload', async () => {
+    const pending = uploadFile(INPUT, new Blob(['abc']));
+    const xhr = FakeXhr.instances[0]!;
+    xhr.status = 503;
+    xhr.response = { Exception: { Type: 'storage_write_quota', Message: 'The write budget is spent' } };
+    xhr.emit('load');
+
+    await expect(pending).rejects.toMatchObject({ status: 503, type: 'storage_write_quota', message: 'The write budget is spent' });
   });
 
   it('rejects on a network error and on an abort', async () => {

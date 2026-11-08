@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { ApiError, joinChat, readHistory, resolveChat } from './api';
+import { ServiceError } from '@rexezuge/errors';
+import { joinChat, readHistory, resolveChat } from './api';
 import { findLinkedChat, launchTelegramApp, linkTarget, parseTelegramLink, targetAppLink } from './links';
 import type { TelegramChatTarget } from './links';
 import type { ChatPreview, ResolveRequest, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
@@ -132,7 +133,7 @@ export function useSignedInNavigation({
         const result = await resolveChat({ chatId: route.chatId });
         if (result.member) registerTransient(result.chat);
       } catch (failure) {
-        if (failure instanceof ApiError && failure.status === 404) return;
+        if (failure instanceof ServiceError && failure.status === 404) return;
         onError(failure);
       }
     },
@@ -222,7 +223,7 @@ export function useSignedInNavigation({
         })
         .catch((failure: unknown) => {
           if (ticket !== resolution.current) return;
-          if (failure instanceof ApiError && failure.status === 404) {
+          if (failure instanceof ServiceError && failure.status === 404) {
             handOff(target, request);
             return;
           }

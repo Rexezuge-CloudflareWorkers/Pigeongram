@@ -83,12 +83,12 @@ importers:
       '@pigeongram/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@rexezuge/http':
+        specifier: 1.9.4
+        version: 1.9.4
       hono:
         specifier: ^4.13.16
         version: 4.13.16
-      jose:
-        specifier: ^6.2.15
-        version: 6.2.15
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
@@ -242,6 +242,9 @@ importers:
         specifier: workspace:*
         version: link:../apps/web
       '@rexezuge/errors':
+        specifier: 1.9.4
+        version: 1.9.4
+      '@rexezuge/http':
         specifier: 1.9.4
         version: 1.9.4
       '@rexezuge/web':

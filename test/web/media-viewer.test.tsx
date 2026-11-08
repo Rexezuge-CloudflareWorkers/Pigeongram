@@ -213,7 +213,7 @@ describe('media viewer photo zoom', () => {
     expect(document.querySelector('img.media-viewer-photo')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Zoom In' })).toBeNull();
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1&quality=max');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=1&quality=max&download=1');
     expect(link.getAttribute('download')).toBe('clip.mp4');
   });
 });
@@ -223,7 +223,7 @@ describe('media viewer downloads', () => {
     renderViewer([photo(7)]);
 
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7&quality=max');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7&quality=max&download=1');
     expect(link.getAttribute('href')).not.toContain('thumb=1');
     expect(link.getAttribute('download')).toBe('photo-7.jpg');
     expect(link.querySelector('svg[data-icon="download"]')).not.toBeNull();
@@ -234,7 +234,7 @@ describe('media viewer downloads', () => {
     fireEvent.click(button('Next Media'));
 
     const link = screen.getByRole('link', { name: 'Download Original' });
-    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2&quality=max');
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=2&quality=max&download=1');
     expect(link.getAttribute('download')).toBe('photo-2.jpg');
   });
 
@@ -277,7 +277,7 @@ describe('media viewer quality', () => {
       '/user/file?chatId=2&messageId=1&quality=1',
     );
     expect(screen.getByRole('link', { name: 'Download Original' }).getAttribute('href')).toBe(
-      '/user/file?chatId=2&messageId=1&quality=max',
+      '/user/file?chatId=2&messageId=1&quality=max&download=1',
     );
   });
 

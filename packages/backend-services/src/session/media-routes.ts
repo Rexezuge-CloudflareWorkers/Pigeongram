@@ -21,12 +21,13 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
   const messageId = requireMessageId(url.searchParams.get('messageId'));
   const range = parseRange(request.headers.get('range'));
   const quality = parseQuality(url.searchParams.get('quality'));
-  const download = await driver.streamMessageMedia(chatId, messageId, {
+  const isDownload = url.searchParams.get('download') === '1';
+  const media = await driver.streamMessageMedia(chatId, messageId, {
     ...(url.searchParams.get('thumb') === '1' && { thumb: true }),
     ...(range && { range }),
     ...(quality !== null && { quality }),
   });
-  return mediaResponse(download, FILE_CACHE_SECONDS);
+  return mediaResponse(media, FILE_CACHE_SECONDS, isDownload);
 }
 
 export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL): Promise<Response> {
@@ -137,14 +138,14 @@ function isImageMime(mime: string): boolean {
   return lower.startsWith('image/');
 }
 
-function mediaResponse(download: MediaDownload, cacheSeconds: number): Response {
+function mediaResponse(download: MediaDownload, cacheSeconds: number, isDownload: boolean): Response {
   const headers: Record<string, string> = {
     'content-type': download.mime,
     'cache-control': `private, max-age=${cacheSeconds}`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
     'cross-origin-resource-policy': 'same-origin',
-    'content-disposition': isImageMime(download.mime) ? 'inline' : 'attachment',
+    'content-disposition': isDownload || !isImageMime(download.mime) ? 'attachment' : 'inline',
   };
   if (download.length !== null) headers['content-length'] = String(download.length);
   if (download.size !== null) headers['accept-ranges'] = 'bytes';

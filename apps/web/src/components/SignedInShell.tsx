@@ -21,6 +21,7 @@ import { Toasts } from './Toasts';
 import { useDropNotice } from './useDropNotice';
 import { useExitAnimation } from './useExitAnimation';
 import { useTheme } from './useTheme';
+import { useDynamicColor } from './useDynamicColor';
 import { UserMenu } from './UserMenu';
 
 /**
@@ -60,6 +61,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
   const [me, setMe] = useState<MeDto | null>(initialMe);
   const { notice, notify } = useDropNotice();
   const { theme, setTheme } = useTheme();
+  const { seed, setSeed, contrast, setContrast } = useDynamicColor();
   /**
   Whether the sidebar is browsing the archive. The route owns the archive
   screen (`/archived`), and a chat opened from it keeps the context: the list
@@ -311,6 +313,10 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
             onOpenArchive={openArchive}
             onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
             theme={theme}
+            seed={seed}
+            onSetSeed={setSeed}
+            contrast={contrast}
+            onSetContrast={setContrast}
           />
           <button
             type="button"

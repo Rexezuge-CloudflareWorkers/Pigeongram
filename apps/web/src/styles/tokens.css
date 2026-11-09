@@ -1,0 +1,171 @@
+/* MD3 design tokens (--md-sys-*) — canonical token layer.
+ *
+ * Seeded from the existing Telegram palette in base.css so the migration is
+ * visually neutral: tonal surfaces map onto `--panel`/`--panel-2`/`--panel-3`,
+ * `primary` onto `--accent`, `surface` onto `--bg`. Legacy vars in base.css
+ * are aliases at these tokens (see the alias table there), so all 18 legacy
+ * sheets and every `bg-panel`-style Tailwind utility keep working.
+ *
+ * Telegram extras: own-message bubble `--own` sits over
+ * `surface-container-high` (its `secondary-container` role); presence
+ * `--online` maps to `tertiary`. A different seed later touches this file only.
+ *
+ * Light/dark: dark is the default `:root` palette (the loader line ships
+ * dark); `[data-theme='light']` remaps it. `useTheme.ts` drives the attribute.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Color — dark (seed: #5eb5f7 / #0e1621) */
+  --md-sys-color-primary: #5eb5f7;
+  --md-sys-color-on-primary: #062639;
+  --md-sys-color-primary-container: #3f8fd0;
+  --md-sys-color-on-primary-container: #e9f4ff;
+  --md-sys-color-secondary: #7f91a4;
+  --md-sys-color-on-secondary: #0e1621;
+  --md-sys-color-secondary-container: #2b5278;
+  --md-sys-color-on-secondary-container: #e9eef3;
+  --md-sys-color-tertiary: #4dcd5e;
+  --md-sys-color-on-tertiary: #0b2b12;
+  --md-sys-color-tertiary-container: #1d5230;
+  --md-sys-color-on-tertiary-container: #dcf5e0;
+  --md-sys-color-error: #ff7b72;
+  --md-sys-color-on-error: #3b0f0c;
+  --md-sys-color-error-container: #6e2420;
+  --md-sys-color-on-error-container: #ffe1de;
+  --md-sys-color-surface: #0e1621;
+  --md-sys-color-on-surface: #e9eef3;
+  --md-sys-color-surface-variant: #17212b;
+  --md-sys-color-on-surface-variant: #7f91a4;
+  --md-sys-color-surface-container-lowest: #0b1017;
+  --md-sys-color-surface-container-low: #111a24;
+  --md-sys-color-surface-container: #17212b;
+  --md-sys-color-surface-container-high: #1e2c3a;
+  --md-sys-color-surface-container-highest: #24344a;
+  --md-sys-color-surface-dim: #0e1621;
+  --md-sys-color-surface-bright: #24344a;
+  --md-sys-color-inverse-surface: #e9eef3;
+  --md-sys-color-inverse-on-surface: #17212b;
+  --md-sys-color-inverse-primary: #1f6da8;
+  --md-sys-color-outline: #32455a;
+  --md-sys-color-outline-variant: #25333f;
+
+  /* Typography — system stack kept (no webfont this phase); Roboto is in the
+     fallback for Android. Sizes follow the in-app text (~15px body). */
+  --md-sys-typescale-display-large-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-display-large-size: 3.5rem;
+  --md-sys-typescale-display-large-weight: 400;
+  --md-sys-typescale-display-large-line-height: 4rem;
+  --md-sys-typescale-display-large-tracking: -0.02em;
+  --md-sys-typescale-headline-large-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-headline-large-size: 2rem;
+  --md-sys-typescale-headline-large-weight: 600;
+  --md-sys-typescale-headline-large-line-height: 2.5rem;
+  --md-sys-typescale-headline-large-tracking: 0;
+  --md-sys-typescale-title-large-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-title-large-size: 1.375rem;
+  --md-sys-typescale-title-large-weight: 500;
+  --md-sys-typescale-title-large-line-height: 1.75rem;
+  --md-sys-typescale-title-large-tracking: 0;
+  --md-sys-typescale-title-medium-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-title-medium-size: 1rem;
+  --md-sys-typescale-title-medium-weight: 500;
+  --md-sys-typescale-title-medium-line-height: 1.5rem;
+  --md-sys-typescale-title-medium-tracking: 0.01em;
+  --md-sys-typescale-body-large-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-body-large-size: 1rem;
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-line-height: 1.5rem;
+  --md-sys-typescale-body-large-tracking: 0.03em;
+  --md-sys-typescale-body-medium-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-body-medium-size: 0.875rem;
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-line-height: 1.25rem;
+  --md-sys-typescale-body-medium-tracking: 0.02em;
+  --md-sys-typescale-body-small-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-body-small-size: 0.75rem;
+  --md-sys-typescale-body-small-weight: 400;
+  --md-sys-typescale-body-small-line-height: 1rem;
+  --md-sys-typescale-body-small-tracking: 0.03em;
+  --md-sys-typescale-label-large-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-label-large-size: 0.875rem;
+  --md-sys-typescale-label-large-weight: 500;
+  --md-sys-typescale-label-large-line-height: 1.25rem;
+  --md-sys-typescale-label-large-tracking: 0.006em;
+  --md-sys-typescale-label-medium-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-label-medium-size: 0.75rem;
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-line-height: 1rem;
+  --md-sys-typescale-label-medium-tracking: 0.03em;
+  --md-sys-typescale-label-small-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --md-sys-typescale-label-small-size: 0.6875rem;
+  --md-sys-typescale-label-small-weight: 500;
+  --md-sys-typescale-label-small-line-height: 1rem;
+  --md-sys-typescale-label-small-tracking: 0.03em;
+
+  /* Shape */
+  --md-sys-shape-corner-none: 0;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /* Motion — emphasized family (cubic-bezier(0.2,0,0,1)); the app's legacy
+     --ease-out family stays aliased in base.css, these are the MD3 names. */
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-duration-emphasized: 500ms;
+  --md-sys-motion-duration-emphasized-decelerate: 400ms;
+  --md-sys-motion-duration-emphasized-accelerate: 200ms;
+  --md-sys-motion-duration-standard: 300ms;
+  --md-sys-motion-duration-standard-decelerate: 250ms;
+  --md-sys-motion-duration-standard-accelerate: 200ms;
+}
+
+/* Light remap (seed: #2aabee / #ffffff) */
+.app[data-theme='light'],
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --md-sys-color-primary: #2aabee;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #d6efff;
+  --md-sys-color-on-primary-container: #00395c;
+  --md-sys-color-secondary: #707579;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #effdde;
+  --md-sys-color-on-secondary-container: #222222;
+  --md-sys-color-tertiary: #57c785;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #dcf5e0;
+  --md-sys-color-on-tertiary-container: #0b2b12;
+  --md-sys-color-error: #e74c3c;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #fde4e1;
+  --md-sys-color-on-error-container: #7a1d13;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #222222;
+  --md-sys-color-surface-variant: #f0f2f5;
+  --md-sys-color-on-surface-variant: #707579;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f9fb;
+  --md-sys-color-surface-container: #ffffff;
+  --md-sys-color-surface-container-high: #f0f2f5;
+  --md-sys-color-surface-container-highest: #e4e8ee;
+  --md-sys-color-surface-dim: #f0f2f5;
+  --md-sys-color-surface-bright: #ffffff;
+  --md-sys-color-inverse-surface: #17212b;
+  --md-sys-color-inverse-on-surface: #e9eef3;
+  --md-sys-color-inverse-primary: #5eb5f7;
+  --md-sys-color-outline: #c9d1db;
+  --md-sys-color-outline-variant: #e0e6ed;
+}

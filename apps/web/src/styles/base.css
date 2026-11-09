@@ -1,24 +1,35 @@
-/* Base chrome: theme, controls, login, signed-in shell. */
+/* Base chrome: theme, controls, login, signed-in shell.
+ *
+ * Canonical tokens live in tokens.css (--md-sys-*). The vars below are
+ * aliases at them, so legacy sheets and @theme bridges keep working:
+ *   --bg=--surface, --panel=--surface-container, --panel-2=--surface-container-high,
+ *   --panel-3=--surface-container-highest, --border=--outline-variant,
+ *   --border-strong=--outline, --text=--on-surface, --muted=--on-surface-variant,
+ *   --accent=--primary, --badge=--primary-container, --own=--secondary-container,
+ *   --danger=--error, --online=--tertiary.
+ * Light values come from tokens.css's [data-theme='light'] remap; the light
+ * remap here just re-points the same aliases.
+ */
 :root {
   color-scheme: dark;
-  --bg: #0e1621;
-  --panel: #17212b;
-  --panel-2: #1e2c3a;
-  --panel-3: #24344a;
-  --border: #25333f;
-  --border-strong: #32455a;
-  --text: #e9eef3;
-  --muted: #7f91a4;
-  --accent: #5eb5f7;
+  --bg: var(--md-sys-color-surface);
+  --panel: var(--md-sys-color-surface-container);
+  --panel-2: var(--md-sys-color-surface-container-high);
+  --panel-3: var(--md-sys-color-surface-container-highest);
+  --border: var(--md-sys-color-outline-variant);
+  --border-strong: var(--md-sys-color-outline);
+  --text: var(--md-sys-color-on-surface);
+  --muted: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-primary);
   --accent-strong: #74c3ff;
   /* The tint the official clients put behind a selected row and a hovered
      control: the accent at a whisper of opacity. */
   --accent-soft: rgb(94 181 247 / 16%);
   --accent-softer: rgb(94 181 247 / 8%);
-  --own: #2b5278;
-  --badge: #3f8fd0;
-  --danger: #ff7b72;
-  --online: #4dcd5e;
+  --own: var(--md-sys-color-secondary-container);
+  --badge: var(--md-sys-color-primary-container);
+  --danger: var(--md-sys-color-error);
+  --online: var(--md-sys-color-tertiary);
   --warn: #e0a33c;
   /* One easing for every press and pop in the app: quick to start, settled
      without a bounce. */
@@ -33,50 +44,31 @@
   --dur-fast: 140ms;
   --dur-base: 220ms;
   --dur-slow: 320ms;
-  /* Official-client light palette, toggled via `data-theme="light"` on the
-     app root. Telegram's light mode: white panels, `#effdde` own tint. */
-  --light-bg: #ffffff;
-  --light-panel: #ffffff;
-  --light-panel-2: #f0f2f5;
-  --light-panel-3: #e4e8ee;
-  --light-border: #e0e6ed;
-  --light-border-strong: #c9d1db;
-  --light-text: #222222;
-  --light-muted: #707579;
-  --light-accent: #2aabee;
-  --light-accent-strong: #1f96d1;
-  --light-accent-soft: rgb(42 171 238 / 14%);
-  --light-accent-softer: rgb(42 171 238 / 7%);
-  --light-own: #effdde;
-  --light-badge: #2aabee;
-  --light-danger: #e74c3c;
-  --light-online: #57c785;
-  --light-warn: #f5a623;
 }
 
-/* Light theme tokens. Selected with `data-theme="light"` on the app root;
-   the dark palette above is the default (and the only scheme that exists
-   for the loader line, so `color-scheme` follows the active theme). */
+/* Light theme: aliases re-point at tokens.css's [data-theme='light'] remap.
+   --accent-strong/-soft/-softer and --warn keep their official-client values
+   (no MD3 role is close enough). */
 .app[data-theme='light'],
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: var(--light-bg);
-  --panel: var(--light-panel);
-  --panel-2: var(--light-panel-2);
-  --panel-3: var(--light-panel-3);
-  --border: var(--light-border);
-  --border-strong: var(--light-border-strong);
-  --text: var(--light-text);
-  --muted: var(--light-muted);
-  --accent: var(--light-accent);
-  --accent-strong: var(--light-accent-strong);
-  --accent-soft: var(--light-accent-soft);
-  --accent-softer: var(--light-accent-softer);
-  --own: var(--light-own);
-  --badge: var(--light-badge);
-  --danger: var(--light-danger);
-  --online: var(--light-online);
-  --warn: var(--light-warn);
+  --bg: var(--md-sys-color-surface);
+  --panel: var(--md-sys-color-surface-container);
+  --panel-2: var(--md-sys-color-surface-container-high);
+  --panel-3: var(--md-sys-color-surface-container-highest);
+  --border: var(--md-sys-color-outline-variant);
+  --border-strong: var(--md-sys-color-outline);
+  --text: var(--md-sys-color-on-surface);
+  --muted: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-primary);
+  --accent-strong: #1f96d1;
+  --accent-soft: rgb(42 171 238 / 14%);
+  --accent-softer: rgb(42 171 238 / 7%);
+  --own: var(--md-sys-color-secondary-container);
+  --badge: var(--md-sys-color-primary-container);
+  --danger: var(--md-sys-color-error);
+  --online: var(--md-sys-color-tertiary);
+  --warn: #f5a623;
 }
 
 * {

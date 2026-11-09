@@ -8,6 +8,7 @@
  */
 @import 'tailwindcss';
 
+@import './tokens.css' layer(components);
 @import './base.css' layer(components);
 @import './shell.css' layer(components);
 @import './launch.css' layer(components);
@@ -46,6 +47,40 @@
   --color-danger: var(--danger);
   --color-online: var(--online);
   --color-warn: var(--warn);
+  --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+  --color-surface: var(--md-sys-color-surface);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-surface-variant: var(--md-sys-color-surface-variant);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+  --radius-none: var(--md-sys-shape-corner-none);
+  --radius-xs: var(--md-sys-shape-corner-extra-small);
+  --radius-sm: var(--md-sys-shape-corner-small);
+  --radius-md: var(--md-sys-shape-corner-medium);
+  --radius-lg: var(--md-sys-shape-corner-large);
+  --radius-lg-increased: var(--md-sys-shape-corner-large-increased);
+  --radius-xl: var(--md-sys-shape-corner-extra-large);
+  --radius-xl-increased: var(--md-sys-shape-corner-extra-large-increased);
+  --radius-xxl: var(--md-sys-shape-corner-extra-extra-large);
+  --radius-full: var(--md-sys-shape-corner-full);
   --ease-out: var(--ease-out);
   --ease-out-strong: var(--ease-out-strong);
   --ease-spring: var(--spring);

@@ -414,3 +414,156 @@ describe('media viewer swipe', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe('media viewer keyboard', () => {
+  it('zooms and resets a photo from the keyboard', () => {
+    const image = renderViewer([photo(1)]);
+
+    fireEvent.keyDown(document, { key: '+' });
+    expect(scaleOf(image)).toBe(1.5);
+
+    fireEvent.keyDown(document, { key: '=' });
+    expect(scaleOf(image)).toBe(2);
+
+    fireEvent.keyDown(document, { key: '-' });
+    expect(scaleOf(image)).toBe(1.5);
+
+    fireEvent.keyDown(document, { key: '_' });
+    expect(scaleOf(image)).toBe(1);
+
+    fireEvent.keyDown(document, { key: '+' });
+    fireEvent.keyDown(document, { key: '0' });
+    expect(scaleOf(image)).toBe(1);
+  });
+
+  it('walks the gallery with the arrow keys and ignores modified keys', () => {
+    renderViewer([photo(1), photo(2)]);
+
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=2');
+
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
+
+    fireEvent.keyDown(document, { key: '+', metaKey: true });
+    expect(button('Reset Zoom').disabled).toBe(true);
+  });
+
+  it('leaves the arrow keys to a focused player', () => {
+    render(<MediaViewer messages={[video(1), photo(2)]} initialMessageId={1} onClose={() => {}} />);
+    const player = document.querySelector<HTMLVideoElement>('video.media-viewer-media');
+    if (player === null) throw new Error('the viewer rendered no video');
+
+    fireEvent.keyDown(player, { key: 'ArrowRight' });
+
+    expect(document.querySelector('video.media-viewer-media')).toBe(player);
+    expect(counterText()).toBe('1 / 2');
+  });
+
+  it('closes on Escape', () => {
+    const onClose = vi.fn();
+    renderViewer([photo(1)], 1, onClose);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('media viewer quality labels', () => {
+  function videoWith(qualities: Array<{ index: number; width: number | null; height: number | null }>): MessageDto {
+    return message(1, {
+      kind: 'video',
+      fileName: 'clip.mp4',
+      mime: 'video/mp4',
+      size: 4096,
+      width: 1280,
+      height: 720,
+      duration: 4,
+      qualities: qualities.map((quality) => ({ ...quality, size: null, codec: null })),
+    });
+  }
+
+  it('names a quality by its height, its width, or its position', () => {
+    render(
+      <MediaViewer
+        messages={[
+          videoWith([
+            { index: 0, width: 1280, height: 720 },
+            { index: 1, width: 854, height: null },
+            { index: 2, width: null, height: null },
+          ]),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+
+    const options = [...(screen.getByRole('combobox', { name: 'Video quality' }).querySelectorAll('option') ?? [])].map(
+      (option) => option.textContent,
+    );
+    expect(options).toEqual(['Auto', '720p', '854w', 'Quality 3']);
+  });
+
+  it('returns to the automatic variant from the selector', () => {
+    render(
+      <MediaViewer
+        messages={[
+          videoWith([
+            { index: 0, width: 1280, height: 720 },
+            { index: 1, width: 854, height: 480 },
+          ]),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+    const select = screen.getByRole('combobox', { name: 'Video quality' }) as unknown as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: '1' } });
+    expect(select.value).toBe('1');
+
+    fireEvent.change(select, { target: { value: 'auto' } });
+    expect(select.value).toBe('auto');
+    expect(document.querySelector<HTMLVideoElement>('video.media-viewer-media')?.getAttribute('src')).toBe(
+      '/user/file?chatId=2&messageId=1',
+    );
+  });
+});
+
+describe('media viewer portal guards', () => {
+  it('stops the pointer, double-click and context events at its root', () => {
+    const seen: string[] = [];
+    const record = (event: Event): void => {
+      seen.push(event.type);
+    };
+    document.addEventListener('pointerdown', record);
+    document.addEventListener('dblclick', record);
+    document.addEventListener('contextmenu', record);
+
+    renderViewer([photo(1)]);
+    const viewer = screen.getByRole('dialog', { name: 'Media viewer' });
+    fireEvent.pointerDown(viewer);
+    fireEvent.doubleClick(viewer);
+    fireEvent.contextMenu(viewer);
+
+    expect(seen).toEqual([]);
+    document.removeEventListener('pointerdown', record);
+    document.removeEventListener('dblclick', record);
+    document.removeEventListener('contextmenu', record);
+  });
+
+  it('marks an exiting viewer and returns focus to the opener', () => {
+    const opener = document.createElement('button');
+    // eslint-disable-next-line unicorn/prefer-dom-node-append -- the Workers `Element.append` overload the test project's types merge in accepts no nodes, so `appendChild` is the form both projects type-check.
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(<MediaViewer messages={[photo(1)]} initialMessageId={1} exiting onClose={() => {}} />);
+    expect(document.querySelector('.media-viewer')?.classList.contains('is-exiting')).toBe(true);
+
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+});

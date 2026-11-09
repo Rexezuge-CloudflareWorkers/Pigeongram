@@ -289,3 +289,161 @@ describe('worker entry', () => {
     await expect(response.json()).resolves.toMatchObject({ Exception: { Type: 'access' } });
   });
 });
+
+/**
+A stand-in for the Durable Object namespace. `fetchImpl` answers the forwarded
+request, so the test can inspect exactly what the worker sent.
+*/
+function engineBinding(fetchImpl: (request: Request) => Promise<Response>): DurableObjectNamespace {
+  return {
+    idFromName: (name: string) => ({ toString: () => name }) as DurableObjectId,
+    get: () => ({ fetch: fetchImpl }) as unknown as DurableObjectStub,
+  } as unknown as DurableObjectNamespace;
+}
+
+function manifest(items: readonly Record<string, unknown>[]): string {
+  return Buffer.from(JSON.stringify(items), 'utf8').toString('base64url');
+}
+
+describe('upload pre-flight', () => {
+  it.each([
+    ['without the required query parameters', '/user/upload', '3', 400],
+    ['whose content-length disagrees with the declared size', '/user/upload?chatId=2&kind=document&size=3', '4', 400],
+    ['above the configured cap before forwarding it', '/user/upload?chatId=2&kind=document&size=104857601', '104857601', 413],
+  ])('rejects an upload %s', async (_name, path, contentLength, status) => {
+    const token = await accessToken();
+    const response = await call(path, configured(), {
+      method: 'POST',
+      headers: { 'cf-access-jwt-assertion': token, origin: 'https://example.com', 'content-length': contentLength },
+      body: 'abc',
+    });
+
+    expect(response.status).toBe(status);
+    await expect(response.json()).resolves.toMatchObject({ Exception: { Type: 'validation' } });
+  });
+
+  it('forwards a valid single upload to the engine', async () => {
+    const token = await accessToken();
+    const seen: Request[] = [];
+    const env = {
+      ...configured(),
+      SESSION_ENGINE: engineBinding(async (request) => {
+        seen.push(request);
+        return Response.json({ uploaded: true });
+      }),
+    };
+
+    const response = await call('/user/upload?chatId=2&kind=document&size=3', env, {
+      method: 'POST',
+      headers: { 'cf-access-jwt-assertion': token, origin: 'https://example.com', 'content-length': '3' },
+      body: 'abc',
+    });
+
+    expect(response.status).toBe(200);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.method).toBe('POST');
+  });
+
+  it('rejects an album without a manifest', async () => {
+    const token = await accessToken();
+    const response = await call('/user/upload-group?chatId=2', configured(), {
+      method: 'POST',
+      headers: { 'cf-access-jwt-assertion': token, origin: 'https://example.com', 'content-length': '2' },
+      body: 'ab',
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ Exception: { Type: 'validation' } });
+  });
+
+  it('forwards a valid album upload to the engine', async () => {
+    const token = await accessToken();
+    const seen: Request[] = [];
+    const env = {
+      ...configured(),
+      SESSION_ENGINE: engineBinding(async (request) => {
+        seen.push(request);
+        return Response.json({ uploaded: true });
+      }),
+    };
+    const encoded = manifest([
+      { kind: 'document', size: 1 },
+      { kind: 'document', size: 1 },
+    ]);
+
+    const response = await call(`/user/upload-group?chatId=2&manifest=${encoded}`, env, {
+      method: 'POST',
+      headers: { 'cf-access-jwt-assertion': token, origin: 'https://example.com', 'content-length': '2' },
+      body: 'ab',
+    });
+
+    expect(response.status).toBe(200);
+    expect(seen).toHaveLength(1);
+  });
+});
+
+describe('engine forwarding', () => {
+  it('stamps the correlation id on the request and the response', async () => {
+    const token = await accessToken();
+    const seen: Request[] = [];
+    const env = {
+      ...configured(),
+      SESSION_ENGINE: engineBinding(async (request) => {
+        seen.push(request);
+        return Response.json({ ok: true });
+      }),
+    };
+
+    const response = await call('/user/state', env, {
+      headers: { 'cf-access-jwt-assertion': token, origin: 'https://example.com', 'x-correlation-id': 'correlation-123' },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(seen[0]?.headers.get('x-correlation-id')).toBe('correlation-123');
+    expect(response.headers.get('x-correlation-id')).toBe('correlation-123');
+  });
+
+  it('forwards a socket upgrade with its headers intact', async () => {
+    const token = await accessToken();
+    let upgrade: string | null = null;
+    const env = {
+      ...configured(),
+      SESSION_ENGINE: engineBinding(async (request) => {
+        upgrade = request.headers.get('upgrade');
+        return new Response(null, { status: 200 });
+      }),
+    };
+
+    const response = await call('/user/updates', env, {
+      headers: {
+        'cf-access-jwt-assertion': token,
+        origin: 'https://example.com',
+        upgrade: 'websocket',
+        connection: 'Upgrade',
+        'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==',
+        'sec-websocket-version': '13',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(upgrade).toBe('websocket');
+  });
+
+  it('answers 503 when the engine itself fails', async () => {
+    const token = await accessToken();
+    const env = {
+      ...configured(),
+      SESSION_ENGINE: engineBinding(async () => {
+        throw new Error('engine down');
+      }),
+    };
+
+    const response = await call('/user/state', env, { headers: { 'cf-access-jwt-assertion': token } });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      Exception: { Type: 'unavailable', Message: expect.stringContaining('Session Engine Unreachable') as string },
+    });
+  });
+});

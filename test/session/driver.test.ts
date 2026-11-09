@@ -74,11 +74,25 @@ interface Harness {
   base: FakeBase;
   client: {
     getMe: ReturnType<typeof vi.fn>;
+    signInQr: ReturnType<typeof vi.fn>;
+    sendCode: ReturnType<typeof vi.fn>;
+    signIn: ReturnType<typeof vi.fn>;
+    checkPassword: ReturnType<typeof vi.fn>;
     call: ReturnType<typeof vi.fn>;
     logOut: ReturnType<typeof vi.fn>;
   };
   rawListeners: Set<(info: RawUpdateInfo) => void>;
   stateHandlers: Set<(state: string) => void>;
+}
+
+function signedInUser(): User {
+  return {
+    id: 1,
+    firstName: 'Ada',
+    lastName: null,
+    username: 'ada',
+    raw: { phone: '15551234567' },
+  } as unknown as User;
 }
 
 function fakeBundle(options: { authorized?: boolean; destroyed?: boolean; pts?: number } = {}): Harness {
@@ -118,16 +132,11 @@ function fakeBundle(options: { authorized?: boolean; destroyed?: boolean; pts?: 
     },
   };
   const client = {
-    getMe: vi.fn(
-      async () =>
-        ({
-          id: 1,
-          firstName: 'Ada',
-          lastName: null,
-          username: 'ada',
-          raw: { phone: '15551234567' },
-        }) as unknown as User,
-    ),
+    getMe: vi.fn(async () => signedInUser()),
+    signInQr: vi.fn(async () => signedInUser()),
+    sendCode: vi.fn(async () => ({ type: 'app', phoneCodeHash: 'code-hash' })),
+    signIn: vi.fn(async () => signedInUser()),
+    checkPassword: vi.fn(async () => signedInUser()),
     call: vi.fn(async () => ({})),
     logOut: vi.fn(async () => {}),
   };
@@ -380,5 +389,109 @@ describe('TelegramDriver', () => {
     await harness.driver.logout();
 
     expect(harness.createBundle).not.toHaveBeenCalled();
+  });
+
+  it('signs in through the QR flow and forwards every callback to mtcute', async () => {
+    const harness = fakeBundle();
+    const onUrl = vi.fn();
+    const onScanned = vi.fn();
+    const onInvalidPassword = vi.fn();
+    const waitForPassword = vi.fn(async () => 'hunter2');
+    const abort = new AbortController();
+
+    harness.client.signInQr.mockImplementation(async (callbacks: Record<string, unknown>) => {
+      (callbacks.onUrlUpdated as (url: string, expires: Date) => void)('tg://login?token=abc', new Date(1_700_000_000_000));
+      (callbacks.onQrScanned as () => void)();
+      await (callbacks.password as () => Promise<string>)();
+      (callbacks.invalidPasswordCallback as () => void)();
+      return signedInUser();
+    });
+
+    const result = await harness.driver.signInQr({
+      onUrl,
+      onScanned,
+      waitForPassword,
+      onInvalidPassword,
+      abortSignal: abort.signal,
+    });
+
+    expect(result).toMatchObject({ id: 1, firstName: 'Ada', phone: '15551234567' });
+    expect(onUrl).toHaveBeenCalledWith('tg://login?token=abc', 1_700_000_000_000);
+    expect(onScanned).toHaveBeenCalledOnce();
+    expect(waitForPassword).toHaveBeenCalledOnce();
+    expect(onInvalidPassword).toHaveBeenCalledOnce();
+    expect(harness.client.signInQr).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: abort.signal }));
+  });
+
+  it('keeps the phone login alive across a bad code and a bad password', async () => {
+    const harness = fakeBundle();
+    const codes = ['111111', '222222'];
+    const passwords = ['wrong', 'right'];
+    const onCodeSent = vi.fn();
+    const onInvalidCode = vi.fn();
+    const onInvalidPassword = vi.fn();
+
+    harness.client.signIn
+      .mockRejectedValueOnce(Object.assign(new Error('bad code'), { text: 'PHONE_CODE_INVALID' }))
+      .mockRejectedValueOnce(Object.assign(new Error('password needed'), { text: 'SESSION_PASSWORD_NEEDED' }));
+    harness.client.checkPassword
+      .mockRejectedValueOnce(Object.assign(new Error('bad password'), { text: 'PASSWORD_HASH_INVALID' }))
+      .mockResolvedValueOnce(signedInUser());
+
+    const result = await harness.driver.signInPhone({
+      phone: '15551234567',
+      onCodeSent,
+      waitForCode: async () => codes.shift() ?? '',
+      onInvalidCode,
+      waitForPassword: async () => passwords.shift() ?? '',
+      onInvalidPassword,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(result).toMatchObject({ id: 1, firstName: 'Ada' });
+    expect(onCodeSent).toHaveBeenCalledWith('app');
+    expect(onInvalidCode).toHaveBeenCalledOnce();
+    expect(onInvalidPassword).toHaveBeenCalledOnce();
+    expect(harness.client.sendCode).toHaveBeenCalledWith({
+      phone: '15551234567',
+      abortSignal: expect.any(AbortSignal),
+    });
+    expect(harness.client.signIn).toHaveBeenCalledTimes(2);
+    expect(harness.client.checkPassword).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets an unrelated phone-login failure escape', async () => {
+    const harness = fakeBundle();
+    harness.client.signIn.mockRejectedValueOnce(Object.assign(new Error('flood'), { text: 'FLOOD_WAIT_30' }));
+
+    await expect(
+      harness.driver.signInPhone({
+        phone: '15551234567',
+        onCodeSent: vi.fn(),
+        waitForCode: async () => '111111',
+        onInvalidCode: vi.fn(),
+        waitForPassword: async () => 'password',
+        onInvalidPassword: vi.fn(),
+        abortSignal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('flood');
+  });
+
+  it('lets an unrelated 2FA failure escape', async () => {
+    const harness = fakeBundle();
+    harness.client.signIn.mockRejectedValueOnce(Object.assign(new Error('password needed'), { text: 'SESSION_PASSWORD_NEEDED' }));
+    harness.client.checkPassword.mockRejectedValueOnce(Object.assign(new Error('network'), { text: 'RPC_CALL_FAIL' }));
+
+    await expect(
+      harness.driver.signInPhone({
+        phone: '15551234567',
+        onCodeSent: vi.fn(),
+        waitForCode: async () => '111111',
+        onInvalidCode: vi.fn(),
+        waitForPassword: async () => 'password',
+        onInvalidPassword: vi.fn(),
+        abortSignal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('network');
   });
 });

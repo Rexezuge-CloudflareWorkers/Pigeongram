@@ -5,6 +5,7 @@ import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
+import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
 /**
 The sidebar's account control. The profile row is the trigger for a
@@ -32,6 +33,10 @@ interface UserMenuProps {
   onOpenArchive: () => void;
   onToggleTheme?: () => void;
   theme?: 'dark' | 'light';
+  seed?: Seed;
+  onSetSeed?: (seed: Seed) => void;
+  contrast?: Contrast;
+  onSetContrast?: (contrast: Contrast) => void;
 }
 
 /**
@@ -45,7 +50,19 @@ function displayHandle(me: MeDto | null): string | undefined {
   return phone.startsWith('+') ? phone : `+${phone}`;
 }
 
-export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive, onToggleTheme, theme = 'dark' }: UserMenuProps) {
+export function UserMenu({
+  me,
+  connected,
+  pwa,
+  onSignOut,
+  onOpenArchive,
+  onToggleTheme,
+  theme = 'dark',
+  seed = 'telegram',
+  onSetSeed,
+  contrast = 'standard',
+  onSetContrast,
+}: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -157,6 +174,49 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive, onToggl
             <Icon name={theme === 'dark' ? 'light-mode' : 'dark-mode'} className="text-muted" />
             <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
+          <div className="my-1 h-px bg-line" role="separator" />
+          <div className="flex items-center gap-2 px-3 py-1" role="group" aria-label="Accent">
+            <span className="text-xs text-muted">Accent</span>
+            <div className="flex gap-1.5">
+              {SEEDS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={seed === s.id}
+                  aria-label={s.label}
+                  title={s.label}
+                  onClick={() => {
+                    onSetSeed?.(s.id);
+                    setMenuOpen(false);
+                  }}
+                  className={`size-6 rounded-full border-2 transition-colors ${seed === s.id ? 'border-primary' : 'border-transparent'}`}
+                  style={{ background: s.hex }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1" role="group" aria-label="Contrast">
+            <span className="text-xs text-muted">Contrast</span>
+            <div className="flex gap-1">
+              {(['standard', 'medium', 'high'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  role="radio"
+                  aria-checked={contrast === level}
+                  onClick={() => {
+                    onSetContrast?.(level);
+                    setMenuOpen(false);
+                  }}
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${contrast === level ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
+                >
+                  {level === 'standard' ? 'Std' : level === 'medium' ? 'Med' : 'Hi'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="my-1 h-px bg-line" role="separator" />
           <button
             type="button"
             role="menuitem"

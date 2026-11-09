@@ -94,12 +94,13 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font:
-    15px/1.45 system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  /* Typescale tokens are the source: body-medium (14px/1.25) is the MD3
+     running text; the composer keeps its own 15px. No webfont — the token
+     stack is system-ui with Roboto as fallback (see tokens.css). */
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
 }
 
 /* Selection reads as the accent, the way the official clients mark one. */
@@ -275,7 +276,7 @@ button.ghost:active:not(:disabled) {
   width: min(420px, 100%);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
   padding: 28px;
   display: flex;
   flex-direction: column;

@@ -87,7 +87,7 @@
   padding: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
   text-align: left;
   transition:
     transform 180ms var(--ease-out),

@@ -117,7 +117,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
     >
       <div
         ref={dialogRef}
-        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-high shadow-2xl"
+        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container-high shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

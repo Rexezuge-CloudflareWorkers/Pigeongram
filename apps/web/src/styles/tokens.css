@@ -169,3 +169,106 @@
   --md-sys-color-outline: #c9d1db;
   --md-sys-color-outline-variant: #e0e6ed;
 }
+
+/* Dynamic color — indigo seed (dark) */
+[data-seed='indigo'] {
+  --md-sys-color-primary: #8b93ff;
+  --md-sys-color-on-primary: #101023;
+  --md-sys-color-primary-container: #4a4fce;
+  --md-sys-color-on-primary-container: #e0e2ff;
+  --md-sys-color-secondary-container: #3a3f7d;
+  --md-sys-color-on-secondary-container: #e0e2ff;
+  --md-sys-color-tertiary: #4dcd5e;
+  --md-sys-color-tertiary-container: #1d5230;
+}
+
+/* Dynamic color — amber seed (dark) */
+[data-seed='amber'] {
+  --md-sys-color-primary: #ffb84d;
+  --md-sys-color-on-primary: #1a1206;
+  --md-sys-color-primary-container: #9c6a1a;
+  --md-sys-color-on-primary-container: #ffecce;
+  --md-sys-color-secondary-container: #4a380f;
+  --md-sys-color-on-secondary-container: #f5e8d5;
+  --md-sys-color-tertiary: #4dcd5e;
+  --md-sys-color-tertiary-container: #1d5230;
+}
+
+/* Dynamic color — mint seed (dark) */
+[data-seed='mint'] {
+  --md-sys-color-primary: #6fe0a8;
+  --md-sys-color-on-primary: #0a1a12;
+  --md-sys-color-primary-container: #268855;
+  --md-sys-color-on-primary-container: #dcf5e6;
+  --md-sys-color-secondary-container: #1d4d38;
+  --md-sys-color-on-secondary-container: #d6f0e3;
+  --md-sys-color-tertiary: #5eb5f7;
+  --md-sys-color-tertiary-container: #2b4a5e;
+}
+
+/* Dynamic color — rose seed (dark) */
+[data-seed='rose'] {
+  --md-sys-color-primary: #ff9bb6;
+  --md-sys-color-on-primary: #1a0b11;
+  --md-sys-color-primary-container: #9c3d62;
+  --md-sys-color-on-primary-container: #ffe0ea;
+  --md-sys-color-secondary-container: #4d1f33;
+  --md-sys-color-on-secondary-container: #f0d5e0;
+  --md-sys-color-tertiary: #4dcd5e;
+  --md-sys-color-tertiary-container: #1d5230;
+}
+
+/* Dynamic color — indigo seed (light) */
+[data-theme='light'][data-seed='indigo'] {
+  --md-sys-color-primary: #4a4fce;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dde0ff;
+  --md-sys-color-on-primary-container: #1a1d4d;
+  --md-sys-color-secondary-container: #e0e2ff;
+  --md-sys-color-on-secondary-container: #1a1d4d;
+}
+
+/* Dynamic color — amber seed (light) */
+[data-theme='light'][data-seed='amber'] {
+  --md-sys-color-primary: #9c6a1a;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #ffecce;
+  --md-sys-color-on-primary-container: #3d2703;
+  --md-sys-color-secondary-container: #f5e8d5;
+  --md-sys-color-on-secondary-container: #3d2703;
+}
+
+/* Dynamic color — mint seed (light) */
+[data-theme='light'][data-seed='mint'] {
+  --md-sys-color-primary: #268855;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dcf5e6;
+  --md-sys-color-on-primary-container: #0b3520;
+  --md-sys-color-secondary-container: #d6f0e3;
+  --md-sys-color-on-secondary-container: #0b3520;
+}
+
+/* Dynamic color — rose seed (light) */
+[data-theme='light'][data-seed='rose'] {
+  --md-sys-color-primary: #9c3d62;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #ffe0ea;
+  --md-sys-color-on-primary-container: #3d1526;
+  --md-sys-color-secondary-container: #f0d5e0;
+  --md-sys-color-on-secondary-container: #3d1526;
+}
+
+/* Contrast — medium: stronger outlines and secondary text */
+[data-contrast='medium'] {
+  --md-sys-color-outline: #54697f;
+  --md-sys-color-outline-variant: #3a4f66;
+  --md-sys-color-on-surface-variant: #9db2c7;
+}
+
+/* Contrast — high: maximum emphasis on boundaries and secondary text */
+[data-contrast='high'] {
+  --md-sys-color-outline: #7a93ad;
+  --md-sys-color-outline-variant: #54697f;
+  --md-sys-color-on-surface-variant: #c2d4e6;
+  --md-sys-color-error: #ff9b94;
+}

@@ -1,5 +1,21 @@
-import { describe, expect, it } from 'vitest';
-import { readClipboard } from '../../apps/web/src/clipboard';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readClipboard, writeClipboard } from '../../apps/web/src/clipboard';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(navigator, 'clipboard');
+  Reflect.deleteProperty(document, 'execCommand');
+});
+
+/**
+ * jsdom does not implement `document.execCommand`, so the fallback needs the
+ * method defined before it can be spied on.
+ */
+function installExecCommand(copy: () => boolean): ReturnType<typeof vi.fn> {
+  const spy = vi.fn(copy);
+  Object.defineProperty(document, 'execCommand', { value: spy, configurable: true });
+  return spy;
+}
 
 function image(name = 'image.png'): File {
   return new File(['bytes'], name, { type: 'image/png' });
@@ -47,5 +63,53 @@ describe('readClipboard', () => {
       },
     } as unknown as DataTransfer;
     expect(readClipboard(data)).toEqual({ files: [], text: '' });
+  });
+});
+
+function installClipboard(writeText: (text: string) => Promise<void>): void {
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+}
+
+describe('writeClipboard', () => {
+  it('writes through the asynchronous clipboard API when it is available', async () => {
+    const writeText = vi.fn(async () => {});
+    installClipboard(writeText);
+
+    await writeClipboard('hello');
+
+    expect(writeText).toHaveBeenCalledWith('hello');
+  });
+
+  it('falls back to a selection when the clipboard API refuses', async () => {
+    installClipboard(async () => {
+      throw new Error('denied');
+    });
+    const copy = installExecCommand(() => true);
+
+    await writeClipboard('hello');
+
+    expect(copy).toHaveBeenCalledWith('copy');
+    expect(document.querySelector('textarea')).toBeNull();
+  });
+
+  it('reports a clipboard that takes neither path', async () => {
+    installClipboard(async () => {
+      throw new Error('denied');
+    });
+    installExecCommand(() => false);
+
+    await expect(writeClipboard('hello')).rejects.toThrow('The clipboard is not available');
+  });
+
+  it('treats a selection that throws as unavailable', async () => {
+    installClipboard(async () => {
+      throw new Error('denied');
+    });
+    installExecCommand(() => {
+      throw new Error('no execCommand');
+    });
+
+    await expect(writeClipboard('hello')).rejects.toThrow('The clipboard is not available');
+    expect(document.querySelector('textarea')).toBeNull();
   });
 });

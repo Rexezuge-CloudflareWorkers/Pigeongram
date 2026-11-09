@@ -161,4 +161,60 @@ describe('Composer upload dialog', () => {
     expect(within(dialog).getByText('2 / 10')).toBeDefined();
     expect((within(dialog).getByRole('checkbox', { name: /Group Items/ }) as HTMLInputElement).checked).toBe(true);
   });
+
+  it('closes on Escape and keeps the draft', () => {
+    const { onAttach, container } = renderComposer();
+    fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'Still typing' } });
+    fireEvent.change(picker(container), { target: { files: [file('a.pdf')] } });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect((screen.getByPlaceholderText('Message') as HTMLTextAreaElement).value).toBe('Still typing');
+    expect(onAttach).not.toHaveBeenCalled();
+  });
+
+  it('opens the hidden picker from Add Files', () => {
+    const { container } = renderComposer();
+    fireEvent.change(picker(container), { target: { files: [file('a.pdf')] } });
+    const dialog = screen.getByRole('dialog');
+    const click = vi.spyOn(dialogInput(), 'click');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add Files' }));
+
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it('sends the files separately when Group Items is unchecked', async () => {
+    const { onAttach, container } = renderComposer();
+    const first = file('a.png', 'image/png');
+    const second = file('b.png', 'image/png');
+    fireEvent.change(picker(container), { target: { files: [first, second] } });
+
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Group Items/ }));
+    expect(within(dialog).getByRole('button', { name: 'Send 2 Files' })).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send 2 Files' }));
+    await waitFor(() => {
+      expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({ files: [first, second], grouped: false }));
+    });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    const { container } = renderComposer();
+    fireEvent.change(picker(container), { target: { files: [file('a.pdf')] } });
+    const dialog = screen.getByRole('dialog');
+    const focusables = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([tabindex="-1"])')];
+    const first = focusables[0]!;
+    const last = focusables.at(-1)!;
+
+    last.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    first.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
 });

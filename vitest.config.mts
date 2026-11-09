@@ -27,11 +27,11 @@ export default defineRepoVitestConfig({
   // ratchet upward. A global safety net sits underneath so no area can silently
   // regress below it.
   thresholds: {
-    // Global safety net.
-    lines: 75,
-    statements: 75,
-    branches: 70,
-    functions: 75,
+    // Global safety net, ratcheted to the suite's current coverage.
+    lines: 94,
+    statements: 92,
+    branches: 85,
+    functions: 91,
 
     // Pure validation / DTO layer.
     'packages/shared/src/**': {
@@ -43,56 +43,56 @@ export default defineRepoVitestConfig({
 
     // Security-critical session engine paths.
     'packages/backend-services/src/session/{engine,lifecycle,media,upload,media-routes,socket-hub}.ts': {
-      statements: 78,
-      branches: 70,
-      functions: 78,
-      lines: 78,
-    },
-
-    // Calls subsystem (phased ratchet from a low base).
-    'packages/backend-services/src/session/call*.ts': {
-      statements: 60,
-      branches: 55,
-      functions: 60,
-      lines: 60,
-    },
-    'packages/backend-services/src/session/calls/**': {
-      statements: 60,
-      branches: 55,
-      functions: 60,
-      lines: 60,
-    },
-
-    // Driver (pre-split gateway-level tests).
-    'packages/backend-services/src/session/driver.ts': {
-      statements: 70,
-      branches: 65,
-      functions: 70,
-      lines: 70,
-    },
-
-    // Pure reducers in the SPA.
-    'apps/web/src/state/**': {
       statements: 85,
-      branches: 80,
+      branches: 75,
       functions: 85,
       lines: 85,
     },
 
-    // Hooks (low branch base).
+    // Calls subsystem.
+    'packages/backend-services/src/session/call*.ts': {
+      statements: 80,
+      branches: 75,
+      functions: 85,
+      lines: 80,
+    },
+    'packages/backend-services/src/session/calls/**': {
+      statements: 90,
+      branches: 90,
+      functions: 90,
+      lines: 90,
+    },
+
+    // Driver (gateway-level tests).
+    'packages/backend-services/src/session/driver.ts': {
+      statements: 95,
+      branches: 88,
+      functions: 95,
+      lines: 95,
+    },
+
+    // Pure reducers in the SPA.
+    'apps/web/src/state/**': {
+      statements: 95,
+      branches: 95,
+      functions: 95,
+      lines: 95,
+    },
+
+    // Hooks.
     'apps/web/src/use*.ts': {
-      statements: 70,
-      branches: 60,
-      functions: 70,
-      lines: 70,
+      statements: 80,
+      branches: 70,
+      functions: 80,
+      lines: 80,
     },
 
     // Components.
     'apps/web/src/components/**': {
-      statements: 55,
-      branches: 50,
-      functions: 55,
-      lines: 55,
+      statements: 75,
+      branches: 70,
+      functions: 75,
+      lines: 75,
     },
   },
 });

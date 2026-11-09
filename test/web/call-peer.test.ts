@@ -327,3 +327,243 @@ describe('CallPeerSession', () => {
     expect(peer.acceptOffer).not.toHaveBeenCalled();
   });
 });
+
+interface RecordingConnection extends FakeConnection {
+  local: unknown[];
+  remote: unknown[];
+  candidates: unknown[];
+}
+
+function recordingConnection(): RecordingConnection {
+  const base = connection();
+  const local: unknown[] = [];
+  const remote: unknown[] = [];
+  const candidates: unknown[] = [];
+  return {
+    ...base,
+    local,
+    remote,
+    candidates,
+    async setLocalDescription(description) {
+      local.push(description);
+    },
+    async setRemoteDescription(description) {
+      remote.push(description);
+    },
+    async addIceCandidate(candidate) {
+      candidates.push(candidate);
+    },
+  };
+}
+
+describe('CallPeer lifecycle', () => {
+  it('reports every ICE candidate and connection-state change', () => {
+    const created = recordingConnection();
+    const heard = handlers();
+    const peer = new CallPeer([], heard, deps({ createConnection: () => created as unknown as RTCPeerConnection }));
+    expect(peer.state).toBe('new');
+    const candidate = { candidate: 'candidate:1', toJSON: () => ({ candidate: 'candidate:1' }) };
+
+    created.listeners.get('icecandidate')?.[0]?.({ candidate });
+    expect(heard.onCandidate).toHaveBeenCalledWith({ candidate: 'candidate:1' });
+
+    created.listeners.get('icecandidate')?.[0]?.({ candidate: null });
+    expect(heard.onCandidate).toHaveBeenCalledOnce();
+
+    created.connectionState = 'connected';
+    created.listeners.get('connectionstatechange')?.[0]?.({});
+    expect(heard.onState).toHaveBeenCalledWith('connected');
+  });
+
+  it('exposes the connection state', () => {
+    const created = recordingConnection();
+    const peer = new CallPeer([], handlers(), deps({ createConnection: () => created as unknown as RTCPeerConnection }));
+
+    created.connectionState = 'connecting';
+    expect(peer.state).toBe('connecting');
+  });
+
+  it('runs the offer, the answer and the remote answer through the connection', async () => {
+    const created = recordingConnection();
+    const peer = new CallPeer([], handlers(), deps({ createConnection: () => created as unknown as RTCPeerConnection }));
+
+    await expect(peer.createOffer()).resolves.toEqual({ type: 'offer', sdp: 'offer' });
+    expect(created.local).toEqual([{ type: 'offer', sdp: 'offer' }]);
+
+    await expect(peer.acceptOffer({ type: 'offer', sdp: 'remote' })).resolves.toEqual({ type: 'answer', sdp: 'answer' });
+    expect(created.remote).toEqual([{ type: 'offer', sdp: 'remote' }]);
+    expect(created.local).toEqual([
+      { type: 'offer', sdp: 'offer' },
+      { type: 'answer', sdp: 'answer' },
+    ]);
+
+    await peer.acceptAnswer({ type: 'answer', sdp: 'final' });
+    expect(created.remote).toEqual([
+      { type: 'offer', sdp: 'remote' },
+      { type: 'answer', sdp: 'final' },
+    ]);
+  });
+
+  it('skips an empty candidate and swallows a late one', async () => {
+    const created = recordingConnection();
+    const peer = new CallPeer([], handlers(), deps({ createConnection: () => created as unknown as RTCPeerConnection }));
+
+    await peer.addCandidate({ candidate: '' });
+    expect(created.candidates).toEqual([]);
+
+    await peer.addCandidate({ candidate: 'candidate:1' });
+    expect(created.candidates).toEqual([{ candidate: 'candidate:1' }]);
+
+    created.addIceCandidate = async () => {
+      throw new Error('closed');
+    };
+    await expect(peer.addCandidate({ candidate: 'candidate:2' })).resolves.toBeUndefined();
+  });
+
+  it('leaves muting alone until the microphone is open', () => {
+    const peer = new CallPeer([], handlers(), deps({ createConnection: () => connection() as unknown as RTCPeerConnection }));
+
+    peer.setMuted(true);
+
+    expect(peer.muted).toBe(false);
+  });
+});
+
+describe('CallPeerSession lifecycle', () => {
+  function sessionHarness(direction: 'outgoing' | 'incoming' = 'incoming') {
+    const peer = fakePeer();
+    let captured: ConstructorParameters<typeof CallPeer>[1] | null = null;
+    const send = vi.fn();
+    const onStream = vi.fn();
+    const onConnected = vi.fn();
+    const onFailed = vi.fn();
+    const session = new CallPeerSession('1', direction, send, onStream, onConnected, onFailed, {
+      createPeer: (_connections, handlers) => {
+        captured = handlers;
+        return peer;
+      },
+    });
+    return { peer, send, onStream, onConnected, onFailed, session, handlers: () => captured };
+  }
+
+  it('reports readiness only once the cipher is set', async () => {
+    const test = sessionHarness();
+
+    expect(test.session.ready).toBe(false);
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), false));
+    expect(test.session.ready).toBe(true);
+  });
+
+  it('opens the microphone and offers on the outgoing side', async () => {
+    const test = sessionHarness('outgoing');
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), true));
+
+    await test.session.open(callDto());
+
+    expect(test.peer.openMicrophone).toHaveBeenCalledOnce();
+    expect(test.peer.createOffer).toHaveBeenCalledOnce();
+    expect(test.send).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'call_signaling', callId: '1', data: expect.any(String) as string }),
+    );
+  });
+
+  it('does not offer on the incoming side', async () => {
+    const test = sessionHarness('incoming');
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), false));
+
+    await test.session.open(callDto());
+
+    expect(test.peer.openMicrophone).toHaveBeenCalledOnce();
+    expect(test.peer.createOffer).not.toHaveBeenCalled();
+  });
+
+  it('reports the peer handlers', async () => {
+    const test = sessionHarness();
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), false));
+    await test.session.open(callDto());
+    const handlers = test.handlers()!;
+    const stream = {} as MediaStream;
+
+    handlers.onTrack(stream);
+    expect(test.onStream).toHaveBeenCalledWith(stream);
+
+    handlers.onState('connected');
+    expect(test.onConnected).toHaveBeenCalledOnce();
+
+    handlers.onState('failed');
+    expect(test.onFailed).toHaveBeenCalledOnce();
+
+    handlers.onCandidate({ candidate: 'candidate:1' });
+    await vi.waitFor(() => expect(test.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'call_signaling', callId: '1' })));
+  });
+
+  it('forwards mute changes to the peer once it exists', async () => {
+    const test = sessionHarness();
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), false));
+    await test.session.open(callDto());
+
+    test.session.setMuted(true);
+    expect(test.peer.setMuted).toHaveBeenCalledWith(true);
+    expect(test.session.muted).toBe(false);
+
+    test.peer.muted = true;
+    expect(test.session.muted).toBe(true);
+  });
+
+  it('does nothing before the key is known', async () => {
+    const test = sessionHarness();
+
+    await test.session.sendSignal({ kind: 'offer', sdp: 'offer' });
+    await test.session.drain();
+
+    expect(test.send).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed, undecryptable and undecodable packets', async () => {
+    const test = sessionHarness();
+    const shared = new Uint8Array(256).fill(9);
+    test.session.setCipher(new CallCipher(shared, false));
+    await test.session.open(callDto());
+
+    await test.session.receive('1', 'not base64!');
+
+    const other = new CallCipher(new Uint8Array(256).fill(8), true);
+    await test.session.receive('1', toBase64(await other.encrypt('signaling', encodeSignal({ kind: 'offer', sdp: 'x' }))));
+
+    const own = new CallCipher(shared, false);
+    await test.session.receive('1', toBase64(await own.encrypt('signaling', new Uint8Array([1, 2, 3]))));
+
+    expect(test.peer.acceptOffer).not.toHaveBeenCalled();
+    expect(test.onFailed).not.toHaveBeenCalled();
+  });
+
+  it('acts on an answer and a candidate from the other peer', async () => {
+    const test = sessionHarness();
+    const shared = new Uint8Array(256).fill(7);
+    test.session.setCipher(new CallCipher(shared, false));
+    await test.session.open(callDto());
+    const caller = new CallCipher(shared, true);
+
+    await test.session.receive('1', toBase64(await caller.encrypt('signaling', encodeSignal({ kind: 'answer', sdp: 'answer' }))));
+    await test.session.receive(
+      '1',
+      toBase64(await caller.encrypt('signaling', encodeSignal({ kind: 'candidate', mid: 'audio', index: 0, candidate: 'candidate:1' }))),
+    );
+
+    expect(test.peer.acceptAnswer).toHaveBeenCalledWith({ type: 'answer', sdp: 'answer' });
+    expect(test.peer.addCandidate).toHaveBeenCalledWith({ candidate: 'candidate:1', sdpMid: 'audio', sdpMLineIndex: 0 });
+  });
+
+  it('releases the call on close and ignores a late cipher', async () => {
+    const test = sessionHarness();
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(1), false));
+    await test.session.open(callDto());
+
+    test.session.close();
+    test.session.close();
+    test.session.setCipher(new CallCipher(new Uint8Array(256).fill(2), false));
+
+    expect(test.peer.close).toHaveBeenCalledOnce();
+    expect(test.session.ready).toBe(true);
+  });
+});

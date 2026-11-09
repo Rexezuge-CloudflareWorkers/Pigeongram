@@ -98,18 +98,31 @@ function MessageButton({
 
   const actionable = button.kind === 'callback' || button.kind === 'copy';
   const disabledReason = buttonDisabledReason(button, actionable, onPress !== undefined, pressing);
+  const disabled = disabledReason !== null;
+  const reasonId = disabled ? `message-button-reason-${button.text}` : undefined;
   return (
-    <button
-      type="button"
-      className={className}
-      disabled={disabledReason !== null}
-      title={disabledReason ?? undefined}
-      aria-busy={pressing && button.kind === 'callback'}
-      onClick={() => onPress?.(message, button)}
-    >
-      {button.text}
-      {pressing && button.kind === 'callback' ? <Spinner inline size={12} color="currentColor" /> : null}
-    </button>
+    <>
+      <button
+        type="button"
+        className={className}
+        disabled={disabled}
+        title={disabledReason ?? undefined}
+        aria-busy={pressing && button.kind === 'callback'}
+        aria-describedby={disabled ? reasonId : undefined}
+        onClick={() => onPress?.(message, button)}
+      >
+        {button.text}
+        {pressing && button.kind === 'callback' ? <Spinner inline size={12} color="currentColor" /> : null}
+      </button>
+      {/* The disabled reason is announced via `aria-describedby`, not folded
+          into the button's name: the visible label stays the short verb, and
+          assistive tech reads the explanation in place. */}
+      {disabled && disabledReason ? (
+        <span id={reasonId} className="sr-only">
+          {disabledReason}
+        </span>
+      ) : null}
+    </>
   );
 }
 

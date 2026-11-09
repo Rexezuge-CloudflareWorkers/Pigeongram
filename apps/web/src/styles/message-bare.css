@@ -25,6 +25,12 @@
   z-index: 1;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .message.bare .meta {
+    transition: none;
+  }
+}
+
 .message.bare .ticks {
   color: rgb(233 238 243 / 72%);
 }

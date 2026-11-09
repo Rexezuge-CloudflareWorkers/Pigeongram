@@ -33,6 +33,18 @@
   font-weight: 600;
   color: #fff;
   background: var(--badge);
+  /* Keyboard equivalent: the swipe reveal is touch-only; the button is
+     always reachable and focusable when the row is swiped. */
+  min-height: 44px;
+}
+
+.chat-swipe-actions .swipe-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chat-swipe-actions .swipe-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .chat-row .chat {
@@ -51,10 +63,15 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  /* Touch floor 48px: the row is the primary navigation target. The visual
+     gap stays 12px; the hit area is the row itself. */
+  min-height: 48px;
   padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid rgb(37 51 63 / 40%);
-  transition: background-color 150ms var(--ease-out);
+  transition:
+    background-color 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
 }
 
 .chat:hover {
@@ -63,6 +80,12 @@
 
 .chat:active {
   background: var(--panel-3);
+  transform: scale(0.99);
+}
+
+.chat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* The selected row, the way the official clients mark it: a filled accent

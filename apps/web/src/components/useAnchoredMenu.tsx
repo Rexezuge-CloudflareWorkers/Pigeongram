@@ -13,6 +13,13 @@ import { createPortal } from 'react-dom';
  * on a press outside it. The copies drifted — the account menu could not close
  * on a sidebar scroll, and the message menu could not restore focus — so the
  * rules live here once and the menus describe only what is inside them.
+ *
+ * Focus is architecture: the first item is focused on open, arrow keys move
+ * within the menu (TAB is reserved for leaving the widget), Escape closes and
+ * returns focus to the trigger, and a press outside dismisses without
+ * stealing focus. The background is inert while the menu is open if a caller
+ * passes `inertBackground`; by default the menu is a non-modal popover, so
+ * the background stays interactive and the menu closes on scroll instead.
  */
 
 const MARGIN = 8;

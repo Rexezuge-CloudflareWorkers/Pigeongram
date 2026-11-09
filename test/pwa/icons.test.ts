@@ -44,10 +44,10 @@ describe('the install icons', () => {
     expect(pixels[middle + 3]).toBe(255);
   });
 
-  it('keeps the palette in step with base.css', () => {
-    const css = readFileSync(new URL('../../apps/web/src/styles/base.css', import.meta.url), 'utf8');
-    expect(css).toContain(`--bg: #${hex(TILE_COLOR)};`);
-    expect(css).toContain(`--accent: #${hex(UPPER_WING_COLOR)};`);
-    expect(css).toContain(`--badge: #${hex(LOWER_WING_COLOR)};`);
+  it('keeps the palette in step with tokens.css', () => {
+    const css = readFileSync(new URL('../../apps/web/src/styles/tokens.css', import.meta.url), 'utf8');
+    expect(css).toContain(`--md-sys-color-surface: #${hex(TILE_COLOR)};`);
+    expect(css).toContain(`--md-sys-color-primary: #${hex(UPPER_WING_COLOR)};`);
+    expect(css).toContain(`--md-sys-color-primary-container: #${hex(LOWER_WING_COLOR)};`);
   });
 });

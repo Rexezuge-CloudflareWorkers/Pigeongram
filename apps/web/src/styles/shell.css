@@ -113,27 +113,15 @@
   align-items: center;
   gap: 8px;
   max-width: min(560px, 90vw);
+  width: min(560px, 90vw);
 }
 
-.toast {
-  max-width: 100%;
-  margin: 0;
-  background: #43262b;
-  border: 1px solid rgb(255 123 114 / 55%);
-  color: var(--text);
-  padding: 10px 16px;
-  border-radius: 12px;
-  box-shadow: 0 14px 34px rgb(0 0 0 / 45%);
+.toasts > * {
   animation: toast-in 240ms var(--ease-out);
 }
 
-.toast.is-exiting {
+.toasts > *.is-exiting {
   animation: toast-out 220ms var(--ease-out) forwards;
-}
-
-.toast.notice {
-  background: #17293a;
-  border-color: rgb(94 181 247 / 45%);
 }
 
 .toast-swipe-track {

@@ -119,7 +119,7 @@ describe('ChatList presence', () => {
 
     const badge = badgeIn('Bob');
     expect(badge).not.toBeNull();
-    expect(badge?.className).toContain('bg-online');
+    expect(badge?.className).toContain('bg-tertiary');
     // The badge is decorative: the peer's name carries the meaning.
     expect(badge?.getAttribute('aria-hidden')).toBe('true');
   });
@@ -164,7 +164,7 @@ describe('ChatList pin marker', () => {
   }
 
   function countIn(name: string): Element | null {
-    return rowIn(name).querySelector('.badge');
+    return rowIn(name).querySelector('[data-badge]');
   }
 
   it('puts the pin in the count slot of a chat with nothing unread', () => {

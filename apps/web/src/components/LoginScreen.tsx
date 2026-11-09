@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { loginPhaseMessage } from '../api';
 import type { EngineStateDto } from '../types';
 import { Spinner } from './Spinner';
+import { TextField } from './TextField';
 
 /**
  * The last few seconds of a code's life are not shown at all: Telegram's login
@@ -128,12 +129,13 @@ function PhoneForm({ onSubmit, onBack }: { onSubmit: (phone: string) => Promise<
         void onSubmit(phone.trim()).finally(() => setSubmitting(false));
       }}
     >
-      <input
+      <TextField
         type="tel"
         value={phone}
         placeholder="+15551234567"
         autoComplete="tel"
         autoFocus
+        aria-label="Phone number"
         onChange={(event) => setPhone(event.target.value)}
       />
       <button type="submit" disabled={submitting || phone.trim().length < 5} aria-busy={submitting}>
@@ -175,13 +177,14 @@ function CodeForm({
           .finally(() => setSubmitting(false));
       }}
     >
-      <input
+      <TextField
         type="text"
         inputMode="numeric"
         value={code}
         placeholder="Login code"
         autoComplete="one-time-code"
         autoFocus
+        aria-label="Login code"
         onChange={(event) => setCode(event.target.value)}
       />
       {state?.codeInvalid ? <p className="error">That code was rejected — check the latest message and try again.</p> : null}
@@ -216,12 +219,13 @@ function PasswordForm({ invalid, onSubmit }: { invalid: boolean; onSubmit: (pass
           .finally(() => setSubmitting(false));
       }}
     >
-      <input
+      <TextField
         type="password"
         value={password}
         placeholder="Cloud password"
         autoComplete="current-password"
         autoFocus
+        aria-label="Cloud password"
         onChange={(event) => setPassword(event.target.value)}
       />
       {invalid ? <p className="error">That password was rejected — try again.</p> : null}

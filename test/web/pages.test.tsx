@@ -2518,14 +2518,14 @@ describe('App', () => {
       render(<App />);
       const row = (await screen.findByText('Bob')).closest('button');
       if (!row) throw new Error('Bob has no chat row');
-      expect(document.querySelector('.badge')?.textContent).toBe('1');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('1');
 
       fireEvent.contextMenu(row, { clientX: 20, clientY: 30 });
       const menu = screen.getByRole('menu', { name: 'Chat actions' });
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Mark As Read' }));
 
       expect(screen.queryByRole('menu', { name: 'Chat actions' })).toBeNull();
-      expect(document.querySelector('.badge')).toBeNull();
+      expect(document.querySelector('[data-badge]')).toBeNull();
       await waitFor(() => {
         expect(calls.filter((call) => call.body?.method === 'readHistory').map((call) => call.body?.params)).toEqual([{ chatId: 2 }]);
       });
@@ -2634,7 +2634,7 @@ describe('App', () => {
 
       render(<App />);
       expect(await screen.findByText('Bob')).toBeDefined();
-      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('3');
 
       // The engine's getDifference catch-up runs after the socket's ready and
       // replays the messages the chat-list read already counted. Counting them
@@ -2642,12 +2642,12 @@ describe('App', () => {
       for (let id = 9; id <= 13; id += 1) {
         deliver({ type: 'new_message', message: unreadMessage(id, `replayed ${String(id)}`, id % 2 === 0) });
       }
-      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('3');
       expect(sidebar().textContent).toContain('unread three');
 
       // A message that is genuinely new still counts and previews.
       deliver({ type: 'new_message', message: unreadMessage(14, 'brand new') });
-      expect(document.querySelector('.badge')?.textContent).toBe('4');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('4');
       expect(sidebar().textContent).toContain('brand new');
     });
 
@@ -2734,7 +2734,7 @@ describe('App', () => {
       scrollContainer().scrollTop = 200;
       fireEvent.scroll(scrollContainer());
       await waitFor(() => {
-        expect(document.querySelector('.badge')).toBeNull();
+        expect(document.querySelector('[data-badge]')).toBeNull();
       });
       fireEvent.click(screen.getByRole('button', { name: 'Back To Chat List' }));
       await waitFor(() => expect(document.querySelector('section.thread.empty')).not.toBeNull());
@@ -2751,7 +2751,7 @@ describe('App', () => {
 
       render(<App />);
       expect(await screen.findByText('Bob')).toBeDefined();
-      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('3');
 
       fireEvent.click(screen.getByText('Bob'));
       expect(await within(threadSection()).findByText('unread three')).toBeDefined();
@@ -2760,19 +2760,19 @@ describe('App', () => {
       // The peer reading the account's own messages says nothing about the
       // account's unread incoming ones.
       deliver({ type: 'read', chatId: 2, maxId: 12, unread: 0, inbox: false });
-      expect(document.querySelector('.badge')?.textContent).toBe('3');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('3');
       expect(threadSection().querySelector('[data-unread-divider]')).not.toBeNull();
 
       // The account's own read moves the badge on, but not the line: the
       // divider stays where the chat opened for as long as it is open.
       deliver({ type: 'read', chatId: 2, maxId: 11, unread: 1, inbox: true });
-      expect(document.querySelector('.badge')?.textContent).toBe('1');
+      expect(document.querySelector('[data-badge]')?.textContent).toBe('1');
       expect(
         (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
       ).toBe('9');
 
       deliver({ type: 'read', chatId: 2, maxId: 13, unread: 0, inbox: true });
-      expect(document.querySelector('.badge')).toBeNull();
+      expect(document.querySelector('[data-badge]')).toBeNull();
       expect(
         (threadSection().querySelector('[data-unread-divider]')?.nextElementSibling as HTMLElement | null | undefined)?.dataset.messageId,
       ).toBe('9');
@@ -2906,7 +2906,7 @@ describe('App', () => {
         render(<App />);
         fireEvent.click(await screen.findByText('Bob'));
         expect(await within(threadSection()).findByText('first unread')).toBeDefined();
-        expect(document.querySelector('.badge')?.textContent).toBe('99+');
+        expect(document.querySelector('[data-badge]')?.textContent).toBe('99+');
 
         fireEvent.click(within(threadSection()).getByRole('button', { name: 'Jump To Latest And Mark As Read' }));
 
@@ -2922,7 +2922,7 @@ describe('App', () => {
           chatId: 2,
           limit: 50,
         });
-        expect(document.querySelector('.badge')).toBeNull();
+        expect(document.querySelector('[data-badge]')).toBeNull();
       });
 
       it('loads the next newer page as the reader approaches the end', async () => {

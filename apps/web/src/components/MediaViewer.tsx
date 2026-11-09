@@ -9,6 +9,7 @@ import { usePhotoZoom } from '../usePhotoZoom';
 import { Icon } from './Icon';
 import { isViewableMedia } from './Media';
 import { MessageText } from './MessageText';
+import { Select } from './Select';
 
 /**
 The full-page media viewer: one photo or video over the whole viewport, with
@@ -193,8 +194,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
           {showQuality ? (
             <label className="media-viewer-quality">
               <span className="sr-only">Video quality</span>
-              <select
-                className="media-viewer-tool media-viewer-quality-select"
+              <Select
                 aria-label="Video quality"
                 value={selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}
                 onChange={(event) => {
@@ -213,7 +213,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
                     {qualityLabel(quality)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           ) : null}
           {photo ? (

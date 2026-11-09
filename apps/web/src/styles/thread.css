@@ -60,14 +60,14 @@
 
 .thread-presence {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--md-sys-color-on-surface-variant);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .thread-presence.online {
-  color: var(--accent);
+  color: var(--md-sys-color-primary);
 }
 
 .thread-title strong,

@@ -4,6 +4,7 @@ import type { PendingMessage } from '../outbox';
 import { withPendingDialogs } from '../outbox';
 import type { ChatDto, DialogDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
+import { Badge } from './Badge';
 import { ChatMenu } from './ChatMenu';
 import { Icon } from './Icon';
 
@@ -226,7 +227,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                       {/* The count and the pin share one slot: the count has priority,
                         so an unread pinned chat drops the pin. */}
                       {dialog.unread > 0 ? (
-                        <span className="badge">{dialog.unread > 99 ? '99+' : dialog.unread}</span>
+                        <Badge count={dialog.unread} />
                       ) : dialog.pinned ? (
                         <span data-pin="pinned" aria-hidden="true" className="shrink-0 text-muted">
                           <Icon name="pin" size={14} />

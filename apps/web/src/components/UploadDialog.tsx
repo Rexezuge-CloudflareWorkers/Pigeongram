@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { formatBytes, mediaPreview } from '../format';
 import type { UploadKind } from '../types';
 import { canGroupUploads, MAX_UPLOAD_ITEMS, mediaKind, previewMime } from '../upload';
+import { Checkbox } from './Checkbox';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 
@@ -181,9 +182,8 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
 
           <div className="mt-3 pb-1">
             <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 shrink-0 accent-accent"
+              <Checkbox
+                className="mt-1"
                 checked={grouped && groupable}
                 disabled={!groupable}
                 onChange={(event) => setGrouped(event.target.checked)}

@@ -6,7 +6,9 @@ import type { SearchScope } from '../search';
 import type { ChatDto, MessageDto } from '../types';
 import { useSearch } from '../useSearch';
 import { Icon } from './Icon';
+import { Chip } from './Chip';
 import { Spinner } from './Spinner';
+import { TextField } from './TextField';
 
 /**
 The message search screen: a portal modal over the app, with a scope toggle
@@ -104,17 +106,16 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
           </button>
         </header>
         <div className="border-b border-line px-4 py-3">
-          <input
+          <TextField
             ref={inputRef}
             type="search"
             value={query}
             placeholder="Search messages"
             aria-label="Search messages"
-            className="w-full"
             onChange={(event) => setQuery(event.target.value)}
           />
           {chat === null ? null : (
-            <div role="group" aria-label="Search scope" className="mt-2 flex gap-1 rounded-lg bg-panel-2 p-1 text-xs font-medium">
+            <div role="group" aria-label="Search scope" className="mt-2 flex gap-1">
               <ScopeButton active={inChat} onClick={() => setScope({ kind: 'chat', chatId: chat.id })}>
                 This Chat
               </ScopeButton>
@@ -184,14 +185,9 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
 
 function ScopeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      className={`flex-1 rounded-md px-2 py-1 transition-colors ${active ? 'bg-panel text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
-      onClick={onClick}
-    >
+    <Chip selected={active} className="flex-1" onClick={onClick}>
       {children}
-    </button>
+    </Chip>
   );
 }
 

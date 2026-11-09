@@ -18,7 +18,7 @@ import { concat } from './hash';
  *
  * A peer that does not know the version says so instead of guessing.
  */
-export const SIGNAL_VERSION = 1;
+const SIGNAL_VERSION = 1;
 
 /**
  * One message of the signalling channel.

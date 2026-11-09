@@ -19,7 +19,7 @@ interface UseThreadPagingOptions {
   setError: (message: string | null) => void;
 }
 
-export interface ThreadPaging {
+interface ThreadPaging {
   loadingOlder: boolean;
   loadingNewer: boolean;
   loadOlder: () => Promise<void>;

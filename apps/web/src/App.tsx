@@ -36,5 +36,3 @@ export function App() {
 
   return <SignedInShell initialMe={state?.me ?? null} error={error} pwa={pwa} onError={reportError} onSignedOut={reset} />;
 }
-
-export default App;

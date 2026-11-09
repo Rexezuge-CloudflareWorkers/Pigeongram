@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
  * light palette and persists across reloads. Kept in a hook so the shell
  * stays under the god-file cap.
  */
-export type AppTheme = 'dark' | 'light';
+type AppTheme = 'dark' | 'light';
 
 export function useTheme(): { theme: AppTheme; setTheme: React.Dispatch<React.SetStateAction<AppTheme>> } {
   const [theme, setTheme] = useState<AppTheme>(() => {

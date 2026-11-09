@@ -17,7 +17,7 @@ import type { PeerId, ProfileDto } from './types';
  */
 const CACHE_LIMIT = 8;
 
-export interface ProfileController {
+interface ProfileController {
   /**
    * The profile of the peer that was asked for, once it has been read.
    */

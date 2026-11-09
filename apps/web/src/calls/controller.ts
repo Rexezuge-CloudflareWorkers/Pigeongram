@@ -7,7 +7,7 @@ import type { CallView } from './session';
 /**
  * What the controller offers the UI.
  */
-export interface CallController {
+interface CallController {
   /**
    * The call the reader is in, or `null` when there is none.
    */

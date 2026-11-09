@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/web": {
+      "entry": ["sw/sw.ts", "build/**/*.ts"]
+    },
+    "test": {
+      "entry": ["**/*.test.ts", "**/*.test.tsx"],
+      "ignoreDependencies": ["lottie-web"]
+    }
+  },
+  "ignore": ["scripts/lib/**", "scripts/wrangler-config/**"]
+}

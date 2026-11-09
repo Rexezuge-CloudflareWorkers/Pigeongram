@@ -17,7 +17,7 @@ const JPEG_QUALITY = 0.9;
  */
 export const MAX_UPLOAD_ITEMS = 10;
 
-export interface PreparedUpload {
+interface PreparedUpload {
   kind: UploadKind;
   body: Blob;
   fileName: string;
@@ -41,7 +41,7 @@ export interface UploadRequest {
 /**
  * The bridge coordinates shared by one file and by an album.
  */
-export interface UploadDestination {
+interface UploadDestination {
   chatId: PeerId;
   commentTo?: number;
   replyTo?: number;

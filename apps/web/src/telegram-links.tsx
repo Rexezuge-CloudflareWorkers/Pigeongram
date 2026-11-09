@@ -17,7 +17,7 @@ import type { MessageForwardDto } from './types';
  * all thread handlers through their props.
  */
 
-export type ForwardOriginHandler = (forward: MessageForwardDto) => void;
+type ForwardOriginHandler = (forward: MessageForwardDto) => void;
 
 const TelegramLinkContext = createContext<LinkClickHandler | null>(null);
 const HashtagContext = createContext<HashtagClickHandler | null>(null);

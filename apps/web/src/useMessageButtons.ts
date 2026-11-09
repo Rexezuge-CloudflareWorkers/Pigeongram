@@ -11,7 +11,7 @@ Callback buttons go through the bridge; copy buttons stay local. URL and web
 view buttons are anchors in `MessageButtons`, so they never reach this hook.
 */
 
-export interface MessageButtonController {
+interface MessageButtonController {
   /**
   Message ids with a callback press in flight; their callback buttons are
   disabled meanwhile.

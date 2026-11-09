@@ -73,7 +73,7 @@ Account routes live under `/user/*`; only `/api/health` is public.
 - **Backup Main Branch** is optional and mirrors the repository when its destination secrets are configured.
 
 After the first successful CI run, configure branch protection on `main` with the required checks:
-**Typecheck**, **Lint**, **Format**, **God Files**, **Unit Tests**, **Worker Bundle**, and **Build Web App**. Enable
+**Typecheck**, **Lint**, **Format**, **God Files**, **Dead Code**, **Unit Tests**, **Worker Bundle**, and **Build Web App**. Enable
 **Allow auto-merge** if Dependabot auto-merge is wanted.
 
 ## Android app (optional)

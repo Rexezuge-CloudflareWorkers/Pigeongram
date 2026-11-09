@@ -14,7 +14,7 @@ import { sha256 } from './hash';
 /**
  * What a peer sends along with the key exchange.
  */
-export interface KeyOptions {
+interface KeyOptions {
   /**
    * The public parameters of the exchange.
    */
@@ -42,7 +42,7 @@ export interface KeyOptions {
 /**
  * The key the two peers share, and its fingerprint.
  */
-export interface EstablishedKey {
+interface EstablishedKey {
   key: Uint8Array;
   fingerprint: string;
 }

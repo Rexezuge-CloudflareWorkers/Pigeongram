@@ -41,7 +41,7 @@ scroll keep scrolling instead of opening the menu.
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
 
-export interface MessageRowProps {
+interface MessageRowProps {
   /**
    One display group, oldest first: a standalone message, or an album's messages.
    */

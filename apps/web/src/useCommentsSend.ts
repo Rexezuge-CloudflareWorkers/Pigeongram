@@ -41,7 +41,7 @@ interface UseCommentsSendOptions {
   onError: (error: unknown) => void;
 }
 
-export interface CommentsSend {
+interface CommentsSend {
   /**
   Comments still on their way to Telegram, in submission order. They render
   beside the loaded comments and never enter the thread's message list.

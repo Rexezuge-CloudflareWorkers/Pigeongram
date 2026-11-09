@@ -40,7 +40,7 @@ export type AccessStatus = 'checking' | 'anonymous' | 'authenticated' | 'offline
  * its failures — including an expired Cloudflare Access session — through the
  * same two slots.
  */
-export interface LoginFlowState {
+interface LoginFlowState {
   state: EngineStateDto | null;
   access: AccessStatus;
   error: string | null;

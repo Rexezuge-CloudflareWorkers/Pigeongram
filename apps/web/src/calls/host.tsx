@@ -17,7 +17,7 @@ import { useCalls } from './controller';
  * The overlay is returned rather than rendered: it belongs to the app's tree,
  * and it is a portal, so it lands on `document.body` either way.
  */
-export interface CallHostOptions {
+interface CallHostOptions {
   /**
    * Whether the account is signed in: the socket only attaches then.
    */
@@ -47,7 +47,7 @@ export interface CallHostOptions {
 /**
  * What the app shell gets from the calls.
  */
-export interface CallHost {
+interface CallHost {
   /**
    * Whether the updates socket is attached.
    */

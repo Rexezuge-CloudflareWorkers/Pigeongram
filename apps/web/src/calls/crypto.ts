@@ -39,7 +39,7 @@ import { concat, equalBytes, sha256, slice } from './hash';
  *
  * Signalling rides Telegram's API; transport rides the peer connection.
  */
-export type CallChannel = 'transport' | 'signaling';
+type CallChannel = 'transport' | 'signaling';
 
 /**
  * The offset of the caller's packets.

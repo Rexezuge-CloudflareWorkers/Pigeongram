@@ -14,7 +14,7 @@
 /**
  * What a paste carries: the files on the clipboard and the text with them.
  */
-export interface PastedContent {
+interface PastedContent {
   /**
    * The files the clipboard holds, in the order the source app put them there.
    */

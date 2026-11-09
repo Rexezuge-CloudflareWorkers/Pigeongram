@@ -1,11 +1,15 @@
 /* Motion system: shared entrance/exit keyframes beyond the per-surface ones
  * in shell.css and thread.css. Every animation here moves transform/opacity
- * only, and all of them collapse under the prefers-reduced-motion kill
- * switch in shell.css (or run the no-anim fallback where one is given). */
+ * (plus blur where noted) only, and all of them collapse under the
+ * prefers-reduced-motion kill switch in shell.css (or run the no-anim
+ * fallback where one is given). Motions are opt-in: static is the default,
+ * movement only under `prefers-reduced-motion: no-preference` where the
+ * surface does not already gate itself. */
 
 /* Exit keyframes: the reverse of the *-in entrances. Overlays pair an enter
  * animation with a `.is-exiting` class that runs the matching *-out as
- * Forwards so the component can stay mounted one beat longer. */
+ * Forwards so the component can stay mounted one beat longer. Exits run
+ * ~150ms against ~250ms entrances, i.e. roughly 70% of the entrance. */
 @keyframes dialog-out {
   from {
     opacity: 1;
@@ -14,7 +18,7 @@
 
   to {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(-12px) scale(0.96);
   }
 }
 
@@ -74,6 +78,98 @@
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
   }
+}
+
+/* The shared menu surface (AnchoredMenu): a 250ms emphasized-decelerate
+ * entrance from a small offset/scale so the menu belongs to its anchor.
+ * `transform-origin` is set by the caller (top-left for point menus,
+ * top-start for trigger menus); the default here is top-left. Exits mirror
+ * it with the accelerate easing at ~70% duration. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.anchored-menu {
+  animation: menu-in 250ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transform-origin: top left;
+}
+
+.anchored-menu.is-exiting {
+  animation: menu-out 150ms var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+@keyframes fab-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fab-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+}
+
+.fab-jump {
+  animation: fab-in 200ms var(--ease-out-strong);
+}
+
+.fab-jump.is-exiting {
+  animation: fab-out 150ms var(--ease-in) forwards;
+}
+
+@keyframes call-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes call-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.call-overlay {
+  animation: call-in 250ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+
+.call-overlay.is-exiting {
+  animation: call-out 150ms var(--md-sys-motion-easing-emphasized-accelerate) forwards;
 }
 
 /* Pane swap when the open chat changes (the thread pane slides so the
@@ -236,6 +332,36 @@
   }
 }
 
+/* A brief horizontal shake for an error the user can fix in place: it
+ * says "this failed" without a sound or a focus steal. Keep it under
+ * 300ms and small enough to survive reduced motion as a single nudge. */
+@keyframes error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-3px);
+  }
+
+  40% {
+    transform: translateX(3px);
+  }
+
+  60% {
+    transform: translateX(-2px);
+  }
+
+  80% {
+    transform: translateX(1px);
+  }
+}
+
+.error-shake {
+  animation: error-shake 280ms var(--ease-out);
+}
+
 .thread-skeleton {
   list-style: none;
   margin: 0;
@@ -268,4 +394,31 @@
 .skeleton-bubble.wide {
   width: min(280px, 70%);
   height: 120px;
+}
+
+/* The reaction the last tap adopted bursts once. The class is added by
+ * `useMessageGestures` via `burstKey` and removed after BURST_MS; the
+ * animation is the feedback, the chosen state is the durable cue. */
+.message .reaction.burst {
+  animation: reaction-burst 300ms var(--spring);
+}
+
+/* Reduced motion: opt-in is the rule. The kill switch in shell.css covers
+   WAAPI-free CSS; these rules swap spatial movement for a plain fade so
+   the state still answers. Spinners and progress stay alive. */
+@media (prefers-reduced-motion: reduce) {
+  .anchored-menu,
+  .fab-jump,
+  .call-overlay,
+  .error-shake,
+  .message .reaction.burst {
+    animation: none;
+  }
+
+  .anchored-menu,
+  .fab-jump,
+  .call-overlay {
+    opacity: 1;
+    transform: none;
+  }
 }

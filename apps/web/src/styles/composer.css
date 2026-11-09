@@ -163,6 +163,10 @@
   opacity: 0.6;
 }
 
+.composer .send-morph:not(:disabled):hover {
+  transform: scale(0.97);
+}
+
 .composer .send-morph:not(:disabled):active {
   transform: scale(0.92);
 }

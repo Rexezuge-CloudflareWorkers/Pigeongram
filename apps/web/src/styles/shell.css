@@ -143,22 +143,24 @@
 /* ---- dialogs ------------------------------------------------------------- */
 
 /* The scrim fades and the surface pops: the entrance the official clients
-   give every modal, kept small so it reads as a reply to the tap. */
+   give every modal, kept small so it reads as a reply to the tap. Motion is
+   opt-in: it only moves under `prefers-reduced-motion: no-preference`.
+   Exits run at ~70% of entrances (150ms against 250ms). */
 .dialog-scrim {
   animation: scrim-in 200ms ease-out;
 }
 
 .dialog-panel {
   border-radius: var(--md-sys-shape-corner-extra-large-increased);
-  animation: dialog-in 240ms var(--ease-out);
+  animation: dialog-in 250ms var(--md-sys-motion-easing-emphasized-decelerate);
 }
 
 .dialog-scrim.is-exiting {
-  animation: scrim-out 200ms ease-out forwards;
+  animation: scrim-out 150ms var(--md-sys-motion-easing-emphasized-accelerate) forwards;
 }
 
 .dialog-panel.is-exiting {
-  animation: dialog-out 220ms var(--ease-out) forwards;
+  animation: dialog-out 150ms var(--md-sys-motion-easing-emphasized-accelerate) forwards;
 }
 
 @keyframes scrim-in {
@@ -182,7 +184,9 @@
 /* ---- reduced motion ------------------------------------------------------- */
 
 /* The animations above are ornament, never information: with reduced motion
-   they collapse to a plain swap. */
+   they collapse to a plain opacity crossfade (no translation or scale). The
+   `0.01ms` kill switch (rather than `none`) keeps `transitionend` and
+   `animationend` firing, so any script waiting on them does not hang. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -191,5 +195,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Opt-in movement: the static version is the default. Only the entrance
+   keyframes and press feedback belong under `no-preference`; hover color,
+   the focus ring and spinners stay alive in every mode. */
+@media (prefers-reduced-motion: no-preference) {
+  .toasts > *,
+  .dialog-scrim,
+  .dialog-panel {
+    will-change: transform, opacity;
   }
 }

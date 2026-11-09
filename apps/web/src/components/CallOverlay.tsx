@@ -41,6 +41,11 @@ interface CallOverlayProps {
    * Takes the overlay away after the call ended.
    */
   onDismiss: () => void;
+  /**
+   * Whether the overlay is leaving: runs the exit keyframe while the host
+   * keeps it mounted for one beat.
+   */
+  exiting?: boolean;
 }
 
 /**
@@ -48,7 +53,17 @@ interface CallOverlayProps {
  */
 const ENDED_TIMEOUT_MS = 4000;
 
-export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onHangUp, onToggleMute, onDismiss }: CallOverlayProps) {
+export function CallOverlay({
+  view,
+  chat,
+  remoteStream,
+  onAccept,
+  onDecline,
+  onHangUp,
+  onToggleMute,
+  onDismiss,
+  exiting = false,
+}: CallOverlayProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const ringtone = useRef<Ringtone | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -106,7 +121,9 @@ export function CallOverlay({ view, chat, remoteStream, onAccept, onDecline, onH
   const ringing = view.phase === 'ringing';
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-panel px-6 text-center">
+    <div
+      className={`call-overlay fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-panel px-6 text-center${exiting ? ' is-exiting' : ''}`}
+    >
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
       <Avatar chatId={view.peerId} photo={chat?.photo ?? null} title={title} kind={chat?.kind ?? 'user'} big />
       <div className="flex flex-col items-center gap-1">

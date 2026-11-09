@@ -32,18 +32,28 @@
   --online: var(--md-sys-color-tertiary);
   --warn: #e0a33c;
   /* One easing for every press and pop in the app: quick to start, settled
-     without a bounce. */
+     without a bounce. Exits use the accelerate variant so leaving reads
+     faster than arriving (~70% of the entrance). */
   --ease-out: cubic-bezier(0.2, 0.8, 0.25, 1);
+  --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);
   /* A stronger variant for entrances that should feel decisive. */
   --ease-out-strong: cubic-bezier(0.16, 1, 0.3, 1);
   /* A spring with a slight overshoot, for the playfulness Telegram's client
      gives to reactions, badge pops and viewer settle-backs. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Shared duration tokens so new keyframes stay in one scale. */
+  /* Shared duration tokens so new keyframes stay in one scale. Aligned to
+     the reference: 100 tactile, 150 baseline, 200 small reveals, 250 menus,
+     300 drawers, 400 full-screen, 800 loading. */
   --dur-instant: 100ms;
   --dur-fast: 140ms;
   --dur-base: 220ms;
   --dur-slow: 320ms;
+  --dur-baseline: 150ms;
+  --dur-menu: 250ms;
+  --dur-drawer: 300ms;
+  --dur-full: 400ms;
+  --dur-loading: 800ms;
+  --dur-exit: 150ms;
 }
 
 /* Light theme: aliases re-point at tokens.css's [data-theme='light'] remap.

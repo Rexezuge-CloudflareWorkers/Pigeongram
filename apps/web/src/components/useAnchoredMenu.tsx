@@ -180,21 +180,39 @@ interface AnchoredMenuProps {
    * bubble's own handler.
    */
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
+  /**
+   * Whether the menu is leaving: runs the exit keyframe while the parent
+   * keeps it mounted for one beat.
+   */
+  exiting?: boolean;
 }
 
 /**
  * The portal half: a fixed menu at the hook's clamped position, on the body so
  * no scroll container can clip it. The surface is MD3 menu tone:
  * `surface-container` with the menu corner, no border needed for separation.
+ * Motion is opt-in: it only moves under `prefers-reduced-motion:
+ * no-preference` via the `.anchored-menu` animation; reduced motion gets a
+ * plain swap. The exit beat runs when `exiting` is set.
  */
-export function AnchoredMenu({ menuRef, position, onKeyDown, label, className = '', id, children, onContextMenu }: AnchoredMenuProps) {
+export function AnchoredMenu({
+  menuRef,
+  position,
+  onKeyDown,
+  label,
+  className = '',
+  id,
+  children,
+  onContextMenu,
+  exiting = false,
+}: AnchoredMenuProps) {
   return createPortal(
     <div
       ref={menuRef}
       id={id}
       role="menu"
       aria-label={label}
-      className={`fixed z-50 border border-outline-variant bg-surface-container shadow-2xl rounded-sm${className ? ` ${className}` : ''}`}
+      className={`anchored-menu fixed z-50 rounded-sm border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}${className ? ` ${className}` : ''}`}
       style={position}
       onKeyDown={onKeyDown}
       onContextMenu={onContextMenu}

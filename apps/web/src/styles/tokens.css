@@ -116,13 +116,25 @@
   --md-sys-shape-corner-full: 9999px;
 
   /* Motion — emphasized family (cubic-bezier(0.2,0,0,1)); the app's legacy
-     --ease-out family stays aliased in base.css, these are the MD3 names. */
+     --ease-out family stays aliased in base.css, these are the MD3 names.
+     Durations follow the reference scale: 100ms tactile, 150ms baseline,
+     200ms small reveals, 250ms menus/modals, 300ms drawers/accordions,
+     400ms full-screen, 800ms loading. Exits run ~70% of entrances. */
   --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
   --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
   --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
   --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  /* Baseline 150ms; entrances use emphasized-decelerate, exits
+     emphasized-accelerate so leaving feels faster than arriving. */
+  --md-sys-motion-duration-short1: 100ms;
+  --md-sys-motion-duration-short2: 150ms;
+  --md-sys-motion-duration-short3: 200ms;
+  --md-sys-motion-duration-short4: 250ms;
+  --md-sys-motion-duration-medium1: 300ms;
+  --md-sys-motion-duration-medium2: 400ms;
+  --md-sys-motion-duration-long1: 800ms;
   --md-sys-motion-duration-emphasized: 500ms;
   --md-sys-motion-duration-emphasized-decelerate: 400ms;
   --md-sys-motion-duration-emphasized-accelerate: 200ms;

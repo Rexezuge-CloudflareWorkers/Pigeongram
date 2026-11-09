@@ -339,12 +339,15 @@
 
 .message .reaction:hover:not(:disabled) {
   border-color: var(--accent);
+  transform: scale(0.97);
 }
 
 .message .reaction:not(:disabled):active {
   transform: scale(0.92);
 }
 
+/* The chosen reaction answers the tap: the border and tint persist after
+   the burst, so nothing is communicated by movement alone. */
 .message .reaction.chosen {
   border-color: var(--accent);
   background: rgba(94, 181, 247, 0.18);
@@ -378,4 +381,34 @@
 .ticks.read {
   color: var(--accent);
   animation: read-tick-pop 300ms var(--spring);
+}
+
+/* The jump flash: a reply quote click jumps and the row flashes so the
+   jump reads as a jump. The flash is opacity-only (no scale) under reduced
+   motion; it is never the only cue — the row also has the accent outline. */
+.message.reply-flash {
+  animation: reply-flash 1200ms var(--ease-out);
+}
+
+@keyframes reply-flash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  100% {
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message,
+  .message.reply-flash,
+  .ticks.read {
+    animation: none;
+  }
+
+  .message.reply-flash {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
 }

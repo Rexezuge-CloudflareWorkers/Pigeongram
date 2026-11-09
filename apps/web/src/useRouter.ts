@@ -24,7 +24,7 @@ interface EntryState {
   layer?: 'viewer';
 }
 
-export interface RouterOptions {
+interface RouterOptions {
   /**
    * Applies a route. The router has already checked `canOpen` and written the
    * URL; handlers only have to move the screen.

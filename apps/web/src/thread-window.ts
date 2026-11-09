@@ -43,7 +43,7 @@ export const UNREAD_CONTEXT = 15;
 A history window's place in the chat: the id to start from and how many
 messages to skip towards newer (negative) or older (positive) ones.
 */
-export interface HistoryWindow {
+interface HistoryWindow {
   offsetId: number;
   addOffset: number;
 }

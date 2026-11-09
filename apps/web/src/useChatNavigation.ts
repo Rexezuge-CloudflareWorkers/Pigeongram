@@ -15,7 +15,7 @@ import type { OpenThreadResult, ThreadController } from './thread-controller';
  * its old "re-read around the linked post" behaviour.
  */
 
-export interface ChatNavigationOptions {
+interface ChatNavigationOptions {
   /**
    * The chat's dialog, in either list, or a transient one for a chat reached
    * through search. A callback rather than the array because `boot` applies

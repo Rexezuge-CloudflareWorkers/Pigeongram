@@ -33,5 +33,5 @@ const userRoutes: readonly RouteDefinition[] = [
 
 const allRoutes: readonly RouteDefinition[] = [...publicRoutes, ...userRoutes];
 
-export { allRoutes, publicRoutes, userRoutes };
-export type { RouteDefinition, RouteMethod };
+export { allRoutes };
+export type { RouteDefinition };

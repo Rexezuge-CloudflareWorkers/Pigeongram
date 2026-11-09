@@ -18,7 +18,7 @@ import type { PeerId } from './types';
  * The list counts as "at the bottom" within this many pixels, for both the
  * stick-to-bottom pin and the read watermark.
  */
-export const BOTTOM_PX = 80;
+const BOTTOM_PX = 80;
 
 export interface ThreadPosition {
   chatId: PeerId;
@@ -102,7 +102,7 @@ export function readThreadPosition(element: HTMLElement, chatId: PeerId): Thread
  * offset, even if media above it changed size. The raw scroll position is the
  * fallback when the anchor is gone.
  */
-export function restoreThreadPosition(element: HTMLElement, position: ThreadPosition): void {
+function restoreThreadPosition(element: HTMLElement, position: ThreadPosition): void {
   if (position.atBottom) {
     element.scrollTop = element.scrollHeight;
     return;
@@ -117,7 +117,7 @@ export function restoreThreadPosition(element: HTMLElement, position: ThreadPosi
   element.scrollTop += rect.top - container.top - position.offset;
 }
 
-export interface ThreadOpening {
+interface ThreadOpening {
   focusMessageId: number | null;
   unreadDividerId: number | null;
   /**

@@ -12,7 +12,7 @@ Failures are rethrown for the picker to render inline; the target stays set so
 the user can pick another destination or retry.
 */
 
-export interface ForwardController {
+interface ForwardController {
   /**
   The display group waiting for a destination, or null while the picker is
   closed.

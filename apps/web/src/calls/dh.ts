@@ -19,7 +19,7 @@ import { sha1, sha256 } from './hash';
 /**
  * How wide the prime and the public values are: 2048 bits.
  */
-export const DH_VALUE_BYTES = 256;
+const DH_VALUE_BYTES = 256;
 
 /**
  * The public parameters of the exchange.

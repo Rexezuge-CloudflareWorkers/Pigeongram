@@ -63,7 +63,7 @@ export interface UseAnchoredMenuOptions {
   remeasureOn?: unknown;
 }
 
-export interface AnchoredMenuState {
+interface AnchoredMenuState {
   menuRef: RefObject<HTMLDivElement | null>;
   position: CSSProperties;
   onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
@@ -165,7 +165,7 @@ export function useAnchoredMenu(options: UseAnchoredMenuOptions): AnchoredMenuSt
   return { menuRef, position, onKeyDown };
 }
 
-export interface AnchoredMenuProps {
+interface AnchoredMenuProps {
   menuRef: RefObject<HTMLDivElement | null>;
   position: CSSProperties;
   onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;

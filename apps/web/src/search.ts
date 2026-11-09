@@ -19,7 +19,7 @@ export type SearchNext = { kind: 'global'; offset: SearchGlobalCursor } | { kind
 /**
  * A piece of a result's text, marked when it is part of a query match.
  */
-export interface HighlightSegment {
+interface HighlightSegment {
   text: string;
   match: boolean;
 }

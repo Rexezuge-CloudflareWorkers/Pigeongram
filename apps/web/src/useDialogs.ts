@@ -67,7 +67,7 @@ export interface DialogsController {
   setArchived: (chatId: PeerId, archived: boolean) => Promise<void>;
 }
 
-export interface DialogsOptions {
+interface DialogsOptions {
   /**
   Where a failed read or write is reported.
   */

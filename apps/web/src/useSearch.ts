@@ -20,7 +20,7 @@ const DEBOUNCE_MS = 300;
  */
 const PAGE_LIMIT = 50;
 
-export interface SearchController {
+interface SearchController {
   query: string;
   setQuery: (query: string) => void;
   scope: SearchScope;
@@ -44,7 +44,7 @@ export interface SearchController {
   loadMore: () => void;
 }
 
-export interface UseSearchOptions {
+interface UseSearchOptions {
   /**
    * Whether the overlay is open. A closed overlay stops searching.
    */

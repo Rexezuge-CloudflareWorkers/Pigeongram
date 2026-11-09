@@ -17,9 +17,9 @@
 #
 # A job per gate because a failure is then named by the job rather than arriving
 # inside a combined `checks` log, and a retry re-runs only the tool that broke.
-# Job `name:` values — Typecheck, Lint, Format, God Files, Unit Tests, Worker
-# Bundle, Build Web App — are the required-check names configured in branch
-# protection; keep them stable.
+# Job `name:` values — Typecheck, Lint, Format, God Files, Dead Code, Unit Tests,
+# Worker Bundle, Build Web App — are the required-check names configured in
+# branch protection; keep them stable.
 
 name: Continuous Integration
 
@@ -117,6 +117,24 @@ jobs:
         with:
           command: pnpm run check:god-files
           max_attempts: '2'
+
+  # Neither the compiler nor ESLint sees an export nobody imports: both accept a
+  # module that ships a helper no caller will ever reach. Knip is the gate that
+  # makes "no speculative exports" enforceable rather than a review convention.
+  # It is read-only, so a failure is a defect to fix, not a flake to retry.
+  dead-code:
+    name: Dead Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Check For Dead Code
+        run: pnpm run check:dead-code
 
   unit-tests:
     name: Unit Tests

@@ -11,7 +11,7 @@ import type { LiveCall } from './live';
 import { defaultPeer } from './orchestrator-ports';
 import type { CallOrchestratorOptions, CallRpcPort, CreateCallPeer } from './orchestrator-ports';
 
-export type { CallOrchestratorOptions, CallPeerPort, CallRpcPort, CreateCallPeer } from './orchestrator-ports';
+export type { CallPeerPort, CallRpcPort } from './orchestrator-ports';
 
 /**
  * The order of a call.

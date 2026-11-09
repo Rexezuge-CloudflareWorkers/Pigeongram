@@ -38,7 +38,7 @@ export interface PinchGesture {
 
 export type Gesture = PanGesture | PinchGesture;
 
-export interface TapTracker {
+interface TapTracker {
   lastTouchAt: number;
   last: { at: number; point: Point } | null;
 }

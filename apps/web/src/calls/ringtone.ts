@@ -14,7 +14,7 @@
  * Makes the audio context. Injectable so the ringtone's lifecycle can be
  * tested without a real sound device.
  */
-export type AudioContextFactory = () => AudioContext;
+type AudioContextFactory = () => AudioContext;
 
 export class Ringtone {
   #context: AudioContext | null = null;

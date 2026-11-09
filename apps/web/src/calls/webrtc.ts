@@ -62,7 +62,7 @@ export function iceServersFor(connections: CallConnectionDto[]): RTCIceServer[] 
 /**
  * The events a caller of the peer needs to hear about.
  */
-export interface CallPeerHandlers {
+interface CallPeerHandlers {
   /**
    * A local ICE candidate, ready to be sent to the other peer.
    */

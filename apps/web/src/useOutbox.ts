@@ -20,11 +20,7 @@ export type PendingBody = { kind: 'text'; text: string; replyTo?: number } | { k
  * picked the body and generated the random ids; a file batch carries one id
  * per file, so a retry of a single-file send cannot duplicate it.
  */
-export type DeliverPending = (
-  body: PendingBody,
-  randomIds: readonly string[],
-  onProgress: (fraction: number) => void,
-) => Promise<MessageDto[]>;
+type DeliverPending = (body: PendingBody, randomIds: readonly string[], onProgress: (fraction: number) => void) => Promise<MessageDto[]>;
 
 interface PendingJob {
   entry: PendingMessage;
@@ -50,15 +46,15 @@ interface EnqueueBase {
   onSettled: (messages: MessageDto[]) => void;
 }
 
-export interface EnqueueTextInput extends EnqueueBase {
+interface EnqueueTextInput extends EnqueueBase {
   text: string;
 }
 
-export interface EnqueueFileInput extends EnqueueBase {
+interface EnqueueFileInput extends EnqueueBase {
   request: UploadRequest;
 }
 
-export interface UseOutboxOptions {
+interface UseOutboxOptions {
   /**
    * Reports a failed send to the global toast; the pending row keeps the
    * failure and the Retry affordance either way.
@@ -66,7 +62,7 @@ export interface UseOutboxOptions {
   onError: (failure: unknown) => void;
 }
 
-export interface OutboxController {
+interface OutboxController {
   pending: readonly PendingMessage[];
   send: (input: EnqueueTextInput) => void;
   attach: (input: EnqueueFileInput) => void;

@@ -10,7 +10,7 @@ import { CallPeer } from './webrtc';
  * The media peer the session drives. `CallPeer` is the real one; tests pass a
  * stand-in with the same surface.
  */
-export type MediaPeer = Pick<
+type MediaPeer = Pick<
   CallPeer,
   'openMicrophone' | 'createOffer' | 'acceptOffer' | 'acceptAnswer' | 'addCandidate' | 'setMuted' | 'muted' | 'close'
 >;
@@ -19,7 +19,7 @@ export type MediaPeer = Pick<
  * How a session makes its media peer. Injectable so the signalling lifecycle
  * can be tested without a real RTCPeerConnection.
  */
-export interface CallPeerSessionDeps {
+interface CallPeerSessionDeps {
   createPeer?: (connections: CallDto['connections'], handlers: ConstructorParameters<typeof CallPeer>[1]) => MediaPeer;
 }
 

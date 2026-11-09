@@ -8,10 +8,6 @@
   "dependencies": {
     "@mtcute/core": "0.32.7",
     "@pigeongram/api": "workspace:*",
-    "@pigeongram/backend-runtime": "workspace:*",
-    "@pigeongram/backend-services": "workspace:*",
-    "@pigeongram/provider-clients": "workspace:*",
-    "@pigeongram/shared": "workspace:*",
     "@pigeongram/web": "workspace:*",
     "@rexezuge/errors": "1.9.4",
     "@rexezuge/http": "1.9.4",

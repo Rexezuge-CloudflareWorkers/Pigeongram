@@ -7,6 +7,7 @@ import { useProfile } from '../useProfile';
 import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
+import { IconButton } from './IconButton';
 import { ProfilePopup } from './ProfilePopup';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
@@ -178,29 +179,17 @@ export function ThreadHeader({
           {presenceLabel === null ? null : <span className={`thread-presence${isOnline ? ' online' : ''}`}>{presenceLabel}</span>}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            onClick={onSearch}
-            aria-label={`Search In ${chat.title}`}
-          >
+          <IconButton size="small" onClick={onSearch} aria-label={`Search In ${chat.title}`}>
             <Icon name="search" />
-          </button>
+          </IconButton>
           {chat.kind === 'user' ? (
-            <button
-              type="button"
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-              onClick={onCall}
-              disabled={callActive}
-              aria-label={`Call ${chat.title}`}
-            >
+            <IconButton size="small" onClick={onCall} disabled={callActive} aria-label={`Call ${chat.title}`}>
               <Icon name="call" />
-            </button>
+            </IconButton>
           ) : null}
-          <button
+          <IconButton
             ref={triggerRef}
-            type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            size="small"
             onClick={() => setMenuOpen((open) => !open)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
@@ -208,7 +197,7 @@ export function ThreadHeader({
             aria-label={`Menu For ${chat.title}`}
           >
             <Icon name="more-vertical" />
-          </button>
+          </IconButton>
         </div>
       </header>
 
@@ -218,7 +207,7 @@ export function ThreadHeader({
           position={position}
           onKeyDown={onKeyDown}
           id={menuId}
-          className="fixed z-50 w-[220px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-panel-2 p-2 shadow-2xl"
+          className="w-[220px] max-w-[calc(100vw-16px)] p-2"
           label={`Menu For ${chat.title}`}
         >
           <button

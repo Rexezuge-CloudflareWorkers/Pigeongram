@@ -1,4 +1,4 @@
-import { Icon } from './Icon';
+import { JumpToLatestButton } from './Fab';
 
 /**
  * The floating control that catches a reader up: scroll to the newest message
@@ -6,7 +6,9 @@ import { Icon } from './Icon';
  * area, so it stays reachable while the reader is anywhere in the history.
  *
  * The view owns when it is offered (scrolled away or behind a backlog) and what
- * the jump does; this component only paints the control.
+ * the jump does; this component only paints the control. The control itself is
+ * the app's jump-to-latest button: a small tonal FAB, MD3 in shape, keeping
+ * its thread position (right edge, not the Fab's centre alignment).
  */
 
 interface JumpToLatestProps {
@@ -26,16 +28,8 @@ interface JumpToLatestProps {
 export function JumpToLatest({ visible, busy, onJump }: JumpToLatestProps) {
   if (!visible) return null;
   return (
-    <button
-      type="button"
-      className="jump-to-latest absolute right-3 bottom-3 z-10 inline-flex size-10 items-center justify-center rounded-full border border-line bg-panel-2 text-muted shadow-lg transition-colors hover:bg-line hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-50"
-      aria-label="Jump To Latest And Mark As Read"
-      title="Jump To Latest And Mark As Read"
-      aria-busy={busy}
-      disabled={busy}
-      onClick={onJump}
-    >
-      <Icon name="arrow-down" />
-    </button>
+    <span className="absolute right-3 bottom-3 z-10" title="Jump To Latest And Mark As Read">
+      <JumpToLatestButton onClick={onJump} disabled={busy} busy={busy} />
+    </span>
   );
 }

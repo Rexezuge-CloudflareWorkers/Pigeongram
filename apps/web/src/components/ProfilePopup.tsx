@@ -105,7 +105,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
     >
       <div
         ref={dialogRef}
-        className="dialog-panel relative w-full max-w-[380px] rounded-3xl border border-line bg-panel-2 p-6 shadow-2xl"
+        className="dialog-panel relative w-full max-w-[380px] rounded-xl border border-outline-variant bg-surface-container-high p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

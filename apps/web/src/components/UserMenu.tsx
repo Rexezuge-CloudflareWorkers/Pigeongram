@@ -137,7 +137,7 @@ export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive, onToggl
           position={position}
           onKeyDown={onKeyDown}
           id={menuId}
-          className="fixed z-50 w-[280px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-panel-2 p-2 shadow-2xl"
+          className="w-[280px] max-w-[calc(100vw-16px)] p-2"
           label="Account menu"
         >
           <div className="flex min-w-0 flex-col gap-0.5 px-3 pt-2 pb-3">

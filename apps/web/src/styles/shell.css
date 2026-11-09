@@ -161,6 +161,7 @@
 }
 
 .dialog-panel {
+  border-radius: var(--md-sys-shape-corner-extra-large);
   animation: dialog-in 240ms var(--ease-out);
 }
 

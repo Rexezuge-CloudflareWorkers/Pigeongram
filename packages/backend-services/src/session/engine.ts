@@ -178,7 +178,7 @@ export class SessionEngine {
   private async route(request: Request, url: URL): Promise<Response> {
     switch (`${request.method} ${url.pathname}`) {
       case 'GET /user/updates': {
-        return this.hub.accept(request);
+        return this.hub.accept(request, this.env);
       }
       case 'GET /user/state': {
         return Response.json(await this.stateSnapshot());

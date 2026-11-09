@@ -101,4 +101,20 @@ describe('isStorageWriteQuotaError', () => {
     expect(isStorageWriteQuotaError(new Error('network down'))).toBe(false);
     expect(STORAGE_WRITE_QUOTA_MESSAGE).toContain('00:00 UTC');
   });
+
+  it('matches the runtime failure through a wrapped cause', () => {
+    const cause = new Error('Exceeded allowed rows written in Durable Objects free tier');
+    expect(isStorageWriteQuotaError(new Error('sqlite write failed', { cause }))).toBe(true);
+    expect(isStorageWriteQuotaError(new Error('mtcute', { cause: new Error('storage', { cause }) }))).toBe(true);
+  });
+
+  it('does not match an unrelated cause', () => {
+    expect(isStorageWriteQuotaError(new Error('sqlite write failed', { cause: new Error('network down') }))).toBe(false);
+  });
+
+  it('survives a cyclic cause chain', () => {
+    const loop: { cause?: unknown } = {};
+    loop.cause = loop;
+    expect(isStorageWriteQuotaError(loop)).toBe(false);
+  });
 });

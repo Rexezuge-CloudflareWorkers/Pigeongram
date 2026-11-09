@@ -23,3 +23,8 @@ ACCESS_DEV_BYPASS="true"
 # authorization (this deployment is single-user), but the bypass is an explicit
 # identity rather than an open door, so an address is required.
 ACCESS_DEV_EMAIL="dev@example.com"
+
+# The SPA's origin, trusted by the worker's CSRF check. Vite serves the SPA on
+# 5173 and proxies `/user/*` to the worker on 8787, so the request the worker
+# sees has its own URL origin rather than the browser's.
+PAGES_ORIGIN="http://localhost:5173"

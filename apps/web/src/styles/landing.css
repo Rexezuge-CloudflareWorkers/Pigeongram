@@ -14,7 +14,57 @@
 .landing-hero {
   width: min(720px, 100%);
   text-align: center;
-  animation: card-in 420ms var(--ease-out);
+  animation: hero-in 500ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+
+.landing-hero .eyebrow,
+.landing-hero h1,
+.landing-hero .lead,
+.landing-hero .cta {
+  animation: hero-in 500ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+
+.landing-hero .eyebrow {
+  animation-delay: 0ms;
+}
+
+.landing-hero h1 {
+  animation-delay: 80ms;
+}
+
+.landing-hero .lead {
+  animation-delay: 160ms;
+}
+
+.landing-hero .cta {
+  animation-delay: 240ms;
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero,
+  .landing-hero .eyebrow,
+  .landing-hero h1,
+  .landing-hero .lead,
+  .landing-hero .cta {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
 
 .landing .eyebrow {
@@ -99,6 +149,10 @@
   transform: translateY(-3px);
   border-color: var(--border-strong);
   box-shadow: 0 18px 40px rgb(0 0 0 / 35%);
+}
+
+.feature:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 .feature h2 {

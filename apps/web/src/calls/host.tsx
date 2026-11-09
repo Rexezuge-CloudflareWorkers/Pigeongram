@@ -116,10 +116,11 @@ export function useCallHost({ enabled, onUpdate, onResync, findChat, onError }: 
     sendRef.current = socketSend;
   }, [socketSend]);
 
-  /**
-   * The overlay. The chat is looked up as the overlay renders, so the name
-   * and the picture are the ones the chat list has.
-   */
+  const dismiss = useCallback(() => {
+    if (calls.view === null) return;
+    calls.dismiss();
+  }, [calls.dismiss, calls.view]);
+
   const overlay = calls.view ? (
     <CallOverlay
       view={calls.view}
@@ -129,7 +130,7 @@ export function useCallHost({ enabled, onUpdate, onResync, findChat, onError }: 
       onDecline={calls.decline}
       onHangUp={calls.hangUp}
       onToggleMute={calls.toggleMute}
-      onDismiss={calls.dismiss}
+      onDismiss={dismiss}
     />
   ) : null;
 

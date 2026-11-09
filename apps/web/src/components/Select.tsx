@@ -7,6 +7,10 @@ import { Icon } from './Icon';
  * native menu is what makes the video-quality picker reliable on every
  * browser, so no headless dropdown replaces it. The accessible name is the
  * call site's `aria-label` (e.g. "Video quality").
+ *
+ * Font size is 16px (`text-base`) to prevent iOS Safari input zoom; the
+ * video-quality select lives in the viewer chrome, so it is kept at 16px
+ * even though the text is small.
  */
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -18,7 +22,7 @@ export function Select({ className = '', children, ...rest }: SelectProps) {
   return (
     <span className={`relative inline-flex w-full items-center${className ? ` ${className}` : ''}`}>
       <select
-        className="h-14 w-full appearance-none rounded-xs border border-outline bg-surface px-4 pr-10 text-[15px] text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-14 w-full appearance-none rounded-xs border border-outline bg-surface px-4 pr-10 text-base text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
         {...rest}
       >
         {children}

@@ -1,80 +1,9 @@
-/* Motion system: shared entrance/exit keyframes beyond the per-surface ones
- * in shell.css and thread.css. Every animation here moves transform/opacity
- * only, and all of them collapse under the prefers-reduced-motion kill
- * switch in shell.css (or run the no-anim fallback where one is given). */
-
-/* Exit keyframes: the reverse of the *-in entrances. Overlays pair an enter
- * animation with a `.is-exiting` class that runs the matching *-out as
- * Forwards so the component can stay mounted one beat longer. */
-@keyframes dialog-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(12px) scale(0.96);
-  }
-}
-
-@keyframes scrim-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes toast-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(14px) scale(0.96);
-  }
-}
-
-@keyframes menu-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(4px) scale(0.97);
-  }
-}
-
-@keyframes viewer-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: scale(0.985);
-  }
-}
-
-@keyframes card-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-  }
-}
+/* Pane, message and skeleton motion: the thread's own entrances plus the
+ * shared loading sheen. Every animation here moves transform/opacity only,
+ * and all of them collapse under the prefers-reduced-motion kill switch in
+ * shell.css. Motions are opt-in: static is the default, movement only under
+ * `prefers-reduced-motion: no-preference` where the surface does not already
+ * gate itself. */
 
 /* Pane swap when the open chat changes (the thread pane slides so the
  * sidebar relationship stays legible on narrow windows). */
@@ -236,6 +165,36 @@
   }
 }
 
+/* A brief horizontal shake for an error the user can fix in place: it
+ * says "this failed" without a sound or a focus steal. Keep it under
+ * 300ms and small enough to survive reduced motion as a single nudge. */
+@keyframes error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-3px);
+  }
+
+  40% {
+    transform: translateX(3px);
+  }
+
+  60% {
+    transform: translateX(-2px);
+  }
+
+  80% {
+    transform: translateX(1px);
+  }
+}
+
+.error-shake {
+  animation: error-shake 280ms var(--ease-out);
+}
+
 .thread-skeleton {
   list-style: none;
   margin: 0;
@@ -268,4 +227,50 @@
 .skeleton-bubble.wide {
   width: min(280px, 70%);
   height: 120px;
+}
+
+/* The loading ring rotates at the MD3 long duration (800ms) with an
+ * ease-in-out curve that never interrupts. Reduced motion stops the
+ * rotation; the caption still announces the wait. */
+.spinner-ring {
+  animation: spinner-rotate 800ms linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner-ring {
+    animation: none;
+  }
+}
+
+/* The reaction the last tap adopted bursts once. The class is added by
+ * `useMessageGestures` via `burstKey` and removed after BURST_MS; the
+ * animation is the feedback, the chosen state is the durable cue. */
+.message .reaction.burst {
+  animation: reaction-burst 300ms var(--spring);
+}
+
+/* Reduced motion: opt-in is the rule. The kill switch in shell.css covers
+   WAAPI-free CSS; these rules swap spatial movement for a plain fade so
+   the state still answers. Spinners and progress stay alive. */
+@media (prefers-reduced-motion: reduce) {
+  .anchored-menu,
+  .fab-jump,
+  .call-overlay,
+  .error-shake,
+  .message .reaction.burst {
+    animation: none;
+  }
+
+  .anchored-menu,
+  .fab-jump,
+  .call-overlay {
+    opacity: 1;
+    transform: none;
+  }
 }

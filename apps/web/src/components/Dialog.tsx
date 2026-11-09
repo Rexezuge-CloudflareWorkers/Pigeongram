@@ -59,6 +59,11 @@ export function Dialog({
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // `inert` on the background makes it un-tabbable and hidden from assistive
+    // tech while the dialog is open. The shell is a portal parent, so we inert
+    // the app root. This is the trap; the Tab loop below is the backstop.
+    const root = document.querySelector<HTMLElement>('#root');
+    if (root) root.inert = true;
     const panel = panelRef.current;
     if (panel) {
       const target =
@@ -69,6 +74,7 @@ export function Dialog({
     }
     return () => {
       document.body.style.overflow = previousOverflow;
+      if (root) root.inert = false;
       if (returnFocusRef.current === undefined) {
         previousFocusRef.current?.focus();
       } else {

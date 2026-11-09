@@ -155,8 +155,10 @@ export function positionThread(element: HTMLElement, opening: ThreadOpening): vo
 }
 
 /**
-Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
-*/
+ * Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
+ * The class is removed after the flash keyframe finishes; the flash itself is
+ * the only motion, the accent outline is the durable cue.
+ */
 export function flashRow(element: HTMLElement): void {
   element.classList.add('reply-flash');
   setTimeout(() => element.classList.remove('reply-flash'), 1200);

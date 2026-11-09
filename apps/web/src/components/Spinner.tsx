@@ -24,7 +24,9 @@ interface SpinnerProps {
 /**
  * The loading ring shared by every busy surface, modelled on the
  * AWS-AccessBridge `Spinner`: a bordered circle with one transparent edge and
- * Tailwind's `animate-spin` rotation.
+ * an 800ms rotation (the MD3 long duration), so waiting feels steady rather
+ * than panicked. Reduced motion stops the rotation; the caption and the
+ * progress bar still answer.
  *
  * A labelled block spinner is a live status region. An unlabelled or inline
  * one is decorative, because the surrounding control already carries the
@@ -39,7 +41,7 @@ export function Spinner({ size = 24, color = 'var(--accent)', label, padding, in
       aria-hidden={label === undefined ? true : undefined}
     >
       <span
-        className="block shrink-0 animate-spin rounded-full border-2 border-solid border-current motion-reduce:animate-none"
+        className="block shrink-0 rounded-full border-2 border-solid border-current spinner-ring"
         style={{ width: size, height: size, color, borderTopColor: 'transparent' }}
         aria-hidden="true"
       />

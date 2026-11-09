@@ -10,7 +10,7 @@ describe('Spinner', () => {
 
     const status = screen.getByRole('status');
     expect(status.textContent).toContain('Loading messages…');
-    expect(status.querySelector('.animate-spin')).not.toBeNull();
+    expect(status.querySelector('.spinner-ring')).not.toBeNull();
   });
 
   it('keeps an unlabelled spinner decorative', () => {

@@ -13,6 +13,13 @@ import { createPortal } from 'react-dom';
  * on a press outside it. The copies drifted — the account menu could not close
  * on a sidebar scroll, and the message menu could not restore focus — so the
  * rules live here once and the menus describe only what is inside them.
+ *
+ * Focus is architecture: the first item is focused on open, arrow keys move
+ * within the menu (TAB is reserved for leaving the widget), Escape closes and
+ * returns focus to the trigger, and a press outside dismisses without
+ * stealing focus. The background is inert while the menu is open if a caller
+ * passes `inertBackground`; by default the menu is a non-modal popover, so
+ * the background stays interactive and the menu closes on scroll instead.
  */
 
 const MARGIN = 8;
@@ -180,21 +187,39 @@ interface AnchoredMenuProps {
    * bubble's own handler.
    */
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
+  /**
+   * Whether the menu is leaving: runs the exit keyframe while the parent
+   * keeps it mounted for one beat.
+   */
+  exiting?: boolean;
 }
 
 /**
  * The portal half: a fixed menu at the hook's clamped position, on the body so
  * no scroll container can clip it. The surface is MD3 menu tone:
  * `surface-container` with the menu corner, no border needed for separation.
+ * Motion is opt-in: it only moves under `prefers-reduced-motion:
+ * no-preference` via the `.anchored-menu` animation; reduced motion gets a
+ * plain swap. The exit beat runs when `exiting` is set.
  */
-export function AnchoredMenu({ menuRef, position, onKeyDown, label, className = '', id, children, onContextMenu }: AnchoredMenuProps) {
+export function AnchoredMenu({
+  menuRef,
+  position,
+  onKeyDown,
+  label,
+  className = '',
+  id,
+  children,
+  onContextMenu,
+  exiting = false,
+}: AnchoredMenuProps) {
   return createPortal(
     <div
       ref={menuRef}
       id={id}
       role="menu"
       aria-label={label}
-      className={`fixed z-50 border border-outline-variant bg-surface-container shadow-2xl rounded-sm${className ? ` ${className}` : ''}`}
+      className={`anchored-menu fixed z-50 rounded-sm border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}${className ? ` ${className}` : ''}`}
       style={position}
       onKeyDown={onKeyDown}
       onContextMenu={onContextMenu}

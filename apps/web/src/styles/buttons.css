@@ -24,6 +24,9 @@
   justify-content: center;
   gap: 6px;
   padding: 6px 10px;
+  /* Touch floor: 44px min height keeps Telegram buttons tappable over a
+     voice note or a link without shrinking the text. */
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: rgba(14, 22, 33, 0.45);
@@ -37,15 +40,20 @@
     border-color 140ms var(--ease-out),
     background-color 140ms var(--ease-out),
     filter 140ms var(--ease-out),
-    transform 140ms var(--ease-out);
+    transform 150ms var(--ease-out);
+}
+
+.message .button:not(:disabled):hover {
+  border-color: var(--accent);
 }
 
 .message .button:not(:disabled):active {
   transform: scale(0.97);
 }
 
-.message .button:hover:not(:disabled) {
-  border-color: var(--accent);
+.message .button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .message .button:disabled {

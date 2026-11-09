@@ -30,6 +30,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onClose }: ChatMenuProps) {
     anchor: () => ({ kind: 'point', x, y }),
     itemSelector: '[data-chat-menu-item]:not(:disabled)',
   });
+  const read = dialog.unread === 0;
 
   return (
     <AnchoredMenu
@@ -45,12 +46,22 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onClose }: ChatMenuProps) {
         event.stopPropagation();
       }}
     >
+      {/* The read state is explained inline, so the disabled control is never
+          a dead end: a reader who finds it greys out learns the chat is
+          already read. */}
+      {read ? (
+        <span role="status" className="block px-3 pt-2 pb-1 text-xs text-muted">
+          Already read
+        </span>
+      ) : null}
       <button
         type="button"
         role="menuitem"
-        className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none disabled:cursor-default disabled:opacity-40"
+        className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40"
         data-chat-menu-item
-        disabled={dialog.unread === 0}
+        disabled={read}
+        title={read ? 'Already read' : undefined}
+        aria-disabled={read}
         onClick={() => {
           onMarkRead(dialog.chat.id);
           onClose();

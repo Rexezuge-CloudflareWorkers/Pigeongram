@@ -11,6 +11,9 @@ import type { InputHTMLAttributes } from 'react';
  * The accessible name always comes from the call site (`aria-label` when
  * there is no visible label), which the MD3 label slot does not replace
  * here: the app's chrome uses placeholder + aria-label throughout.
+ *
+ * Font size is 16px (`text-base`): a sub-16px input triggers iOS Safari
+ * auto-zoom on focus and shifts the layout. Do not shrink it to 15px.
  */
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -21,7 +24,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(({ classNa
   return (
     <input
       ref={ref}
-      className={`h-14 w-full rounded-xs border border-outline bg-surface px-4 text-[15px] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40${className ? ` ${className}` : ''}`}
+      className={`h-14 w-full rounded-xs border border-outline bg-surface px-4 text-base text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40${className ? ` ${className}` : ''}`}
       {...rest}
     />
   );

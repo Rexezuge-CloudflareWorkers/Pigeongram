@@ -135,6 +135,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                 ) : null}
                 <button
                   type="button"
+                  data-tappable
                   className={`chat group${dialog.chat.id === activeChatId ? ' active' : ''}${isSwiped ? ' is-swiping' : ''}`}
                   style={isSwiped ? { transform: `translateX(${-SWIPE_REVEAL_PX}px)` } : undefined}
                   onClick={() => {

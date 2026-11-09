@@ -229,6 +229,7 @@ export function Composer({
           <button
             type="button"
             className="slash"
+            data-icon-only
             aria-label="Bot Commands"
             title="Bot Commands"
             aria-haspopup="listbox"
@@ -239,7 +240,14 @@ export function Composer({
             <Icon name="slash" size={18} />
           </button>
         ) : null}
-        <button type="button" className="attach" aria-label="Attach Files" title="Attach Files" onClick={() => fileRef.current?.click()}>
+        <button
+          type="button"
+          className="attach"
+          data-icon-only
+          aria-label="Attach Files"
+          title="Attach Files"
+          onClick={() => fileRef.current?.click()}
+        >
           <Icon name="attach" size={18} />
         </button>
         {showMenu ? (
@@ -325,6 +333,7 @@ export function Composer({
           <button
             type="button"
             className="slash"
+            data-icon-only
             aria-label={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
             title={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
             aria-expanded={!replyKeyboardCollapsed}
@@ -337,6 +346,7 @@ export function Composer({
           type="submit"
           aria-label="Send"
           title="Send"
+          data-icon-only
           className={`send-morph${draft.trim() ? '' : ' is-mic'}`}
           disabled={draft.trim().length === 0}
         >

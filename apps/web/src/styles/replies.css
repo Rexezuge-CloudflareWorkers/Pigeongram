@@ -1,7 +1,7 @@
 /* Reply quotes, the composer's reply banner and the jump highlight. */
 
 .message.reply-flash {
-  box-shadow: 0 0 0 2px var(--accent);
+  animation: reply-flash 1200ms var(--ease-out);
 }
 
 .message .reply-quote {

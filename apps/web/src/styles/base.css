@@ -168,7 +168,11 @@ button:disabled {
   cursor: default;
 }
 
-input,
+/* Non-text inputs only: the text inputs are TextField components now (their
+   own Tailwind classes), which the global rule below must not fight. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='search']):not([type='text']):not([type='tel']):not(
+    [type='password']
+  ),
 textarea {
   font: inherit;
   color: inherit;
@@ -182,7 +186,9 @@ textarea {
     box-shadow 150ms var(--ease-out);
 }
 
-input:focus,
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='search']):not([type='text']):not([type='tel']):not(
+    [type='password']
+  ):focus,
 textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgb(94 181 247 / 22%);

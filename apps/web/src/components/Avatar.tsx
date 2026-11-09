@@ -80,7 +80,7 @@ export function Avatar({ chatId, photo, title, kind, small, big, presence }: Ava
       <span
         aria-hidden="true"
         data-status="online"
-        className={`absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-panel bg-online group-hover:border-panel-2 ${
+        className={`absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-panel bg-tertiary group-hover:border-panel-2 ${
           small ? 'size-2.5' : 'size-3'
         }`}
       />

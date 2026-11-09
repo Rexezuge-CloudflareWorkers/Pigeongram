@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Snackbar } from './Snackbar';
 import { useExitAnimation } from './useExitAnimation';
 
 interface ToastsProps {
@@ -24,7 +25,8 @@ The app's toasts: the failure on top, the notice below it.
 Split out of `App.tsx` so the shell stays readable: the app owns the two
 messages, this renders them. The exit beat runs through `useExitAnimation`;
 the notice dismisses itself after NOTICE_MS (matching the shell's timer),
-while the error waits for a replacement.
+while the error waits for a replacement. The paint is the MD3 snackbar —
+inverse surface in both themes.
 */
 export function Toasts({ error, notice }: ToastsProps) {
   const [dismissed, setDismissed] = useState<string | null>(null);
@@ -41,15 +43,9 @@ export function Toasts({ error, notice }: ToastsProps) {
   if (!errorExit.mounted && !noticeExit.mounted) return null;
   return (
     <div className="toasts">
-      {errorExit.mounted ? (
-        <p className={`toast${errorExit.exiting ? ' is-exiting' : ''}`} role="alert">
-          {error}
-        </p>
-      ) : null}
+      {errorExit.mounted ? <Snackbar message={error ?? ''} role="alert" className={errorExit.exiting ? 'is-exiting' : ''} /> : null}
       {noticeExit.mounted ? (
-        <p className={`toast notice${noticeExit.exiting ? ' is-exiting' : ''}`} role="status">
-          {visibleNotice ?? notice}
-        </p>
+        <Snackbar message={visibleNotice ?? notice ?? ''} role="status" className={noticeExit.exiting ? 'is-exiting' : ''} />
       ) : null}
     </div>
   );

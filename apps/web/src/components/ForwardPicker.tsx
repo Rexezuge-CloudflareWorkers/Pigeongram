@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { DialogDto, MessageDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { TextField } from './TextField';
 
 /**
 The forward destination picker: a portal modal over the app, with the loaded
@@ -102,13 +103,12 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
           </button>
         </header>
         <div className="border-b border-line px-4 py-3">
-          <input
+          <TextField
             ref={searchRef}
             type="search"
             value={query}
             placeholder="Search chats"
             aria-label="Search chats"
-            className="w-full"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== 'ArrowDown') return;

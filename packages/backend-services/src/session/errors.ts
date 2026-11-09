@@ -83,12 +83,35 @@ The readable form of the Free plan's daily row-write failure.
 export const STORAGE_WRITE_QUOTA_MESSAGE = 'Durable Object storage write quota exhausted; it resets at 00:00 UTC. Reads still work.';
 
 /**
+The runtime's own wording for the exhausted daily row budget.
+*/
+const STORAGE_WRITE_QUOTA_PATTERN = /Exceeded allowed rows written in Durable Objects free tier/i;
+const MAX_CAUSE_DEPTH = 8;
+
+/**
+Only an `Error` carries the runtime's wording; a thrown string is the other shape this boundary accepts.
+*/
+function errorMessage(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  return typeof value === 'string' ? value : '';
+}
+
+/**
 Whether a failure is the Free plan refusing another row write.
 
-The runtime's own wording is matched loosely: the error may be wrapped by
-mtcute or by the storage adapter before it reaches the bridge.
+The runtime's own wording is matched through the whole `cause` chain: mtcute
+and the storage adapter wrap the runtime error before it reaches the bridge, so
+the quota sentence is usually one level down rather than on the value that was
+caught. A bounded walk keeps a cyclic `cause` from looping.
 */
 export function isStorageWriteQuotaError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes('Exceeded allowed rows written in Durable Objects free tier');
+  let current: unknown = error;
+  const seen = new Set<unknown>();
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
+    if (current === undefined || current === null || seen.has(current)) return false;
+    seen.add(current);
+    if (STORAGE_WRITE_QUOTA_PATTERN.test(errorMessage(current))) return true;
+    current = typeof current === 'object' ? (current as { cause?: unknown }).cause : undefined;
+  }
+  return false;
 }

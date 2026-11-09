@@ -111,6 +111,14 @@ describe('UpdatesSocketHub', () => {
     expect(healthy.sent).toEqual([JSON.stringify({ type: 'ready' })]);
   });
 
+  it('refuses a socket whose origin the deployment does not trust', () => {
+    const { hub: instance } = hub();
+    const request = new Request('https://worker.internal/user/updates', {
+      headers: { origin: 'https://evil.example' },
+    });
+    expect(instance.accept(request, { PAGES_ORIGIN: 'https://app.example' }).status).toBe(403);
+  });
+
   it('releases the live session when the last socket closes', async () => {
     const first = socket();
     const second = socket();

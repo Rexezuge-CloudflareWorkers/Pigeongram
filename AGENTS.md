@@ -54,6 +54,8 @@ pnpm --filter @pigeongram/web dev
 The worker runs on port 8787 and the SPA on port 5173. The SPA proxies `/api` and `/user` to the local worker.
 Local development uses the example's `ACCESS_DEV_BYPASS` value with `ACCESS_DEV_EMAIL` as the identity it
 authenticates as; the bypass is honored only outside production and must never be configured on a deployment.
+`PAGES_ORIGIN` (`http://localhost:5173`) is what lets the Vite-proxied SPA pass the worker's origin check, because
+the forwarded request's own URL origin is the worker's port, not the browser's.
 
 ## Architecture & invariants
 

@@ -51,8 +51,11 @@ export function allowedOrigins(request: Request, env: OriginEnv = {}): Set<strin
   }
   const host = request.headers.get('host');
   if (host !== null && host.trim() !== '') {
+    // Only the https form is trusted. The request URL already carries the
+    // scheme the edge terminated, so the host fallback exists for a proxy that
+    // rewrites the URL; a plain-http form would let a spoofed `Host` match a
+    // spoofed `Origin` on a deployment that only ever serves https.
     allowed.add(`https://${host.trim()}`);
-    allowed.add(`http://${host.trim()}`);
   }
   const configured = [env.ALLOWED_ORIGINS ?? '', env.PAGES_ORIGIN ?? '']
     .join(',')
@@ -66,11 +69,10 @@ export function allowedOrigins(request: Request, env: OriginEnv = {}): Set<strin
 export function isOriginAllowed(request: Request, env: OriginEnv = {}): boolean {
   const origin = requestOrigin(request);
   if (origin === null) return false;
-
-  const secFetchSite = request.headers.get('sec-fetch-site');
-  if (secFetchSite === 'cross-site') return false;
-
-  return allowedOrigins(request, env).has(origin) || secFetchSite === 'same-origin';
+  // The allowlist is the only answer. `Sec-Fetch-Site` is not consulted: a
+  // client controls both it and `Origin`, so trusting "same-origin" there
+  // would let a forged pair through the very check that exists to stop it.
+  return allowedOrigins(request, env).has(origin);
 }
 
 export function originRejection(): Response {

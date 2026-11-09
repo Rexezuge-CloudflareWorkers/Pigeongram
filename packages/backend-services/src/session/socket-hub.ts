@@ -1,6 +1,7 @@
 import type { ClientSocketMessage, ServerSocketMessage } from '../types';
 import { decodeBase64 } from './base64';
 import { isOriginAllowed, originRejection } from './origin';
+import type { OriginEnv } from './origin';
 import { MAX_SIGNALING_BYTES } from './call-params';
 import { log } from './log';
 
@@ -55,8 +56,11 @@ export class UpdatesSocketHub {
    * itself: a socket that never speaks the protocol must not open a connection
    * (and must not consume a broadcast of the engine's answer).
    */
-  accept(request?: Request): Response {
-    if (request !== undefined && !isOriginAllowed(request)) {
+  accept(request?: Request, env: OriginEnv = {}): Response {
+    // The engine already checked this request with the deployment's configured
+    // origins; the hub repeats it with the same environment so a direct call
+    // to the DO cannot skip the configured allowlist either.
+    if (request !== undefined && !isOriginAllowed(request, env)) {
       return originRejection();
     }
     const pair = new WebSocketPair();

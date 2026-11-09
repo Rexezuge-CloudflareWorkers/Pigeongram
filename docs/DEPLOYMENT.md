@@ -45,6 +45,10 @@ The Access variables are public configuration, not secrets:
 `TEAM_DOMAIN` is found in **Zero Trust → Settings**. `POLICY_AUD` is the Access application's **Application Audience
 (AUD) Tag** under **Zero Trust → Access controls → Applications → the Pages application → Additional settings**.
 
+The worker's CSRF check trusts the forwarded request's own origin, so a normal Pages-to-Worker service-binding call needs
+no extra variable. `PAGES_ORIGIN` (and the comma-separated `ALLOWED_ORIGINS`) exist for a proxy that rewrites the request
+URL, such as a preview deployment on a second hostname.
+
 Continuous Deployment provisions the runtime secrets on every Worker deploy. Set repository secrets
 `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` to override the defaults; otherwise CD uses `2496` and
 `8da85b0d5bfe62527e5b244c209159c3`.

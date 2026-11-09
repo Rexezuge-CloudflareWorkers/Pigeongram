@@ -36,7 +36,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onClose }: ChatMenuProps) {
       menuRef={menuRef}
       position={position}
       onKeyDown={onKeyDown}
-      className="fixed z-40 min-w-[180px] rounded-xl border border-line bg-panel-2 p-1 shadow-2xl"
+      className="min-w-[180px] p-1"
       label="Chat actions"
       onContextMenu={(event) => {
         // A right-click inside the open menu must not reopen it through the

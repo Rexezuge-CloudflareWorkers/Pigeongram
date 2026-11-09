@@ -3,7 +3,9 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent as 
 import { createPortal } from 'react-dom';
 
 /**
- * The shared behaviour of the app's menus.
+ * The shared behaviour of the app's menus, in the Material 3 menu shape:
+ * a small (8px) `surface-container` surface at MD3 elevation 2 with tonal
+ * pairing (no shadow needed beyond it), above the app.
  *
  * Each menu used to carry its own copy of the same six jobs: portal to the
  * body, measure and clamp into the viewport, focus the first item, restore the
@@ -182,16 +184,17 @@ interface AnchoredMenuProps {
 
 /**
  * The portal half: a fixed menu at the hook's clamped position, on the body so
- * no scroll container can clip it.
+ * no scroll container can clip it. The surface is MD3 menu tone:
+ * `surface-container` with the menu corner, no border needed for separation.
  */
-export function AnchoredMenu({ menuRef, position, onKeyDown, label, className, id, children, onContextMenu }: AnchoredMenuProps) {
+export function AnchoredMenu({ menuRef, position, onKeyDown, label, className = '', id, children, onContextMenu }: AnchoredMenuProps) {
   return createPortal(
     <div
       ref={menuRef}
       id={id}
       role="menu"
       aria-label={label}
-      className={className}
+      className={`fixed z-50 border border-outline-variant bg-surface-container shadow-2xl rounded-sm${className ? ` ${className}` : ''}`}
       style={position}
       onKeyDown={onKeyDown}
       onContextMenu={onContextMenu}

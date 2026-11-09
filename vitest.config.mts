@@ -18,6 +18,8 @@ export default defineRepoVitestConfig({
 
   web: {
     plugins: [react()],
+    setupFiles: ['./test/web/setup.ts'],
+    serverDepsInline: ['node:zlib'],
   },
 
   coverageExclude: ['apps/web/src/main.tsx'],

@@ -55,6 +55,7 @@ describe('the progressive web app', () => {
   it('leaves the worker out of the development build', () => {
     const register = vi.fn().mockResolvedValue(undefined);
     fakeServiceWorker(register);
+    vi.stubEnv('PROD', false);
     render(<Probe />);
     expect(register).not.toHaveBeenCalled();
   });

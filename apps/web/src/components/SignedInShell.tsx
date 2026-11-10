@@ -142,10 +142,12 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
   // Whether the open chat sits in the archive: the thread header offers the
   // move in the direction the chat is not in.
   const selectedArchived = selected ? (findDialog(selected.id)?.archived ?? false) : false;
-  // What the sidebar lists: the archive while the reader asked for it, or
-  // while an archived chat is open. A chat brought back out of the archive
-  // clears the context and hands the sidebar back to the chat list.
-  const showArchive = archiveContext || (selected !== null && selectedArchived);
+  // What the sidebar lists: the archive exactly while the reader asked for it.
+  // An archived chat being open does not make the archive show by itself, so
+  // "Back To Chats" can leave the thread open and hand the sidebar back to the
+  // chat list. Opening an archived chat sets the context (the route apply
+  // does), and moving a chat in or out of the archive follows it.
+  const showArchive = archiveContext;
 
   /**
   The search overlay's entry points: the sidebar searches every chat, the
@@ -350,9 +352,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           onSetArchived={async (archived) => {
             if (!selected) return;
             await setArchived(selected.id, archived);
-            // Bringing a chat back out of the archive returns the sidebar to the
-            // chat list, where the chat now lives.
-            if (!archived) setArchiveContext(false);
+            // The move is optimistic, so a refused one has already rolled
+            // back: follow the folder the chat actually landed in.
+            setArchiveContext(findDialog(selected.id)?.archived ?? false);
           }}
           onBack={router.back}
           calls={calls}

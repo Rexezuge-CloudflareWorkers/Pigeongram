@@ -135,7 +135,7 @@ export function CallOverlay({
       {view.error ? <p className="max-w-[40ch] text-sm text-danger">{view.error}</p> : null}
       {view.fingerprint ? (
         <p className="font-mono text-xs text-muted" title="The fingerprint both sides compare to be sure they share the same key">
-          key {view.fingerprint}
+          Key {view.fingerprint}
         </p>
       ) : null}
 
@@ -171,7 +171,7 @@ export function CallOverlay({
         </button>
       ) : null}
 
-      {view.phase === 'connecting' ? <Spinner size={28} label="Connecting the call…" /> : null}
+      {view.phase === 'connecting' ? <Spinner size={28} label="Connecting The Call…" /> : null}
 
       {view.phase === 'active' ? (
         <div className="flex items-center gap-6">
@@ -213,10 +213,10 @@ export function CallOverlay({
  * The line under the peer's name.
  */
 function statusOf(view: CallView, incoming: boolean, seconds: number): string {
-  if (view.phase === 'ended') return 'The call ended';
+  if (view.phase === 'ended') return 'The Call Ended';
   if (view.phase === 'connecting') return 'Connecting…';
   if (view.phase === 'active') return formatDuration(seconds);
-  return incoming ? 'Incoming call' : 'Calling…';
+  return incoming ? 'Incoming Call' : 'Calling…';
 }
 
 /**

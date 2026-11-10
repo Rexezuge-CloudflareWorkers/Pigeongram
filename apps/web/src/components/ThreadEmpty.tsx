@@ -23,5 +23,5 @@ export function ThreadEmpty({ description, preview }: ThreadEmptyProps) {
   if (text !== null) {
     return <p className="muted pad max-w-[46ch] self-center break-words whitespace-pre-wrap text-center text-[15px] leading-6">{text}</p>;
   }
-  return <p className="muted pad">{preview ? 'No messages yet.' : 'No messages yet — say hello.'}</p>;
+  return <p className="muted pad">{preview ? 'No Messages Yet.' : 'No Messages Yet — Say Hello.'}</p>;
 }

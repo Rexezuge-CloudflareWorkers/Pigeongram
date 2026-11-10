@@ -27,7 +27,7 @@ function openMenu(trigger: HTMLButtonElement): HTMLElement {
 function requestSignOut(trigger: HTMLButtonElement): HTMLElement {
   const menu = openMenu(trigger);
   fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sign Out' }));
-  return screen.getByRole('dialog', { name: 'Sign Out of Telegram?' });
+  return screen.getByRole('dialog', { name: 'Sign Out Of Telegram?' });
 }
 
 describe('UserMenu', () => {
@@ -148,7 +148,7 @@ describe('UserMenu', () => {
 
     expect(onSignOut).toHaveBeenCalledTimes(1);
     expect((within(dialog).getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
-    expect((within(dialog).getByRole('button', { name: 'Signing out…' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(dialog).getByRole('button', { name: 'Signing Out…' }) as HTMLButtonElement).disabled).toBe(true);
 
     await act(async () => {
       finish();

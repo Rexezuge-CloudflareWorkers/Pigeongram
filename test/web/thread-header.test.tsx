@@ -95,7 +95,7 @@ describe('ThreadHeader', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Ships things.')).toBeDefined();
     expect(within(dialog).getByText('@bob')).toBeDefined();
-    expect(within(dialog).getByText('online')).toBeDefined();
+    expect(within(dialog).getByText('Online')).toBeDefined();
   });
 
   it('opens the profile from the picture', async () => {
@@ -258,7 +258,7 @@ describe('ThreadHeader', () => {
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Archive Chat' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Archive this chat?')).toBeDefined();
+    expect(within(dialog).getByText('Archive This Chat?')).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -285,7 +285,7 @@ describe('ThreadHeader', () => {
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Unarchive Chat' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Bring the chat back?')).toBeDefined();
+    expect(within(dialog).getByText('Bring The Chat Back?')).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Unarchive' }));
 

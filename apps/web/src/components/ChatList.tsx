@@ -97,7 +97,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
   }
   const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
   if (rows.length === 0) {
-    return <p className="muted pad">{emptyLabel ?? 'No chats yet.'}</p>;
+    return <p className="muted pad">{emptyLabel ?? 'No Chats Yet.'}</p>;
   }
   const menuDialog = menu === null ? null : (rows.find((dialog) => dialog.chat.id === menu.chatId) ?? null);
   const cancelPress = (): void => {

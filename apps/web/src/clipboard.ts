@@ -74,7 +74,7 @@ export async function writeClipboard(text: string): Promise<void> {
     // The fallback below is the only chance left.
   }
   if (copyBySelection(text)) return;
-  throw new Error('The clipboard is not available');
+  throw new Error('The Clipboard Is Not Available');
 }
 
 /**

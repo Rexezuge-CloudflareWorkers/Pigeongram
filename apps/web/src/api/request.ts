@@ -55,7 +55,7 @@ The result of one batched call, or a thrown failure.
 */
 export function batchResult<T>(outcome: RpcBatchOutcome | undefined, what: string): T {
   if (!outcome || !outcome.ok) {
-    throw new HttpStatusError(500, outcome?.error ?? `The ${what} could not be read`, null);
+    throw new HttpStatusError(500, outcome?.error ?? `The ${what} Could Not Be Read`, null);
   }
   return outcome.result as T;
 }

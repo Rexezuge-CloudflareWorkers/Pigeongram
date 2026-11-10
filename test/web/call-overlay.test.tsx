@@ -81,7 +81,7 @@ describe('CallOverlay', () => {
   it('offers answer and decline on an incoming call', () => {
     renderOverlay({ direction: 'incoming' });
 
-    expect(screen.getByRole('status').textContent).toBe('Incoming call');
+    expect(screen.getByRole('status').textContent).toBe('Incoming Call');
     expect(screen.getByRole('button', { name: 'Answer The Call' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Decline The Call' })).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Cancel The Call' })).toBeNull();
@@ -107,7 +107,7 @@ describe('CallOverlay', () => {
     renderOverlay({ phase: 'connecting' });
 
     expect(screen.getByText('Connecting…')).not.toBeNull();
-    expect(screen.getByText('Connecting the call…')).not.toBeNull();
+    expect(screen.getByText('Connecting The Call…')).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Cancel The Call' })).toBeNull();
   });
 
@@ -115,7 +115,7 @@ describe('CallOverlay', () => {
     renderOverlay({ phase: 'connecting', error: 'The call could not be set up', fingerprint: '1234abcd' });
 
     expect(screen.getByText('The call could not be set up')).not.toBeNull();
-    expect(screen.getByText('key 1234abcd')).not.toBeNull();
+    expect(screen.getByText('Key 1234abcd')).not.toBeNull();
   });
 
   it('stops the ringtone once the call connects', () => {
@@ -196,7 +196,7 @@ describe('CallOverlay', () => {
     const onDismiss = vi.fn();
     renderOverlay({ phase: 'ended' }, { onDismiss });
 
-    expect(screen.getByRole('status').textContent).toBe('The call ended');
+    expect(screen.getByRole('status').textContent).toBe('The Call Ended');
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
 

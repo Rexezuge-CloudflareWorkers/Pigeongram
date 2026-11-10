@@ -94,8 +94,8 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold">Forward to…</h2>
-            <p className="m-0 text-xs text-muted">{messages.length === 1 ? '1 message' : `${String(messages.length)} messages`}</p>
+            <h2 className="m-0 text-base font-semibold">Forward To…</h2>
+            <p className="m-0 text-xs text-muted">{messages.length === 1 ? '1 Message' : `${String(messages.length)} Messages`}</p>
           </div>
           <button
             type="button"
@@ -112,7 +112,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
             ref={searchRef}
             type="search"
             value={query}
-            placeholder="Search chats"
+            placeholder="Search Chats"
             aria-label="Search chats"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -148,7 +148,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
         </ul>
         {destinations.length === 0 ? (
           <p className="m-0 px-4 pb-3 text-sm text-muted">
-            {query.trim().length > 0 ? `No chats match “${query.trim()}”.` : 'No chats you can write to.'}
+            {query.trim().length > 0 ? `No Chats Match “${query.trim()}”.` : 'No Chats You Can Write To.'}
           </p>
         ) : null}
         {error ? (

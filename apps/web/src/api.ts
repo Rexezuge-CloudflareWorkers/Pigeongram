@@ -122,39 +122,39 @@ export function updatesSocketUrl(): string {
 One user-visible-string decision point shared by the login screen.
 */
 export function loginPhaseMessage(state: EngineStateDto | null): string {
-  if (!state) return 'Connecting to the session engine…';
+  if (!state) return 'Connecting To The Session Engine…';
   switch (state.phase) {
     case 'qr': {
-      return 'Scan this QR code from Telegram: Settings → Devices → Link Desktop Device';
+      return 'Scan This QR Code From Telegram: Settings → Devices → Link Desktop Device';
     }
     case 'scanned': {
-      return 'QR code accepted — finishing sign-in…';
+      return 'QR Code Accepted — Finishing Sign-In…';
     }
     case 'code': {
       const where = state.codeType ? CODE_DELIVERY[state.codeType] : undefined;
-      return where ? `Telegram sent a login code ${where} — type it below` : 'Type the login code Telegram sent you';
+      return where ? `Telegram Sent A Login Code ${where} — Type It Below` : 'Type The Login Code Telegram Sent You';
     }
     case 'password': {
-      return 'Two-step verification: enter your Telegram cloud password';
+      return 'Two-Step Verification: Enter Your Telegram Cloud Password';
     }
     case 'error': {
-      return state.error ?? 'The session engine reported an error';
+      return state.error ?? 'The Session Engine Reported An Error';
     }
     default: {
-      return 'Preparing a login QR code…';
+      return 'Preparing A Login QR Code…';
     }
   }
 }
 
 const CODE_DELIVERY: Record<string, string> = {
-  app: 'to your Telegram app',
-  sms: 'by SMS',
-  call: 'in a phone call',
-  flash_call: 'as a flash call',
-  missed_call: 'as a missed call',
-  email: 'by email',
-  firebase: 'by SMS',
-  fragment: 'by SMS',
-  sms_word: 'by SMS',
-  sms_phrase: 'by SMS',
+  app: 'To Your Telegram App',
+  sms: 'By SMS',
+  call: 'In A Phone Call',
+  flash_call: 'As A Flash Call',
+  missed_call: 'As A Missed Call',
+  email: 'By Email',
+  firebase: 'By SMS',
+  fragment: 'By SMS',
+  sms_word: 'By SMS',
+  sms_phrase: 'By SMS',
 };

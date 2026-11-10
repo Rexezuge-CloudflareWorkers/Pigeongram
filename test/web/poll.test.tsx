@@ -72,7 +72,7 @@ describe('MessagePoll', () => {
 
     expect(screen.getByText('Poll')).not.toBeNull();
     expect(screen.getByText('Tea or coffee?')).not.toBeNull();
-    expect(screen.getByText('3 votes')).not.toBeNull();
+    expect(screen.getByText('3 Votes')).not.toBeNull();
     expect(screen.getAllByText('67%')).toHaveLength(1);
     expect(screen.getByText('33%')).not.toBeNull();
     const bars = [...container.querySelectorAll<HTMLElement>('.poll-bar')];
@@ -82,7 +82,7 @@ describe('MessagePoll', () => {
   it('labels a quiz and a multiple-choice poll', () => {
     renderPoll(poll({ quiz: true, multiple: true }));
 
-    expect(screen.getByText('Quiz · Multiple choice')).not.toBeNull();
+    expect(screen.getByText('Quiz · Multiple Choice')).not.toBeNull();
   });
 
   it('marks the correct answer and nothing else after a plain poll vote', () => {
@@ -117,12 +117,12 @@ describe('MessagePoll', () => {
     renderPoll(
       poll({ totalVoters: null, answers: poll().answers.map((answer) => ({ ...answer, voters: null })), hideResultsUntilClose: true }),
     );
-    expect(screen.getByText('Results hidden until the poll closes')).not.toBeNull();
+    expect(screen.getByText('Results Hidden Until The Poll Closes')).not.toBeNull();
     expect(screen.queryByText(/%/)).toBeNull();
 
     cleanup();
     renderPoll(poll({ totalVoters: null, answers: poll().answers.map((answer) => ({ ...answer, voters: null })), closed: true }));
-    expect(screen.getByText('Poll closed')).not.toBeNull();
+    expect(screen.getByText('Poll Closed')).not.toBeNull();
 
     cleanup();
     renderPoll(poll({ totalVoters: null, answers: poll().answers.map((answer) => ({ ...answer, voters: null })) }));
@@ -141,7 +141,7 @@ describe('MessagePoll', () => {
       }),
     );
 
-    expect(screen.getByText('1 vote')).not.toBeNull();
+    expect(screen.getByText('1 Vote')).not.toBeNull();
     expect(screen.getByText('Tea is the answer.')).not.toBeNull();
   });
 

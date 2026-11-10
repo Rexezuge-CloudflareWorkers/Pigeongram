@@ -36,7 +36,7 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
     <div className="poll">
       <div className="poll-kind">
         {poll.quiz ? 'Quiz' : 'Poll'}
-        {poll.multiple ? ' · Multiple choice' : ''}
+        {poll.multiple ? ' · Multiple Choice' : ''}
       </div>
       <div className="poll-question">{poll.question}</div>
       {poll.answers.map((answer, index) => {
@@ -126,9 +126,9 @@ them with this account yet (a quiz before answering, typically).
 */
 function metaText(poll: MessagePollDto, results: boolean): string | null {
   if (results && poll.totalVoters !== null) {
-    return poll.totalVoters === 1 ? '1 vote' : `${String(poll.totalVoters)} votes`;
+    return poll.totalVoters === 1 ? '1 Vote' : `${String(poll.totalVoters)} Votes`;
   }
-  if (poll.closed) return 'Poll closed';
-  if (poll.hideResultsUntilClose) return 'Results hidden until the poll closes';
+  if (poll.closed) return 'Poll Closed';
+  if (poll.hideResultsUntilClose) return 'Results Hidden Until The Poll Closes';
   return null;
 }

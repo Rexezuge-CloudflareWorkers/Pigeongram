@@ -103,7 +103,7 @@ export class CallCipher {
     private readonly originator: boolean,
   ) {
     if (key.length !== 256) {
-      throw new Error('The call key must be 256 bytes wide');
+      throw new Error('The Call Key Must Be 256 Bytes Wide');
     }
   }
 

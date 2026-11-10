@@ -54,7 +54,7 @@ export function useForwarding(
         onApplyUpdate({ type: 'new_message', message });
       }
       setTarget(null);
-      onNotice(`Forwarded to ${dialog.chat.title}`);
+      onNotice(`Forwarded To ${dialog.chat.title}`);
     },
     [target, onSent, onApplyUpdate, onNotice],
   );

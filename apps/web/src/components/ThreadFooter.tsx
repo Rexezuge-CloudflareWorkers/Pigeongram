@@ -50,7 +50,7 @@ export function ThreadFooter({
   if (preview !== null) {
     return (
       <div className="composer composer-notice flex items-center justify-between gap-3">
-        <span>You are previewing this chat. Join it to send messages.</span>
+        <span>You Are Previewing This Chat. Join It To Send Messages.</span>
         <button
           type="button"
           className="shrink-0 rounded-full bg-accent px-4 py-2 font-semibold text-[#0b1a1a] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
@@ -93,5 +93,5 @@ explains itself, everything else was restricted by the chat's admins.
 function sendBlockedNotice(chat: ChatDto): string {
   return chat.kind === 'channel'
     ? 'Only Admins Can Post In This Channel.'
-    : 'The admins of this chat have restricted your ability to send messages.';
+    : 'The Admins Of This Chat Have Restricted Your Ability To Send Messages.';
 }

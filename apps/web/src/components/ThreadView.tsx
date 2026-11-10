@@ -318,7 +318,7 @@ export function ThreadView({
               {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Messages'}
             </button>
           ) : null}
-          {loading && messages.length === 0 ? <MessageSkeleton label="Loading messages…" /> : null}
+          {loading && messages.length === 0 ? <MessageSkeleton label="Loading Messages…" /> : null}
           {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
           {groups.map((group, index) => {
             const anchor = group[0];

@@ -51,7 +51,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
   const inputRef = useRef<HTMLInputElement>(null);
   const needle = query.trim();
   const inChat = scope.kind === 'chat';
-  const scopeLabel = inChat ? `in ${chat?.title ?? 'this chat'}` : 'in all chats';
+  const scopeLabel = inChat ? `In ${chat?.title ?? 'This Chat'}` : 'In All Chats';
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -115,7 +115,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
             ref={inputRef}
             type="search"
             value={query}
-            placeholder="Search messages"
+            placeholder="Search Messages"
             aria-label="Search messages"
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -133,10 +133,10 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {loading && messages.length === 0 ? <Spinner size={28} label="Searching…" padding="24px 0" /> : null}
           {needle.length === 0 ? (
-            <p className="m-0 px-2 py-3 text-sm text-muted">Type to search {inChat ? 'this chat' : 'all chats'}.</p>
+            <p className="m-0 px-2 py-3 text-sm text-muted">Type To Search {inChat ? 'This Chat' : 'All Chats'}.</p>
           ) : null}
           {!loading && needle.length > 0 && messages.length === 0 && error === null ? (
-            <p className="m-0 px-2 py-3 text-sm text-muted">No messages found for “{needle}”.</p>
+            <p className="m-0 px-2 py-3 text-sm text-muted">No Messages Found For “{needle}”.</p>
           ) : null}
           {messages.length > 0 ? (
             <ul className="m-0 flex list-none flex-col gap-0.5 p-0" aria-label="Search results">

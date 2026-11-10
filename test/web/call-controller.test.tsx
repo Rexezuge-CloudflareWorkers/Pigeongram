@@ -127,7 +127,7 @@ describe('useCalls startCall', () => {
       result.current.startCall(7);
     });
 
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'A call is already in progress' }));
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'A Call Is Already In Progress' }));
 
     await act(async () => {
       config.resolve({ g: DH_CONFIG.g, p: toBase64(PRIME), version: 0 });

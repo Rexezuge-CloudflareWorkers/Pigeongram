@@ -10,20 +10,20 @@ import { Icon } from './Icon';
  */
 export function ForwardOrigin({ forward }: { forward: MessageForwardDto }) {
   const open = useForwardOriginHandler();
-  const label = forward.senderName ?? 'a hidden user';
+  const label = forward.senderName ?? 'A Hidden User';
   const target = forward.senderId ?? forward.fromChatId;
   if (open === null || target === null) {
     return (
       <span className="forward-origin">
         <Icon name="north-east" size={12} className="mr-1" />
-        Forwarded from {label}
+        Forwarded From {label}
       </span>
     );
   }
   return (
     <span className="forward-origin">
       <Icon name="north-east" size={12} className="mr-1" />
-      Forwarded from{' '}
+      Forwarded From{' '}
       <button
         type="button"
         className="forward-origin-link"

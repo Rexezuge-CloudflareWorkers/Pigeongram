@@ -102,7 +102,7 @@ function badgeIn(name: string): Element | null {
 describe('ChatList empty state', () => {
   it('says that the account has no chats', () => {
     renderEmpty();
-    expect(screen.getByText('No chats yet.')).toBeDefined();
+    expect(screen.getByText('No Chats Yet.')).toBeDefined();
   });
 
   it('says so in the wording of the archive', () => {

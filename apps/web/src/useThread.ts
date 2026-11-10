@@ -142,7 +142,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
         ...(replyTo !== undefined && { replyTo }),
         replyPreview,
         deliver: (body, randomIds) => {
-          if (body.kind !== 'text') throw new Error('The outbox delivered a file body for a text message');
+          if (body.kind !== 'text') throw new Error('The Outbox Delivered A File Body For A Text Message');
           return sendMessage(chat.id, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
         },
         onSettled: (messages) => {
@@ -168,7 +168,7 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
         request,
         replyPreview,
         deliver: (body, randomIds, onProgress) => {
-          if (body.kind !== 'file') throw new Error('The outbox delivered a text body for an attachment');
+          if (body.kind !== 'file') throw new Error('The Outbox Delivered A Text Body For An Attachment');
           const messages: MessageDto[] = [];
           return sendUploadBatch(
             { chatId: chat.id, ...(request.replyTo !== undefined && { replyTo: request.replyTo }) },

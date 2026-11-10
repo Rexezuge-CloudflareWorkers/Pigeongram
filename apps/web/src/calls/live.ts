@@ -49,5 +49,5 @@ export function randomCallId(): string {
  * The message of a failure, in the reader's words where possible.
  */
 export function messageOf(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'The call could not be set up';
+  return error instanceof Error && error.message ? error.message : 'The Call Could Not Be Set Up';
 }

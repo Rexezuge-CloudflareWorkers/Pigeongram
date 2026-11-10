@@ -65,11 +65,11 @@ export function MessageReplyQuote({
 }
 
 export function ComposerReply({ message, onCancel }: { message: MessageDto; onCancel: () => void }) {
-  const name = message.outgoing ? 'You' : (message.senderName ?? 'message');
+  const name = message.outgoing ? 'You' : (message.senderName ?? 'Message');
   return (
     <div className="composer-reply">
       <div className="composer-reply-body">
-        <span className="reply-name">Reply to {name}</span>
+        <span className="reply-name">Reply To {name}</span>
         <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
       </div>
       <button type="button" className="reply-cancel" aria-label="Cancel Reply" title="Cancel Reply" onClick={onCancel}>

@@ -11,7 +11,7 @@ Short stamp for the chat list: `now`, `5m`, `3h`, or `Mar 4`.
 */
 export function formatListStamp(timestamp: number, now = Date.now()): string {
   const diff = now - timestamp;
-  if (diff < 60_000) return 'now';
+  if (diff < 60_000) return 'Now';
   if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(timestamp);
@@ -44,20 +44,20 @@ export function formatPresence(presence: PresenceDto | null): string | null {
   if (!presence) return null;
   switch (presence.status) {
     case 'online': {
-      return 'online';
+      return 'Online';
     }
     case 'offline': {
-      if (presence.lastSeenAt === null) return 'last seen recently';
-      return `last seen ${formatDay(presence.lastSeenAt).toLowerCase()} at ${formatTime(presence.lastSeenAt)}`;
+      if (presence.lastSeenAt === null) return 'Last Seen Recently';
+      return `Last Seen ${formatDay(presence.lastSeenAt)} At ${formatTime(presence.lastSeenAt)}`;
     }
     case 'recently': {
-      return 'last seen recently';
+      return 'Last Seen Recently';
     }
     case 'within_week': {
-      return 'last seen within a week';
+      return 'Last Seen Within A Week';
     }
     case 'within_month': {
-      return 'last seen within a month';
+      return 'Last Seen Within A Month';
     }
   }
 }
@@ -103,7 +103,7 @@ const MEDIA_PREVIEWS: Record<MessageMediaDto['kind'], string> = {
   video: 'Video',
   animation: 'GIF',
   audio: 'Audio',
-  voice: 'Voice message',
+  voice: 'Voice Message',
   sticker: 'Sticker',
   document: 'Document',
 };

@@ -17,9 +17,9 @@ export function OfflineScreen({ onRetry }: OfflineScreenProps) {
     <main className="landing">
       <section className="landing-hero">
         <p className="eyebrow">{APP_NAME}</p>
-        <h1>You are offline</h1>
+        <h1>You Are Offline</h1>
         <p className="lead">
-          The client cannot reach the server, so it cannot read your chats. It reconnects on its own as soon as the network is back.
+          The Client Cannot Reach The Server, So It Cannot Read Your Chats. It Reconnects On Its Own As Soon As The Network Is Back.
         </p>
         <button type="button" className="cta" onClick={onRetry}>
           Try Again

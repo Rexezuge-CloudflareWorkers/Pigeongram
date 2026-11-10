@@ -219,9 +219,9 @@ export function CommentsView({
             {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Comments'}
           </button>
         ) : null}
-        {loading && comments.length === 0 ? <MessageSkeleton label="Loading comments…" avatars /> : null}
+        {loading && comments.length === 0 ? <MessageSkeleton label="Loading Comments…" avatars /> : null}
         {!loading && comments.length === 0 ? (
-          <p className="muted pad">{thread.count === 0 ? 'No comments yet — be the first.' : 'No comments loaded.'}</p>
+          <p className="muted pad">{thread.count === 0 ? 'No Comments Yet — Be The First.' : 'No Comments Loaded.'}</p>
         ) : null}
         {groups.map((group, index) => {
           const anchor = group[0];
@@ -298,5 +298,5 @@ function quoteVisible(comment: MessageDto, thread: CommentsThread, commentsById:
 }
 
 function commentCountLabel(count: number): string {
-  return count === 1 ? '1 comment' : `${count} comments`;
+  return count === 1 ? '1 Comment' : `${count} Comments`;
 }

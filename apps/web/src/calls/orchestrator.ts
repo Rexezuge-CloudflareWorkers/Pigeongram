@@ -69,7 +69,7 @@ export class CallOrchestrator {
     if (this.#starting) {
       // The overlay does not exist yet, so the failure has nowhere to
       // render: report it through the app's banner.
-      this.#onError(new Error('A call is already in progress'));
+      this.#onError(new Error('A Call Is Already In Progress'));
       return;
     }
     this.#starting = true;
@@ -217,7 +217,7 @@ export class CallOrchestrator {
     if (this.#config) return this.#config;
     const raw = await this.#rpc.fetchCallDhConfig();
     const p = fromBase64(raw.p);
-    if (p === null) throw new Error('The Diffie-Hellman prime did not arrive intact');
+    if (p === null) throw new Error('The Diffie-Hellman Prime Did Not Arrive Intact');
     const validated = await validateDhConfig({ g: raw.g, p });
     this.#config = validated;
     return validated;
@@ -235,7 +235,7 @@ export class CallOrchestrator {
       onStream: (stream) => this.#setRemoteStream(stream),
       onConnected: () => this.#dispatch({ type: 'phase', callId, phase: 'active' }),
       onFailed: () => {
-        this.#dispatch({ type: 'failed', callId, error: 'The call could not be connected' });
+        this.#dispatch({ type: 'failed', callId, error: 'The Call Could Not Be Connected' });
         this.#teardown();
       },
     });
@@ -322,7 +322,7 @@ export class CallOrchestrator {
     if (current.peer.ready || current.confirmed) return;
     current.confirmed = true;
     const peerValue = fromBase64(call.gB);
-    if (peerValue === null) throw new Error("The callee's key exchange value did not arrive intact");
+    if (peerValue === null) throw new Error("The Callee's Key Exchange Value Did Not Arrive Intact");
     const { key, fingerprint } = await establishKey({
       config: current.config,
       secret: current.keyPair.secret,
@@ -352,13 +352,13 @@ export class CallOrchestrator {
     if (this.#live !== current) return;
     if (current.direction === 'incoming' && !current.peer.ready && !current.deriving) {
       if (!current.keyPair || !current.config || !call.gAOrB) {
-        throw new Error("The call did not carry the caller's key exchange value");
+        throw new Error("The Call Did Not Carry The Caller's Key Exchange Value");
       }
       // Claim the derivation before the first await: two `active` updates can
       // arrive together, and both would otherwise pass the `ready` check.
       current.deriving = true;
       const peerValue = fromBase64(call.gAOrB);
-      if (peerValue === null) throw new Error("The caller's key exchange value did not arrive intact");
+      if (peerValue === null) throw new Error("The Caller's Key Exchange Value Did Not Arrive Intact");
       const { key, fingerprint } = await establishKey({
         config: current.config,
         secret: current.keyPair.secret,

@@ -1,4 +1,5 @@
 import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
+import { documentDimensions } from './dto-document';
 import { serviceText } from './service-text';
 import { toMessageMarkupDto, toMessageReplyKeyboardDto } from './markup';
 import { presenceOfPeer } from './presence';
@@ -308,8 +309,7 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
         fileName: media.fileName,
         mime: media.mimeType,
         size: media.raw.size,
-        width: null,
-        height: null,
+        ...documentDimensions(media),
         duration: null,
       };
     }

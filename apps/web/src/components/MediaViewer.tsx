@@ -7,7 +7,7 @@ import type { MessageDto, VideoQualityDto } from '../types';
 import { useGallerySwipe } from '../useGallerySwipe';
 import { usePhotoZoom } from '../usePhotoZoom';
 import { Icon } from './Icon';
-import { isViewableMedia } from './Media';
+import { isPhotoLike, isViewableMedia } from './Media';
 import { MessageText } from './MessageText';
 import { Select } from './Select';
 
@@ -68,7 +68,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   const streamSrc = current ? fileUrl(current.chatId, current.id, selectedQuality === 'auto' ? {} : { quality: selectedQuality }) : '';
   const downloadSrc = current ? fileUrl(current.chatId, current.id, { quality: 'max', download: true }) : '';
   const failed = failedSrc === streamSrc;
-  const photo = media?.kind === 'photo' && !failed;
+  const photo = isPhotoLike(media) && !failed;
   const {
     attachImage,
     style: photoStyle,
@@ -98,7 +98,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
 
   // Photos and animations swipe; a video keeps its native player gestures, so
   // its timeline can still be scrubbed. A zoomed photo pans instead.
-  const swipeable = media !== null && (media.kind === 'photo' || media.kind === 'animation');
+  const swipeable = media !== null && (isPhotoLike(media) || media.kind === 'animation');
   const swipe = useGallerySwipe({
     enabled: swipeable && itemCount > 1 && !zoomed,
     mediaId: current?.id ?? null,
@@ -266,7 +266,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
               <span>{title}</span>
               {media.size === null ? null : <span className="media-viewer-fallback-size">{formatBytes(media.size)}</span>}
             </a>
-          ) : media.kind === 'photo' ? (
+          ) : photo ? (
             <img
               key={current.id}
               ref={attachImage}

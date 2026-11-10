@@ -43,6 +43,18 @@ function photo(id: number): MessageDto {
   });
 }
 
+function imageDocument(id: number): MessageDto {
+  return message(id, {
+    kind: 'document',
+    fileName: 'photo.jpg',
+    mime: 'image/jpeg',
+    size: 4096,
+    width: 1200,
+    height: 800,
+    duration: null,
+  });
+}
+
 function video(id: number, kind: 'video' | 'animation' = 'video'): MessageDto {
   return message(id, {
     kind,
@@ -106,6 +118,15 @@ describe('media viewer photo zoom', () => {
 
     fireEvent.doubleClick(image);
     expect(scaleOf(image)).toBe(1);
+  });
+
+  it('treats an image sent as a document as a zoomable photo', () => {
+    const image = renderViewer([imageDocument(1)]);
+    expect(image.getAttribute('src')).toBe('/user/file?chatId=2&messageId=1');
+    expect(scaleOf(image)).toBe(1);
+
+    fireEvent.doubleClick(image);
+    expect(scaleOf(image)).toBe(2);
   });
 
   it('steps the toolbar between reset states and disables at the limits', () => {
@@ -227,6 +248,14 @@ describe('media viewer downloads', () => {
     expect(link.getAttribute('href')).not.toContain('thumb=1');
     expect(link.getAttribute('download')).toBe('photo-7.jpg');
     expect(link.querySelector('svg[data-icon="download"]')).not.toBeNull();
+  });
+
+  it('downloads an image document under its own name', () => {
+    renderViewer([imageDocument(7)]);
+
+    const link = screen.getByRole('link', { name: 'Download Original' });
+    expect(link.getAttribute('href')).toBe('/user/file?chatId=2&messageId=7&quality=max&download=1');
+    expect(link.getAttribute('download')).toBe('photo.jpg');
   });
 
   it('follows the gallery to the item on screen', () => {

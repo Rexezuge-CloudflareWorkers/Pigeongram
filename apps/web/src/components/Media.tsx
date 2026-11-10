@@ -9,12 +9,32 @@ import { MessageText } from './MessageText';
 import { StickerMedia } from './Sticker';
 
 /**
+Whether a document is safe to render as an inline image. Telegram sends some
+photos as documents when the sender chooses "send as file", so the MIME type is
+the only reliable signal. SVG is excluded like the upload preview and the media
+route exclude it: it is active content, not a picture.
+*/
+function isImageDocument(media: MessageMediaDto | null): boolean {
+  if (media === null || media.kind !== 'document' || media.mime === null) return false;
+  const mime = media.mime.toLowerCase();
+  return mime.startsWith('image/') && mime !== 'image/svg+xml';
+}
+
+/**
+Whether a media item behaves like a photo: a real photo, or an image sent as a
+document. The viewer uses one zoom, swipe and rendering path for both.
+*/
+export function isPhotoLike(media: MessageMediaDto | null): boolean {
+  return media !== null && (media.kind === 'photo' || isImageDocument(media));
+}
+
+/**
 Whether a media item opens in the full-page viewer: the visual kinds, whose
-full size is worth a page of its own. Audio, voice notes and documents keep
-their players and links.
+full size is worth a page of its own, plus image documents. Audio, voice notes
+and other documents keep their players and links.
 */
 export function isViewableMedia(media: MessageMediaDto | null): media is MessageMediaDto {
-  return media !== null && (media.kind === 'photo' || media.kind === 'video' || media.kind === 'animation');
+  return isPhotoLike(media) || media?.kind === 'video' || media?.kind === 'animation';
 }
 
 /**
@@ -95,10 +115,51 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
     case 'sticker': {
       return <StickerMedia message={message} media={media} />;
     }
+    case 'document': {
+      return isImageDocument(media) ? (
+        <DocumentImage message={message} media={media} onOpen={onOpen} />
+      ) : (
+        <DocumentLink message={message} />
+      );
+    }
     default: {
       return <DocumentLink message={message} />;
     }
   }
+}
+
+/**
+An image sent as a document. Telegram's thumbnail is enough to preview it in
+the bubble; the original is used for a GIF (so it animates) and as the fallback
+when a document has no thumbnail. An image the browser cannot decode falls back
+to the download link rather than leaving an empty box.
+*/
+function DocumentImage({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
+  const original = fileUrl(message.chatId, message.id);
+  const [src, setSrc] = useState(() =>
+    media.mime?.toLowerCase() === 'image/gif' ? original : fileUrl(message.chatId, message.id, { thumb: true }),
+  );
+  const [failed, setFailed] = useState(false);
+  if (failed) return <DocumentLink message={message} />;
+  return (
+    <button type="button" className="media-open document-image" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'image'}`}>
+      <img
+        className="photo"
+        src={src}
+        alt={media.fileName ?? 'Image'}
+        width={media.width ?? undefined}
+        height={media.height ?? undefined}
+        loading="lazy"
+        onError={() => {
+          if (src !== original) {
+            setSrc(original);
+            return;
+          }
+          setFailed(true);
+        }}
+      />
+    </button>
+  );
 }
 
 /**

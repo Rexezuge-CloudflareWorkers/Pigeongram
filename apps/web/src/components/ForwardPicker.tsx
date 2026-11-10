@@ -25,9 +25,14 @@ interface ForwardPickerProps {
   dialogs: readonly DialogDto[];
   onForward: (dialog: DialogDto) => Promise<void>;
   onClose: () => void;
+  /**
+  Whether the picker is animating out; the parent keeps it mounted for the
+  exit beat.
+  */
+  exiting?: boolean;
 }
 
-export function ForwardPicker({ messages, dialogs, onForward, onClose }: ForwardPickerProps) {
+export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting = false }: ForwardPickerProps) {
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<PeerId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +78,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
 
   return createPortal(
     <div
-      className="dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className={`dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4${exiting ? ' is-exiting' : ''}`}
       onPointerDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
@@ -85,7 +90,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl"
+        className={`dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}`}
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">

@@ -22,9 +22,14 @@ interface UploadDialogProps {
   initialFiles: readonly File[];
   onCancel: () => void;
   onSend: (files: File[], grouped: boolean) => void;
+  /**
+  Whether the dialog is animating out; the parent keeps it mounted for the
+  exit beat.
+  */
+  exiting?: boolean;
 }
 
-export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogProps) {
+export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }: UploadDialogProps) {
   const [files, setFiles] = useState<File[]>(() => initialFiles.slice(0, MAX_UPLOAD_ITEMS));
   const [notice, setNotice] = useState<string | null>(() =>
     initialFiles.length > MAX_UPLOAD_ITEMS ? overflowNotice(initialFiles.length - MAX_UPLOAD_ITEMS) : null,
@@ -110,14 +115,14 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
 
   return createPortal(
     <div
-      className="dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className={`dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4${exiting ? ' is-exiting' : ''}`}
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}
     >
       <div
         ref={dialogRef}
-        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container-high shadow-2xl"
+        className={`dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container-high shadow-2xl${exiting ? ' is-exiting' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -39,9 +39,14 @@ interface ProfilePopupProps {
    * element focused at mount, which is the one that opened the popup.
    */
   returnFocus?: () => void;
+  /**
+   * Whether the popup is animating out; the parent keeps it mounted for the
+   * exit beat.
+   */
+  exiting?: boolean;
 }
 
-export function ProfilePopup({ chat, profile, loading, error, onClose, returnFocus }: ProfilePopupProps) {
+export function ProfilePopup({ chat, profile, loading, error, onClose, returnFocus, exiting = false }: ProfilePopupProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -98,14 +103,14 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
 
   return createPortal(
     <div
-      className="dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className={`dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4${exiting ? ' is-exiting' : ''}`}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
         ref={dialogRef}
-        className="dialog-panel relative w-full max-w-[380px] rounded-xl-increased border border-outline-variant bg-surface-container-high p-6 shadow-2xl"
+        className={`dialog-panel relative w-full max-w-[380px] rounded-xl-increased border border-outline-variant bg-surface-container-high p-6 shadow-2xl${exiting ? ' is-exiting' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

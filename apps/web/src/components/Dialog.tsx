@@ -38,6 +38,11 @@ interface DialogProps {
   Panel width class; defaults to the confirmation width.
   */
   className?: string;
+  /**
+  Whether the dialog is on its way out. The parent keeps it mounted for the
+  exit beat; the scrim and panel run their matching out keyframes.
+  */
+  exiting?: boolean;
 }
 
 export function Dialog({
@@ -49,6 +54,7 @@ export function Dialog({
   initialFocus = 'firstAction',
   returnFocus,
   className = 'max-w-[380px]',
+  exiting = false,
 }: DialogProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -117,7 +123,7 @@ export function Dialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+      className={`dialog-scrim fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4${exiting ? ' is-exiting' : ''}`}
       role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget && !busy) onClose();
@@ -126,7 +132,7 @@ export function Dialog({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`dialog-panel w-full border border-outline-variant bg-surface-container-high shadow-2xl ${className}`}
+        className={`dialog-panel w-full border border-outline-variant bg-surface-container-high shadow-2xl ${className}${exiting ? ' is-exiting' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

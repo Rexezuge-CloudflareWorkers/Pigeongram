@@ -8,13 +8,19 @@ import { useEffect, useState } from 'react';
  * class while it is true and the parent keeps rendering them.
  */
 export function useExitAnimation(visible: boolean, exitMs = 200): { mounted: boolean; exiting: boolean } {
-  const [phase, setPhase] = useState<'mounted' | 'closed'>(visible ? 'mounted' : 'closed');
-  const exiting = phase === 'mounted' && !visible;
+  // The previous `visible` is kept in state so the flip off is handled during
+  // render (the overlay stays mounted for the beat) while the actual unmount
+  // waits for the timer below. Keeping this in an effect instead would both
+  // cascade a render and miss the first exit of an overlay that started closed.
+  const [phase, setPhase] = useState({ visible, mounted: visible });
+  if (phase.visible !== visible) {
+    setPhase({ visible, mounted: visible || phase.mounted });
+  }
+  const exiting = phase.mounted && !visible;
   useEffect(() => {
-    if (phase !== 'mounted' || visible) return;
-    const timer = setTimeout(() => setPhase('closed'), exitMs);
+    if (visible || !phase.mounted) return;
+    const timer = setTimeout(() => setPhase({ visible: false, mounted: false }), exitMs);
     return () => clearTimeout(timer);
-  }, [phase, visible, exitMs]);
-  const mounted = phase === 'mounted' || visible;
-  return { mounted, exiting };
+  }, [phase.mounted, visible, exitMs]);
+  return { mounted: phase.mounted, exiting };
 }

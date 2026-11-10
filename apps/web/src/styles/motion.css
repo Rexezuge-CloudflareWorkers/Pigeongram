@@ -19,6 +19,27 @@
   }
 }
 
+/* A pane that has just been swapped in (the thread for a new chat, the
+ * comments screen for a new post) enters rather than cutting. The fill mode
+ * keeps it invisible during any delay, and the class is applied to the
+ * scrolling pane itself so the header above it does not move. */
+.thread-pane-in {
+  animation: pane-in 240ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+
+/* The narrow shell swaps the whole pane with `display`, not a slide: a plain
+ * fade is the honest entrance there, since the two panes never share a
+ * frame. */
+@keyframes pane-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 /* Only genuinely new messages animate; history re-renders without motion. */
 @keyframes message-in {
   from {
@@ -45,18 +66,6 @@
   }
 }
 
-/* A soft pulse behind skeleton rows that lack the sheen. */
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.72;
-  }
-}
-
 /* The shared skeleton sheen: one sweep rule for the list bones and the
  * thread bones alike, so the two loading surfaces cannot drift. */
 .skeleton {
@@ -77,21 +86,6 @@
 @keyframes skeleton-sheen {
   to {
     transform: translateX(100%);
-  }
-}
-
-/* The send button's tap feedback: a quick pop rather than a press scale. */
-@keyframes send-pop {
-  0% {
-    transform: scale(1);
-  }
-
-  40% {
-    transform: scale(0.88);
-  }
-
-  100% {
-    transform: scale(1);
   }
 }
 
@@ -212,10 +206,46 @@
   justify-content: flex-end;
 }
 
-.thread-skeleton-row-enter {
-  animation: fade-in-up 260ms var(--ease-out-strong);
+.thread-skeleton.with-avatars {
+  gap: 10px;
+}
+
+.thread-skeleton.with-avatars .thread-skeleton-row {
+  align-items: center;
+  gap: 8px;
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* The one staggering entrance shared by the chat rows, the chat list's bones
+ * and the message bones. `both` keeps a row invisible until its turn, and the
+ * caller caps the index so a long list settles in a beat rather than a
+ * second. */
+.row-enter {
+  animation: fade-in-up 260ms var(--ease-out-strong) both;
   animation-delay: calc(var(--row-index, 0) * 22ms);
-  animation-fill-mode: both;
+}
+
+/* The archive's header joins the list swap it leads. */
+.archive-bar {
+  animation: archive-bar-in 220ms var(--ease-out-strong) both;
+}
+
+@keyframes archive-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .skeleton-bubble {
@@ -263,7 +293,9 @@
   .fab-jump,
   .call-overlay,
   .error-shake,
-  .message .reaction.burst {
+  .message .reaction.burst,
+  .thread-pane-in,
+  .archive-bar {
     animation: none;
   }
 
@@ -272,5 +304,10 @@
   .call-overlay {
     opacity: 1;
     transform: none;
+  }
+
+  .row-enter {
+    animation: none;
+    animation-delay: 0ms;
   }
 }

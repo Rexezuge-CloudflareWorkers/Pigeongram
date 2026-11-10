@@ -2103,7 +2103,7 @@ describe('App', () => {
 
       expect(await within(threadSection()).findByText('a global hit')).toBeDefined();
       expect(location.pathname).toBe('/chat/3/post/30');
-      expect(screen.queryByRole('dialog', { name: 'Search messages' })).toBeNull();
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search messages' })).toBeNull());
       // The window was read around the hit, not from the chat's newest page.
       const jump = calls.find((call) => {
         const params = call.body?.params as { chatId?: number; anchorId?: number } | undefined;

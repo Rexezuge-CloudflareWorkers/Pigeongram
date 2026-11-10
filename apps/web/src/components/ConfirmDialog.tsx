@@ -38,6 +38,10 @@ interface ConfirmDialogProps {
   from a menu item.
   */
   returnFocus?: () => void;
+  /**
+  Whether the dialog is animating out; forwarded to the shared Dialog.
+  */
+  exiting?: boolean;
 }
 
 export function ConfirmDialog({
@@ -51,6 +55,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   returnFocus,
+  exiting = false,
 }: ConfirmDialogProps) {
   const messageId = useId();
   return (
@@ -60,6 +65,7 @@ export function ConfirmDialog({
       busy={busy}
       initialFocus="cancel"
       returnFocus={returnFocus}
+      exiting={exiting}
       actions={
         <>
           <span data-dialog-cancel className="contents">

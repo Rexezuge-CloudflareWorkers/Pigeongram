@@ -117,14 +117,14 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
     >
       <div
         ref={dialogRef}
-        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container-high shadow-2xl"
+        className="dialog-panel flex max-h-[min(85vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-[560px] flex-col overflow-hidden rounded-xs border border-outline-variant bg-surface-container-high"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={hintId}
       >
         <div className="flex shrink-0 items-baseline justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
-          <h2 id={titleId} className="text-lg font-semibold sm:text-xl">
+          <h2 id={titleId} className="text-lg font-semibold sm:text-xl" style={{ fontWeight: 650 }}>
             Send files
           </h2>
           <span className="text-sm text-muted">
@@ -160,7 +160,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
           <div className="pt-3">
             <button
               type="button"
-              className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
+              className="rounded-xs border border-line px-4 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
               disabled={files.length >= MAX_UPLOAD_ITEMS}
               onClick={() => fileRef.current?.click()}
             >
@@ -181,7 +181,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
           </div>
 
           <div className="mt-3 pb-1">
-            <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
+            <label className="flex items-start gap-3 rounded-xs bg-panel px-4 py-3">
               <Checkbox
                 className="mt-1"
                 checked={grouped && groupable}
@@ -189,7 +189,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
                 onChange={(event) => setGrouped(event.target.checked)}
               />
               <span>
-                <span className="block font-medium">Group Items</span>
+                <span className="block font-semibold">Group Items</span>
                 <span className="block text-sm text-muted">{groupHint(files.length, groupable)}</span>
               </span>
             </label>
@@ -200,14 +200,14 @@ export function UploadDialog({ initialFiles, onCancel, onSend }: UploadDialogPro
           <button
             ref={cancelRef}
             type="button"
-            className="min-w-[88px] rounded-full px-4 py-2 font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none"
+            className="min-w-[88px] rounded-xs px-4 py-2 font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="min-w-[88px] rounded-full bg-accent px-4 py-2 font-semibold text-[#0b1a1a] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
+            className="min-w-[88px] rounded-xs bg-accent px-4 py-2 font-semibold text-[#05070e] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
             disabled={files.length === 0}
             onClick={send}
           >
@@ -259,13 +259,13 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
   const size = formatBytes(file.size);
 
   return (
-    <li className="flex items-center gap-3 rounded-2xl bg-panel px-3 py-2">
+    <li className="flex items-center gap-3 rounded-xs bg-panel px-3 py-2">
       <span className="w-5 shrink-0 text-center text-sm text-muted">{index + 1}</span>
-      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-panel-2 text-muted">
+      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xs bg-panel-2 text-muted">
         {previewUrl ? <img src={previewUrl} alt="" className="h-full w-full object-cover" /> : <Icon name={KIND_ICONS[kind]} size={24} />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{file.name || 'file'}</span>
+        <span className="block truncate text-sm font-semibold">{file.name || 'file'}</span>
         <span className="block text-xs text-muted">
           {mediaPreview(kind)}
           {size ? ` · ${size}` : ''}
@@ -273,7 +273,7 @@ function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
       </span>
       <button
         type="button"
-        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:bg-panel-2 focus-visible:text-fg focus-visible:outline-none"
+        className="shrink-0 rounded-xs p-1.5 text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:bg-panel-2 focus-visible:text-fg focus-visible:outline-none"
         aria-label={`Remove ${file.name || 'file'}`}
         onClick={onRemove}
       >

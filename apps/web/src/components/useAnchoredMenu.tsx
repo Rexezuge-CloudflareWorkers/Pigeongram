@@ -219,7 +219,7 @@ export function AnchoredMenu({
       id={id}
       role="menu"
       aria-label={label}
-      className={`anchored-menu fixed z-50 rounded-sm border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}${className ? ` ${className}` : ''}`}
+      className={`anchored-menu fixed z-50 rounded-sm border border-outline-variant bg-surface-container${exiting ? ' is-exiting' : ''}${className ? ` ${className}` : ''}`}
       style={position}
       onKeyDown={onKeyDown}
       onContextMenu={onContextMenu}

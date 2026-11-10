@@ -11,9 +11,9 @@
   align-items: center;
   gap: 4px;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: 2px;
   font-size: 13px;
-  background: rgba(14, 22, 33, 0.45);
+  background: rgba(22, 17, 11, 0.45);
   border: 1px solid transparent;
   color: inherit;
   transition:
@@ -35,7 +35,7 @@
    the burst, so nothing is communicated by movement alone. */
 .message .reaction.chosen {
   border-color: var(--accent);
-  background: rgba(94, 181, 247, 0.18);
+  background: rgba(79, 125, 240, 0.18);
 }
 
 .message .reaction:disabled {
@@ -53,14 +53,14 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  color: rgba(233, 238, 243, 0.55);
+  color: rgba(242, 237, 230, 0.55);
   font-size: 11px;
 }
 
 .ticks {
   display: inline-flex;
   align-items: center;
-  color: rgb(233 238 243 / 55%);
+  color: rgb(242 237 230 / 55%);
 }
 
 .ticks.read {

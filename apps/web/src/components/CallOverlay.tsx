@@ -127,7 +127,9 @@ export function CallOverlay({
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
       <Avatar chatId={view.peerId} photo={chat?.photo ?? null} title={title} kind={chat?.kind ?? 'user'} big />
       <div className="flex flex-col items-center gap-1">
-        <h2 className="text-2xl font-semibold">{title}</h2>
+        <h2 className="text-2xl font-semibold" style={{ fontWeight: 650 }}>
+          {title}
+        </h2>
         <p className="text-[15px] text-muted" role="status">
           {statusOf(view, incoming, seconds)}
         </p>
@@ -143,7 +145,7 @@ export function CallOverlay({
         <div className="flex items-center gap-6">
           <button
             type="button"
-            className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex size-16 items-center justify-center rounded-xs bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onDecline}
             aria-label="Decline The Call"
           >
@@ -151,7 +153,7 @@ export function CallOverlay({
           </button>
           <button
             type="button"
-            className="flex size-16 items-center justify-center rounded-full bg-online text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex size-16 items-center justify-center rounded-xs bg-online text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onAccept}
             aria-label="Answer The Call"
           >
@@ -163,7 +165,7 @@ export function CallOverlay({
       {ringing && !incoming ? (
         <button
           type="button"
-          className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="flex size-16 items-center justify-center rounded-xs bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onHangUp}
           aria-label="Cancel The Call"
         >
@@ -177,7 +179,7 @@ export function CallOverlay({
         <div className="flex items-center gap-6">
           <button
             type="button"
-            className="flex size-16 items-center justify-center rounded-full bg-panel-2 text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex size-16 items-center justify-center rounded-xs bg-panel-2 text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onToggleMute}
             aria-pressed={view.muted}
             aria-label={view.muted ? 'Unmute The Microphone' : 'Mute The Microphone'}
@@ -186,7 +188,7 @@ export function CallOverlay({
           </button>
           <button
             type="button"
-            className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex size-16 items-center justify-center rounded-xs bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onHangUp}
             aria-label="End The Call"
           >
@@ -198,7 +200,7 @@ export function CallOverlay({
       {view.phase === 'ended' ? (
         <button
           type="button"
-          className="rounded-full bg-panel-2 px-5 py-2 text-[15px] text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="rounded-xs bg-panel-2 px-5 py-2 text-[15px] font-semibold text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onDismiss}
         >
           Close

@@ -26,7 +26,7 @@ describe('the web app manifest', () => {
   });
 
   it('paints the chrome in the app palette', () => {
-    expect(MANIFEST.theme_color).toBe('#0e1621');
-    expect(MANIFEST.background_color).toBe('#0e1621');
+    expect(MANIFEST.theme_color).toBe('#16110b');
+    expect(MANIFEST.background_color).toBe('#16110b');
   });
 });

@@ -29,7 +29,7 @@ describe('useDynamicColor', () => {
     document.querySelector('meta[name="theme-color"]')?.remove();
     const meta = document.createElement('meta');
     meta.setAttribute('name', 'theme-color');
-    meta.content = '#0e1621';
+    meta.content = '#16110b';
     // eslint-disable-next-line unicorn/prefer-dom-node-append -- same overload note as confirm-dialog test
     document.head.appendChild(meta);
 

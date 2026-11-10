@@ -160,7 +160,7 @@ export function ThreadHeader({
             is a control of its own. */}
         <button
           type="button"
-          className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="shrink-0 rounded-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={(event) => openProfile(event.currentTarget)}
           aria-label={`View The Profile Of ${chat.title}`}
         >
@@ -169,7 +169,7 @@ export function ThreadHeader({
         <div className="thread-title">
           <button
             type="button"
-            className="truncate text-left font-bold transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="truncate text-left font-semibold transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={(event) => openProfile(event.currentTarget)}
           >
             {chat.title}
@@ -213,7 +213,7 @@ export function ThreadHeader({
           <button
             type="button"
             role="menuitem"
-            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
             onClick={() => {
               setMenuOpen(false);
               openProfile(triggerRef.current);
@@ -226,7 +226,7 @@ export function ThreadHeader({
             <button
               type="button"
               role="menuitem"
-              className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+              className="flex min-h-11 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
               onClick={() => void copyUsername()}
             >
               <Icon name="copy" className="text-muted" />
@@ -237,7 +237,7 @@ export function ThreadHeader({
             <button
               type="button"
               role="menuitem"
-              className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+              className="flex min-h-11 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
               onClick={openInTelegram}
             >
               <Icon name="open-in-new" className="text-muted" />
@@ -253,7 +253,7 @@ export function ThreadHeader({
               <button
                 type="button"
                 role="menuitem"
-                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+                className="flex min-h-11 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
                 onClick={requestArchive}
               >
                 <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />

@@ -124,7 +124,7 @@ export function UserMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="flex w-full min-w-0 items-center gap-2.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-expanded:bg-panel-2"
+        className="flex w-full min-w-0 items-center gap-2.5 rounded-xs px-2 py-1 text-left transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-expanded:bg-panel-2"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         aria-controls={menuId}
@@ -165,7 +165,7 @@ export function UserMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
             onClick={() => {
               setMenuOpen(false);
               onToggleTheme?.();
@@ -190,7 +190,7 @@ export function UserMenu({
                     onSetSeed?.(s.id);
                     setMenuOpen(false);
                   }}
-                  className={`size-6 rounded-full border-2 transition-colors ${seed === s.id ? 'border-primary' : 'border-transparent'}`}
+                  className={`size-6 rounded-xs border-2 transition-colors ${seed === s.id ? 'border-primary' : 'border-transparent'}`}
                   style={{ background: s.hex }}
                 />
               ))}
@@ -209,7 +209,7 @@ export function UserMenu({
                     onSetContrast?.(level);
                     setMenuOpen(false);
                   }}
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${contrast === level ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
+                  className={`rounded-xs px-2 py-0.5 text-xs font-semibold transition-colors ${contrast === level ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
                 >
                   {level === 'standard' ? 'Std' : level === 'medium' ? 'Med' : 'Hi'}
                 </button>
@@ -220,7 +220,7 @@ export function UserMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
             onClick={requestArchive}
           >
             <Icon name="archive" className="text-muted" />
@@ -230,7 +230,7 @@ export function UserMenu({
             <button
               type="button"
               role="menuitem"
-              className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+              className="flex min-h-12 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
               onClick={requestInstall}
             >
               <Icon name="download" className="text-muted" />
@@ -240,7 +240,7 @@ export function UserMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium text-danger transition-colors hover:bg-danger/10 focus-visible:bg-danger/10 focus-visible:outline-none"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xs px-3 text-left font-semibold text-danger transition-colors hover:bg-danger/10 focus-visible:bg-danger/10 focus-visible:outline-none"
             onClick={requestSignOut}
           >
             <Icon name="logout" />

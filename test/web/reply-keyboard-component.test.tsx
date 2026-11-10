@@ -68,8 +68,8 @@ describe('ReplyKeyboard', () => {
     ]);
 
     expect(screen.getByRole('button', { name: 'Go' }).className).toContain('bg-accent');
-    expect(screen.getByRole('button', { name: 'Stop' }).className).toContain('bg-[#8f3030]');
-    expect(screen.getByRole('button', { name: 'Ok' }).className).toContain('bg-[#2f6b4a]');
+    expect(screen.getByRole('button', { name: 'Stop' }).className).toContain('bg-error-container');
+    expect(screen.getByRole('button', { name: 'Ok' }).className).toContain('bg-tertiary-container');
   });
 
   it('disables the kinds that need the native app and says why', () => {

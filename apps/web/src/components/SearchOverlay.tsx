@@ -89,16 +89,18 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
         role="dialog"
         aria-modal="true"
         aria-label="Search messages"
-        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl"
+        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xs border border-outline-variant bg-surface-container"
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold">Search</h2>
+            <h2 className="m-0 text-base font-semibold" style={{ fontWeight: 650 }}>
+              Search
+            </h2>
             <p className="m-0 text-xs text-muted">Messages {scopeLabel}</p>
           </div>
           <button
             type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xs text-muted hover:bg-panel-2 hover:text-fg"
             aria-label="Close Search"
             onClick={onClose}
           >
@@ -142,14 +144,16 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
                   <li key={`${String(message.chatId)}:${String(message.id)}`}>
                     <button
                       type="button"
-                      className="flex w-full flex-col gap-0.5 rounded-lg px-2 py-2 text-left hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
+                      className="flex w-full flex-col gap-0.5 rounded-xs px-2 py-2 text-left hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
                       disabled={resultChat === null}
                       onClick={() => {
                         if (resultChat !== null) onOpenResult(message, resultChat);
                       }}
                     >
                       <span className="flex items-baseline gap-2">
-                        <span className="truncate font-semibold">{title}</span>
+                        <span className="truncate font-semibold" style={{ fontWeight: 650 }}>
+                          {title}
+                        </span>
                         <span className="ml-auto shrink-0 text-xs text-muted">{formatListStamp(message.date)}</span>
                       </span>
                       <span className="line-clamp-2 text-sm text-muted">
@@ -164,7 +168,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
           {hasMore ? (
             <button
               type="button"
-              className="mt-2 w-full rounded-lg px-2 py-2 text-sm font-medium text-accent hover:bg-panel-2 disabled:cursor-default disabled:opacity-60"
+              className="mt-2 w-full rounded-xs px-2 py-2 text-sm font-semibold text-accent hover:bg-panel-2 disabled:cursor-default disabled:opacity-60"
               disabled={loadingMore}
               onClick={loadMore}
             >
@@ -200,7 +204,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     <>
       {highlightMatches(text, query).map((segment, index) =>
         segment.match ? (
-          <mark key={`${String(index)}:${segment.text}`} className="rounded-sm bg-accent/25 px-0.5 text-inherit">
+          <mark key={`${String(index)}:${segment.text}`} className="rounded-xs bg-accent/25 px-0.5 text-inherit">
             {segment.text}
           </mark>
         ) : (

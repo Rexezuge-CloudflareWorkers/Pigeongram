@@ -53,7 +53,7 @@ export function ThreadFooter({
         <span>You are previewing this chat. Join it to send messages.</span>
         <button
           type="button"
-          className="shrink-0 rounded-full bg-accent px-4 py-2 font-semibold text-[#0b1a1a] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
+          className="shrink-0 rounded-xs bg-accent px-4 py-2 font-semibold text-[#05070e] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
           onClick={onJoin}
           disabled={preview.joining || preview.requested}
         >

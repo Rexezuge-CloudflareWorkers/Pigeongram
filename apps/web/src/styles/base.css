@@ -1,5 +1,5 @@
 /* Base chrome: theme, controls, login, signed-in shell.
- *
+
  * Canonical tokens live in tokens.css (--md-sys-*). The vars below are
  * aliases at them, so legacy sheets and @theme bridges keep working:
  *   --bg=--surface, --panel=--surface-container, --panel-2=--surface-container-high,
@@ -9,6 +9,9 @@
  *   --danger=--error, --online=--tertiary.
  * Light values come from tokens.css's [data-theme='light'] remap; the light
  * remap here just re-points the same aliases.
+
+ * Redesign: print-office cut-over point. Warm paper, zinc ink, cobalt.
+ * Serif voice, squared shape, 650 headings, 65ch measure.
  */
 :root {
   color-scheme: dark;
@@ -21,29 +24,18 @@
   --text: var(--md-sys-color-on-surface);
   --muted: var(--md-sys-color-on-surface-variant);
   --accent: var(--md-sys-color-primary);
-  --accent-strong: #74c3ff;
-  /* The tint the official clients put behind a selected row and a hovered
-     control: the accent at a whisper of opacity. */
-  --accent-soft: rgb(94 181 247 / 16%);
-  --accent-softer: rgb(94 181 247 / 8%);
+  --accent-strong: #7898f4;
+  --accent-soft: rgb(79 125 240 / 14%);
+  --accent-softer: rgb(79 125 240 / 7%);
   --own: var(--md-sys-color-secondary-container);
   --badge: var(--md-sys-color-primary-container);
   --danger: var(--md-sys-color-error);
   --online: var(--md-sys-color-tertiary);
   --warn: #e0a33c;
-  /* One easing for every press and pop in the app: quick to start, settled
-     without a bounce. Exits use the accelerate variant so leaving reads
-     faster than arriving (~70% of the entrance). */
   --ease-out: cubic-bezier(0.2, 0.8, 0.25, 1);
   --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);
-  /* A stronger variant for entrances that should feel decisive. */
   --ease-out-strong: cubic-bezier(0.16, 1, 0.3, 1);
-  /* A spring with a slight overshoot, for the playfulness Telegram's client
-     gives to reactions, badge pops and viewer settle-backs. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Shared duration tokens so new keyframes stay in one scale. Aligned to
-     the reference: 100 tactile, 150 baseline, 200 small reveals, 250 menus,
-     300 drawers, 400 full-screen, 800 loading. */
   --dur-instant: 100ms;
   --dur-fast: 140ms;
   --dur-base: 220ms;
@@ -56,9 +48,7 @@
   --dur-exit: 150ms;
 }
 
-/* Light theme: aliases re-point at tokens.css's [data-theme='light'] remap.
-   --accent-strong/-soft/-softer and --warn keep their official-client values
-   (no MD3 role is close enough). */
+/* Light theme: aliases re-point at the print cobalt remap. */
 .app[data-theme='light'],
 :root[data-theme='light'] {
   color-scheme: light;
@@ -71,9 +61,9 @@
   --text: var(--md-sys-color-on-surface);
   --muted: var(--md-sys-color-on-surface-variant);
   --accent: var(--md-sys-color-primary);
-  --accent-strong: #1f96d1;
-  --accent-soft: rgb(42 171 238 / 14%);
-  --accent-softer: rgb(42 171 238 / 7%);
+  --accent-strong: #28449c;
+  --accent-soft: rgb(40 68 156 / 12%);
+  --accent-softer: rgb(40 68 156 / 6%);
   --own: var(--md-sys-color-secondary-container);
   --badge: var(--md-sys-color-primary-container);
   --danger: var(--md-sys-color-error);
@@ -85,9 +75,7 @@
   box-sizing: border-box;
 }
 
-/* The one icon treatment: inline flow, so an icon beside text aligns with it
-   instead of sitting on the text baseline as a block (Tailwind's preflight
-   makes every `svg` a block). Sizing and colour belong to the call site. */
+/* Icon flow: inline so icons align with text. */
 .icon {
   display: inline-block;
   flex-shrink: 0;
@@ -104,18 +92,32 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  /* Typescale tokens are the source: body-medium (14px/1.25) is the MD3
-     running text; the composer keeps its own 15px. No webfont — the token
-     stack is system-ui with Roboto as fallback (see tokens.css). */
-  font-family: var(--md-sys-typescale-body-medium-font);
+  /* Print serif: the whole page speaks one voice. */
+  font-family:
+    ui-serif,
+    'Iowan Old Style',
+    Charter,
+    Bitstream Charter,
+    'Sitka Text',
+    Cambria,
+    Georgia,
+    serif;
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: var(--md-sys-typescale-body-medium-weight);
   line-height: var(--md-sys-typescale-body-medium-line-height);
+  text-wrap: pretty;
 }
 
-/* Selection reads as the accent, the way the official clients mark one. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
 ::selection {
-  background: rgb(94 181 247 / 35%);
+  background: rgb(79 125 240 / 32%);
 }
 
 /* No native long-press callout: a right-click is deliberately silent outside
@@ -132,15 +134,13 @@ textarea,
   -webkit-touch-callout: default;
 }
 
-/* Every interactive element shows the same focus ring, so keyboard travel
-   through the app reads as one continuous path. */
+/* Focus ring: 2px accent, offset. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Overlay scrollbars, thin and dark: the official clients hide the track and
-   keep only a quiet thumb. */
+/* Overlay scrollbars: print hides the track, keeps a quiet thumb. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -157,7 +157,7 @@ textarea,
 
 *::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 999px;
+  border-radius: 2px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -179,8 +179,7 @@ button:disabled {
   cursor: default;
 }
 
-/* Non-text inputs only: the text inputs are TextField components now (their
-   own Tailwind classes), which the global rule below must not fight. */
+/* Non-text inputs. Text inputs are TextField components. */
 input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='search']):not([type='text']):not([type='tel']):not(
     [type='password']
   ),
@@ -189,7 +188,7 @@ textarea {
   color: inherit;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 10px 12px;
   outline: none;
   transition:
@@ -202,19 +201,20 @@ input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='s
   ):focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgb(94 181 247 / 22%);
+  box-shadow: 0 0 0 3px rgb(79 125 240 / 22%);
 }
 
+/* Primary buttons: squared, ink-heavy, no gradient, no glow. */
 button[type='submit'] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   background: var(--accent);
-  color: #08121c;
-  border-radius: 10px;
+  color: #05070e;
+  border-radius: 4px;
   padding: 10px 16px;
-  font-weight: 600;
+  font-weight: 650;
   transition:
     filter 140ms var(--ease-out),
     transform 150ms var(--ease-out),
@@ -241,7 +241,7 @@ button[type='submit']:disabled {
 
 button.ghost {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 6px 12px;
   color: var(--muted);
   transition:
@@ -284,8 +284,7 @@ button.ghost:focus-visible {
 
 /* ---- global button system ------------------------------------------------- */
 
-/* Icon-only buttons carry the 44px touch floor from the pseudo-element,
-   never from the input itself. The visual icon stays small. */
+/* Icon-only: 44px touch floor via pseudo-element. */
 button[data-icon-only],
 button[data-tappable] {
   position: relative;
@@ -302,8 +301,6 @@ button[data-tappable]::after {
   pointer-events: none;
 }
 
-/* `touch-action: manipulation` removes the 300ms double-tap-zoom delay so
-   taps answer immediately. It is safe on every control. */
 button,
 a,
 input,
@@ -321,7 +318,7 @@ textarea,
   display: grid;
   place-items: center;
   padding: 24px;
-  background: radial-gradient(60% 45% at 50% 0%, rgb(94 181 247 / 10%), transparent 70%);
+  background: var(--bg);
 }
 
 .card {
@@ -329,20 +326,20 @@ textarea,
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  padding: 28px;
+  padding: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
   text-align: center;
-  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+  box-shadow: none;
   animation: card-in 360ms var(--ease-out);
 }
 
 .card h1 {
   margin: 0;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 @keyframes card-in {
@@ -360,7 +357,7 @@ textarea,
 .qr {
   width: 256px;
   height: 256px;
-  border-radius: 12px;
+  border-radius: 4px;
   background: #fff;
   padding: 8px;
   /* The bitmap is generated at a module-aligned size and then scaled to fit;

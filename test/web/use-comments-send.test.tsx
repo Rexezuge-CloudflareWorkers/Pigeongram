@@ -183,7 +183,7 @@ describe('useCommentsSend', () => {
     const test = harness(null);
 
     await test.result.current.send('Hello');
-    await test.result.current.attach({ files: [], caption: '', grouped: false });
+    await test.result.current.attach({ files: [], caption: '', grouped: false, sendAsFile: false });
 
     expect(outbox.send).not.toHaveBeenCalled();
     expect(outbox.attach).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('useCommentsSend', () => {
 
   it('delivers an attachment through sendUploadBatch and reports progress', async () => {
     const test = harness();
-    const request = { files: [new File(['x'], 'a.png', { type: 'image/png' })], caption: 'pic', grouped: false };
+    const request = { files: [new File(['x'], 'a.png', { type: 'image/png' })], caption: 'pic', grouped: false, sendAsFile: false };
     upload.sendUploadBatch.mockImplementation(async (_destination, _request, onProgress, onComment) => {
       onProgress(0.5);
       onComment(message(3));

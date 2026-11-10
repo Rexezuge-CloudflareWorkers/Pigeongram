@@ -546,8 +546,10 @@ export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voic
 /**
 One streamable variant of a video. `index` is the selector for `/user/file`
 (`quality=<index>`): `0` is the primary document, `1..n` are Telegram's
-alternative qualities in order. The engine resolves it server-side; the client
-never carries file references.
+alternative qualities ordered from the highest resolution down, with
+same-resolution codecs collapsed to one. Telegram's non-video alt documents
+(HLS manifests, storyboards) are not variants. The engine resolves it
+server-side; the client never carries file references.
 */
 export interface VideoQualityDto {
   index: number;

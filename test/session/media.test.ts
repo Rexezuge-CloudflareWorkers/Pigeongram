@@ -110,10 +110,12 @@ function webpageMedia(page: Record<string, unknown> = {}): WebPageMedia {
  * as distinct file sizes on the streams the engine opens. `type`, `raw` and
  * `media` are the raw TL pieces the engine reads; everything else is the
  * file-location surface the rest of the harness (`VIDEO`-shaped media)
- * already speaks.
+ * already speaks. The alt vector also carries the files Telegram sends beside
+ * the qualities (an HLS manifest and storyboards) and a second codec at the
+ * same resolution, so the tests prove both are kept out of the index.
  */
 function videoWithAlternatives(): Record<string, unknown> {
-  const document = (id: number, w: number, h: number, size: number) => ({
+  const document = (id: number, w: number, h: number, size: number, codec?: string) => ({
     _: 'document',
     id: Long.fromNumber(id),
     accessHash: Long.fromNumber(id),
@@ -122,13 +124,31 @@ function videoWithAlternatives(): Record<string, unknown> {
     mimeType: 'video/mp4',
     size,
     dcId: 2,
-    attributes: [{ _: 'documentAttributeVideo', w, h, duration: 12, supportsStreaming: true }],
+    attributes: [{ _: 'documentAttributeVideo', w, h, duration: 12, supportsStreaming: true, videoCodec: codec }],
+  });
+  const nonVideo = (id: number, mimeType: string, size: number, attributes: unknown[]) => ({
+    _: 'document',
+    id: Long.fromNumber(id),
+    accessHash: Long.fromNumber(id),
+    fileReference: new Uint8Array([id % 256]),
+    date: 1_700_000_000,
+    mimeType,
+    size,
+    dcId: 2,
+    attributes,
   });
   const primary = document(1, 1280, 720, 9000);
   const rawMedia = {
     _: 'messageMediaDocument',
     document: primary,
-    altDocuments: [document(2, 1920, 1080, 9500), document(3, 640, 360, 8000)],
+    altDocuments: [
+      nonVideo(4, 'application/x-mpegurl', 50_000, [{ _: 'documentAttributeFilename', fileName: 'video.m3u8' }]),
+      document(2, 1920, 1080, 9500, 'h264'),
+      nonVideo(5, 'application/x-tgstoryboard', 40_000, [{ _: 'documentAttributeImageSize', w: 80, h: 80 }]),
+      document(6, 1920, 1080, 9600, 'h265'),
+      nonVideo(7, 'application/x-tgstoryboardmap', 30_000, [{ _: 'documentAttributeFilename', fileName: 'storyboard.mapping' }]),
+      document(3, 640, 360, 8000, 'h264'),
+    ],
   };
   return {
     ...VIDEO,
@@ -242,7 +262,8 @@ describe('streamMessageMedia', () => {
     const { client, locations } = fakeClient(videoWithAlternatives());
     const download = await streamMessageMedia(client, 1, 2, { quality: 1 });
 
-    // Index 1 is the first alternative (1920x1080, 9500 bytes), not the primary.
+    // Index 1 is the first alternative (1920x1080, 9500 bytes), not the
+    // primary and not the same-resolution HEVC copy listed beside it.
     expect(locations[0]?.fileSize).toBe(9500);
     expect(download).toMatchObject({ mime: 'video/mp4', size: 9500, length: 9500, status: 200 });
   });
@@ -251,13 +272,19 @@ describe('streamMessageMedia', () => {
     const { client, locations } = fakeClient(videoWithAlternatives());
     const download = await streamMessageMedia(client, 1, 2, { quality: 'max' });
 
+    // The HLS manifest and storyboard documents are larger, but not videos.
     expect(locations[0]?.fileSize).toBe(9500);
     expect(download).toMatchObject({ size: 9500, length: 9500, status: 200 });
   });
 
-  it('rejects a quality index past the last variant', async () => {
-    const { client } = fakeClient(videoWithAlternatives());
-    await expect(streamMessageMedia(client, 1, 2, { quality: 7 })).rejects.toThrow('out of range');
+  it('indexes only real video alternatives', async () => {
+    const { client, locations } = fakeClient(videoWithAlternatives());
+    const smallest = await streamMessageMedia(client, 1, 2, { quality: 2 });
+
+    expect(locations[0]?.fileSize).toBe(8000);
+    expect(smallest).toMatchObject({ size: 8000, length: 8000, status: 200 });
+    // Without the non-video alt documents this would select a storyboard.
+    await expect(streamMessageMedia(client, 1, 2, { quality: 3 })).rejects.toThrow('out of range');
   });
 
   it('serves the primary when a quality is requested but no alternative exists', async () => {

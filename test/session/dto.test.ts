@@ -868,6 +868,63 @@ describe('toMessageDto', () => {
     });
   });
 
+  it('drops non-video alt documents and collapses same-resolution qualities', () => {
+    const altDocument = (id: number, w: number, h: number, size: number, codec: string) => ({
+      _: 'document',
+      id: Long.fromNumber(id),
+      accessHash: Long.fromNumber(id * 11),
+      fileReference: new Uint8Array([id]),
+      date: 1_700_000_000,
+      mimeType: 'video/mp4',
+      size,
+      dcId: 2,
+      attributes: [{ _: 'documentAttributeVideo', w, h, duration: 12, supportsStreaming: true, videoCodec: codec }],
+    });
+    const nonVideoDocument = (id: number, mimeType: string, attributes: unknown[]) => ({
+      _: 'document',
+      id: Long.fromNumber(id),
+      accessHash: Long.fromNumber(id * 11),
+      fileReference: new Uint8Array([id]),
+      date: 1_700_000_000,
+      mimeType,
+      size: 512,
+      dcId: 2,
+      attributes,
+    });
+    const video = message({
+      media: {
+        _: 'messageMediaDocument',
+        document: {
+          _: 'document',
+          id: Long.fromNumber(9),
+          accessHash: Long.fromNumber(99),
+          fileReference: new Uint8Array([3]),
+          date: 1_700_000_000,
+          mimeType: 'video/mp4',
+          size: 4096,
+          dcId: 2,
+          attributes: [
+            { _: 'documentAttributeVideo', w: 1280, h: 720, duration: 12, supportsStreaming: true, videoCodec: 'avc1' },
+            { _: 'documentAttributeFilename', fileName: 'clip.mp4' },
+          ],
+        },
+        altDocuments: [
+          nonVideoDocument(10, 'application/x-mpegurl', [{ _: 'documentAttributeFilename', fileName: 'video.m3u8' }]),
+          altDocument(11, 640, 360, 1024, 'h264'),
+          nonVideoDocument(12, 'application/x-tgstoryboard', [{ _: 'documentAttributeImageSize', w: 80, h: 80 }]),
+          altDocument(13, 854, 480, 2048, 'h265'),
+          nonVideoDocument(14, 'application/x-tgstoryboardmap', [{ _: 'documentAttributeFilename', fileName: 'storyboard.mapping' }]),
+          altDocument(15, 854, 480, 1536, 'h264'),
+        ],
+      },
+    });
+    expect(toMessageDto(video).media?.qualities).toEqual([
+      { index: 0, width: 1280, height: 720, size: 4096, codec: 'avc1' },
+      { index: 1, width: 854, height: 480, size: 1536, codec: 'h264' },
+      { index: 2, width: 640, height: 360, size: 1024, codec: 'h264' },
+    ]);
+  });
+
   it('maps a sticker document into the media DTO with its size', () => {
     const sticker = message({
       media: {

@@ -6,8 +6,10 @@ import { variantDocuments } from './video-variants';
  * Streamable variants of a video: the primary document (index 0) followed by
  * Telegram's alternative qualities, when the message carries them. A variant
  * whose attributes cannot be read is skipped rather than taking the message
- * down. The vector is `variantDocuments`' so the index here is the one the
- * streaming engine resolves.
+ * down, and `alt_documents`' non-video HLS/storyboard files are not qualities
+ * at all; `variantDocuments` filters those before indexing. The vector is
+ * `variantDocuments`' so the index here is the one the streaming engine
+ * resolves.
  */
 export function videoQualities(media: {
   raw: tl.RawDocument;

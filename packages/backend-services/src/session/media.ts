@@ -45,9 +45,10 @@ export interface MessageMediaOptions {
   range?: { start: number; end: number | null };
   /**
   Stream variant for a video: `0` is the primary document, `1..n` select
-  Telegram's alternative qualities in order, and `max` resolves to the largest
-  variant. Resolved server-side from the message; the client never carries file
-  references. Ignored for non-video media and thumbnails.
+  Telegram's alternative qualities (highest resolution first, one per
+  resolution), and `max` resolves to the largest variant. Resolved server-side
+  from the message; the client never carries file references. Ignored for
+  non-video media and thumbnails.
   */
   quality?: number | 'max';
 }

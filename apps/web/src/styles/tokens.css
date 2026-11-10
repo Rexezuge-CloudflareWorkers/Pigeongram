@@ -1,22 +1,30 @@
-/* Cut-over point, boneyard. The MD3 Telegram palette is archived here.
+/* MD3 design tokens (--md-sys-*) — canonical token layer.
  *
- * Old seed: Telegram blue (#5eb5f7, #2aabee light) on midnight #0e1621.
- * Resting state below: warm postal-paper surfaces, zinc-ink text, cobalt
- * selection blue. Everything reads from the dark palette first; light
- * remaps below. A different ink later touches this file only.
+ * Seeded from the existing Telegram palette in base.css so the migration is
+ * visually neutral: tonal surfaces map onto `--panel`/`--panel-2`/`--panel-3`,
+ * `primary` onto `--accent`, `surface` onto `--bg`. Legacy vars in base.css
+ * are aliases at these tokens (see the alias table there), so all 18 legacy
+ * sheets and every `bg-panel`-style Tailwind utility keep working.
+ *
+ * Telegram extras: own-message bubble `--own` sits over
+ * `surface-container-high` (its `secondary-container` role); presence
+ * `--online` maps to `tertiary`. A different seed later touches this file only.
+ *
+ * Light/dark: dark is the default `:root` palette (the loader line ships
+ * dark); `[data-theme='light']` remaps it. `useTheme.ts` drives the attribute.
  */
 :root {
   color-scheme: dark;
 
-  /* Color — dark (ink: #000000 on zinc? no — paper: #16110b) */
-  --md-sys-color-primary: #4f7df0;
-  --md-sys-color-on-primary: #05070e;
-  --md-sys-color-primary-container: #31559e;
-  --md-sys-color-on-primary-container: #eef3ff;
-  --md-sys-color-secondary: #a8a29e;
-  --md-sys-color-on-secondary: #16110b;
-  --md-sys-color-secondary-container: #3c3833;
-  --md-sys-color-on-secondary-container: #f2ede6;
+  /* Color — dark (seed: #5eb5f7 / #0e1621) */
+  --md-sys-color-primary: #5eb5f7;
+  --md-sys-color-on-primary: #062639;
+  --md-sys-color-primary-container: #3f8fd0;
+  --md-sys-color-on-primary-container: #e9f4ff;
+  --md-sys-color-secondary: #7f91a4;
+  --md-sys-color-on-secondary: #0e1621;
+  --md-sys-color-secondary-container: #2b5278;
+  --md-sys-color-on-secondary-container: #e9eef3;
   --md-sys-color-tertiary: #4dcd5e;
   --md-sys-color-on-tertiary: #0b2b12;
   --md-sys-color-tertiary-container: #1d5230;
@@ -25,22 +33,22 @@
   --md-sys-color-on-error: #3b0f0c;
   --md-sys-color-error-container: #6e2420;
   --md-sys-color-on-error-container: #ffe1de;
-  --md-sys-color-surface: #16110b;
-  --md-sys-color-on-surface: #f2ede6;
-  --md-sys-color-surface-variant: #24201a;
-  --md-sys-color-on-surface-variant: #a8a29e;
-  --md-sys-color-surface-container-lowest: #120e09;
-  --md-sys-color-surface-container-low: #1a1611;
-  --md-sys-color-surface-container: #24201a;
-  --md-sys-color-surface-container-high: #2f2a23;
-  --md-sys-color-surface-container-highest: #3a352d;
-  --md-sys-color-surface-dim: #16110b;
-  --md-sys-color-surface-bright: #3a352d;
-  --md-sys-color-inverse-surface: #f2ede6;
-  --md-sys-color-inverse-on-surface: #24201a;
-  --md-sys-color-inverse-primary: #31559e;
-  --md-sys-color-outline: #4a443b;
-  --md-sys-color-outline-variant: #38322a;
+  --md-sys-color-surface: #0e1621;
+  --md-sys-color-on-surface: #e9eef3;
+  --md-sys-color-surface-variant: #17212b;
+  --md-sys-color-on-surface-variant: #7f91a4;
+  --md-sys-color-surface-container-lowest: #0b1017;
+  --md-sys-color-surface-container-low: #111a24;
+  --md-sys-color-surface-container: #17212b;
+  --md-sys-color-surface-container-high: #1e2c3a;
+  --md-sys-color-surface-container-highest: #24344a;
+  --md-sys-color-surface-dim: #0e1621;
+  --md-sys-color-surface-bright: #24344a;
+  --md-sys-color-inverse-surface: #e9eef3;
+  --md-sys-color-inverse-on-surface: #17212b;
+  --md-sys-color-inverse-primary: #1f6da8;
+  --md-sys-color-outline: #32455a;
+  --md-sys-color-outline-variant: #25333f;
 
   /* Typography — system stack kept (no webfont this phase); Roboto is in the
      fallback for Android. Sizes follow the in-app text (~15px body). */
@@ -95,16 +103,16 @@
   --md-sys-typescale-label-small-line-height: 1rem;
   --md-sys-typescale-label-small-tracking: 0.03em;
 
-  /* Shape — squared. radius scales are concentric: outer = inner + padding */
+  /* Shape */
   --md-sys-shape-corner-none: 0;
-  --md-sys-shape-corner-extra-small: 2px;
-  --md-sys-shape-corner-small: 4px;
-  --md-sys-shape-corner-medium: 6px;
-  --md-sys-shape-corner-large: 8px;
-  --md-sys-shape-corner-large-increased: 10px;
-  --md-sys-shape-corner-extra-large: 12px;
-  --md-sys-shape-corner-extra-large-increased: 14px;
-  --md-sys-shape-corner-extra-extra-large: 16px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
   --md-sys-shape-corner-full: 9999px;
 
   /* Motion — emphasized family (cubic-bezier(0.2,0,0,1)); the app's legacy
@@ -135,43 +143,43 @@
   --md-sys-motion-duration-standard-accelerate: 200ms;
 }
 
-/* Light remap (newsprint: #f2ede6 / #ffffff) */
+/* Light remap (seed: #2aabee / #ffffff) */
 .app[data-theme='light'],
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --md-sys-color-primary: #28449c;
+  --md-sys-color-primary: #2aabee;
   --md-sys-color-on-primary: #ffffff;
-  --md-sys-color-primary-container: #dde5ff;
-  --md-sys-color-on-primary-container: #10235e;
+  --md-sys-color-primary-container: #d6efff;
+  --md-sys-color-on-primary-container: #00395c;
   --md-sys-color-secondary: #707579;
   --md-sys-color-on-secondary: #ffffff;
-  --md-sys-color-secondary-container: #ede9e2;
-  --md-sys-color-on-secondary-container: #1a1611;
+  --md-sys-color-secondary-container: #effdde;
+  --md-sys-color-on-secondary-container: #222222;
   --md-sys-color-tertiary: #57c785;
   --md-sys-color-on-tertiary: #ffffff;
   --md-sys-color-tertiary-container: #dcf5e0;
   --md-sys-color-on-tertiary-container: #0b2b12;
-  --md-sys-color-error: #b3261e;
+  --md-sys-color-error: #e74c3c;
   --md-sys-color-on-error: #ffffff;
   --md-sys-color-error-container: #fde4e1;
   --md-sys-color-on-error-container: #7a1d13;
-  --md-sys-color-surface: #f2ede6;
-  --md-sys-color-on-surface: #16110b;
-  --md-sys-color-surface-variant: #e2dccf;
-  --md-sys-color-on-surface-variant: #5d574e;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #222222;
+  --md-sys-color-surface-variant: #f0f2f5;
+  --md-sys-color-on-surface-variant: #707579;
   --md-sys-color-surface-container-lowest: #ffffff;
-  --md-sys-color-surface-container-low: #faf7f1;
-  --md-sys-color-surface-container: #f2ede6;
-  --md-sys-color-surface-container-high: #ede9e2;
-  --md-sys-color-surface-container-highest: #e2dccf;
-  --md-sys-color-surface-dim: #e2dccf;
+  --md-sys-color-surface-container-low: #f7f9fb;
+  --md-sys-color-surface-container: #ffffff;
+  --md-sys-color-surface-container-high: #f0f2f5;
+  --md-sys-color-surface-container-highest: #e4e8ee;
+  --md-sys-color-surface-dim: #f0f2f5;
   --md-sys-color-surface-bright: #ffffff;
-  --md-sys-color-inverse-surface: #24201a;
-  --md-sys-color-inverse-on-surface: #f2ede6;
-  --md-sys-color-inverse-primary: #aebfff;
-  --md-sys-color-outline: #c9c0b2;
-  --md-sys-color-outline-variant: #dad2c3;
+  --md-sys-color-inverse-surface: #17212b;
+  --md-sys-color-inverse-on-surface: #e9eef3;
+  --md-sys-color-inverse-primary: #5eb5f7;
+  --md-sys-color-outline: #c9d1db;
+  --md-sys-color-outline-variant: #e0e6ed;
 }
 
 /* Dynamic color — indigo seed (dark) */
@@ -264,15 +272,15 @@
 
 /* Contrast — medium: stronger outlines and secondary text */
 [data-contrast='medium'] {
-  --md-sys-color-outline: #6b6257;
-  --md-sys-color-outline-variant: #4a443b;
-  --md-sys-color-on-surface-variant: #b8b0a4;
+  --md-sys-color-outline: #54697f;
+  --md-sys-color-outline-variant: #3a4f66;
+  --md-sys-color-on-surface-variant: #9db2c7;
 }
 
 /* Contrast — high: maximum emphasis on boundaries and secondary text */
 [data-contrast='high'] {
-  --md-sys-color-outline: #8a7f70;
-  --md-sys-color-outline-variant: #6b6257;
-  --md-sys-color-on-surface-variant: #cfc6b8;
+  --md-sys-color-outline: #7a93ad;
+  --md-sys-color-outline-variant: #54697f;
+  --md-sys-color-on-surface-variant: #c2d4e6;
   --md-sys-color-error: #ff9b94;
 }

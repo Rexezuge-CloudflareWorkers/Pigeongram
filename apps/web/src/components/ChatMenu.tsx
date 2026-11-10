@@ -57,7 +57,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onClose }: ChatMenuProps) {
       <button
         type="button"
         role="menuitem"
-        className="flex min-h-10 w-full items-center gap-3 rounded-xs px-3 text-left text-sm font-semibold transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40"
+        className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40"
         data-chat-menu-item
         disabled={read}
         title={read ? 'Already read' : undefined}

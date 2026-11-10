@@ -8,16 +8,16 @@ import { useEffect, useState } from 'react';
  * `<html>` element as `data-theme`. The `theme-color` meta stays in step with
  * the active seed's dark surface (it is derived, not static).
  *
- * Seeds in `SEEDS`: the print cobalt is the default (the brand, untouched by
- * any other code), the rest are material-tonal neighbours so the switch is a
- * pure token rename.
+ * Seeds in `SEEDS`: the Telegram blue is the default (the brand, untouched
+ * by any other code), the rest are material-tonal neighbours so the switch
+ * is a pure token rename.
  */
 
 export type Seed = 'telegram' | 'indigo' | 'amber' | 'mint' | 'rose';
 export type Contrast = 'standard' | 'medium' | 'high';
 
 export const SEEDS: ReadonlyArray<{ id: Seed; label: string; hex: string }> = [
-  { id: 'telegram', label: 'Print Cobalt', hex: '#4f7df0' },
+  { id: 'telegram', label: 'Telegram Blue', hex: '#2aabee' },
   { id: 'indigo', label: 'Indigo', hex: '#5f6cff' },
   { id: 'amber', label: 'Amber', hex: '#f0a13c' },
   { id: 'mint', label: 'Mint', hex: '#46c887' },
@@ -78,7 +78,7 @@ export function useDynamicColor(): {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!meta) return;
     const surfaces: Record<Seed, string> = {
-      telegram: '#16110b',
+      telegram: '#0e1621',
       indigo: '#101023',
       amber: '#1a1206',
       mint: '#0a1a12',

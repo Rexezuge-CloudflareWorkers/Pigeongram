@@ -1,12 +1,10 @@
 /**
- * The mark, and the rasteriser that draws it.
+ * The app's mark, and the rasteriser that draws it.
  *
- * The mark is the folded paper plane the tab favicon carries: a squared tile
- * with two wings, the upper one in `--accent` (the print cobalt) and the
- * underside in `--badge`, on the `--bg` paper tile. Squared to the print
- * system — the old rounded tile is a boneyard reference only. The geometry
- * below is the favicon's own, in the favicon's 32-unit box, so the icons and
- * the tab mark are the same drawing.
+ * The mark is the folded paper plane the tab favicon carries: a rounded tile
+ * with two wings, the upper one in `--accent` and the underside in `--badge`,
+ * on the `--bg` tile. The geometry below is the favicon's own, in the
+ * favicon's 32-unit box, so the icons and the tab mark are the same drawing.
  *
  * The icons are rasterised here rather than checked in as binaries: the art is
  * then one definition instead of a definition plus four files nobody can edit.
@@ -22,19 +20,19 @@ export interface Rgb {
 export type Point = readonly [number, number];
 
 /**
- * The tile behind the mark: `--bg`.
- */
-export const TILE_COLOR: Rgb = { r: 0x16, g: 0x11, b: 0x0b };
+The tile behind the mark: `--bg`.
+*/
+export const TILE_COLOR: Rgb = { r: 0x0e, g: 0x16, b: 0x21 };
 
 /**
- * The upper wing: `--accent`.
- */
-export const UPPER_WING_COLOR: Rgb = { r: 0x4f, g: 0x7d, b: 0xf0 };
+The upper wing: `--accent`.
+*/
+export const UPPER_WING_COLOR: Rgb = { r: 0x5e, g: 0xb5, b: 0xf7 };
 
 /**
- * The underside of the fold: `--badge`.
- */
-export const LOWER_WING_COLOR: Rgb = { r: 0x31, g: 0x55, b: 0x9e };
+The underside of the fold: `--badge`.
+*/
+export const LOWER_WING_COLOR: Rgb = { r: 0x3f, g: 0x8f, b: 0xd0 };
 
 /**
 The box the mark is drawn in, in the favicon's units.

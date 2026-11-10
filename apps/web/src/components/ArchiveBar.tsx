@@ -27,7 +27,7 @@ export function ArchiveBar({ count, onBack }: ArchiveBarProps) {
         type="button"
         onClick={onBack}
         aria-label="Back To Chats"
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-xs text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Icon name="arrow-left" />
       </button>

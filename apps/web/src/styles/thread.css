@@ -1,9 +1,4 @@
-/* The thread: header, messages, bubbles and their motion.
- *
- * Redesign — print-office: the thread is a column of printed lines. Day
- * dividers read cut-over points, the unread divider is an accent underline,
- * and the surface is flat — print does not float. Max measure 65ch.
- */
+/* The thread: header, messages, bubbles and their motion. */
 
 .thread {
   display: flex;
@@ -24,19 +19,18 @@
   place-items: center;
   width: 88px;
   height: 88px;
-  border-radius: 2px;
+  border-radius: 50%;
   color: var(--accent);
   background: var(--accent-softer);
-  border: 1px solid rgb(79 125 240 / 22%);
-  /* Flat containment: print does not glow. */
-  box-shadow: none;
+  border: 1px solid rgb(94 181 247 / 22%);
+  box-shadow: 0 0 60px rgb(94 181 247 / 12%);
   margin-bottom: 6px;
 }
 
 .thread-empty-title {
   margin: 0;
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .thread-empty-hint {
@@ -49,8 +43,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  /* Ledger rule: a ruled line closes the header. */
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
 
@@ -94,10 +87,12 @@
   flex-direction: column;
   gap: 6px;
   background-color: var(--bg);
-  /* Flat paper. The bluetooth dot-grid and glow are cut; a hairline rule
-     at the top marks the reading column instead. */
-  background-image: none;
-  border-top: 1px solid var(--border);
+  background-image:
+    radial-gradient(rgb(255 255 255 / 3%) 1px, transparent 1.5px),
+    radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%);
+  background-size:
+    26px 26px,
+    100% 100%;
 }
 
 .load-older,
@@ -106,10 +101,10 @@
   color: var(--accent);
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 999px;
   padding: 5px 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   transition:
     color 140ms var(--ease-out),
     background-color 140ms var(--ease-out),
@@ -120,7 +115,7 @@
 .load-older:hover:not(:disabled),
 .load-newer:hover:not(:disabled) {
   background: var(--accent-soft);
-  border-color: rgb(79 125 240 / 40%);
+  border-color: rgb(94 181 247 / 40%);
   transform: scale(0.98);
 }
 
@@ -141,19 +136,16 @@
   opacity: 0.6;
 }
 
-/* Cut-over point: the day rule. Squared, ledger-ruled, flat. */
 .day {
   align-self: center;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 500;
   margin: 12px 0 4px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-bottom: 2px solid var(--border);
   padding: 2px 12px;
-  border-radius: 2px;
+  border-radius: 999px;
   animation: day-in 280ms var(--ease-out);
 }
 
@@ -164,36 +156,31 @@
   }
 }
 
-/* The unread divider: an accent underline, not an accent pill. */
 .unread-divider {
   align-self: center;
   color: var(--accent);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgb(94 181 247 / 30%);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
   padding: 3px 14px;
-  border-radius: 2px;
+  border-radius: 999px;
   margin: 12px 0 2px;
   animation: day-in 280ms var(--ease-out);
 }
 
-/* Print lines: squared, flat, hairline-bordered, 65ch measure. */
 .message {
-  max-width: min(560px, 65ch, 82%);
+  max-width: min(560px, 82%);
   align-self: flex-start;
   background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 14px;
   padding: 8px 12px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   position: relative;
-  /* Flat containment: print does not float. */
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
   transition:
     box-shadow 200ms var(--ease-out),
     transform 220ms var(--ease-out);
@@ -245,7 +232,7 @@
 .message .sender {
   color: var(--accent);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -277,14 +264,11 @@
 .message .text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.5;
 }
 
 .message .text a {
   color: var(--accent);
-  text-decoration: underline;
-  text-decoration-color: rgb(79 125 240 / 45%);
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .message .text a:hover {
@@ -309,8 +293,8 @@
 }
 
 .message .text .spoiler {
-  background: rgba(242, 237, 230, 0.16);
-  border-radius: 2px;
+  background: rgba(233, 238, 243, 0.16);
+  border-radius: 4px;
   cursor: pointer;
   filter: blur(4px);
   transition: filter 120ms ease;
@@ -325,14 +309,14 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.92em;
   background: rgba(0, 0, 0, 0.25);
-  border-radius: 2px;
+  border-radius: 4px;
   padding: 0 4px;
 }
 
 .message .text pre {
   margin: 4px 0;
   padding: 8px 10px;
-  border-radius: 2px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.3);
   overflow-x: auto;
   white-space: pre-wrap;
@@ -347,5 +331,5 @@
   margin: 4px 0;
   padding: 2px 0 2px 10px;
   border-left: 3px solid var(--accent);
-  color: rgba(242, 237, 230, 0.85);
+  color: rgba(233, 238, 243, 0.85);
 }

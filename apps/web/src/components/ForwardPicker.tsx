@@ -85,18 +85,16 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xs border border-outline-variant bg-surface-container"
+        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl"
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold" style={{ fontWeight: 650 }}>
-              Forward to…
-            </h2>
+            <h2 className="m-0 text-base font-semibold">Forward to…</h2>
             <p className="m-0 text-xs text-muted">{messages.length === 1 ? '1 message' : `${String(messages.length)} messages`}</p>
           </div>
           <button
             type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xs text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
             aria-label="Close Forward Picker"
             disabled={busy}
             onClick={onClose}
@@ -126,15 +124,13 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose }: Forward
             <li key={dialog.chat.id}>
               <button
                 type="button"
-                className="flex w-full items-center gap-3 rounded-xs px-2 py-2 text-left hover:bg-panel-2 disabled:cursor-default disabled:opacity-60"
+                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-panel-2 disabled:cursor-default disabled:opacity-60"
                 disabled={busy}
                 onClick={() => void choose(dialog)}
               >
                 <Avatar chatId={dialog.chat.id} photo={dialog.chat.photo} title={dialog.chat.title} kind={dialog.chat.kind} small />
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-semibold" style={{ fontWeight: 650 }}>
-                    {dialog.chat.title}
-                  </span>
+                  <span className="truncate font-semibold">{dialog.chat.title}</span>
                   <span className="truncate text-xs text-muted">
                     {dialog.chat.kind}
                     {dialog.chat.username ? ` · @${dialog.chat.username}` : ''}

@@ -126,13 +126,13 @@ export function Dialog({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`dialog-panel w-full border border-outline-variant bg-surface-container-high ${className}`}
+        className={`dialog-panel w-full border border-outline-variant bg-surface-container-high shadow-2xl ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
         <div className="p-6">
-          <h2 id={titleId} className="text-xl font-semibold" style={{ fontWeight: 650 }}>
+          <h2 id={titleId} className="text-xl font-semibold">
             {title}
           </h2>
           <div className="mt-3 text-[15px] text-on-surface-variant">{children}</div>

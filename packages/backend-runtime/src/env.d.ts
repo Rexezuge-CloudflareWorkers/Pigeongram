@@ -50,9 +50,18 @@ interface CloudflareEnv {
    */
   PAGES_ORIGIN?: string;
   /**
-   Rate limit per minute per client for `/user/*`.
+   Rate limit per minute per client for the account plane of `/user/*` (the
+   RPC, login, state and upload routes). The media routes are metered by
+   `MEDIA_RATE_LIMIT_PER_MINUTE` instead.
    */
   RATE_LIMIT_PER_MINUTE?: string;
+  /**
+   Rate limit per minute per client for the media plane of `/user/*`
+   (`GET /user/file` and `GET /user/avatar`). Kept separate from
+   `RATE_LIMIT_PER_MINUTE` because media requests are one-per-avatar and
+   one-per-byte-range, so a single budget over both throttles normal browsing.
+   */
+  MEDIA_RATE_LIMIT_PER_MINUTE?: string;
 }
 
 /**

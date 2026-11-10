@@ -49,6 +49,21 @@ The worker's CSRF check trusts the forwarded request's own origin, so a normal P
 no extra variable. `PAGES_ORIGIN` (and the comma-separated `ALLOWED_ORIGINS`) exist for a proxy that rewrites the request
 URL, such as a preview deployment on a second hostname.
 
+`/user/*` carries two independent per-minute budgets, keyed per client. `RATE_LIMIT_PER_MINUTE` (default 120) covers the
+account plane — RPC, login, state, uploads and the socket upgrade. `MEDIA_RATE_LIMIT_PER_MINUTE` (default 600) covers
+`GET /user/file` and `GET /user/avatar`; those are one-per-avatar and one-per-byte-range, so a single budget over both
+would answer normal browsing with `429 RateLimited`. Both are optional and can be supplied through
+`WRANGLER_VARS_PATCH_JSON`:
+
+```json
+{
+  "TEAM_DOMAIN": "https://<team>.cloudflareaccess.com",
+  "POLICY_AUD": "<application-aud-tag>",
+  "RATE_LIMIT_PER_MINUTE": "120",
+  "MEDIA_RATE_LIMIT_PER_MINUTE": "600"
+}
+```
+
 Continuous Deployment provisions the runtime secrets on every Worker deploy. Set repository secrets
 `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` to override the defaults; otherwise CD uses `2496` and
 `8da85b0d5bfe62527e5b244c209159c3`.

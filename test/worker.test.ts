@@ -243,7 +243,7 @@ describe('worker entry', () => {
     expect(response.status).toBe(503);
   });
 
-  it('throttles /user/* beyond the configured budget', async () => {
+  it('throttles the account plane beyond the configured budget', async () => {
     const token = await accessToken();
     const env = { ...configured(), RATE_LIMIT_PER_MINUTE: '1' };
     const init = {
@@ -257,6 +257,57 @@ describe('worker entry', () => {
     expect(second.status).toBe(429);
     expect(second.headers.get('retry-after')).toBeTruthy();
     await expect(second.json()).resolves.toMatchObject({ Exception: { Type: 'RateLimited' } });
+  });
+
+  it('does not throttle media on the account plane budget', async () => {
+    const token = await accessToken();
+    const env = { ...configured(), RATE_LIMIT_PER_MINUTE: '1' };
+    const init = {
+      headers: { 'cf-access-jwt-assertion': token, 'cf-connecting-ip': '203.0.113.10' },
+    } satisfies RequestInit;
+
+    expect((await call('/user/state', env, init)).status).toBe(503);
+    expect((await call('/user/state', env, init)).status).toBe(429);
+
+    // The media routes draw on their own bucket: a spent account budget must
+    // not turn an avatar or a thumbnail into a 429.
+    for (const path of ['/user/file?chatId=1&messageId=1&thumb=1', '/user/avatar?chatId=1&size=small&v=1']) {
+      expect((await call(path, env, init)).status).toBe(503);
+    }
+  });
+
+  it('does not spend the account budget on media requests', async () => {
+    const token = await accessToken();
+    const env = { ...configured(), RATE_LIMIT_PER_MINUTE: '1' };
+    const init = {
+      headers: { 'cf-access-jwt-assertion': token, 'cf-connecting-ip': '203.0.113.11' },
+    } satisfies RequestInit;
+
+    for (const path of [
+      '/user/file?chatId=1&messageId=1',
+      '/user/avatar?chatId=1&size=small&v=1',
+      '/user/file?chatId=1&messageId=2&thumb=1',
+    ]) {
+      expect((await call(path, env, init)).status).toBe(503);
+    }
+
+    expect((await call('/user/state', env, init)).status).toBe(503);
+    expect((await call('/user/state', env, init)).status).toBe(429);
+  });
+
+  it('throttles the media plane beyond the configured media budget', async () => {
+    const token = await accessToken();
+    const env = { ...configured(), MEDIA_RATE_LIMIT_PER_MINUTE: '1' };
+    const init = {
+      headers: { 'cf-access-jwt-assertion': token, 'cf-connecting-ip': '203.0.113.12' },
+    } satisfies RequestInit;
+
+    expect((await call('/user/avatar?chatId=1&size=small&v=1', env, init)).status).toBe(503);
+
+    const throttled = await call('/user/file?chatId=1&messageId=1&thumb=1', env, init);
+    expect(throttled.status).toBe(429);
+    expect(throttled.headers.get('retry-after')).toBeTruthy();
+    await expect(throttled.json()).resolves.toMatchObject({ Exception: { Type: 'RateLimited' } });
   });
 
   it('honors the local-development bypass outside production', async () => {

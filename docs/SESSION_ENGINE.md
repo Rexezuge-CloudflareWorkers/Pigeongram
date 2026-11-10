@@ -151,6 +151,11 @@ engine is a byte bridge and never transcodes.
 the bytes in `engine_avatars`, keyed by the version token **it** resolved (never the one the caller sent), so a repeat
 request is a local read instead of another `upload.getFile` round trip.
 
+The two media routes are also the reason `/user/*` carries **two** per-minute budgets: `GET /user/file` and
+`GET /user/avatar` draw on `MEDIA_RATE_LIMIT_PER_MINUTE` (default 600), while every other route draws on
+`RATE_LIMIT_PER_MINUTE` (default 120). A single budget over both counted one avatar and one byte-range as a request,
+so a chat-list paint followed by a media-heavy thread hit `429 RateLimited` during ordinary browsing.
+
 `POST /user/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
 string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
 `content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), optional

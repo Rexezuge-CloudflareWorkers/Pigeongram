@@ -13,15 +13,15 @@ listed with its kind and size, more files can be appended, individual ones can
 be removed, and multi-file selections can go out as one Telegram album.
 
 The composer owns the open state and hands over the files the picker returned;
-`onSend` receives the reviewed selection and the group choice. Files beyond the
-album limit are dropped with an inline notice, so the user can send them in a
-second batch.
+`onSend` receives the reviewed selection, the group choice and whether the
+files should keep their original bytes. Files beyond the album limit are
+dropped with an inline notice, so the user can send them in a second batch.
 */
 
 interface UploadDialogProps {
   initialFiles: readonly File[];
   onCancel: () => void;
-  onSend: (files: File[], grouped: boolean) => void;
+  onSend: (files: File[], grouped: boolean, sendAsFile: boolean) => void;
   /**
   Whether the dialog is animating out; the parent keeps it mounted for the
   exit beat.
@@ -37,6 +37,10 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
   // Albums are the better default for a multi-file selection, so the checkbox
   // starts checked; it is rendered disabled whenever the selection cannot group.
   const [grouped, setGrouped] = useState(true);
+  // Telegram compresses photos and videos unless the sender asks otherwise, so
+  // the untouched-original option starts off. Turning it on sends every file as
+  // a document and makes any selection groupable.
+  const [sendAsFile, setSendAsFile] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -44,7 +48,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
   const titleId = useId();
   const hintId = useId();
 
-  const groupable = canGroupUploads(files);
+  const groupable = canGroupUploads(files, sendAsFile);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -101,7 +105,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
 
   const send = (): void => {
     if (files.length === 0) return;
-    onSend(files, grouped && groupable);
+    onSend(files, grouped && groupable, sendAsFile);
   };
 
   const sendLabel =
@@ -151,6 +155,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
                 key={`${file.name}:${file.size}:${file.lastModified}:${index}`}
                 file={file}
                 index={index}
+                sendAsFile={sendAsFile}
                 onRemove={() => removeFile(index)}
               />
             ))}
@@ -195,7 +200,20 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
               />
               <span>
                 <span className="block font-medium">Group Items</span>
-                <span className="block text-sm text-muted">{groupHint(files.length, groupable)}</span>
+                <span className="block text-sm text-muted">{groupHint(files.length, groupable, sendAsFile)}</span>
+              </span>
+            </label>
+          </div>
+
+          <div className="mt-2 pb-1">
+            <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
+              <Checkbox className="mt-1" checked={sendAsFile} onChange={(event) => setSendAsFile(event.target.checked)} />
+              <span>
+                <span className="block font-medium">Send As File</span>
+                <span className="block text-sm text-muted">
+                  Uploads the originals untouched: no re-encoding and no Telegram compression. Images arrive as files instead of photo
+                  bubbles.
+                </span>
               </span>
             </label>
           </div>
@@ -235,11 +253,12 @@ const KIND_ICONS: Record<UploadKind, IconName> = {
 interface UploadPreviewProps {
   file: File;
   index: number;
+  sendAsFile: boolean;
   onRemove: () => void;
 }
 
-function UploadPreview({ file, index, onRemove }: UploadPreviewProps) {
-  const kind = mediaKind(file);
+function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps) {
+  const kind = sendAsFile ? 'document' : mediaKind(file);
   // The object URL is derived, not stored: a photo preview is a blob URL the
   // browser owns, and the effect below hands it back when the row unmounts.
   const previewUrl = useMemo(() => {
@@ -292,8 +311,9 @@ function overflowNotice(dropped: number): string {
   return `Only ${MAX_UPLOAD_ITEMS} files can be sent at once; ${dropped === 1 ? 'one file was' : `${dropped} files were`} left out. Send the rest in another batch.`;
 }
 
-function groupHint(count: number, groupable: boolean): string {
+function groupHint(count: number, groupable: boolean, sendAsFile: boolean): string {
   if (count < 2) return 'Select two or more files to send them as an album.';
+  if (sendAsFile) return 'Every file goes as a document, so any selection can share one album.';
   if (groupable) return 'Photos, videos and GIFs go together; documents group with documents.';
   return 'These files cannot share an album. They will be sent as separate messages.';
 }

@@ -53,6 +53,17 @@ describe('canGroupUploads', () => {
     expect(canGroupUploads([file('a.pdf', 'application/pdf'), file('b.png', 'image/png')])).toBe(false);
     expect(canGroupUploads(Array.from({ length: 11 }, (_, index) => file(`${index}.pdf`, 'application/pdf')))).toBe(false);
   });
+
+  it('groups any selection when every item is sent as a file', () => {
+    expect(canGroupUploads([file('a.pdf', 'application/pdf'), file('b.png', 'image/png')], true)).toBe(true);
+    // The album limit still applies.
+    expect(
+      canGroupUploads(
+        Array.from({ length: 11 }, (_, index) => file(`${index}.png`, 'image/png')),
+        true,
+      ),
+    ).toBe(false);
+  });
 });
 
 describe('sendUploadBatch', () => {
@@ -71,6 +82,7 @@ describe('sendUploadBatch', () => {
         caption: 'Album',
         replyTo: 7,
         grouped: true,
+        sendAsFile: false,
       },
       progress,
       (message) => sent.push(message.id),
@@ -104,6 +116,7 @@ describe('sendUploadBatch', () => {
         files: [file('a.txt', 'text/plain'), file('b.txt', 'text/plain')],
         caption: 'First only',
         grouped: false,
+        sendAsFile: false,
       },
       progress,
       (message) => sent.push(message.id),
@@ -126,6 +139,21 @@ describe('prepareUpload', () => {
 
     const text = file('a.txt', 'text/plain');
     await expect(prepareUpload(text)).resolves.toMatchObject({ kind: 'document', body: text, fileName: 'a.txt', mime: 'text/plain' });
+  });
+
+  it('keeps a non-JPEG image byte-for-byte when send-as-file is on', async () => {
+    const webp = file('logo.webp', 'image/webp', 'original-webp');
+    const converted = vi.fn();
+    vi.stubGlobal('createImageBitmap', converted);
+
+    await expect(prepareUpload(webp, true)).resolves.toMatchObject({
+      kind: 'document',
+      body: webp,
+      fileName: 'logo.webp',
+      mime: 'image/webp',
+    });
+    // The JPEG conversion path is skipped entirely.
+    expect(converted).not.toHaveBeenCalled();
   });
 
   it('names an unnamed file and gives an unknown type a generic MIME', async () => {
@@ -217,7 +245,7 @@ describe('prepareUpload', () => {
 describe('sendUploadBatch corners', () => {
   it('does nothing for an empty selection', async () => {
     const sent = vi.fn();
-    await sendUploadBatch({ chatId: 10 }, { files: [], caption: '', grouped: true }, () => {}, sent);
+    await sendUploadBatch({ chatId: 10 }, { files: [], caption: '', grouped: true, sendAsFile: false }, () => {}, sent);
     expect(api.uploadFile).not.toHaveBeenCalled();
     expect(api.uploadGroup).not.toHaveBeenCalled();
     expect(sent).not.toHaveBeenCalled();
@@ -230,7 +258,7 @@ describe('sendUploadBatch corners', () => {
 
     const pending = sendUploadBatch(
       { chatId: 10 },
-      { files: [file('clip.mp4', 'video/mp4'), file('note.txt', 'text/plain')], caption: '', grouped: true },
+      { files: [file('clip.mp4', 'video/mp4'), file('note.txt', 'text/plain')], caption: '', grouped: true, sendAsFile: false },
       () => {},
       () => {},
     );
@@ -247,7 +275,7 @@ describe('sendUploadBatch corners', () => {
 
     await sendUploadBatch(
       { chatId: 10 },
-      { files, caption: '', grouped: true },
+      { files, caption: '', grouped: true, sendAsFile: false },
       () => {},
       () => {},
     );
@@ -261,13 +289,35 @@ describe('sendUploadBatch corners', () => {
 
     await sendUploadBatch(
       { chatId: 10 },
-      { files: [file('a.txt', 'text/plain')], caption: 'Note', grouped: false },
+      { files: [file('a.txt', 'text/plain')], caption: 'Note', grouped: false, sendAsFile: false },
       () => {},
       () => {},
       ['12345'],
     );
 
     expect(api.uploadFile.mock.calls[0]?.[0]).toMatchObject({ caption: 'Note', randomId: '12345' });
+  });
+
+  it('sends originals untouched as documents when send-as-file is on', async () => {
+    api.uploadGroup.mockResolvedValue({ messages: [{ id: 1 }, { id: 2 }] });
+    const webp = file('logo.webp', 'image/webp', 'webp-bytes');
+    const png = file('shot.png', 'image/png', 'png-bytes');
+
+    await sendUploadBatch(
+      { chatId: 10 },
+      { files: [webp, png], caption: '', grouped: true, sendAsFile: true },
+      () => {},
+      () => {},
+    );
+
+    expect(api.uploadFile).not.toHaveBeenCalled();
+    const [input, body] = api.uploadGroup.mock.calls[0] as [UploadGroupInput, Blob];
+    // The WebP keeps its own MIME and name instead of being converted to JPEG.
+    expect(input.items).toEqual([
+      { kind: 'document', fileName: 'logo.webp', mime: 'image/webp', size: 10 },
+      { kind: 'document', fileName: 'shot.png', mime: 'image/png', size: 9 },
+    ]);
+    await expect(body.text()).resolves.toBe('webp-bytespng-bytes');
   });
 });
 

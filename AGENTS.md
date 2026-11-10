@@ -337,7 +337,10 @@ protocol,registry}`) and the mtcute integration
   streams use `highWaterMark: 0` on purpose — with the default of 1, Web Streams pulls every part at construction, so
   the later files would claim the shared reader before the earlier ones. The composer's upload dialog
   (`pages/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
-  (checked by default when the selection can group) and sends ungrouped files one by one. Its thumbnail column only
+  (checked by default when the selection can group) and sends ungrouped files one by one. It also offers "Send As
+  File" (off by default, Telegram's own compression default): every item then goes as a `document` with its original
+  bytes, name and MIME — no canvas JPEG conversion, no Telegram photo/video transcode — which is the only way an
+  original survives, since a photo message has no original on Telegram's side. Its thumbnail column only
   previews raster images (`previewMime` in `pages/src/upload.ts`, which keeps SVG out), and the preview blob is built
   with that MIME type, so the object URL behind it can never be read as a document. A paste into the composer opens
   the same review step with the pasted files as the selection (`pages/src/clipboard.ts` reads the clipboard): the

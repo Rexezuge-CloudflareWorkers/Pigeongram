@@ -117,7 +117,7 @@ export function Composer({
     sendText(draft);
   };
 
-  const attach = (files: File[], grouped: boolean): void => {
+  const attach = (files: File[], grouped: boolean, sendAsFile: boolean): void => {
     if (files.length === 0) return;
     setPendingFiles(null);
     // Whatever is in the box rides along as the caption, Telegram-style; the
@@ -127,7 +127,7 @@ export function Composer({
     setMenuOpen(false);
     setDraft('');
     textareaRef.current?.focus();
-    void Promise.resolve(onAttach({ files, caption, replyTo, grouped })).catch(() => {});
+    void Promise.resolve(onAttach({ files, caption, replyTo, grouped, sendAsFile })).catch(() => {});
   };
 
   const changeDraft = (value: string): void => {

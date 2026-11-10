@@ -162,7 +162,9 @@ buffers in the isolate, and `UPLOAD_MAX_BYTES` (wrangler var, default 100 MB) re
 413 before Telegram is touched. The query is parsed once more at the edge with the same parser, so a rejected
 upload never reaches the DO at all — workerd reads a request stream after its response when a Durable Object
 answers without consuming the body (cloudflare/workerd#918). The kind is never guessed server-side: the SPA converts non-JPEG
-canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else.
+canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else. The
+dialog's "Send As File" option skips that preparation entirely and sends every item as `kind=document` with its
+original bytes, name and MIME — the path that keeps a WebP a WebP instead of the JPEG a photo message would become.
 
 `POST /user/upload-group` sends an album. The body is the 2–10 files **concatenated in manifest order**, and the
 `manifest` query parameter carries the per-file metadata as base64url-encoded JSON (`kind`, `size`, `fileName`, `mime`,

@@ -70,6 +70,7 @@ describe('Composer paste uploads', () => {
         caption: 'Look at this',
         replyTo: undefined,
         grouped: false,
+        sendAsFile: false,
       });
     });
   });

@@ -29,13 +29,19 @@ interface PreparedUpload {
 
 /**
  * What the composer's upload dialog hands to a controller: the reviewed files,
- * the caption that was in the box, the reply target and the group choice.
+ * the caption that was in the box, the reply target, the group choice and
+ * whether the files should keep their original bytes.
  */
 export interface UploadRequest {
   files: File[];
   caption: string;
   replyTo?: number;
   grouped: boolean;
+  /**
+   * Send every file untouched as a Telegram document instead of letting the
+   * photo/video path compress it. Off by default, matching Telegram.
+   */
+  sendAsFile: boolean;
 }
 
 /**
@@ -72,9 +78,13 @@ export function previewMime(file: File): string | null {
  * Photos, videos and GIFs mix; documents only group with documents. Telegram
  * rejects other combinations, so the dialog disables the option instead of
  * letting the upload fail.
+ *
+ * A send-as-file selection turns every item into a document, so any mix groups
+ * there.
  */
-export function canGroupUploads(files: readonly File[]): boolean {
-  return files.length >= 2 && files.length <= MAX_UPLOAD_ITEMS && groupableKinds(files.map(mediaKind));
+export function canGroupUploads(files: readonly File[], sendAsFile = false): boolean {
+  if (files.length < 2 || files.length > MAX_UPLOAD_ITEMS) return false;
+  return sendAsFile || groupableKinds(files.map(mediaKind));
 }
 
 /**
@@ -97,7 +107,7 @@ export async function sendUploadBatch(
 ): Promise<void> {
   const prepared: PreparedUpload[] = [];
   for (const file of request.files) {
-    prepared.push(await prepareUpload(file));
+    prepared.push(await prepareUpload(file, request.sendAsFile));
   }
   if (prepared.length === 0) return;
 
@@ -155,12 +165,18 @@ function groupableKinds(kinds: readonly UploadKind[]): boolean {
  * the canvas can decode are converted to JPEG (`inputMediaUploadedPhoto`
  * expects photo formats), everything undecodable falls back to a document.
  * Videos gain their intrinsic size/duration when the browser can read it.
+ *
+ * `sendAsFile` skips all of that and sends the bytes exactly as picked: the
+ * kind is always `document`, so Telegram stores the original file instead of
+ * transcoding it into a photo or video (the "Send As File" dialog option).
  */
-export async function prepareUpload(file: File): Promise<PreparedUpload> {
+export async function prepareUpload(file: File, sendAsFile = false): Promise<PreparedUpload> {
   let kind = mediaKind(file);
   let body: Blob = file;
   let fileName = file.name || 'file';
   let mime = file.type || 'application/octet-stream';
+
+  if (sendAsFile) return { kind: 'document', body, fileName, mime };
 
   if (kind === 'photo' && mime !== 'image/jpeg') {
     const converted = await convertToJpeg(file);

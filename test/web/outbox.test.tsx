@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PendingMessage } from '../../apps/web/src/outbox';
-import { pendingAsMessage, withPendingDialogs } from '../../apps/web/src/outbox';
+import { pendingAsMessage, pendingMedia, withPendingDialogs } from '../../apps/web/src/outbox';
 import type { PendingBody } from '../../apps/web/src/useOutbox';
 import { useOutbox } from '../../apps/web/src/useOutbox';
 import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../apps/web/src/types';
@@ -230,6 +230,13 @@ describe('the outbox', () => {
     expect(onSettled).not.toHaveBeenCalled();
   });
 
+  it('describes a send-as-file selection as a document while it uploads', () => {
+    const image = new File([new Uint8Array([1])], 'logo.webp', { type: 'image/webp' });
+
+    expect(pendingMedia(image)).toMatchObject({ kind: 'photo', mime: 'image/webp', fileName: 'logo.webp' });
+    expect(pendingMedia(image, true)).toMatchObject({ kind: 'document', mime: 'image/webp', fileName: 'logo.webp' });
+  });
+
   it('shows a file selection at once and hands it to the delivery', async () => {
     const onSettled = vi.fn();
     let release: ((messages: MessageDto[]) => void) | undefined;
@@ -246,7 +253,7 @@ describe('the outbox', () => {
       result.current.attach({
         chatId: 2,
         scope: '2',
-        request: { files: [file], caption: 'the note', grouped: false },
+        request: { files: [file], caption: 'the note', grouped: false, sendAsFile: false },
         deliver,
         onSettled,
       });
@@ -289,7 +296,7 @@ describe('the outbox', () => {
       result.current.attach({
         chatId: 2,
         scope: '2',
-        request: { files, caption: '', grouped: true },
+        request: { files, caption: '', grouped: true, sendAsFile: false },
         deliver,
         onSettled: vi.fn(),
       });

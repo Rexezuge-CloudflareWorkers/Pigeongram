@@ -95,6 +95,7 @@ describe('Composer upload dialog', () => {
         caption: 'Summer',
         replyTo: undefined,
         grouped: true,
+        sendAsFile: false,
       });
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -183,6 +184,26 @@ describe('Composer upload dialog', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add Files' }));
 
     expect(click).toHaveBeenCalledOnce();
+  });
+
+  it('sends the selection untouched when Send As File is checked', async () => {
+    const { onAttach, container } = renderComposer();
+    const first = file('a.png', 'image/png');
+    const second = file('b.pdf');
+    fireEvent.change(picker(container), { target: { files: [first, second] } });
+
+    const dialog = screen.getByRole('dialog');
+    const sendAsFile = within(dialog).getByRole('checkbox', { name: /Send As File/ }) as HTMLInputElement;
+    expect(sendAsFile.checked).toBe(false);
+    fireEvent.click(sendAsFile);
+
+    // A mixed selection groups once every item is a document.
+    expect((within(dialog).getByRole('checkbox', { name: /Group Items/ }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send Album (2)' }));
+
+    await waitFor(() => {
+      expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({ files: [first, second], grouped: true, sendAsFile: true }));
+    });
   });
 
   it('sends the files separately when Group Items is unchecked', async () => {

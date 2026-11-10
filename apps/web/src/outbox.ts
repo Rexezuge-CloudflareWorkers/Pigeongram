@@ -94,11 +94,12 @@ export function randomMessageId(): string {
 
 /**
  * The media descriptor a local file shows before Telegram's prepared media
- * arrives. `prepareUpload` may turn the kind into `document` later.
+ * arrives. `prepareUpload` may turn the kind into `document` later, and a
+ * send-as-file selection is a document from the start.
  */
-export function pendingMedia(file: File): MessageMediaDto {
+export function pendingMedia(file: File, sendAsFile = false): MessageMediaDto {
   return {
-    kind: mediaKind(file),
+    kind: sendAsFile ? 'document' : mediaKind(file),
     fileName: file.name || 'file',
     mime: file.type || 'application/octet-stream',
     size: file.size,

@@ -4,6 +4,7 @@ import type { MeDto } from '../types';
 import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
+import { Presence } from './Presence';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
@@ -249,18 +250,20 @@ export function UserMenu({
         </AnchoredMenu>
       ) : null}
 
-      {confirmOpen ? (
-        <ConfirmDialog
-          title="Sign Out of Telegram?"
-          message="This ends the session on this client. You'll need to sign in again to use the app."
-          confirmLabel="Sign Out"
-          busy={signingOut}
-          busyLabel="Signing out…"
-          onConfirm={() => void confirmSignOut()}
-          onCancel={() => setConfirmOpen(false)}
-          returnFocus={focusTrigger}
-        />
-      ) : null}
+      <Presence visible={confirmOpen}>
+        {confirmOpen ? (
+          <ConfirmDialog
+            title="Sign Out of Telegram?"
+            message="This ends the session on this client. You'll need to sign in again to use the app."
+            confirmLabel="Sign Out"
+            busy={signingOut}
+            busyLabel="Signing out…"
+            onConfirm={() => void confirmSignOut()}
+            onCancel={() => setConfirmOpen(false)}
+            returnFocus={focusTrigger}
+          />
+        ) : null}
+      </Presence>
     </>
   );
 }

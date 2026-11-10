@@ -10,13 +10,13 @@ import type { MessageDto, MessageReplyKeyboardButtonDto, PeerId } from '../types
 import type { UploadRequest } from '../upload';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageRow } from './MessageRow';
+import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
 import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
 import { ThreadPlaceholder } from './ThreadPlaceholder';
-import { ThreadSkeleton } from './ThreadSkeleton';
 
 /**
  * How long a read watermark is held back before it is reported: scrolling
@@ -318,7 +318,7 @@ export function ThreadView({
               {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Messages'}
             </button>
           ) : null}
-          {loading && messages.length === 0 ? <ThreadSkeleton /> : null}
+          {loading && messages.length === 0 ? <MessageSkeleton label="Loading messages…" /> : null}
           {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
           {groups.map((group, index) => {
             const anchor = group[0];

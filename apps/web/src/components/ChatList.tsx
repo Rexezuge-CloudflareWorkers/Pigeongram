@@ -83,7 +83,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
         </span>
         <ul className="chat-skeleton" aria-hidden="true">
           {Array.from({ length: 7 }, (_, index) => (
-            <li key={index} className="chat-skeleton-row">
+            <li key={index} className="chat-skeleton-row row-enter" style={{ ['--row-index' as string]: Math.min(index, 8) }}>
               <span className="skeleton skeleton-circle" />
               <span className="skeleton-stack">
                 <span className="skeleton skeleton-line short" />
@@ -116,7 +116,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
           const last = dialog.lastMessage;
           const isSwiped = swipedId === dialog.chat.id;
           return (
-            <li key={dialog.chat.id} className="chat-row-enter" style={{ ['--row-index' as string]: index }}>
+            <li key={dialog.chat.id} className="row-enter" style={{ ['--row-index' as string]: Math.min(index, 8) }}>
               <div className="chat-row">
                 {isSwiped && dialog.unread > 0 ? (
                   <div className="chat-swipe-actions">

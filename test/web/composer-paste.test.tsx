@@ -120,7 +120,7 @@ describe('Composer paste uploads', () => {
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(textarea().value).toBe('Still typing');
     expect(onAttach).not.toHaveBeenCalled();
   });

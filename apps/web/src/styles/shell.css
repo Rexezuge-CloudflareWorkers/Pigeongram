@@ -56,6 +56,13 @@
   .app:not(.thread-open) .thread {
     display: none;
   }
+
+  /* Only the pane that just became visible moves: the hidden one is a
+     `display: none`, so the two never share a frame to slide between. */
+  .app.thread-open .thread,
+  .app:not(.thread-open) .sidebar {
+    animation: pane-fade-in 200ms var(--ease-out) both;
+  }
 }
 
 /* ---- avatars ------------------------------------------------------------ */
@@ -157,6 +164,9 @@
 
 .dialog-scrim.is-exiting {
   animation: scrim-out 150ms var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+  /* A dialog on its way out must not swallow the tap that dismissed it (or
+     the next one) while it is still on screen. */
+  pointer-events: none;
 }
 
 .dialog-panel.is-exiting {

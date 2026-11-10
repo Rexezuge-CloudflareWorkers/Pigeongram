@@ -4,6 +4,7 @@ import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { BotCommandDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Icon } from './Icon';
+import { Presence } from './Presence';
 import { ComposerReply } from './ReplyQuote';
 import { ReplyKeyboard } from './ReplyKeyboard';
 import { UploadDialog } from './UploadDialog';
@@ -354,7 +355,9 @@ export function Composer({
           <Icon name="mic" size={18} className="is-mic" />
         </button>
       </form>
-      {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}
+      <Presence visible={pendingFiles !== null}>
+        {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}
+      </Presence>
     </>
   );
 }

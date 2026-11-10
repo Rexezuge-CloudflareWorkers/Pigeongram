@@ -72,18 +72,6 @@
   }
 }
 
-@keyframes card-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-  }
-}
-
 /* The shared menu surface (AnchoredMenu): a 250ms emphasized-decelerate
  * entrance from a small offset/scale so the menu belongs to its anchor.
  * `transform-origin` is set by the caller (top-left for point menus,

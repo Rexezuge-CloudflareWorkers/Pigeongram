@@ -8,6 +8,7 @@ import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import { IconButton } from './IconButton';
+import { Presence } from './Presence';
 import { ProfilePopup } from './ProfilePopup';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
@@ -264,34 +265,38 @@ export function ThreadHeader({
         </AnchoredMenu>
       ) : null}
 
-      {profileOpen ? (
-        <ProfilePopup
-          chat={chat}
-          profile={profile}
-          loading={loading}
-          error={error}
-          onClose={closeProfile}
-          returnFocus={() => openerRef.current?.focus()}
-        />
-      ) : null}
+      <Presence visible={profileOpen}>
+        {profileOpen ? (
+          <ProfilePopup
+            chat={chat}
+            profile={profile}
+            loading={loading}
+            error={error}
+            onClose={closeProfile}
+            returnFocus={() => openerRef.current?.focus()}
+          />
+        ) : null}
+      </Presence>
 
-      {archiveConfirmOpen ? (
-        <ConfirmDialog
-          title={archived ? 'Bring the chat back?' : 'Archive this chat?'}
-          message={
-            archived
-              ? `${chat.title} comes back to the chat list.`
-              : `${chat.title} leaves the chat list and goes to the archive. You can bring it back at any time.`
-          }
-          confirmLabel={archived ? 'Unarchive' : 'Archive'}
-          tone={archived ? 'accent' : 'danger'}
-          busy={archiving}
-          busyLabel={archived ? 'Unarchiving…' : 'Archiving…'}
-          onConfirm={() => void confirmArchive()}
-          onCancel={() => setArchiveConfirmOpen(false)}
-          returnFocus={() => triggerRef.current?.focus()}
-        />
-      ) : null}
+      <Presence visible={archiveConfirmOpen}>
+        {archiveConfirmOpen ? (
+          <ConfirmDialog
+            title={archived ? 'Bring the chat back?' : 'Archive this chat?'}
+            message={
+              archived
+                ? `${chat.title} comes back to the chat list.`
+                : `${chat.title} leaves the chat list and goes to the archive. You can bring it back at any time.`
+            }
+            confirmLabel={archived ? 'Unarchive' : 'Archive'}
+            tone={archived ? 'accent' : 'danger'}
+            busy={archiving}
+            busyLabel={archived ? 'Unarchiving…' : 'Archiving…'}
+            onConfirm={() => void confirmArchive()}
+            onCancel={() => setArchiveConfirmOpen(false)}
+            returnFocus={() => triggerRef.current?.focus()}
+          />
+        ) : null}
+      </Presence>
     </>
   );
 }

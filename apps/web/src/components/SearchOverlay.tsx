@@ -35,9 +35,14 @@ interface SearchOverlayProps {
   initialQuery?: string;
   onOpenResult: (message: MessageDto, chat: ChatDto) => void;
   onClose: () => void;
+  /**
+   * Whether the overlay is animating out; the parent keeps it mounted for the
+   * exit beat.
+   */
+  exiting?: boolean;
 }
 
-export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenResult, onClose }: SearchOverlayProps) {
+export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenResult, onClose, exiting = false }: SearchOverlayProps) {
   const { query, setQuery, scope, setScope, messages, chats, loading, loadingMore, error, hasMore, loadMore } = useSearch({
     active: true,
     initialScope,
@@ -77,7 +82,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
 
   return createPortal(
     <div
-      className="dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className={`dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4${exiting ? ' is-exiting' : ''}`}
       onPointerDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
@@ -89,7 +94,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
         role="dialog"
         aria-modal="true"
         aria-label="Search messages"
-        className="dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl"
+        className={`dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}`}
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">

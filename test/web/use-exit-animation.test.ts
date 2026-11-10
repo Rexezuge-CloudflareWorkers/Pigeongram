@@ -44,6 +44,21 @@ describe('useExitAnimation', () => {
     expect(result.current).toEqual({ mounted: false, exiting: false });
   });
 
+  it('gives an overlay that started closed its exit beat too', () => {
+    const { result, rerender } = renderHook(({ visible }) => useExitAnimation(visible, 150), {
+      initialProps: { visible: false },
+    });
+
+    rerender({ visible: true });
+    expect(result.current).toEqual({ mounted: true, exiting: false });
+
+    rerender({ visible: false });
+    expect(result.current).toEqual({ mounted: true, exiting: true });
+
+    void act(() => vi.advanceTimersByTime(150));
+    expect(result.current).toEqual({ mounted: false, exiting: false });
+  });
+
   it('cancels a pending close when it becomes visible again', () => {
     const { result, rerender } = renderHook(({ visible }) => useExitAnimation(visible), {
       initialProps: { visible: true },

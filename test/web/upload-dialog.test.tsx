@@ -97,7 +97,7 @@ describe('Composer upload dialog', () => {
         grouped: true,
       });
     });
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('removes a file and falls back to separate sends when fewer than two remain', async () => {
@@ -133,7 +133,7 @@ describe('Composer upload dialog', () => {
     expect(within(dialog).getByRole('button', { name: 'Send Album (10)' })).toBeDefined();
   });
 
-  it('leaves the draft and reply target alone when the dialog is cancelled', () => {
+  it('leaves the draft and reply target alone when the dialog is cancelled', async () => {
     const { onAttach, container } = renderComposer();
     fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'Still typing' } });
     fireEvent.change(picker(container), { target: { files: [file('a.pdf')] } });
@@ -142,7 +142,7 @@ describe('Composer upload dialog', () => {
     expect((within(dialog).getByRole('checkbox', { name: /Group Items/ }) as HTMLInputElement).checked).toBe(false);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect((screen.getByPlaceholderText('Message') as HTMLTextAreaElement).value).toBe('Still typing');
     expect(onAttach).not.toHaveBeenCalled();
   });
@@ -162,14 +162,14 @@ describe('Composer upload dialog', () => {
     expect((within(dialog).getByRole('checkbox', { name: /Group Items/ }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it('closes on Escape and keeps the draft', () => {
+  it('closes on Escape and keeps the draft', async () => {
     const { onAttach, container } = renderComposer();
     fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'Still typing' } });
     fireEvent.change(picker(container), { target: { files: [file('a.pdf')] } });
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect((screen.getByPlaceholderText('Message') as HTMLTextAreaElement).value).toBe('Still typing');
     expect(onAttach).not.toHaveBeenCalled();
   });

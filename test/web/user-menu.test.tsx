@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UserMenu } from '../../apps/web/src/components/UserMenu';
 import type { MeDto } from '../../apps/web/src/types';
@@ -117,7 +117,7 @@ describe('UserMenu', () => {
     expect(within(menu).queryByRole('menuitem', { name: 'Install App' })).toBeNull();
   });
 
-  it('asks for confirmation and cancels without signing out', () => {
+  it('asks for confirmation and cancels without signing out', async () => {
     const onSignOut = vi.fn(async () => {});
     const trigger = renderMenu(onSignOut);
 
@@ -130,7 +130,7 @@ describe('UserMenu', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(trigger);
     expect(onSignOut).not.toHaveBeenCalled();
   });
@@ -155,10 +155,10 @@ describe('UserMenu', () => {
       await pending;
     });
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('dismisses the menu and the confirmation with Escape', () => {
+  it('dismisses the menu and the confirmation with Escape', async () => {
     const onSignOut = vi.fn();
     const trigger = renderMenu(onSignOut);
 
@@ -170,7 +170,7 @@ describe('UserMenu', () => {
     const dialog = requestSignOut(trigger);
     fireEvent.keyDown(dialog, { key: 'Escape' });
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(onSignOut).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,7 @@ import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { Icon } from './Icon';
 import { MessageRow } from './MessageRow';
+import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
 
@@ -183,7 +184,8 @@ export function CommentsView({
         </div>
       </header>
       <div
-        className="messages"
+        key={`${thread.chat.id}:${thread.post.id}`}
+        className="messages thread-pane-in"
         ref={scrollRef}
         onScroll={(event) => {
           const element = event.currentTarget;
@@ -217,7 +219,7 @@ export function CommentsView({
             {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Comments'}
           </button>
         ) : null}
-        {loading && comments.length === 0 ? <Spinner size={28} label="Loading comments…" padding="24px 0" /> : null}
+        {loading && comments.length === 0 ? <MessageSkeleton label="Loading comments…" avatars /> : null}
         {!loading && comments.length === 0 ? (
           <p className="muted pad">{thread.count === 0 ? 'No comments yet — be the first.' : 'No comments loaded.'}</p>
         ) : null}

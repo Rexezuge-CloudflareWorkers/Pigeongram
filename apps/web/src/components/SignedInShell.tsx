@@ -12,10 +12,9 @@ import { useSignedInNavigation } from '../useSignedInNavigation';
 import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
 import { ChatList } from './ChatList';
-import { ForwardPicker } from './ForwardPicker';
 import { Icon } from './Icon';
 import { MediaViewer } from './MediaViewer';
-import { SearchOverlay } from './SearchOverlay';
+import { ShellOverlays } from './ShellOverlays';
 import { ThreadPane } from './ThreadPane';
 import { Toasts } from './Toasts';
 import { useDropNotice } from './useDropNotice';
@@ -375,18 +374,16 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           />
         ) : null}
       </TelegramLinkProvider>
-      {forwarding.target ? (
-        <ForwardPicker messages={forwarding.target} dialogs={allDialogs} onForward={forwarding.forward} onClose={forwarding.close} />
-      ) : null}
-      {search ? (
-        <SearchOverlay
-          chat={selected}
-          initialScope={search.scope}
-          initialQuery={search.query}
-          onOpenResult={handleSearchResult}
-          onClose={() => setSearch(null)}
-        />
-      ) : null}
+      <ShellOverlays
+        chat={selected}
+        dialogs={allDialogs}
+        forwardTarget={forwarding.target}
+        onForward={forwarding.forward}
+        onCloseForward={forwarding.close}
+        search={search}
+        onOpenResult={handleSearchResult}
+        onCloseSearch={() => setSearch(null)}
+      />
       {calls.overlay}
       <Toasts error={error} notice={notice} />
     </div>

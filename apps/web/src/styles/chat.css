@@ -209,11 +209,6 @@
   animation: badge-pop 300ms var(--spring);
 }
 
-.chat-row-enter {
-  animation: fade-in-up 260ms var(--ease-out-strong);
-  animation-delay: calc(var(--row-index, 0) * 22ms);
-}
-
 @keyframes badge-in {
   from {
     opacity: 0;

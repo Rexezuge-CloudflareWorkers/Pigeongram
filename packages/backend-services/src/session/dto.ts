@@ -290,8 +290,7 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
       };
     }
     case 'sticker': {
-      // A sticker's dimensions let the bubble reserve its box before the webp
-      // loads, the same way a photo's do (mtcute defaults to 512×512).
+      // Dimensions reserve the bubble (mtcute defaults to 512×512); the emoji previews it.
       return {
         kind: 'sticker',
         fileName: media.fileName,
@@ -300,6 +299,7 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
         width: media.width,
         height: media.height,
         duration: null,
+        ...(media.emoji && { emoji: media.emoji }),
       };
     }
     case 'document': {

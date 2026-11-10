@@ -74,7 +74,7 @@ Preview line for the chat list.
 export function previewOf(text: string, media: MessageMediaDto | null, poll: MessagePollDto | null = null): string {
   if (text) return text;
   if (poll) return pollPreview(poll);
-  if (media) return mediaPreview(media.kind);
+  if (media) return mediaPreview(media.kind, media.emoji);
   return '—';
 }
 
@@ -89,8 +89,12 @@ export function pollPreview(poll: MessagePollDto): string {
 /**
 Label for a media kind, when only the kind is known — reply headers carry a
 media descriptor (not a full DTO) for cross-chat replies.
+
+A sticker also carries the emoji Telegram associated with it, which is what the
+official clients put on the chat list's preview line.
 */
-export function mediaPreview(kind: MessageMediaDto['kind']): string {
+export function mediaPreview(kind: MessageMediaDto['kind'], emoji?: string): string {
+  if (kind === 'sticker' && emoji) return `${emoji} Sticker`;
   return MEDIA_PREVIEWS[kind];
 }
 

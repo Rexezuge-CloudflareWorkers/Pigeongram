@@ -953,6 +953,7 @@ describe('toMessageDto', () => {
       width: 512,
       height: 512,
       duration: null,
+      emoji: '🙂',
     });
   });
 

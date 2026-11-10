@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -44,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(242, 237, 230, 0.92);
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.75));
   pointer-events: none;
 }

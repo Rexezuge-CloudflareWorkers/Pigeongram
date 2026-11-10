@@ -16,9 +16,9 @@
   bottom: 6px;
   align-self: auto;
   padding: 1px 6px;
-  border-radius: 999px;
-  background: rgb(14 22 33 / 72%);
-  color: rgb(233 238 243 / 88%);
+  border-radius: 2px;
+  background: rgb(22 17 11 / 72%);
+  color: rgb(242 237 230 / 88%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 140ms var(--ease-out);
@@ -32,7 +32,7 @@
 }
 
 .message.bare .ticks {
-  color: rgb(233 238 243 / 72%);
+  color: rgb(242 237 230 / 72%);
 }
 
 .message.bare:hover .meta,

@@ -50,9 +50,9 @@ export function createManifest(branding: Branding): PwaManifest {
     id: '/',
     display: 'standalone',
     orientation: 'any',
-    // The app's own chrome: `base.css`'s `--bg`.
-    theme_color: '#0e1621',
-    background_color: '#0e1621',
+    // The app's own chrome: `tokens.css`'s `--md-sys-color-surface`.
+    theme_color: '#16110b',
+    background_color: '#16110b',
     categories: ['social', 'productivity'],
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

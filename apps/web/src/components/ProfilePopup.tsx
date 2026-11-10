@@ -105,7 +105,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
     >
       <div
         ref={dialogRef}
-        className="dialog-panel relative w-full max-w-[380px] rounded-xl-increased border border-outline-variant bg-surface-container-high p-6 shadow-2xl"
+        className="dialog-panel relative w-full max-w-[380px] rounded-xs border border-outline-variant bg-surface-container-high p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -113,7 +113,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
         <button
           ref={closeRef}
           type="button"
-          className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-xs text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onClose}
           aria-label="Close The Profile"
         >
@@ -123,7 +123,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
         <div className="flex flex-col items-center gap-3 text-center">
           <Avatar chatId={chat.id} photo={photo} title={title} kind={chat.kind} big />
           <div className="min-w-0">
-            <h2 id={titleId} className="truncate text-xl font-semibold">
+            <h2 id={titleId} className="truncate text-xl font-semibold" style={{ fontWeight: 650 }}>
               {title}
             </h2>
             {username ? <p className="truncate text-[15px] text-muted">@{username}</p> : null}

@@ -1,21 +1,24 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 /**
- * The app's buttons, in Material 3 shapes but built only from the MD3 tokens
+ * The app's buttons, in print shape but built only from the MD3 tokens
  * (tokens.css). Filled is the high-emphasis commit; Text the quiet one;
  * Outlined the boundary one. Tone selects the role: `primary`/`danger`/
  * `accent` for filled, `danger` for text/outlined.
  *
  * These are visual wrappers only: behavior (disabled state, handlers) stays
  * on the native button, exactly as the call sites write it today.
+ *
+ * Redesign: cut-over point — one accent only for the unpilled commits, text
+ * buttons are the escape, outlined names its own boundary. Primary is squared.
  */
 
 type ButtonVariant = 'filled' | 'text' | 'outlined';
 type ButtonTone = 'primary' | 'danger' | 'accent';
 
-const SHAPE = 'rounded-full';
+const SHAPE = 'rounded-xs';
 const BASE =
-  'inline-flex min-h-10 items-center justify-center gap-2 px-6 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex min-h-10 items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold tracking-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40';
 
 const FILLED_TONES: Record<ButtonTone, string> = {
   primary: 'bg-primary text-on-primary hover:bg-primary/90 focus-visible:bg-primary/90',

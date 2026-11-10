@@ -6,7 +6,7 @@
   display: block;
   max-width: 100%;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
   cursor: zoom-in;
 }
@@ -20,14 +20,14 @@
 .message .photo {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: 2px;
   display: block;
 }
 
 .message .video {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: 2px;
   display: block;
 }
 
@@ -39,7 +39,7 @@
   max-width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
   cursor: pointer;
@@ -56,7 +56,7 @@
   right: 6px;
   bottom: 6px;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: 2px;
   background: rgba(0, 0, 0, 0.62);
   color: var(--text);
   font-size: 11px;
@@ -71,7 +71,7 @@
   display: block;
   max-width: 160px;
   height: auto;
-  border-radius: 8px;
+  border-radius: 2px;
 }
 
 /* An animated sticker draws into a Lottie SVG; the box is reserved by the
@@ -91,7 +91,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 2px;
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
   text-decoration: none;

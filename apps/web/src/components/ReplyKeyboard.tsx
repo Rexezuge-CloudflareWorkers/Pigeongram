@@ -82,16 +82,16 @@ compete.
 */
 function replyButtonClass(style: MessageReplyKeyboardButtonDto['style']): string {
   const base =
-    'inline-flex min-w-0 flex-1 items-center justify-center break-words rounded-lg border px-3 py-2 text-center text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40';
+    'inline-flex min-w-0 flex-1 items-center justify-center break-words rounded-xs border px-3 py-2 text-center text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40';
   switch (style) {
     case 'primary': {
-      return `${base} border-accent bg-accent font-semibold text-[#0b1a26] hover:brightness-110`;
+      return `${base} border-accent bg-accent font-semibold text-[#05070e] hover:brightness-110`;
     }
     case 'danger': {
-      return `${base} border-[#b34a4a] bg-[#8f3030] text-fg hover:brightness-110`;
+      return `${base} border-error bg-error-container font-semibold text-on-error-container hover:brightness-110`;
     }
     case 'success': {
-      return `${base} border-[#47996a] bg-[#2f6b4a] text-fg hover:brightness-110`;
+      return `${base} border-tertiary-container bg-tertiary-container font-semibold text-on-tertiary-container hover:brightness-110`;
     }
     default: {
       return `${base} border-line bg-panel-2 text-fg hover:bg-line`;

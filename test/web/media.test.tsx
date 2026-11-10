@@ -74,6 +74,61 @@ describe('document links', () => {
   });
 });
 
+describe('image document previews', () => {
+  const image: MessageMediaDto = {
+    ...sticker,
+    kind: 'document',
+    fileName: 'photo.jpg',
+    mime: 'image/jpeg',
+    size: 3072,
+    width: 640,
+    height: 480,
+  };
+
+  it('renders an image document inline and opens it in the viewer', () => {
+    const onOpen = vi.fn();
+    const { container } = render(<MessageMedia message={message(image)} media={image} onOpen={onOpen} />);
+
+    const preview = container.querySelector('button.document-image');
+    expect(preview).not.toBeNull();
+    expect(container.querySelector('a.document')).toBeNull();
+    const img = preview?.querySelector('img.photo');
+    expect(img?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+    expect(img?.getAttribute('width')).toBe('640');
+    expect(img?.getAttribute('height')).toBe('480');
+    expect(preview?.getAttribute('aria-label')).toBe('Open photo.jpg');
+
+    fireEvent.click(preview!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the original image for a GIF so it still animates', () => {
+    const gif = { ...image, fileName: 'loop.gif', mime: 'image/gif' };
+    const { container } = render(<MessageMedia message={message(gif)} media={gif} onOpen={() => {}} />);
+
+    expect(container.querySelector('img.photo')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10');
+  });
+
+  it('falls back through the original and then the download link', () => {
+    const { container } = render(<MessageMedia message={message(image)} media={image} onOpen={() => {}} />);
+
+    fireEvent.error(container.querySelector('img.photo')!);
+    expect(container.querySelector('img.photo')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10');
+
+    fireEvent.error(container.querySelector('img.photo')!);
+    expect(container.querySelector('img.photo')).toBeNull();
+    expect(container.querySelector('a.document')).not.toBeNull();
+  });
+
+  it('keeps an SVG document as a download link', () => {
+    const svg = { ...image, fileName: 'logo.svg', mime: 'image/svg+xml' };
+    const { container } = render(<MessageMedia message={message(svg)} media={svg} onOpen={() => {}} />);
+
+    expect(container.querySelector('img.photo')).toBeNull();
+    expect(container.querySelector('a.document')).not.toBeNull();
+  });
+});
+
 describe('sticker previews', () => {
   it('keeps a static WebP sticker an image', () => {
     const container = renderSticker({ ...sticker, fileName: 'sticker.webp', mime: 'image/webp' });

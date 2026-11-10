@@ -1213,6 +1213,24 @@ describe('the account and the remaining media kinds', () => {
       height: null,
       duration: null,
     });
+
+    const image = document(
+      [
+        { _: 'documentAttributeFilename', fileName: 'photo.jpg' },
+        { _: 'documentAttributeImageSize', w: 640, h: 480 },
+      ],
+      'image/jpeg',
+      4096,
+    );
+    expect(toMessageDto(image).media).toEqual({
+      kind: 'document',
+      fileName: 'photo.jpg',
+      mime: 'image/jpeg',
+      size: 4096,
+      width: 640,
+      height: 480,
+      duration: null,
+    });
   });
 
   it('leaves a quoted non-file media without a kind', () => {

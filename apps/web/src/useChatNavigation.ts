@@ -91,7 +91,7 @@ export function useChatNavigation({
         opened === null
           ? undefined
           : opened.comments === null
-            ? { ok: false, error: opened.commentsError ?? 'The comments could not be read' }
+            ? { ok: false, error: opened.commentsError ?? 'The Comments Could Not Be Read' }
             : { ok: true, result: opened.comments };
       await comments.open(dialog.chat, post, prefetched);
     },

@@ -30,11 +30,11 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
   const phoneForm = usePhone && !awaitingCode && phase !== 'password';
   const qrVisible = !awaitingCode && !phoneForm && phase !== 'password';
   const statusBusy = !phoneForm && (state === null || phase === 'unauthorized' || phase === 'scanned');
-  const statusText = phoneForm ? 'Enter your phone number — Telegram will send a login code.' : loginPhaseMessage(state);
+  const statusText = phoneForm ? 'Enter Your Phone Number — Telegram Will Send A Login Code.' : loginPhaseMessage(state);
   return (
     <main className="login">
       <section className="card">
-        <h1>Sign in to Telegram</h1>
+        <h1>Sign In To Telegram</h1>
         {qrVisible ? <QrPanel state={state} /> : null}
         <p className="status">{statusBusy ? <Spinner inline size={14} label={statusText} /> : statusText}</p>
         {phoneForm ? <PhoneForm onSubmit={onPhone} onBack={() => setUsePhone(false)} /> : null}
@@ -52,7 +52,7 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
           </button>
         ) : null}
         <p className="muted small">
-          Session engine: Cloudflare Durable Object, MTProto over WSS. The client only holds your session; messages are fetched live from
+          Session Engine: Cloudflare Durable Object, MTProto Over WSS. The Client Only Holds Your Session; Messages Are Fetched Live From
           Telegram.
         </p>
       </section>
@@ -109,8 +109,8 @@ function QrPanel({ state }: { state: EngineStateDto | null }) {
       )}
       <p className="muted small">
         {dataUrl && expiresIn !== null
-          ? `Code valid for ${Math.max(expiresIn, 0)}s — Telegram login codes live ~30 seconds, so scan as soon as it appears.`
-          : 'Waiting for a fresh QR code…'}
+          ? `Code Valid For ${Math.max(expiresIn, 0)}s — Telegram Login Codes Live ~30 Seconds, So Scan As Soon As It Appears.`
+          : 'Waiting For A Fresh QR Code…'}
       </p>
     </>
   );
@@ -181,13 +181,13 @@ function CodeForm({
         type="text"
         inputMode="numeric"
         value={code}
-        placeholder="Login code"
+        placeholder="Login Code"
         autoComplete="one-time-code"
         autoFocus
         aria-label="Login code"
         onChange={(event) => setCode(event.target.value)}
       />
-      {state?.codeInvalid ? <p className="error">That code was rejected — check the latest message and try again.</p> : null}
+      {state?.codeInvalid ? <p className="error">That Code Was Rejected — Check The Latest Message And Try Again.</p> : null}
       <button type="submit" disabled={submitting || code.trim().length === 0} aria-busy={submitting}>
         {submitting ? (
           <>
@@ -222,13 +222,13 @@ function PasswordForm({ invalid, onSubmit }: { invalid: boolean; onSubmit: (pass
       <TextField
         type="password"
         value={password}
-        placeholder="Cloud password"
+        placeholder="Cloud Password"
         autoComplete="current-password"
         autoFocus
         aria-label="Cloud password"
         onChange={(event) => setPassword(event.target.value)}
       />
-      {invalid ? <p className="error">That password was rejected — try again.</p> : null}
+      {invalid ? <p className="error">That Password Was Rejected — Try Again.</p> : null}
       <button type="submit" disabled={submitting || password.length === 0} aria-busy={submitting}>
         {submitting ? (
           <>

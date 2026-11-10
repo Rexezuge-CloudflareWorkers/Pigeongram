@@ -130,7 +130,7 @@ describe('CallOrchestrator.startCall', () => {
     orchestrator.startCall(7);
     orchestrator.startCall(7);
 
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'A call is already in progress' }));
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'A Call Is Already In Progress' }));
 
     config.resolve({ g: DH_CONFIG.g, p: toBase64(PRIME), version: 0 });
     await config.promise;

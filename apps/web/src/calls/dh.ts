@@ -77,14 +77,14 @@ export function bytesToBigInt(bytes: Uint8Array): bigint {
  * Turns a non-negative integer into big-endian bytes of an exact length.
  */
 export function bigIntToBytes(value: bigint, length: number): Uint8Array {
-  if (value < 0n) throw new Error('negative value');
+  if (value < 0n) throw new Error('Negative Value');
   const out = new Uint8Array(length);
   let remaining = value;
   for (let index = length - 1; index >= 0; index -= 1) {
     out[index] = Number(remaining & 0xffn);
     remaining >>= 8n;
   }
-  if (remaining !== 0n) throw new Error('value does not fit');
+  if (remaining !== 0n) throw new Error('Value Does Not Fit');
   return out;
 }
 
@@ -96,7 +96,7 @@ export function bigIntToBytes(value: bigint, length: number): Uint8Array {
  * is far slower than shifting the exponent itself.
  */
 export function modPow(base: bigint, exponent: bigint, modulus: bigint): bigint {
-  if (modulus <= 0n) throw new Error('modulus must be positive');
+  if (modulus <= 0n) throw new Error('Modulus Must Be Positive');
   let result = 1n;
   let factor = base % modulus;
   if (factor < 0n) factor += modulus;
@@ -170,24 +170,24 @@ export async function validateDhConfig(config: DhConfig): Promise<DhConfig> {
 
   const p = bytesToBigInt(config.p);
   if (config.p.length !== DH_VALUE_BYTES) {
-    throw new Error('The Diffie-Hellman prime is not 2048 bits wide');
+    throw new Error('The Diffie-Hellman Prime Is Not 2048 Bits Wide');
   }
   if (!isProbablyPrime(p)) {
-    throw new Error('The Diffie-Hellman prime is not prime');
+    throw new Error('The Diffie-Hellman Prime Is Not Prime');
   }
   const g = BigInt(config.g);
   if (g <= 1n || g >= p - 1n) {
-    throw new Error('The Diffie-Hellman generator is out of range');
+    throw new Error('The Diffie-Hellman Generator Is Out Of Range');
   }
   const half = (p - 1n) / 2n;
   const gHalf = modPow(g, half, p);
   if (modPow(g, 2n, p) === 1n || modPow(g, p - 1n, p) !== 1n) {
-    throw new Error('The Diffie-Hellman generator does not generate a large subgroup');
+    throw new Error('The Diffie-Hellman Generator Does Not Generate A Large Subgroup');
   }
   if (gHalf !== 1n) {
     // The generator has to be a quadratic residue, so that it generates the
     // subgroup of order (p-1)/2 rather than the whole field.
-    throw new Error('The Diffie-Hellman generator is not a quadratic residue');
+    throw new Error('The Diffie-Hellman Generator Is Not A Quadratic Residue');
   }
   validated.set(key, config);
   return config;
@@ -205,18 +205,18 @@ export function checkPeerValue(config: DhConfig, value: Uint8Array): void {
   const p = bytesToBigInt(config.p);
   const v = bytesToBigInt(value);
   if (v <= 1n || v >= p - 1n) {
-    throw new Error("The peer's Diffie-Hellman value is out of range");
+    throw new Error("The Peer's Diffie-Hellman Value Is Out Of Range");
   }
   const half = (p - 1n) / 2n;
   const g = BigInt(config.g);
   const gHalf = modPow(g, half, p);
   const vHalf = modPow(v, half, p);
   if (gHalf === 1n) {
-    if (vHalf !== 1n) throw new Error("The peer's Diffie-Hellman value is in the wrong subgroup");
+    if (vHalf !== 1n) throw new Error("The Peer's Diffie-Hellman Value Is In The Wrong Subgroup");
     return;
   }
   if (vHalf !== 1n && vHalf !== p - 1n) {
-    throw new Error("The peer's Diffie-Hellman value is in the wrong subgroup");
+    throw new Error("The Peer's Diffie-Hellman Value Is In The Wrong Subgroup");
   }
 }
 

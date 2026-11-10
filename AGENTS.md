@@ -149,14 +149,18 @@ protocol,registry}`) and the mtcute integration
 
 ### Load-bearing details
 
-- **Multi-word button labels are Camel Case with spaces.** Every word is capitalised
-  (`Load Older Messages`, `Sign In With Cloudflare Access`, `Retract Vote`); single-word labels stay as they
-  are. Headings, prose, placeholders and non-button accessible names (dialogs, search boxes, lists, groups) keep
-  sentence case. Keep the accessible name in step with the visible label when both exist.
+- **Visible copy is Title Case; accessible-only copy stays sentence case.** Every word of authored, user-visible
+  text is capitalised — buttons, menu items, headings, prose, placeholders, statuses, empty states and toasts
+  (`Load Older Messages`, `Sign In With Cloudflare Access`, `No Chats Yet.`, `Search Messages`). Articles,
+  prepositions and conjunctions are capitalised too, and single words stay as they are. Dynamic interpolations keep
+  their own casing (`Forwarded To ${chat.title}`, dates, units such as `5m`/`30s`, server text and user content).
+  Non-visible accessible copy — `aria-label`, `title`, `alt` and `sr-only` — keeps sentence case. Keep the
+  accessible name in step with the visible label when both exist. `test/web/copy-style.test.ts` guards the TSX
+  half of this rule.
 - **The product was renamed to Pigeongram; `telegram-web-client` is the internal name.** Telegram's Terms of Service
   forbid a third-party product from using “Telegram” in its name, so every user-visible brand surface — the document
   title, the PWA `name`/`short_name`, the intro and offline eyebrow, and the Android app/launcher defaults — reads
-  `Pigeongram`. Descriptive references to the service (“Sign in to Telegram”, “Open in Telegram”) stay. The repository,
+  `Pigeongram`. Descriptive references to the service (“Sign In To Telegram”, “Open In Telegram”) stay. The repository,
   the `@telegram-web-client/*` packages, the worker and Pages project names,
   `history.state.app === 'telegram-web-client'`, the `/api/health` `service` value and `TELEGRAM_API_*` are identifiers,
   not branding; renaming one is a migration. The Pages build resolves `VITE_APP_NAME`/`VITE_APP_SHORT_NAME` in

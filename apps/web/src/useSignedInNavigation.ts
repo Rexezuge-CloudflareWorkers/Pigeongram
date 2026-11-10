@@ -312,11 +312,11 @@ export function useSignedInNavigation({
         }
         if (result.status === 'request_sent') {
           setPreview((state) => (state !== null && state.chatId === current.chatId ? { ...state, requested: true } : state));
-          onNotice('Your join request was sent. An admin has to approve it.');
+          onNotice('Your Join Request Was Sent. An Admin Has To Approve It.');
           return;
         }
         if (result.status !== 'webview') return;
-        onNotice('Telegram needs this join completed in its own app.');
+        onNotice('Telegram Needs This Join Completed In Its Own App.');
         const link = targetAppLink(current.target);
         if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
       })

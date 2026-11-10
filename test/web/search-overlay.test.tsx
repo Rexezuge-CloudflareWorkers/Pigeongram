@@ -117,7 +117,7 @@ describe('SearchOverlay', () => {
     fireEvent.change(input, { target: { value: ' '.repeat(3) } });
 
     expect(screen.queryByRole('button', { name: /found it/ })).toBeNull();
-    expect(screen.getByText('Type to search all chats.')).toBeDefined();
+    expect(screen.getByText('Type To Search All Chats.')).toBeDefined();
   });
 
   it('reports a failed search instead of an empty one', async () => {

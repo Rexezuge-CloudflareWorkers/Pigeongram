@@ -336,7 +336,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           pending={threads.pending}
           onSelect={openChat}
           onMarkRead={markAllRead}
-          emptyLabel={showArchive ? 'No archived chats.' : undefined}
+          emptyLabel={showArchive ? 'No Archived Chats.' : undefined}
         />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink} onHashtag={handleHashtag} onOpenForward={openForwardOrigin}>

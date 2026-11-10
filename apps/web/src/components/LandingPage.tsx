@@ -13,28 +13,28 @@ export function LandingPage() {
     <main className="landing">
       <section className="landing-hero">
         <p className="eyebrow">{APP_NAME}</p>
-        <h1>Your Telegram, on Cloudflare Workers</h1>
+        <h1>Your Telegram, On Cloudflare Workers</h1>
         <p className="lead">
-          A single-account client that stays online at the edge: a Durable Object keeps the Telegram session warm, and this page streams
-          chats live while a tab is attached.
+          A Single-Account Client That Stays Online At The Edge: A Durable Object Keeps The Telegram Session Warm, And This Page Streams
+          Chats Live While A Tab Is Attached.
         </p>
         <a className="cta" href={accessLoginUrl(returnTo)}>
           Sign In With Cloudflare Access
         </a>
-        <p className="muted small">Cloudflare Access is the front door. The account API is never publicly routable.</p>
+        <p className="muted small">Cloudflare Access Is The Front Door. The Account API Is Never Publicly Routable.</p>
       </section>
       <section className="landing-features" aria-label="What this client does">
         <article className="feature">
-          <h2>Always-on session</h2>
-          <p>A Durable Object wakes on an alarm, replays missed updates, and goes back to sleep.</p>
+          <h2>Always-On Session</h2>
+          <p>A Durable Object Wakes On An Alarm, Replays Missed Updates, And Goes Back To Sleep.</p>
         </article>
         <article className="feature">
-          <h2>Live updates</h2>
-          <p>New messages, edits, and read receipts arrive over one WebSocket while you are here.</p>
+          <h2>Live Updates</h2>
+          <p>New Messages, Edits, And Read Receipts Arrive Over One WebSocket While You Are Here.</p>
         </article>
         <article className="feature">
-          <h2>Private by default</h2>
-          <p>Access guards every account route; chats and media are fetched live from Telegram.</p>
+          <h2>Private By Default</h2>
+          <p>Access Guards Every Account Route; Chats And Media Are Fetched Live From Telegram.</p>
         </article>
       </section>
     </main>

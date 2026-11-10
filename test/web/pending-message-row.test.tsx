@@ -126,7 +126,7 @@ describe('PendingMessageRow', () => {
   it('offers retry and discard only after a failure, with the reason', () => {
     const { onRetry, onDiscard } = renderRow({ status: 'failed', failure: 'Network down' });
 
-    expect(screen.getByRole('status').textContent).toContain('Not sent');
+    expect(screen.getByRole('status').textContent).toContain('Not Sent');
     expect(screen.getByTitle('Network down')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
@@ -185,7 +185,7 @@ describe('PendingMessageRow', () => {
       });
       expect(container.querySelector('.pending-file')).not.toBeNull();
       expect(screen.getByText(new RegExp(String.raw`${kind}\.bin`))).not.toBeNull();
-      expect(screen.getByText(/2 files/)).not.toBeNull();
+      expect(screen.getByText(/2 Files/)).not.toBeNull();
     }
   });
 

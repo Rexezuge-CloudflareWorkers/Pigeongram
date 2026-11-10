@@ -61,7 +61,7 @@ describe('ProfilePopup', () => {
 
     expect(screen.getByRole('dialog', { name: 'Bob' })).toBeDefined();
     expect(screen.getByText('@bob')).toBeDefined();
-    expect(screen.getByText('online')).toBeDefined();
+    expect(screen.getByText('Online')).toBeDefined();
     expect(screen.queryByText('Ships things.')).toBeNull();
   });
 
@@ -74,12 +74,12 @@ describe('ProfilePopup', () => {
     expect(screen.getByText('Bob Smith')).toBeDefined();
     expect(screen.getByText('@bobsmith')).toBeDefined();
     expect(screen.getByText('Ships things.')).toBeDefined();
-    expect(screen.getByText('1,234 members')).toBeDefined();
+    expect(screen.getByText('1,234 Members')).toBeDefined();
   });
 
   it('shows the read in flight and then its failure', () => {
     const { rerender } = render(<ProfilePopup chat={chat} profile={null} loading error={null} onClose={() => {}} />);
-    expect(screen.getByText('Loading the profile…')).toBeDefined();
+    expect(screen.getByText('Loading The Profile…')).toBeDefined();
 
     rerender(<ProfilePopup chat={chat} profile={null} loading={false} error="Could not load" onClose={() => {}} />);
     expect(screen.getByText('Could not load')).toBeDefined();

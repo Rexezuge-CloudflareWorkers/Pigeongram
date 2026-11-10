@@ -253,11 +253,11 @@ export function UserMenu({
       <Presence visible={confirmOpen}>
         {confirmOpen ? (
           <ConfirmDialog
-            title="Sign Out of Telegram?"
-            message="This ends the session on this client. You'll need to sign in again to use the app."
+            title="Sign Out Of Telegram?"
+            message="This Ends The Session On This Client. You'll Need To Sign In Again To Use The App."
             confirmLabel="Sign Out"
             busy={signingOut}
-            busyLabel="Signing out…"
+            busyLabel="Signing Out…"
             onConfirm={() => void confirmSignOut()}
             onCancel={() => setConfirmOpen(false)}
             returnFocus={focusTrigger}

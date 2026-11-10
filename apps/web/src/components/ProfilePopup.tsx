@@ -134,10 +134,10 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
             {username ? <p className="truncate text-[15px] text-muted">@{username}</p> : null}
           </div>
           {presence ? <p className="text-sm text-muted">{presence}</p> : null}
-          {loading ? <Spinner inline size={16} label="Loading the profile…" /> : null}
+          {loading ? <Spinner inline size={16} label="Loading The Profile…" /> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {!loading && !error && profile?.about ? <p className="max-w-[46ch] text-[15px] text-muted">{profile.about}</p> : null}
-          {!loading && !error && members !== null ? <p className="text-sm text-muted">{members.toLocaleString()} members</p> : null}
+          {!loading && !error && members !== null ? <p className="text-sm text-muted">{members.toLocaleString()} Members</p> : null}
         </div>
       </div>
     </div>,

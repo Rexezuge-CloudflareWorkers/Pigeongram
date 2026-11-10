@@ -130,7 +130,7 @@ describe('Composer upload dialog', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(10);
     expect(within(dialog).getByText('10 / 10')).toBeDefined();
-    expect(within(dialog).getByRole('status').textContent).toContain('Only 10 files');
+    expect(within(dialog).getByRole('status').textContent).toContain('Only 10 Files');
     expect(within(dialog).getByRole('button', { name: 'Send Album (10)' })).toBeDefined();
   });
 

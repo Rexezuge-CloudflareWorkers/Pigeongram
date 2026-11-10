@@ -42,7 +42,7 @@ that must not cost the chat list: the shell shows the chat list either way.
 export async function fetchBootstrap(): Promise<{ me: MeDto | null; dialogs: DialogDto[] }> {
   const outcomes = await rpcBatch([{ method: 'getMe' }, { method: 'getDialogs', params: { limit: 100 } }]);
   const me = outcomes[0]?.ok ? (outcomes[0].result as GetMeResult).me : null;
-  const dialogs = batchResult<GetDialogsResult>(outcomes[1], 'chat list').dialogs;
+  const dialogs = batchResult<GetDialogsResult>(outcomes[1], 'Chat List').dialogs;
   return { me, dialogs };
 }
 

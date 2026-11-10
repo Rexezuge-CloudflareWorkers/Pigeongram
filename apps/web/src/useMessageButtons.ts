@@ -31,7 +31,7 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
     (message: MessageDto, button: MessageButtonDto): void => {
       if (button.kind === 'copy') {
         void writeClipboard(button.copyText)
-          .then(() => onNotice('Copied to clipboard'))
+          .then(() => onNotice('Copied To Clipboard'))
           .catch(onError);
         return;
       }
@@ -41,7 +41,7 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
       void pressCallbackButton(message.chatId, message.id, button.data)
         .then((answer) => {
           if (answer.url !== null && window.open(answer.url, '_blank', 'noopener,noreferrer') === null) {
-            onNotice('The bot asked to open a link; allow pop-ups for this site.');
+            onNotice('The Bot Asked To Open A Link; Allow Pop-Ups For This Site.');
           }
           if (answer.text !== null && answer.text.length > 0) {
             if (answer.alert) alert(answer.text);

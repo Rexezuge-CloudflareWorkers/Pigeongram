@@ -13,7 +13,7 @@ export function ThreadPlaceholder() {
         <Icon name="send" size={44} />
       </span>
       <h2 className="thread-empty-title">No Chat Selected</h2>
-      <p className="muted thread-empty-hint">Pick a conversation on the left to start reading.</p>
+      <p className="muted thread-empty-hint">Pick A Chat On The Left To Start Reading.</p>
     </section>
   );
 }

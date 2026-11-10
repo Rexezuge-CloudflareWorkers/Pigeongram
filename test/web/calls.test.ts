@@ -314,26 +314,26 @@ describe('the relays of a call', () => {
 
 describe('the key exchange guards', () => {
   it('refuses a negative integer and a non-positive modulus', () => {
-    expect(() => bigIntToBytes(-1n, 4)).toThrow('negative');
-    expect(() => modPow(2n, 3n, 0n)).toThrow('positive');
+    expect(() => bigIntToBytes(-1n, 4)).toThrow('Negative');
+    expect(() => modPow(2n, 3n, 0n)).toThrow('Positive');
     expect(modPow(-2n, 3n, 5n)).toBe(2n);
   });
 
   it('refuses a prime that is the wrong width or not prime', async () => {
-    await expect(validateDhConfig({ g: 2, p: new Uint8Array(8) })).rejects.toThrow('2048 bits');
-    await expect(validateDhConfig({ g: 2, p: new Uint8Array(256) })).rejects.toThrow('not prime');
+    await expect(validateDhConfig({ g: 2, p: new Uint8Array(8) })).rejects.toThrow('2048 Bits');
+    await expect(validateDhConfig({ g: 2, p: new Uint8Array(256) })).rejects.toThrow('Not Prime');
   });
 
   it('refuses a generator outside the field and one that is not a residue', async () => {
     const p = safePrime();
-    await expect(validateDhConfig({ g: 1, p })).rejects.toThrow('out of range');
-    await expect(validateDhConfig({ g: 11, p })).rejects.toThrow('quadratic residue');
+    await expect(validateDhConfig({ g: 1, p })).rejects.toThrow('Out Of Range');
+    await expect(validateDhConfig({ g: 11, p })).rejects.toThrow('Quadratic Residue');
   });
 
   it('refuses a peer value in another subgroup', async () => {
     const config = await validateDhConfig({ g: 2, p: safePrime() });
-    expect(() => checkPeerValue(config, bigIntToBytes(11n, 256))).toThrow('wrong subgroup');
-    expect(() => checkPeerValue(config, bigIntToBytes(1n, 256))).toThrow('out of range');
+    expect(() => checkPeerValue(config, bigIntToBytes(11n, 256))).toThrow('Wrong Subgroup');
+    expect(() => checkPeerValue(config, bigIntToBytes(1n, 256))).toThrow('Out Of Range');
   });
 
   it('does not let the private exponent fall to one', async () => {
@@ -355,10 +355,10 @@ describe('the key exchange guards', () => {
     const hint = expected.fingerprint;
 
     await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, commitment: new Uint8Array(32) })).rejects.toThrow(
-      'commitment',
+      'Commitment',
     );
     await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, expectedFingerprint: '0' })).rejects.toThrow(
-      'fingerprint',
+      'Fingerprint',
     );
     await expect(
       establishKey({ config, secret: caller.secret, peerValue: callee.value, expectedFingerprint: hint }),
@@ -371,7 +371,7 @@ describe('the key exchange guards', () => {
     const callee = await createDhKeyPair(config);
 
     await expect(establishKey({ config, secret: caller.secret, peerValue: callee.value, commitment: new Uint8Array(1) })).rejects.toThrow(
-      'commitment',
+      'Commitment',
     );
   });
 });

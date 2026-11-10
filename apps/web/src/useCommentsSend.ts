@@ -103,7 +103,7 @@ export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onE
         ...(replyTo !== undefined && { replyTo }),
         replyPreview,
         deliver: (body, randomIds) => {
-          if (body.kind !== 'text') throw new Error('The outbox delivered a file body for a text comment');
+          if (body.kind !== 'text') throw new Error('The Outbox Delivered A File Body For A Text Comment');
           return sendComment(post.chatId, post.messageId, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
         },
         onSettled: (messages) => {
@@ -133,7 +133,7 @@ export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onE
         request,
         replyPreview,
         deliver: (body, randomIds, onProgress) => {
-          if (body.kind !== 'file') throw new Error('The outbox delivered a text body for an attachment');
+          if (body.kind !== 'file') throw new Error('The Outbox Delivered A Text Body For An Attachment');
           const comments: MessageDto[] = [];
           return sendUploadBatch(
             {

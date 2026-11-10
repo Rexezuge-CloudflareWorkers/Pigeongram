@@ -154,11 +154,11 @@ describe('uploadFile', () => {
   it('rejects on a network error and on an abort', async () => {
     const failed = uploadFile(INPUT, new Blob(['abc']));
     FakeXhr.instances[0]!.emit('error');
-    await expect(failed).rejects.toMatchObject({ status: 0, message: expect.stringContaining('network') as string });
+    await expect(failed).rejects.toMatchObject({ status: 0, message: expect.stringContaining('Network') as string });
 
     const aborted = uploadFile(INPUT, new Blob(['abc']));
     FakeXhr.instances[1]!.emit('abort');
-    await expect(aborted).rejects.toMatchObject({ status: 0, message: expect.stringContaining('cancelled') as string });
+    await expect(aborted).rejects.toMatchObject({ status: 0, message: expect.stringContaining('Cancelled') as string });
   });
 });
 

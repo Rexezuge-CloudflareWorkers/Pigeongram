@@ -122,8 +122,8 @@ function sendUpload<T>(path: string, body: Blob, onProgress?: (fraction: number)
       }
       reject(uploadFailure(xhr.status, payload));
     });
-    xhr.addEventListener('error', () => reject(new HttpStatusError(0, 'Upload failed — network error', null)));
-    xhr.addEventListener('abort', () => reject(new HttpStatusError(0, 'Upload cancelled', null)));
+    xhr.addEventListener('error', () => reject(new HttpStatusError(0, 'Upload Failed — Network Error', null)));
+    xhr.addEventListener('abort', () => reject(new HttpStatusError(0, 'Upload Cancelled', null)));
     xhr.send(body);
   });
 }
@@ -144,7 +144,7 @@ function uploadFailure(status: number, payload: unknown): HttpStatusError {
       ? exception.Message
       : typeof record.error === 'string'
         ? record.error
-        : `Upload failed (${status})`;
+        : `Upload Failed (${status})`;
   const type = typeof exception.Type === 'string' ? exception.Type : typeof record.code === 'string' ? record.code : null;
   return new HttpStatusError(status, message, type);
 }

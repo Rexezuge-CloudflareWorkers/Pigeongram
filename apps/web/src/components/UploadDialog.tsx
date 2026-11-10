@@ -134,7 +134,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
       >
         <div className="flex shrink-0 items-baseline justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
           <h2 id={titleId} className="text-lg font-semibold sm:text-xl">
-            Send files
+            Send Files
           </h2>
           <span className="text-sm text-muted">
             {files.length} / {MAX_UPLOAD_ITEMS}
@@ -146,7 +146,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
             viewport is. */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
           <p id={hintId} className="pt-1 text-sm text-muted">
-            Review the selection, then send the files together as an album or one by one.
+            Review The Selection, Then Send The Files Together As An Album Or One By One.
           </p>
 
           <ul className="mt-4 space-y-2" aria-label="Selected files">
@@ -211,8 +211,8 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
               <span>
                 <span className="block font-medium">Send As File</span>
                 <span className="block text-sm text-muted">
-                  Uploads the originals untouched: no re-encoding and no Telegram compression. Images arrive as files instead of photo
-                  bubbles.
+                  Uploads The Originals Untouched: No Re-Encoding And No Telegram Compression. Images Arrive As Files Instead Of Photo
+                  Bubbles.
                 </span>
               </span>
             </label>
@@ -289,7 +289,7 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
         {previewUrl ? <img src={previewUrl} alt="" className="h-full w-full object-cover" /> : <Icon name={KIND_ICONS[kind]} size={24} />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{file.name || 'file'}</span>
+        <span className="block truncate text-sm font-medium">{file.name || 'File'}</span>
         <span className="block text-xs text-muted">
           {mediaPreview(kind)}
           {size ? ` · ${size}` : ''}
@@ -308,12 +308,12 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
 }
 
 function overflowNotice(dropped: number): string {
-  return `Only ${MAX_UPLOAD_ITEMS} files can be sent at once; ${dropped === 1 ? 'one file was' : `${dropped} files were`} left out. Send the rest in another batch.`;
+  return `Only ${MAX_UPLOAD_ITEMS} Files Can Be Sent At Once; ${dropped === 1 ? 'One File Was' : `${dropped} Files Were`} Left Out. Send The Rest In Another Batch.`;
 }
 
 function groupHint(count: number, groupable: boolean, sendAsFile: boolean): string {
-  if (count < 2) return 'Select two or more files to send them as an album.';
-  if (sendAsFile) return 'Every file goes as a document, so any selection can share one album.';
-  if (groupable) return 'Photos, videos and GIFs go together; documents group with documents.';
-  return 'These files cannot share an album. They will be sent as separate messages.';
+  if (count < 2) return 'Select Two Or More Files To Send Them As An Album.';
+  if (sendAsFile) return 'Every File Goes As A Document, So Any Selection Can Share One Album.';
+  if (groupable) return 'Photos, Videos And GIFs Go Together; Documents Group With Documents.';
+  return 'These Files Cannot Share An Album. They Will Be Sent As Separate Messages.';
 }

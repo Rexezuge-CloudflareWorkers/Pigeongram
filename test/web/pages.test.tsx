@@ -594,7 +594,7 @@ describe('App', () => {
   it('shows the public intro when Cloudflare Access rejects the request', async () => {
     const calls = installFetch(() => json({ error: 'Cloudflare Access token required', code: 'access' }, 401));
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, On Cloudflare Workers' })).toBeDefined();
     const signIn = screen.getByRole('link', { name: 'Sign In With Cloudflare Access' });
     expect(signIn.getAttribute('href')).toBe('/user/login');
     expect(calls.some((call) => call.path === '/user/login/qr')).toBe(false);
@@ -622,7 +622,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, On Cloudflare Workers' })).toBeDefined();
   });
 
   it('shows the offline screen when the network is gone', async () => {
@@ -632,7 +632,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'You are offline' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'You Are Offline' })).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Sign In With Cloudflare Access' })).toBeNull();
   });
 
@@ -643,7 +643,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Your Telegram, on Cloudflare Workers' })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Your Telegram, On Cloudflare Workers' })).toBeDefined();
   });
 
   it('keeps the access probe text-free behind the launch animation', () => {
@@ -681,8 +681,8 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to Telegram' })).toBeDefined();
-    expect(await screen.findByText(/Scan this QR code/)).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Sign In To Telegram' })).toBeDefined();
+    expect(await screen.findByText(/Scan This QR Code/)).toBeDefined();
     expect(calls.some((call) => call.path === '/user/login/qr')).toBe(true);
   });
 
@@ -732,8 +732,8 @@ describe('App', () => {
     fireEvent.change(screen.getByPlaceholderText('+15551234567'), { target: { value: '+15551234567' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send Code' }));
 
-    expect(await screen.findByText(/login code to your Telegram app/)).toBeDefined();
-    fireEvent.change(screen.getByPlaceholderText('Login code'), { target: { value: '12345' } });
+    expect(await screen.findByText(/Login Code To Your Telegram App/)).toBeDefined();
+    fireEvent.change(screen.getByPlaceholderText('Login Code'), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit Code' }));
 
     // The sign-in has to finish before the shell reads anything, so the
@@ -843,7 +843,7 @@ describe('App', () => {
 
       await waitFor(() => expect(globalThis.location.pathname).toBe('/chat/2'));
       expect(globalThis.history.state).toMatchObject({ app: APP, depth: 1 });
-      expect(within(threadSection()).getByText('No messages yet — say hello.')).toBeDefined();
+      expect(within(threadSection()).getByText('No Messages Yet — Say Hello.')).toBeDefined();
     });
 
     it('delegates the thread back button to browser history', async () => {
@@ -898,7 +898,7 @@ describe('App', () => {
       render(<App />);
       fireEvent.click(await screen.findByText('Announcements'));
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
-      fireEvent.click(screen.getByRole('button', { name: /2 comments/ }));
+      fireEvent.click(screen.getByRole('button', { name: /2 Comments/ }));
 
       expect(await screen.findByText('Comments')).toBeDefined();
       expect(location.pathname).toBe(`/chat/${String(channel.id)}/post/7/comments`);
@@ -1020,7 +1020,7 @@ describe('App', () => {
     fireEvent.click(await screen.findByText('Helper'));
 
     expect(await within(threadSection()).findByText('Answers questions about the weather.')).toBeDefined();
-    expect(within(threadSection()).queryByText('No messages yet — say hello.')).toBeNull();
+    expect(within(threadSection()).queryByText('No Messages Yet — Say Hello.')).toBeNull();
   });
 
   it('loads the slash-command menu for an open bot chat', async () => {
@@ -1071,7 +1071,7 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(await screen.findByText('Bob'));
 
-    expect(await screen.findByText('Forwarded from News Channel')).toBeDefined();
+    expect(await screen.findByText('Forwarded From News Channel')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'News Channel' })).toBeNull();
   });
 
@@ -1099,9 +1099,9 @@ describe('App', () => {
 
     render(<App />);
     fireEvent.click(await screen.findByText('Bob'));
-    const header = await within(threadSection()).findByText('Forwarded from');
+    const header = await within(threadSection()).findByText('Forwarded From');
     const origin = within(header).getByRole('button', { name: 'Carol' });
-    expect(header.textContent).toBe('Forwarded from Carol');
+    expect(header.textContent).toBe('Forwarded From Carol');
     expect(within(header).getAllByRole('button')).toHaveLength(1);
 
     fireEvent.click(origin);
@@ -1205,7 +1205,7 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(await screen.findByText('Team'));
 
-    const origin = await screen.findByText('Forwarded from News Channel');
+    const origin = await screen.findByText('Forwarded From News Channel');
     const sender = screen.getByText('Bob', { selector: '.message .sender' });
     expect(origin.nextElementSibling).toBe(sender);
   });
@@ -1371,7 +1371,7 @@ describe('App', () => {
       await waitFor(() => {
         expect(writeText).toHaveBeenCalledWith('token-123');
       });
-      expect(await screen.findByText('Copied to clipboard')).toBeDefined();
+      expect(await screen.findByText('Copied To Clipboard')).toBeDefined();
     });
 
     it('removes the keyboard when an edit no longer carries one', async () => {
@@ -1549,12 +1549,12 @@ describe('App', () => {
       render(<App />);
       fireEvent.click(await screen.findByText('Bob'));
       expect(await screen.findByText('Tea or coffee?')).toBeDefined();
-      expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+      expect(within(threadSection()).getByText('3 Votes')).toBeDefined();
 
       fireEvent.click(screen.getByRole('button', { name: 'Vote for Coffee (67%)' }));
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('4 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('4 Votes')).toBeDefined();
       });
       expect(calls).toEqual([{ method: 'sendVote', params: { chatId: 2, messageId: 20, options: [1] } }]);
       expect(screen.getByRole('button', { name: 'Retract Vote' })).toBeDefined();
@@ -1633,7 +1633,7 @@ describe('App', () => {
       deliver({ type: 'poll', chatId: 2, messageId: 20, pollId: poll.id, poll: { ...poll, totalVoters: 7 } });
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('7 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('7 Votes')).toBeDefined();
       });
       expect(calls).toEqual([]);
     });
@@ -1650,7 +1650,7 @@ describe('App', () => {
       deliver({ type: 'poll', chatId: null, messageId: null, pollId: poll.id, poll: null });
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('9 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('9 Votes')).toBeDefined();
       });
       expect(calls).toEqual([{ method: 'getPollResults', params: { chatId: 2, messageId: 20 } }]);
     });
@@ -1844,11 +1844,11 @@ describe('App', () => {
 
       openMessageMenu(10);
       clickMenuItem('Reply');
-      expect(screen.getByText('Reply to Bob')).toBeDefined();
+      expect(screen.getByText('Reply To Bob')).toBeDefined();
 
       // Escape clears the reply target without touching the draft.
       fireEvent.keyDown(screen.getByPlaceholderText('Message'), { key: 'Escape' });
-      expect(screen.queryByText('Reply to Bob')).toBeNull();
+      expect(screen.queryByText('Reply To Bob')).toBeNull();
 
       openMessageMenu(10);
       clickMenuItem('Reply');
@@ -1864,7 +1864,7 @@ describe('App', () => {
       });
       expect((sent[0].body as { params: { randomId?: string } }).params.randomId).toMatch(/^\d+$/);
       await waitFor(() => {
-        expect(screen.queryByText('Reply to Bob')).toBeNull();
+        expect(screen.queryByText('Reply To Bob')).toBeNull();
       });
     });
   });
@@ -2016,7 +2016,7 @@ describe('App', () => {
       await within(threadSection()).findByText('members only');
 
       fireEvent.click(within(threadSection()).getByRole('button', { name: 'Join' }));
-      expect(await screen.findByText('Your join request was sent. An admin has to approve it.')).toBeDefined();
+      expect(await screen.findByText('Your Join Request Was Sent. An Admin Has To Approve It.')).toBeDefined();
       expect(within(threadSection()).getByRole('button', { name: 'Request Sent' })).toBeDefined();
       expect(screen.queryByPlaceholderText('Message')).toBeNull();
     });
@@ -2135,7 +2135,7 @@ describe('App', () => {
 
       const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
       expect((within(dialog).getByRole('searchbox', { name: 'Search messages' }) as HTMLInputElement).value).toBe('#cloudflare');
-      expect(within(dialog).getByText('Messages in all chats')).toBeDefined();
+      expect(within(dialog).getByText('Messages In All Chats')).toBeDefined();
       await waitFor(() => expect(bridgeCall(calls, 'searchGlobal')?.body?.params).toMatchObject({ query: '#cloudflare' }));
     });
 
@@ -2149,7 +2149,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Search In Bob' }));
 
       const dialog = await screen.findByRole('dialog', { name: 'Search messages' });
-      expect(within(dialog).getByText('Messages in Bob')).toBeDefined();
+      expect(within(dialog).getByText('Messages In Bob')).toBeDefined();
       fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Search messages' }), { target: { value: 'see' } });
 
       expect(await within(dialog).findByRole('button', { name: /see you/ })).toBeDefined();
@@ -2354,7 +2354,7 @@ describe('App', () => {
       const row = threadSection().querySelector<HTMLElement>('[data-message-id="10"]');
       if (!row) throw new Error('Message 10 is not rendered');
       fireEvent.doubleClick(row);
-      expect(screen.getByText('Reply to Bob')).toBeDefined();
+      expect(screen.getByText('Reply To Bob')).toBeDefined();
     });
 
     it('opens on a long press and cancels when the finger drifts', async () => {
@@ -2432,7 +2432,7 @@ describe('App', () => {
       await waitFor(() => {
         expect(screen.queryByRole('dialog', { name: 'Forward message' })).toBeNull();
       });
-      expect(screen.getByText('Forwarded to Carol')).toBeDefined();
+      expect(screen.getByText('Forwarded To Carol')).toBeDefined();
     });
 
     it('forwards every member of an album as one batch', async () => {
@@ -2471,7 +2471,7 @@ describe('App', () => {
       openMessageMenu(20);
       clickMenuItem('Forward');
       const picker = await screen.findByRole('dialog', { name: 'Forward 2 messages' });
-      expect(within(picker).getByText('2 messages')).toBeDefined();
+      expect(within(picker).getByText('2 Messages')).toBeDefined();
       fireEvent.click(within(picker).getByRole('button', { name: /Carol/ }));
 
       await waitFor(() => {
@@ -2609,7 +2609,7 @@ describe('App', () => {
       // before Bob's window exists.
       scrollIntoView.mockClear();
       fireEvent.click(screen.getByText('Bob'));
-      expect(await within(threadSection()).findByText('Loading messages…')).toBeDefined();
+      expect(await within(threadSection()).findByText('Loading Messages…')).toBeDefined();
       scrollContainer().scrollTop = 0;
       fireEvent.scroll(scrollContainer());
 
@@ -3474,7 +3474,7 @@ describe('App', () => {
     };
 
     function openComments(): void {
-      const button = screen.getByRole('button', { name: /2 comments/ });
+      const button = screen.getByRole('button', { name: /2 Comments/ });
       fireEvent.click(button);
     }
 
@@ -3748,14 +3748,14 @@ describe('App', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Vote for Yes (50%)' }));
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('3 Votes')).toBeDefined();
       });
       expect(calls).toEqual([{ method: 'sendVote', params: { chatId: GROUP, messageId: ROOT + 1, options: [0] } }]);
 
       deliver({ type: 'poll', chatId: GROUP, messageId: ROOT + 1, pollId: poll.id, poll: { ...poll, totalVoters: 6 } });
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('6 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('6 Votes')).toBeDefined();
       });
     });
 
@@ -3785,7 +3785,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Vote for Yes (50%)' }));
 
       await waitFor(() => {
-        expect(within(threadSection()).getByText('3 votes')).toBeDefined();
+        expect(within(threadSection()).getByText('3 Votes')).toBeDefined();
       });
       expect(calls).toEqual([{ method: 'sendVote', params: { chatId: channel.id, messageId: 7, options: [0] } }]);
     });
@@ -3927,7 +3927,7 @@ describe('App', () => {
       expect(meta?.firstElementChild?.className).toBe('views');
       // The comments button is the bubble's footer, below the meta line.
       const children = Array.from(bubble?.children ?? []);
-      const button = within(bubble as HTMLElement).getByRole('button', { name: /2 comments/ });
+      const button = within(bubble as HTMLElement).getByRole('button', { name: /2 Comments/ });
       expect(children.indexOf(meta as Element)).toBeLessThan(children.indexOf(button));
     });
 
@@ -3975,9 +3975,9 @@ describe('App', () => {
       // Replying to a comment carries its id.
       openMessageMenu(ROOT + 1);
       clickMenuItem('Reply');
-      expect(screen.getByText('Reply to Dana')).toBeDefined();
+      expect(screen.getByText('Reply To Dana')).toBeDefined();
       fireEvent.keyDown(screen.getByPlaceholderText('Comment'), { key: 'Escape' });
-      expect(screen.queryByText('Reply to Dana')).toBeNull();
+      expect(screen.queryByText('Reply To Dana')).toBeNull();
 
       openMessageMenu(ROOT + 1);
       clickMenuItem('Reply');
@@ -3991,7 +3991,7 @@ describe('App', () => {
         params: expect.objectContaining({ chatId: channel.id, messageId: 7, text: 'thanks', replyTo: ROOT + 1 }),
       });
       await waitFor(() => {
-        expect(screen.queryByText('Reply to Dana')).toBeNull();
+        expect(screen.queryByText('Reply To Dana')).toBeNull();
       });
     });
 
@@ -4177,7 +4177,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Announcements'));
       expect(await screen.findByText('A new feature shipped')).toBeDefined();
       openComments();
-      expect(await within(threadSection()).findByText('No comments yet — be the first.')).toBeDefined();
+      expect(await within(threadSection()).findByText('No Comments Yet — Be The First.')).toBeDefined();
 
       fireEvent.change(screen.getByPlaceholderText('Comment'), { target: { value: 'first!' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -4277,7 +4277,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByText('Team'));
       expect(await screen.findByText('hello team')).toBeDefined();
 
-      expect(within(threadSection()).getByText('The admins of this chat have restricted your ability to send messages.')).toBeDefined();
+      expect(within(threadSection()).getByText('The Admins Of This Chat Have Restricted Your Ability To Send Messages.')).toBeDefined();
     });
   });
 
@@ -4542,7 +4542,7 @@ describe('App', () => {
       render(<App />);
       await openArchive();
 
-      expect(await screen.findByText('No archived chats.')).toBeDefined();
+      expect(await screen.findByText('No Archived Chats.')).toBeDefined();
     });
 
     it('says that the account has no chats when the chat list is empty', async () => {
@@ -4552,7 +4552,7 @@ describe('App', () => {
 
       // The list is read in one request with the account, so an empty list is
       // an answer, not a load that never finished.
-      expect(await screen.findByText('No chats yet.')).toBeDefined();
+      expect(await screen.findByText('No Chats Yet.')).toBeDefined();
     });
 
     it('leaves the archive for the chat list on back', async () => {
@@ -4772,7 +4772,7 @@ describe('App', () => {
         expect(within(threadSection()).getAllByText('first')).toHaveLength(1);
         expect(within(threadSection()).getAllByText('second')).toHaveLength(1);
       });
-      expect(within(threadSection()).queryByText(/Not sent/)).toBeNull();
+      expect(within(threadSection()).queryByText(/Not Sent/)).toBeNull();
     });
 
     it('keeps a failed send as a not-sent bubble and retries it with the same random id', async () => {
@@ -4794,7 +4794,7 @@ describe('App', () => {
       fireEvent.change(screen.getByPlaceholderText('Message'), { target: { value: 'retry me' } });
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
-      expect(await within(threadSection()).findByText(/Not sent/)).toBeDefined();
+      expect(await within(threadSection()).findByText(/Not Sent/)).toBeDefined();
       expect(within(threadSection()).getByText('retry me')).toBeDefined();
 
       const randomId = (sends[0]?.body as { params: { randomId?: string } }).params.randomId;
@@ -4809,7 +4809,7 @@ describe('App', () => {
       await waitFor(() => {
         expect(within(threadSection()).getAllByText('retry me')).toHaveLength(1);
       });
-      expect(within(threadSection()).queryByText(/Not sent/)).toBeNull();
+      expect(within(threadSection()).queryByText(/Not Sent/)).toBeNull();
     });
 
     it('shows an attachment right away and sends it with a random id', async () => {

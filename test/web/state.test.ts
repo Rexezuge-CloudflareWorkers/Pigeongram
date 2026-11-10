@@ -478,7 +478,7 @@ describe('formatting helpers', () => {
   });
 
   it('formats chat-list stamps', () => {
-    expect(formatListStamp(NOW - 10_000, NOW)).toBe('now');
+    expect(formatListStamp(NOW - 10_000, NOW)).toBe('Now');
     expect(formatListStamp(NOW - 5 * 60_000, NOW)).toBe('5m');
     expect(formatListStamp(NOW - 3 * 3_600_000, NOW)).toBe('3h');
     const old = formatListStamp(NOW - 5 * 86_400_000, NOW);
@@ -501,7 +501,7 @@ describe('formatting helpers', () => {
     expect(previewOf('hello', null)).toBe('hello');
     expect(previewOf('caption', PHOTO)).toBe('caption');
     expect(previewOf('', PHOTO)).toBe('Photo');
-    expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice message');
+    expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice Message');
     expect(previewOf('', { ...PHOTO, kind: 'sticker', emoji: '🙂' })).toBe('🙂 Sticker');
     expect(previewOf('', { ...PHOTO, kind: 'sticker' })).toBe('Sticker');
     expect(previewOf('', null, POLL)).toBe('Poll: Tea or coffee?');

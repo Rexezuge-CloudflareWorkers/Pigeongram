@@ -78,7 +78,7 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
       <span className="pending-file">
         <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
-        {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} files` : ''}
+        {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} Files` : ''}
       </span>
     );
   }
@@ -93,7 +93,7 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
 }
 
 function statusLabel(entry: PendingMessage): string {
-  if (entry.status === 'failed') return 'Not sent · ';
+  if (entry.status === 'failed') return 'Not Sent · ';
   if (entry.status === 'preparing') return 'Preparing… · ';
   if (entry.status === 'uploading') {
     const progress = entry.progress;

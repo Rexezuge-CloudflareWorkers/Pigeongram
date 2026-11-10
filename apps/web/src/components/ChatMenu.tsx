@@ -51,7 +51,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onClose }: ChatMenuProps) {
           already read. */}
       {read ? (
         <span role="status" className="block px-3 pt-2 pb-1 text-xs text-muted">
-          Already read
+          Already Read
         </span>
       ) : null}
       <button

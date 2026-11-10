@@ -98,7 +98,7 @@ describe('writeClipboard', () => {
     });
     installExecCommand(() => false);
 
-    await expect(writeClipboard('hello')).rejects.toThrow('The clipboard is not available');
+    await expect(writeClipboard('hello')).rejects.toThrow('The Clipboard Is Not Available');
   });
 
   it('treats a selection that throws as unavailable', async () => {
@@ -109,7 +109,7 @@ describe('writeClipboard', () => {
       throw new Error('no execCommand');
     });
 
-    await expect(writeClipboard('hello')).rejects.toThrow('The clipboard is not available');
+    await expect(writeClipboard('hello')).rejects.toThrow('The Clipboard Is Not Available');
     expect(document.querySelector('textarea')).toBeNull();
   });
 });

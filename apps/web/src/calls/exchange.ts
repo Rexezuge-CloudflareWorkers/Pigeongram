@@ -55,13 +55,13 @@ export async function establishKey(options: KeyOptions): Promise<EstablishedKey>
   if (options.commitment) {
     const hash = await sha256(options.peerValue);
     if (!sameBytes(hash, options.commitment)) {
-      throw new Error("The peer's key exchange value does not match its commitment");
+      throw new Error("The Peer's Key Exchange Value Does Not Match Its Commitment");
     }
   }
   const key = await deriveSharedKey(options.config, options.secret, options.peerValue);
   const fingerprint = await keyFingerprint(key);
   if (options.expectedFingerprint && options.expectedFingerprint !== fingerprint) {
-    throw new Error('The key fingerprint does not match');
+    throw new Error('The Key Fingerprint Does Not Match');
   }
   return { key, fingerprint };
 }

@@ -281,11 +281,11 @@ export function ThreadHeader({
       <Presence visible={archiveConfirmOpen}>
         {archiveConfirmOpen ? (
           <ConfirmDialog
-            title={archived ? 'Bring the chat back?' : 'Archive this chat?'}
+            title={archived ? 'Bring The Chat Back?' : 'Archive This Chat?'}
             message={
               archived
-                ? `${chat.title} comes back to the chat list.`
-                : `${chat.title} leaves the chat list and goes to the archive. You can bring it back at any time.`
+                ? `${chat.title} Comes Back To The Chat List.`
+                : `${chat.title} Leaves The Chat List And Goes To The Archive. You Can Bring It Back At Any Time.`
             }
             confirmLabel={archived ? 'Unarchive' : 'Archive'}
             tone={archived ? 'accent' : 'danger'}

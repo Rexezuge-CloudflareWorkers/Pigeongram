@@ -131,7 +131,7 @@ describe('UserMenu', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(onSignOut).not.toHaveBeenCalled();
   });
 

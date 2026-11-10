@@ -1,7 +1,4 @@
-/* Composer bar: bot commands, attach, upload status and the send field.
- * Redesign — print office: ruled, boxed, squared. The send is a stamp;
- * the attach is a tether; both fit the print mark. */
-
+/* Composer bar: bot commands, attach, upload status and the send field. */
 .composer {
   position: relative;
   display: flex;
@@ -9,8 +6,7 @@
   flex-wrap: wrap;
   gap: 10px;
   padding: 12px 16px;
-  /* Ledger rule at the top. */
-  border-top: 2px solid var(--border);
+  border-top: 1px solid var(--border);
   background: var(--panel);
 }
 
@@ -27,7 +23,7 @@
   /* Visible icon is 18px; the hit area is the 44px pseudo-element. */
   padding: 4px;
   color: var(--muted);
-  border-radius: 2px;
+  border-radius: 50%;
   transition:
     color 140ms var(--ease-out),
     background-color 140ms var(--ease-out),
@@ -52,7 +48,7 @@
 .composer .slash {
   min-width: 28px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .composer .slash .icon {
@@ -89,9 +85,8 @@
   padding: 6px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  /* Flat containment: print does not float. */
-  box-shadow: none;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   animation: menu-pop 160ms var(--ease-out);
 }
 
@@ -109,7 +104,7 @@
   width: 100%;
   padding: 8px 10px;
   text-align: left;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .composer .command-menu button.active {
@@ -118,7 +113,7 @@
 
 .composer .command-name {
   color: var(--accent);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .composer .command-description {
@@ -154,8 +149,7 @@
 }
 
 /* The mic↔send morph: the two icons cross-fade around a quarter turn, so
-   enabling the send reads as a transformation rather than a swap. Squared:
-   the stamp, not a pill. */
+   enabling the send reads as a transformation rather than a swap. */
 .composer .send-morph {
   position: relative;
   width: 36px;
@@ -163,7 +157,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
+  border-radius: 50%;
   color: var(--accent);
   background: var(--accent-softer);
   transition:

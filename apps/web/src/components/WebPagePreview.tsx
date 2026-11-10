@@ -34,7 +34,7 @@ export function MessageWebPage({ message, page }: { message: MessageDto; page: M
         width={photo.width}
         height={photo.height}
         loading="lazy"
-        className={small ? 'h-16 w-16 shrink-0 rounded-xs object-cover' : 'max-h-60 w-full rounded-xs object-cover'}
+        className={small ? 'h-16 w-16 shrink-0 rounded object-cover' : 'max-h-60 w-full rounded object-cover'}
         onError={() => setFailedSrc(src)}
       />
     );
@@ -44,7 +44,7 @@ export function MessageWebPage({ message, page }: { message: MessageDto; page: M
       href={page.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex gap-2 rounded-xs border-l-2 border-accent bg-black/20 p-2 text-fg no-underline hover:bg-black/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+      className={`flex gap-2 rounded-md border-l-2 border-accent bg-black/20 p-2 text-fg no-underline hover:bg-black/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
         small ? 'flex-row-reverse items-start' : 'flex-col'
       }`}
       onClick={(event) => {
@@ -53,12 +53,8 @@ export function MessageWebPage({ message, page }: { message: MessageDto; page: M
     >
       {thumbnail}
       <span className="flex min-w-0 flex-col gap-0.5">
-        {page.siteName === null ? null : <span className="truncate text-xs font-semibold text-accent">{page.siteName}</span>}
-        {page.title === null ? null : (
-          <span className="line-clamp-2 text-sm font-semibold" style={{ fontWeight: 650 }}>
-            {page.title}
-          </span>
-        )}
+        {page.siteName === null ? null : <span className="truncate text-xs font-medium text-accent">{page.siteName}</span>}
+        {page.title === null ? null : <span className="line-clamp-2 text-sm font-semibold">{page.title}</span>}
         {page.description === null ? null : <span className="line-clamp-3 text-xs text-muted">{page.description}</span>}
         <span className="truncate text-xs text-muted">{page.displayUrl}</span>
       </span>

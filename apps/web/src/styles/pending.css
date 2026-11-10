@@ -14,7 +14,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border-radius: 2px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.2);
   color: var(--text);
   font-size: 13px;
@@ -34,7 +34,7 @@
   font-size: 12px;
   font-weight: 600;
   padding: 2px 0;
-  border-radius: 2px;
+  border-radius: 6px;
   transition:
     color 140ms var(--ease-out),
     transform 140ms var(--ease-out);
@@ -60,8 +60,8 @@
 .message .pending-progress {
   display: block;
   height: 3px;
-  border-radius: 2px;
-  background: rgb(242 237 230 / 14%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
   overflow: hidden;
 }
 

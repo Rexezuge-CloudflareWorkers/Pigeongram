@@ -1,8 +1,4 @@
-/* Chat list. */
-/* Redesign — print office: the sidebar is a ledger of lines. Rows are
-   flat, ruled, squared, with a 2px accent bar on the selected row instead
-   of a geegaw slab. Feather/ink/ochre stand in for navy teal. */
-
+/* Chat list and thread. */
 .chats {
   list-style: none;
   margin: 0;
@@ -31,7 +27,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 2px;
+  border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
@@ -72,8 +68,7 @@
   min-height: 48px;
   padding: 10px 14px;
   text-align: left;
-  /* Ledger rule: ruled rows, divided by ink. */
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgb(37 51 63 / 40%);
   transition:
     background-color 150ms var(--ease-out),
     transform 150ms var(--ease-out);
@@ -93,24 +88,23 @@
   outline-offset: -2px;
 }
 
-/* The selected row: a 2px accent bar at the cut line (right-to-left safe)
-   instead of a filled slab. Flat ink, not a slab. */
+/* The selected row, the way the official clients mark it: a filled accent
+   slab with light text, so the open chat is unmistakable in the list. */
 .chat.active,
 .chat.active:hover,
 .chat.active:active {
-  background: var(--panel-2);
-  color: var(--text);
-  box-shadow: inset -3px 0 0 var(--accent);
+  background: var(--badge);
+  color: #fff;
 }
 
 .chat.active .chat-preview,
 .chat.active .chat-stamp {
-  color: var(--muted);
+  color: rgb(255 255 255 / 78%);
 }
 
 .chat.active .badge {
-  background: var(--badge);
-  color: var(--md-sys-color-on-primary-container);
+  background: #fff;
+  color: var(--badge);
 }
 
 /* The list's loading state, modelled on the official clients: rows of
@@ -133,7 +127,7 @@
 .skeleton-circle {
   width: 44px;
   height: 44px;
-  border-radius: 2px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
@@ -147,7 +141,7 @@
 
 .skeleton-line {
   height: 11px;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 
 .skeleton-line.short {
@@ -178,7 +172,7 @@
 }
 
 .chat-title {
-  font-weight: 650;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -201,8 +195,8 @@
 
 .badge {
   background: var(--badge);
-  color: var(--md-sys-color-on-primary-container);
-  border-radius: 2px;
+  color: #08121c;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
   padding: 1px 8px;

@@ -1,6 +1,4 @@
-/* The public intro, shown before Cloudflare Access authenticates the browser.
- * Redesign — print office: the hero is a broadsheet. Serif display, 65ch
- * measure, squared unpilled commits, leather-bound cards ruled by ink. */
+/* The public intro, shown before Cloudflare Access authenticates the browser. */
 
 .landing {
   min-height: 100%;
@@ -10,8 +8,7 @@
   justify-content: center;
   gap: 44px;
   padding: 56px 24px;
-  /* Flat paper wash: print does not breathe or glow. */
-  background: var(--bg);
+  background: radial-gradient(80% 55% at 50% 0%, rgb(94 181 247 / 12%), transparent 70%);
 }
 
 .landing-hero {
@@ -74,7 +71,7 @@
   margin: 0 0 14px;
   color: var(--accent);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -82,32 +79,28 @@
 .landing h1 {
   margin: 0;
   font-size: clamp(34px, 6vw, 54px);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  text-wrap: balance;
 }
 
 .landing .lead {
-  max-width: 65ch;
+  max-width: 600px;
   margin: 18px auto 0;
   color: var(--muted);
   font-size: 17px;
-  line-height: 1.5;
-  text-wrap: pretty;
 }
 
 .landing .cta {
   display: inline-block;
   margin-top: 28px;
   padding: 12px 28px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--accent);
-  color: #05070e;
-  font-weight: 650;
+  color: #08121c;
+  font-weight: 600;
   text-decoration: none;
-  /* Squared, unpilled commits. No glow, no bloom. */
-  box-shadow: none;
+  box-shadow: 0 10px 30px rgb(94 181 247 / 35%);
   transition:
     filter 140ms var(--ease-out),
     transform 140ms var(--ease-out),
@@ -117,7 +110,7 @@
 .landing .cta:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
-  box-shadow: none;
+  box-shadow: 0 14px 36px rgb(94 181 247 / 45%);
 }
 
 .landing .cta:active {
@@ -144,8 +137,7 @@
   padding: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
-  /* Leather-bound card: a squared ledger block, not a floating tile. */
-  border-radius: 2px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
   text-align: left;
   transition:
     transform 180ms var(--ease-out),
@@ -156,7 +148,7 @@
 .feature:hover {
   transform: translateY(-3px);
   border-color: var(--border-strong);
-  box-shadow: none;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 35%);
 }
 
 .feature:active {
@@ -166,7 +158,7 @@
 .feature h2 {
   margin: 0 0 8px;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .feature p {

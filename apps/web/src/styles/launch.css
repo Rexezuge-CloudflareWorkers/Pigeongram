@@ -1,6 +1,4 @@
-/* The launch splash: the app's mark in motion while the Access probe runs.
- * Redesign — print office: the halo is flat paper, the orbits keep their
- * sweep on a printed ring, the mark is squared, the glow is cut. */
+/* The launch splash: the app's mark in motion while the Access probe runs. */
 
 .launch {
   position: relative;
@@ -11,7 +9,7 @@
   justify-content: center;
   gap: 34px;
   padding: 24px;
-  background: var(--bg);
+  background: radial-gradient(52% 42% at 50% 42%, rgb(94 181 247 / 12%), transparent 72%), var(--bg);
 }
 
 .launch-stage {
@@ -23,7 +21,7 @@
   flex: none;
 }
 
-/* The halo behind the mark: flat paper tone, not a glow. */
+/* The halo behind the mark: the light the mark sits in, not a second spinner. */
 .launch-halo {
   position: absolute;
   inset: 0;
@@ -31,7 +29,7 @@
   height: 250px;
   margin: auto;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(79 125 240 / 14%), transparent 66%);
+  background: radial-gradient(circle, rgb(94 181 247 / 22%), transparent 66%);
   animation: launch-halo 4.8s ease-in-out infinite;
 }
 
@@ -42,7 +40,7 @@
   inset: 0;
   margin: auto;
   border-radius: 50%;
-  background: conic-gradient(from 20deg, transparent 0deg 190deg, rgb(79 125 240 / 60%) 300deg, transparent 360deg);
+  background: conic-gradient(from 20deg, transparent 0deg 190deg, rgb(94 181 247 / 60%) 300deg, transparent 360deg);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
   animation: launch-orbit 5.6s linear infinite;
@@ -57,20 +55,22 @@
   width: 212px;
   height: 212px;
   opacity: 0.45;
-  background: conic-gradient(from 180deg, transparent 0deg 230deg, rgb(79 125 240 / 55%) 330deg, transparent 360deg);
+  background: conic-gradient(from 180deg, transparent 0deg 230deg, rgb(94 181 247 / 55%) 330deg, transparent 360deg);
   animation-duration: 8.4s;
   animation-direction: reverse;
 }
 
-/* The tile is the favicon's 32-unit box at 112px, squared to the print
-   system. No drop shadow, no glow. */
+/* The tile is the favicon's 32-unit box at 112px. The radius is the favicon's
+   `rx=7`, as a percentage so the clipping sheen follows it. */
 .launch-mark {
   position: relative;
   width: 112px;
   height: 112px;
-  border-radius: 2px;
+  border-radius: 21.875%;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow:
+    0 22px 48px rgb(0 0 0 / 48%),
+    0 0 42px rgb(94 181 247 / 20%);
   animation: launch-float 4.8s ease-in-out infinite;
 }
 
@@ -93,7 +93,7 @@
 .launch-sheen {
   position: absolute;
   inset: -60%;
-  background: linear-gradient(115deg, transparent 42%, rgb(242 237 230 / 14%) 50%, transparent 58%);
+  background: linear-gradient(115deg, transparent 42%, rgb(255 255 255 / 22%) 50%, transparent 58%);
   transform: translateX(-70%);
   animation: launch-sheen 4.8s ease-in-out infinite;
   pointer-events: none;
@@ -135,7 +135,7 @@
 .launch-error h1 {
   margin: 0;
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .launch-error .status {

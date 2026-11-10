@@ -22,14 +22,15 @@ interface SpinnerProps {
 }
 
 /**
- * The loading ring shared by every busy surface: a bordered square sector
- * with one transparent edge and an 800ms rotation, so waiting feels steady
- * rather than panicked. Reduced motion stops the rotation; the caption and
- * the progress bar still answer.
+ * The loading ring shared by every busy surface, modelled on the
+ * AWS-AccessBridge `Spinner`: a bordered circle with one transparent edge and
+ * an 800ms rotation (the MD3 long duration), so waiting feels steady rather
+ * than panicked. Reduced motion stops the rotation; the caption and the
+ * progress bar still answer.
  *
  * A labelled block spinner is a live status region. An unlabelled or inline
  * one is decorative, because the surrounding control already carries the
- * user-visible text. Squared to the print system — the old circle is cut.
+ * user-visible text.
  */
 export function Spinner({ size = 24, color = 'var(--accent)', label, padding, inline = false }: SpinnerProps) {
   return (

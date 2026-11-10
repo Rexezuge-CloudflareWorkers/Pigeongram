@@ -37,7 +37,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         type={type}
         data-icon-only
-        className={`inline-flex ${SIZES[size]} shrink-0 items-center justify-center rounded-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]}${className ? ` ${className}` : ''}`}
+        className={`inline-flex ${SIZES[size]} shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]}${className ? ` ${className}` : ''}`}
         {...rest}
       >
         {children}

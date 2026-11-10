@@ -587,6 +587,11 @@ export interface MessageMediaDto {
   */
   duration: number | null;
   /**
+  The emoji Telegram associates with a sticker, used for the chat list's
+  preview line. Absent for every other media kind.
+  */
+  emoji?: string;
+  /**
   Streamable video variants, primary first, when the video has alternatives.
   Present only for non-animation videos with at least two variants; omitted
   otherwise, so the UI shows no quality selector and playback behaves as before.

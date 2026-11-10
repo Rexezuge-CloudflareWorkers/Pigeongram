@@ -196,6 +196,23 @@ describe('ChatList pin marker', () => {
     expect(preview?.textContent).toBe('see you');
   });
 
+  it("shows a sticker's emoji in the preview", () => {
+    const sticker = message('');
+    sticker.media = {
+      kind: 'sticker',
+      fileName: null,
+      mime: 'image/webp',
+      size: 2048,
+      width: 512,
+      height: 512,
+      duration: null,
+      emoji: '🙂',
+    };
+    renderList([dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(sticker) })]);
+
+    expect(rowIn('Bob').querySelector('.chat-preview')?.textContent).toBe('🙂 Sticker');
+  });
+
   it('marks the pin as decorative, so the preview carries no stray glyph', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 

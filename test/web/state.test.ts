@@ -502,6 +502,8 @@ describe('formatting helpers', () => {
     expect(previewOf('caption', PHOTO)).toBe('caption');
     expect(previewOf('', PHOTO)).toBe('Photo');
     expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice message');
+    expect(previewOf('', { ...PHOTO, kind: 'sticker', emoji: '🙂' })).toBe('🙂 Sticker');
+    expect(previewOf('', { ...PHOTO, kind: 'sticker' })).toBe('Sticker');
     expect(previewOf('', null, POLL)).toBe('Poll: Tea or coffee?');
     expect(previewOf('', null)).toBe('—');
   });

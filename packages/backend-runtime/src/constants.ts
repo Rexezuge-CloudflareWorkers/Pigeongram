@@ -15,7 +15,20 @@
 export const CORRELATION_ID_HEADER = 'x-correlation-id';
 
 /**
- * The per-minute request budget for `/user/*` when `RATE_LIMIT_PER_MINUTE` is
- * absent or unusable.
+ * The per-minute request budget for the account plane of `/user/*` (the RPC,
+ * login, state and upload routes) when `RATE_LIMIT_PER_MINUTE` is absent or
+ * unusable.
  */
-export const DEFAULT_RATE_LIMIT_PER_MINUTE = 60;
+export const DEFAULT_RATE_LIMIT_PER_MINUTE = 120;
+
+/**
+ * The per-minute request budget for the media plane of `/user/*`
+ * (`GET /user/file` and `GET /user/avatar`) when
+ * `MEDIA_RATE_LIMIT_PER_MINUTE` is absent or unusable.
+ *
+ * Media is metered apart from the account plane because every avatar and every
+ * byte-range is its own request: a chat-list paint plus a media-heavy thread
+ * legitimately issues hundreds of them in a minute, while the same volume of
+ * RPC calls would be abuse.
+ */
+export const DEFAULT_MEDIA_RATE_LIMIT_PER_MINUTE = 600;

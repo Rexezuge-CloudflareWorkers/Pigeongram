@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatListStamp, previewOf } from '../format';
+import { mediaIcon } from '../media-icons';
 import type { PendingMessage } from '../outbox';
 import { withPendingDialogs } from '../outbox';
-import type { ChatDto, DialogDto, PeerId } from '../types';
+import type { ChatDto, DialogDto, DialogMessageDto, PeerId } from '../types';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { ChatMenu } from './ChatMenu';
@@ -46,6 +47,23 @@ interface ChatMenuState {
   chatId: PeerId;
   x: number;
   y: number;
+}
+
+/**
+The preview line's contents: the media kind's glyph, then the label or caption.
+
+The glyph stays beside a caption too — the glyph says the last message carries
+media, the text says what the peer wrote — and a kind with no glyph of its own
+(an emoji-led sticker, an unsupported payload) simply starts with its text.
+*/
+function ChatPreviewBody({ message }: { message: DialogMessageDto }) {
+  const icon = message.media === null ? null : mediaIcon(message.media.kind);
+  return (
+    <>
+      {icon === null ? null : <Icon name={icon} size={14} />}
+      {previewOf(message.text, message.media, message.poll)}
+    </>
+  );
 }
 
 export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, onMarkRead, emptyLabel }: ChatListProps) {
@@ -224,7 +242,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
                       {last ? <span className="chat-stamp">{formatListStamp(last.date)}</span> : null}
                     </span>
                     <span className="chat-bottom">
-                      <span className="chat-preview">{last ? previewOf(last.text, last.media, last.poll) : '—'}</span>
+                      <span className="chat-preview">{last ? <ChatPreviewBody message={last} /> : '—'}</span>
                       {/* The count and the pin share one slot: the count has priority,
                         so an unread pinned chat drops the pin. */}
                       {dialog.unread > 0 ? (

@@ -70,11 +70,16 @@ export function initials(title: string): string {
 
 /**
 Preview line for the chat list.
+
+A document previews its file name, which is what the official clients show
+beside the document glyph; the kind's label is only the fallback for a document
+Telegram sent without a name. Every other kind falls back to its label, and a
+caption outranks both — the caption is the text the peer wrote.
 */
 export function previewOf(text: string, media: MessageMediaDto | null, poll: MessagePollDto | null = null): string {
   if (text) return text;
   if (poll) return pollPreview(poll);
-  if (media) return mediaPreview(media.kind, media.emoji);
+  if (media) return media.kind === 'document' && media.fileName ? media.fileName : mediaPreview(media.kind, media.emoji);
   return '—';
 }
 

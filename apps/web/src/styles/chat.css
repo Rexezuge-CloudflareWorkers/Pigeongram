@@ -193,6 +193,13 @@
   flex: 1;
 }
 
+/* A media glyph leads the preview line: inline so the line still truncates as
+   one run, nudged onto the 13px text's baseline and spaced off the label. */
+.chat-preview .icon {
+  vertical-align: -0.2em;
+  margin-inline-end: 4px;
+}
+
 .badge {
   background: var(--badge);
   color: #08121c;

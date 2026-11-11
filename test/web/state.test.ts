@@ -515,6 +515,9 @@ describe('formatting helpers', () => {
     expect(previewOf('caption', PHOTO)).toBe('caption');
     expect(previewOf('', PHOTO)).toBe('Photo');
     expect(previewOf('', { ...PHOTO, kind: 'voice' })).toBe('Voice Message');
+    expect(previewOf('', { ...PHOTO, kind: 'document', fileName: 'report.pdf' })).toBe('report.pdf');
+    expect(previewOf('', { ...PHOTO, kind: 'document', fileName: null })).toBe('Document');
+    expect(previewOf('caption', { ...PHOTO, kind: 'document', fileName: 'report.pdf' })).toBe('caption');
     expect(previewOf('', { ...PHOTO, kind: 'sticker', emoji: '🙂' })).toBe('🙂 Sticker');
     expect(previewOf('', { ...PHOTO, kind: 'sticker' })).toBe('Sticker');
     expect(previewOf('', { ...PHOTO, kind: 'unsupported' })).toBe('Unsupported Message');

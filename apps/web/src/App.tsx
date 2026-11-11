@@ -15,7 +15,7 @@ import { useAppHeight } from './useAppHeight';
  */
 export function App() {
   useAppHeight();
-  const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
+  const { state, access, error, reportError, dismissError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
   // Registered on every screen: the public intro is installable too.
   const pwa = usePwa();
   // The media-loading choices belong to the device, so they load before the
@@ -40,7 +40,14 @@ export function App() {
 
   return (
     <DataSaverProvider value={dataSaver}>
-      <SignedInShell initialMe={state?.me ?? null} error={error} pwa={pwa} onError={reportError} onSignedOut={reset} />
+      <SignedInShell
+        initialMe={state?.me ?? null}
+        error={error}
+        pwa={pwa}
+        onError={reportError}
+        onDismissError={dismissError}
+        onSignedOut={reset}
+      />
     </DataSaverProvider>
   );
 }

@@ -798,6 +798,27 @@ describe('toMessageDto', () => {
     expect(toMessageDto(service).text).toBe('You set messages to auto-delete in 1 month');
   });
 
+  it('names a payload newer than the client layer as unsupported media', () => {
+    // Telegram answers a media type the client's layer does not know with
+    // `messageMediaUnsupported` and blanks the caption (Telegram Widgets are
+    // the current case), so the DTO must keep the message addressable.
+    const widget = message({ message: '', media: { _: 'messageMediaUnsupported' } });
+    expect(toMessageDto(widget).media).toEqual({
+      kind: 'unsupported',
+      fileName: null,
+      mime: null,
+      size: null,
+      width: null,
+      height: null,
+      duration: null,
+    });
+    expect(toDialogMessageDto(widget).media?.kind).toBe('unsupported');
+  });
+
+  it('leaves a text-only message without a media DTO', () => {
+    expect(toMessageDto(message({})).media).toBeNull();
+  });
+
   it('maps a photo message into the media DTO', () => {
     const photo = message({
       media: {

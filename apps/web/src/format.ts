@@ -106,6 +106,7 @@ const MEDIA_PREVIEWS: Record<MessageMediaDto['kind'], string> = {
   voice: 'Voice Message',
   sticker: 'Sticker',
   document: 'Document',
+  unsupported: 'Unsupported Message',
 };
 
 /**

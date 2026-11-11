@@ -122,6 +122,11 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
         <DocumentLink message={message} />
       );
     }
+    // An unsupported payload has no file to link: the bubble renders the
+    // placeholder card instead (`MessageUnsupported` in `MessageRow`).
+    case 'unsupported': {
+      return null;
+    }
     default: {
       return <DocumentLink message={message} />;
     }

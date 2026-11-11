@@ -57,7 +57,8 @@ export type IconName =
   | 'dark-mode'
   | 'light-mode'
   | 'expand-more'
-  | 'keyboard-arrow-up';
+  | 'keyboard-arrow-up'
+  | 'info';
 
 const PATHS: Record<IconName, string> = {
   'more-vertical':
@@ -115,6 +116,7 @@ const PATHS: Record<IconName, string> = {
     'M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z',
   'expand-more': 'M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z',
   'keyboard-arrow-up': 'M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z',
+  info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
 };
 
 interface IconProps {

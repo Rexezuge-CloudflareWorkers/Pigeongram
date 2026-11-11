@@ -132,7 +132,8 @@ protocol,registry}`) and the mtcute integration
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
 - `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
   troubleshooting. `pwa.md`: the service worker's rules, the install build, the offline state, and how to verify it.
-  `android.md`: the per-deployment TWA build, signing, Play notes and trust model.
+  `android.md`: the per-deployment TWA build, signing, Play notes and trust model. `TELEGRAM_WIDGETS.md`: why a widget
+  post arrives with no content, what the placeholder card is, and the layer-233 upgrade path.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
   the workspace.
@@ -177,6 +178,13 @@ protocol,registry}`) and the mtcute integration
 - **The DO stub is a plain class**, not `extends DurableObject` — that import cannot resolve under Vitest's runtime
   without `@cloudflare/vitest-pool-workers`, and a DO class does not need to extend it. Keep it that way until real DO
   tests exist.
+- **A media type newer than our MTProto layer arrives as `messageMediaUnsupported`, with its caption blanked.** Telegram
+  replaces the payload and the text for a media type the advertised layer cannot read, so mtcute reports no media and no
+  text; the message would reach the SPA with nothing to render. The engine names it `MessageMediaDto.kind: 'unsupported'`
+  and never `null`, the SPA renders `MessageUnsupported` (a labelled card with an _Open In Telegram_ link built from
+  `messageWebLink`), and a message with no media, text, poll or preview gets the same card. Telegram Widgets (layer 233)
+  are the case in hand: never render the widget HTML without the official `@telegram/widget-sandbox`, and never leave a
+  blank bubble in the meantime. `docs/TELEGRAM_WIDGETS.md` holds the upgrade path.
 - **Bridge failures carry a stable code, and the engine logs one JSON line per event.** `EngineError` derives a coarse
   `code` from its status (`validation`, `not_found`, `conflict`, `access`, `upstream`, `unavailable`, `internal`) and a
   call site may name a more specific one; `errorResponse` sends `{error, code}` still additively, `EngineConfigError` is

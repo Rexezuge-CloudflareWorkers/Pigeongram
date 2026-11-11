@@ -17,14 +17,23 @@ import {
 import type { ChatDto, DialogDto, MessageForwardDto } from '../../apps/web/src/types';
 
 function chat(id: number, username: string | null): ChatDto {
-  return { id, kind: 'user', title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
+  return {
+    id,
+    kind: 'user',
+    title: `chat ${String(id)}`,
+    username,
+    photo: null,
+    canSendMessages: true,
+    canDeleteMessages: true,
+    presence: null,
+  };
 }
 
 /**
 A peer of any kind, for the address builders that care about the kind.
 */
 function peer(id: number, username: string | null, kind: ChatDto['kind'] = 'channel'): ChatDto {
-  return { id, kind, title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, presence: null };
+  return { id, kind, title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, canDeleteMessages: true, presence: null };
 }
 
 /**

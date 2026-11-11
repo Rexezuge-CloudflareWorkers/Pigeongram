@@ -4,6 +4,7 @@ import { threadReachesLatest } from '../thread-state';
 import type { ChatDto, MessageDto, PeerId, PresenceDto } from '../types';
 import type { ChatPreview } from '../navigation-types';
 import { CommentsView } from './CommentsView';
+import { DeleteMessagesDialog } from './DeleteMessagesDialog';
 import { ThreadView } from './ThreadView';
 
 /**
@@ -106,84 +107,92 @@ export function ThreadPane({
 }: ThreadPaneProps) {
   if (comments.thread) {
     return (
-      <CommentsView
-        thread={comments.thread}
-        loading={comments.loading}
-        loadingOlder={comments.loadingOlder}
-        pending={comments.pending}
-        error={comments.error}
-        reactingIds={comments.reactingIds}
-        votingIds={comments.votingIds}
-        pressingButtonIds={comments.pressingButtonIds}
-        replyKeyboard={comments.replyKeyboard}
-        onBack={onBack}
-        onLoadOlder={() => void comments.loadOlder()}
-        onSend={comments.send}
-        onAttach={comments.attach}
-        onRetryPending={comments.retryPending}
-        onDiscardPending={comments.discardPending}
-        onReact={comments.react}
-        onForward={onForward}
-        onVote={comments.vote}
-        onPressButton={comments.pressButton}
-        onPressReplyKeyboard={comments.pressReplyKeyboardButton}
-        onOpenMedia={(messageId) => onOpenMedia('comments', messageId)}
-      />
+      <>
+        <CommentsView
+          thread={comments.thread}
+          loading={comments.loading}
+          loadingOlder={comments.loadingOlder}
+          pending={comments.pending}
+          error={comments.error}
+          reactingIds={comments.reactingIds}
+          votingIds={comments.votingIds}
+          pressingButtonIds={comments.pressingButtonIds}
+          replyKeyboard={comments.replyKeyboard}
+          onBack={onBack}
+          onLoadOlder={() => void comments.loadOlder()}
+          onSend={comments.send}
+          onAttach={comments.attach}
+          onRetryPending={comments.retryPending}
+          onDiscardPending={comments.discardPending}
+          onReact={comments.react}
+          onForward={onForward}
+          onDelete={comments.deletion.request}
+          onVote={comments.vote}
+          onPressButton={comments.pressButton}
+          onPressReplyKeyboard={comments.pressReplyKeyboardButton}
+          onOpenMedia={(messageId) => onOpenMedia('comments', messageId)}
+        />
+        <DeleteMessagesDialog deletion={comments.deletion} />
+      </>
     );
   }
   return (
-    <ThreadView
-      chat={selected}
-      presence={presence}
-      archived={archived}
-      preview={preview === null ? null : { joining: preview.joining, requested: preview.requested }}
-      onJoin={onJoin}
-      canArchive={canArchive}
-      messages={threads.thread?.messages ?? []}
-      loading={threads.loading}
-      loadingOlder={threads.loadingOlder}
-      loadingNewer={threads.loadingNewer}
-      hasMoreOlder={threads.thread?.hasMoreOlder ?? false}
-      newMessageIds={threads.thread?.newMessageIds ?? NO_NEW_MESSAGE_IDS}
-      pending={threads.pending}
-      error={threads.error}
-      botCommands={threads.botCommands}
-      description={threads.description}
-      replyKeyboard={threads.replyKeyboard}
-      reactingIds={threads.reactingIds}
-      votingIds={threads.votingIds}
-      pressingButtonIds={threads.pressingButtonIds}
-      readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
-      unreadDividerId={threads.thread?.unreadDividerId ?? null}
-      focusMessageId={threads.thread?.focusMessageId ?? null}
-      atLatest={threads.thread === null || threadReachesLatest(threads.thread)}
-      positions={threads.positions}
-      onBack={onBack}
-      onSetArchived={onSetArchived}
-      onSearch={onSearch}
-      onCall={() => {
-        if (selected) calls.startCall(selected.id);
-      }}
-      callActive={calls.callActive}
-      onLoadOlder={() => void threads.loadOlder()}
-      onLoadNewer={() => void threads.loadNewer()}
-      onJumpToLatest={async () => {
-        if (!selected) return;
-        onMarkAllRead(selected.id);
-        await threads.jumpToLatest();
-      }}
-      onSend={threads.send}
-      onAttach={threads.attach}
-      onRetryPending={threads.retryPending}
-      onDiscardPending={threads.discardPending}
-      onReact={threads.react}
-      onForward={onForward}
-      onVote={threads.vote}
-      onPressButton={threads.pressButton}
-      onPressReplyKeyboard={threads.pressReplyKeyboardButton}
-      onReadThrough={onReadThrough}
-      onOpenMedia={(messageId) => onOpenMedia('thread', messageId)}
-      onOpenComments={onOpenComments}
-    />
+    <>
+      <ThreadView
+        chat={selected}
+        presence={presence}
+        archived={archived}
+        preview={preview === null ? null : { joining: preview.joining, requested: preview.requested }}
+        onJoin={onJoin}
+        canArchive={canArchive}
+        messages={threads.thread?.messages ?? []}
+        loading={threads.loading}
+        loadingOlder={threads.loadingOlder}
+        loadingNewer={threads.loadingNewer}
+        hasMoreOlder={threads.thread?.hasMoreOlder ?? false}
+        newMessageIds={threads.thread?.newMessageIds ?? NO_NEW_MESSAGE_IDS}
+        pending={threads.pending}
+        error={threads.error}
+        botCommands={threads.botCommands}
+        description={threads.description}
+        replyKeyboard={threads.replyKeyboard}
+        reactingIds={threads.reactingIds}
+        votingIds={threads.votingIds}
+        pressingButtonIds={threads.pressingButtonIds}
+        readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
+        unreadDividerId={threads.thread?.unreadDividerId ?? null}
+        focusMessageId={threads.thread?.focusMessageId ?? null}
+        atLatest={threads.thread === null || threadReachesLatest(threads.thread)}
+        positions={threads.positions}
+        onBack={onBack}
+        onSetArchived={onSetArchived}
+        onSearch={onSearch}
+        onCall={() => {
+          if (selected) calls.startCall(selected.id);
+        }}
+        callActive={calls.callActive}
+        onLoadOlder={() => void threads.loadOlder()}
+        onLoadNewer={() => void threads.loadNewer()}
+        onJumpToLatest={async () => {
+          if (!selected) return;
+          onMarkAllRead(selected.id);
+          await threads.jumpToLatest();
+        }}
+        onSend={threads.send}
+        onAttach={threads.attach}
+        onRetryPending={threads.retryPending}
+        onDiscardPending={threads.discardPending}
+        onReact={threads.react}
+        onForward={onForward}
+        onDelete={threads.deletion.request}
+        onVote={threads.vote}
+        onPressButton={threads.pressButton}
+        onPressReplyKeyboard={threads.pressReplyKeyboardButton}
+        onReadThrough={onReadThrough}
+        onOpenMedia={(messageId) => onOpenMedia('thread', messageId)}
+        onOpenComments={onOpenComments}
+      />
+      <DeleteMessagesDialog deletion={threads.deletion} />
+    </>
   );
 }

@@ -6,6 +6,7 @@ import {
   applyReactionUpdate,
   applyThreadReadUpdate,
   applyViewsUpdate,
+  deletionReport,
   findPollMessage,
   toggleReaction,
   updateThread,
@@ -14,7 +15,7 @@ import {
 import type { PollUpdateTarget } from './state';
 import type { OpenThreadResult, ThreadController } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
-import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages } from './thread-state';
+import { applyThreadDeleted, applyThreadEdit, applyThreadNewMessage, applyThreadRestored, applyThreadSentMessages } from './thread-state';
 import type { ChatThread } from './thread-state';
 import type { OpenThreadOptions } from './thread-window';
 import type {
@@ -30,6 +31,7 @@ import type {
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
+import { useMessageDelete } from './useMessageDelete';
 import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
 import { useThreadOpen } from './useThreadOpen';
@@ -58,9 +60,16 @@ interface UseThreadOptions {
   confirmation) in the global notice toast.
   */
   onNotice: (text: string) => void;
+  /**
+  Reports a deletion the open thread folded: what left the window and what it
+  still holds, so the chat list can repair its preview and badge. The list
+  belongs to the caller, and a deletion in a chat that is not open never
+  reaches this hook.
+  */
+  onDeleted: (chatId: PeerId, removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
 }
 
-export function useThread({ onSent, onError, onNotice }: UseThreadOptions): ThreadController {
+export function useThread({ onSent, onError, onNotice, onDeleted }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [keyboardSeed, setKeyboardSeed] = useState<MessageDto | null>(null);
   const [dismissedKeyboardId, setDismissedKeyboardId] = useState<number | null>(null);
@@ -84,6 +93,13 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
   useLayoutEffect(() => {
     threadRef.current = thread;
   }, [thread]);
+
+  // The socket handler is created once, so the deletion report is read through
+  // a ref: the shell rebuilds its handler together with the dialogs.
+  const onDeletedRef = useRef(onDeleted);
+  useLayoutEffect(() => {
+    onDeletedRef.current = onDeleted;
+  }, [onDeleted]);
 
   // The chat shows the newest reply markup a message carried — even one the
   // loaded range cannot show yet, which is what the seed stands in for — and a
@@ -205,6 +221,22 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     [replyKeyboard, send],
   );
 
+  /**
+  Removes messages from the open window ahead of Telegram's answer.
+  */
+  const removeMessages = useCallback((chatId: PeerId, messageIds: readonly number[]): void => {
+    setThread((current) => applyThreadDeleted(current, chatId, messageIds));
+  }, []);
+
+  /**
+  Puts messages a refused delete took out back into the open window.
+  */
+  const restoreMessages = useCallback((messages: readonly MessageDto[]): void => {
+    setThread((current) => applyThreadRestored(current, messages));
+  }, []);
+
+  const deletion = useMessageDelete({ remove: removeMessages, restore: restoreMessages, onError });
+
   const react = useCallback(
     (message: MessageDto, reaction: MessageReactionDto): void => {
       if (reactingIds.has(message.id)) return;
@@ -310,6 +342,14 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
       else applyPoll(update, update.poll);
       return;
     }
+    if (update.type === 'deleted') {
+      // The engine echoes an accepted delete, and another device's arrives the
+      // same way; the chat list is repaired from what the fold matched.
+      const report = deletionReport(threadRef.current, update.chatId, update.messageIds);
+      if (report) onDeletedRef.current(report.chatId, report.removed, report.remaining);
+      setThread((current) => applyThreadDeleted(current, update.chatId, update.messageIds));
+      return;
+    }
     if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
   }, []);
 
@@ -338,6 +378,9 @@ export function useThread({ onSent, onError, onNotice }: UseThreadOptions): Thre
     discardPending: outbox.discard,
     clearPending: outbox.clear,
     react,
+    deletion,
+    removeMessages,
+    restoreMessages,
     vote,
     pressButton,
     pressReplyKeyboardButton,

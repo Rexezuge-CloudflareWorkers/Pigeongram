@@ -241,6 +241,18 @@ protocol,registry}`) and the mtcute integration
   Telegram drops the duplicate if the first attempt actually landed — the engine validates that id like any other
   parameter (`worker/src/session/params.ts`, and `worker/src/session/upload-spec.ts` for the upload query). An album
   (`POST /user/upload-group`) has no client-chosen id: Telegram picks the group's, so a retried album is a new album.
+- **A delete is for everyone, and the chat list is repaired from the thread's own fold.** `deleteMessages` always
+  passes `revoke: true`: Telegram's "delete for me" is session-scoped, so the message would reappear on the next read.
+  The SPA deletes optimistically (`apps/web/src/useMessageDelete.ts`: the rows go before the answer, a refusal puts
+  them back and toasts), and the engine echoes a `deleted` update after the call because mtcute swallows the delete's
+  own update as a quiet pts step — a second tab would otherwise keep the message. The account-level
+  `updateDeleteMessages` carries no peer, so that event's `chatId` is null and the SPA folds it by matching the loaded
+  ids; a channel's (`updateDeleteChannelMessages`) is exact. The chat list's preview and badge are repaired from the
+  open thread's fold, which alone can say what left the window and what remains: ids alone cannot tell whether a
+  chat's last message or an unread one was among them. The engine prunes deleted ids from the album ledger, since a
+  deleted unread album member is never read. `ChatDto.canDeleteMessages` gates deleting someone else's message
+  (creator, or an admin with `delete_messages`; a basic group's admin always); the account's own messages are always
+  deletable and the SPA decides that itself.
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Functions
   (`API_WORKER` service binding). The API surface is split by prefix: `/api/*` is public and carries only
   `GET /api/health`; everything account-scoped lives under `/user/*`, where every request verifies the Cloudflare

@@ -12,6 +12,7 @@ import type { EngineStateDto } from './types';
 
 export { fetchArchivedDialogs, fetchBootstrap, fetchDialogs, fetchProfile, joinChat, resolveChat, setArchived } from './api/chats';
 export {
+  deleteMessages,
   fetchChatScreen,
   fetchComments,
   fetchHistory,

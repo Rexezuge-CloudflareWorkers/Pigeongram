@@ -3,7 +3,7 @@ import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
 import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
-import { mapRawUpdate } from '../../packages/backend-services/src/session/updates';
+import { deletedEvent, mapRawUpdate } from '../../packages/backend-services/src/session/updates';
 
 const rawUser = {
   _: 'user',
@@ -320,5 +320,31 @@ describe('mapRawUpdate', () => {
       callId: '1000',
       data: encodeBase64(new Uint8Array([1, 2, 3])),
     });
+  });
+});
+
+describe('deletions', () => {
+  it('names the chat a channel deletion belongs to', () => {
+    const event = mapRawUpdate(info({ _: 'updateDeleteChannelMessages', channelId: 20, messages: [7, 9], pts: 4, ptsCount: 1 }));
+
+    expect(event).toEqual({ type: 'deleted', chatId: getMarkedPeerId(20, 'channel'), messageIds: [7, 9] });
+  });
+
+  it('maps the peerless account deletion with a null chat', () => {
+    const event = mapRawUpdate(info({ _: 'updateDeleteMessages', messages: [1, 2], pts: 5, ptsCount: 1 }));
+
+    expect(event).toEqual({ type: 'deleted', chatId: null, messageIds: [1, 2] });
+  });
+
+  it('turns a settled delete RPC into the event a second tab needs', () => {
+    expect(deletedEvent({ chatId: 1, messageIds: [8, 9] })).toEqual({ type: 'deleted', chatId: 1, messageIds: [8, 9] });
+  });
+
+  it('derives no event from a result that carries no ids', () => {
+    expect(deletedEvent(null)).toBeNull();
+    expect(deletedEvent({})).toBeNull();
+    expect(deletedEvent({ chatId: 1, messageIds: [] })).toBeNull();
+    expect(deletedEvent({ chatId: 'one', messageIds: [1] })).toBeNull();
+    expect(deletedEvent({ chatId: 1, messageIds: ['one', 2] })).toEqual({ type: 'deleted', chatId: 1, messageIds: [2] });
   });
 });

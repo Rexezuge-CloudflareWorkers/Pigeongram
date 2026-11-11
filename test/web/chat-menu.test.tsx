@@ -20,6 +20,7 @@ function dialog(unread: number): DialogDto {
       username: 'bob',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: true,
       presence: null,
     },
     lastMessage: null,

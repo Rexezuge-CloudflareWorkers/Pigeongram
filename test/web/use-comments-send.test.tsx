@@ -69,6 +69,7 @@ function thread(overrides: Partial<CommentsThread> = {}): CommentsThread {
       username: 'channel',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: true,
       presence: null,
     },
     post: message(10, { chatId: 2 }),

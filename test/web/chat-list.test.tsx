@@ -16,6 +16,7 @@ function chat(id: number, overrides: Partial<ChatDto> = {}): ChatDto {
     username: null,
     photo: null,
     canSendMessages: true,
+    canDeleteMessages: true,
     presence: null,
     ...overrides,
   };

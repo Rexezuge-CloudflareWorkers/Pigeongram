@@ -1,5 +1,6 @@
 import type {
   BotCommandDto,
+  DeleteMessagesResult,
   ForwardMessagesResult,
   GetBotCommandsResult,
   GetCommentsResult,
@@ -181,10 +182,17 @@ export const sendVote = (chatId: PeerId, messageId: number, options: number[] | 
   rpc('sendVote', { chatId, messageId, options });
 
 /**
+Deletes messages for both sides. The account's own messages are always
+deletable, and another member's only with the chat's `delete_messages` right —
+Telegram enforces it, and the SPA offers the action on the same rule.
+*/
+export const deleteMessages = (chatId: PeerId, messageIds: readonly number[]): Promise<DeleteMessagesResult> =>
+  rpc('deleteMessages', { chatId, messageIds: [...messageIds] });
+
+/**
 Presses an inline callback button. The payload is the base64 string the
 message's button carried; the bridge decodes it and forwards it unchanged.
-*/
-export const pressCallbackButton = (chatId: PeerId, messageId: number, data: string): Promise<PressCallbackButtonResult> =>
+*/ export const pressCallbackButton = (chatId: PeerId, messageId: number, data: string): Promise<PressCallbackButtonResult> =>
   rpc('pressCallbackButton', { chatId, messageId, data });
 
 /**

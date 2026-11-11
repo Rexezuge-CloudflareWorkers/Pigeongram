@@ -144,6 +144,7 @@ describe('toChatDto', () => {
       username: 'ada',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
     expect(toChatDto(new User(rawBot))).toEqual({
@@ -153,6 +154,7 @@ describe('toChatDto', () => {
       username: 'helper_bot',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
     expect(toChatDto(new Chat(rawGroup))).toEqual({
@@ -162,6 +164,7 @@ describe('toChatDto', () => {
       username: null,
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
     expect(toChatDto(new Chat(rawChannel))).toEqual({
@@ -171,6 +174,7 @@ describe('toChatDto', () => {
       username: 'announce',
       photo: null,
       canSendMessages: false,
+      canDeleteMessages: false,
       presence: null,
     });
     expect(toChatDto(new Chat(rawSupergroup))).toEqual({
@@ -180,6 +184,7 @@ describe('toChatDto', () => {
       username: null,
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
   });
@@ -229,6 +234,39 @@ describe('toChatDto', () => {
     expect(toChatDto(new Chat(min)).canSendMessages).toBe(true);
   });
 
+  it('lets the creator or a delete-messages admin delete in a channel', () => {
+    const creator = { ...rawChannel, creator: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(creator)).canDeleteMessages).toBe(true);
+
+    const moderator = {
+      ...rawSupergroup,
+      adminRights: { _: 'chatAdminRights', deleteMessages: true },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(moderator)).canDeleteMessages).toBe(true);
+
+    const manager = {
+      ...rawSupergroup,
+      adminRights: { _: 'chatAdminRights', changeInfo: true },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(manager)).canDeleteMessages).toBe(false);
+  });
+
+  it('never offers a delete where the chat is left or incomplete', () => {
+    const left = { ...rawChannel, left: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(left)).canDeleteMessages).toBe(false);
+
+    const min = { ...rawChannel, min: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(min)).canDeleteMessages).toBe(false);
+  });
+
+  it('lets a basic group administrator moderate', () => {
+    // A basic group's administrator is always allowed to delete; there is no
+    // per-right flag as there is for channels.
+    const group = new Chat(rawGroup);
+    expect(group.isAdmin).toBe(false);
+    expect(toChatDto(group).canDeleteMessages).toBe(false);
+  });
+
   it('lets a monoforum subscriber write to the channel admins', () => {
     const monoforum = { ...rawChannel, monoforum: true } as unknown as tl.RawChannel;
     expect(toChatDto(new Chat(monoforum)).canSendMessages).toBe(true);
@@ -244,6 +282,7 @@ describe('toChatDto', () => {
       username: 'grace',
       photo: 'AQADRgAI',
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
     expect(toChatDto(new Chat(rawGroupWithPhoto))).toEqual({
@@ -253,6 +292,7 @@ describe('toChatDto', () => {
       username: null,
       photo: 'AQADRwAI',
       canSendMessages: true,
+      canDeleteMessages: false,
       presence: null,
     });
   });
@@ -1052,7 +1092,16 @@ describe('toDialogDto', () => {
     } as unknown as tl.RawDialog;
     const dto = toDialogDto(new Dialog(raw, index(), new Map()));
     expect(dto).toEqual({
-      chat: { id: 1, kind: 'user', title: 'Ada Lovelace', username: 'ada', photo: null, canSendMessages: true, presence: null },
+      chat: {
+        id: 1,
+        kind: 'user',
+        title: 'Ada Lovelace',
+        username: 'ada',
+        photo: null,
+        canSendMessages: true,
+        canDeleteMessages: false,
+        presence: null,
+      },
       lastMessage: null,
       unread: 3,
       readInboxMaxId: 12,

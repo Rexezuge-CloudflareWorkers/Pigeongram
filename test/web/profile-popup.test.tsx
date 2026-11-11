@@ -20,6 +20,7 @@ const chat: ChatDto = {
   username: 'bob',
   photo: null,
   canSendMessages: true,
+  canDeleteMessages: true,
   presence: { status: 'online', lastSeenAt: null },
 };
 

@@ -17,6 +17,8 @@ import type {
  * Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.
  */
 
+export * from './deleted';
+
 /**
 Applies a live `new_message`; a message the dialog already shows or has read is
 old news, and a pending send's synthetic negative id is always new.

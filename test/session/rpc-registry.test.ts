@@ -21,6 +21,7 @@ const CONTRACT_METHODS: readonly RpcMethod[] = [
   'getHistory',
   'sendMessage',
   'forwardMessages',
+  'deleteMessages',
   'readHistory',
   'searchMessages',
   'searchGlobal',

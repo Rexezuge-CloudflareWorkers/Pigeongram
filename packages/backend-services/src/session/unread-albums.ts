@@ -92,6 +92,19 @@ export class UnreadAlbumLedger {
   }
 
   /**
+   * Drops album members that were deleted instead of read.
+   *
+   * A deleted unread message is never read, so `pruneRead` would never cover
+   * it: the ledger would keep counting its album surplus and the badge would
+   * undercount by that much for the rest of the sign-in.
+   */
+  pruneDeleted(chatId: number, messageIds: readonly number[]): void {
+    if (messageIds.length === 0) return;
+    const placeholders = messageIds.map(() => '?').join(', ');
+    this.write(`delete from engine_unread_albums where chat_id = ? and message_id in (${placeholders})`, chatId, ...messageIds);
+  }
+
+  /**
    * How many of a chat's unread messages are album members beyond the first of
    * their album — the surplus an album-aware count subtracts.
    */
@@ -159,6 +172,12 @@ export class UnreadAlbumLedger {
     if (event.type === 'read' && event.inbox) {
       this.pruneRead(event.chatId, event.maxId);
       return { ...event, unread: albumAwareUnread(event.unread, this.excessFor(event.chatId)) };
+    }
+    if (event.type === 'deleted' && event.chatId !== null) {
+      // The messages are gone, not read: their album members must not keep
+      // subtracting from the badge.
+      this.pruneDeleted(event.chatId, event.messageIds);
+      return event;
     }
     return event;
   }

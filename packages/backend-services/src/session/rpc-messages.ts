@@ -83,6 +83,33 @@ export const messagesRpcMethods = {
     },
   },
 
+  /**
+  Deletes messages for both sides.
+
+  Telegram's `revoke` is always on: a "delete for me" would only bind this
+  session, and the message would come back if the session were ever re-created.
+  The account's own messages are always deletable, and another member's only
+  with the chat's `delete_messages` right, which Telegram enforces — the SPA
+  gates the affordance on `ChatDto.canDeleteMessages`, this is the backstop.
+
+  mtcute swallows the update its own call generates (it advances the pts
+  quietly), so the requesting tab folds the returned ids itself and the engine
+  broadcasts the same `deleted` event to the other tabs.
+  */
+  deleteMessages: {
+    readOnly: false,
+    run: async (context, params) => {
+      const chatId = requirePeerId(params.chatId);
+      const messageIds = requireMessageIds(params.messageIds);
+      await context.client.deleteMessagesById(chatId, messageIds, { revoke: true });
+      // The album ledger counts unread album members; a member that no longer
+      // exists would keep subtracting from the badge, so the write path drops
+      // it. A delete is already a write, so this stays off the read paths.
+      context.albums.pruneDeleted(chatId, messageIds);
+      return { chatId, messageIds };
+    },
+  },
+
   readHistory: {
     readOnly: false,
     run: async (context, params) => {

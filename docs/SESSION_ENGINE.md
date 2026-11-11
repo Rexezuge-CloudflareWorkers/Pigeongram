@@ -189,6 +189,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed; reply originals outside the window are resolved) |
 | `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                                                                  |
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                                                        |
+| `deleteMessages`      | `{chatId, messageIds: number[]}`                                                  | `{chatId, messageIds}` (the ids the delete took; the engine also echoes a `deleted` update)                                                  |
 | `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                                                         |
 | `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                                                                  |
 | `searchGlobal`        | `{query, limit?, offset?: {rate, chatId, messageId}}`                             | `{messages, chats: ChatDto[], next?: {rate, chatId, messageId}}`                                                                             |
@@ -292,7 +293,10 @@ inbox watermark with about ten already-read messages of context above it, not at
 Messages" until the loaded range reaches the newest message. It renders a single check for sent own messages and a
 double check up to the outbox watermark. `readHistory`'s optional `maxId` reports how far the user actually scrolled
 (omitted, it reads the whole history — the comments screen's behavior). `ChatDto.presence` carries the peer's online
-state — see [Presence](#presence) below.
+state — see [Presence](#presence) below. `canDeleteMessages` gates the delete affordance on someone else's message:
+the creator may always delete, an administrator only with the `delete_messages` right (a basic group's administrator
+always may), and a chat the account is not in, or a `min` peer whose rights are unknown, answers false. The account's
+own messages are deletable everywhere and the SPA decides that itself, without the flag.
 
 `unread` is Telegram's own count **minus the album surplus** — see
 [Albums count once](#albums-count-once) below.
@@ -352,6 +356,13 @@ pulls in the older members of a window's oldest album so a page never splits one
 `toChatId` and answers with the copies Telegram created there, so the SPA can fold them into the destination
 dialog without waiting for the socket. The destination picker offers only dialogs whose `canSendMessages` is
 true; protected content can still be rejected by Telegram, in which case the error stays in the picker.
+
+`deleteMessages` deletes for **everyone**, on every device and in the account's own clients: it always calls with
+`revoke: true`, because Telegram's "delete for me" is session-scoped and the message would reappear on the next read.
+The ids are a display group — a single message, or every member of an album. The engine prunes the ids from the album
+ledger, since a deleted unread album member is never read and `pruneRead` would never cover it. mtcute answers the call
+with a quiet pts step instead of Telegram's `updateDeleteMessages`/`updateDeleteChannelMessages`, so the engine
+broadcasts the `deleted` event the call implies itself; a second tab would otherwise keep the message on screen.
 
 `getHistory`'s `addOffset` skips that many messages from `offsetId` (negative is towards newer), which is how a
 `t.me` post link opens a window _around_ the linked post instead of the newest messages: half the page, capped at
@@ -459,7 +470,12 @@ Client → server: `{"type":"hello"}` (attach; engine goes live), `{"type":"ping
 call).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…,"code":…}` (the sentence is
 shown in the app as-is; `code` is the engine's coarse code, present when the failure carried one), and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"reactions"|"views"|"poll"|"read"|"user_status"|"call"|"call_signaling", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"deleted"|"reactions"|"views"|"poll"|"read"|"user_status"|"call"|"call_signaling", …}}`.
+The `deleted` update carries `{chatId, messageIds}`. A channel's deletion (`updateDeleteChannelMessages`) names its
+chat exactly. The account-level `updateDeleteMessages` carries no peer — every private chat and basic group shares
+the account's pts — so the engine sends `chatId: null` and the SPA folds it by matching the ids against the open
+window; a chat's ids are its own, which makes a match proof. The engine also emits this event after its own
+`deleteMessages` RPC, because mtcute swallows the delete's own update.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
 `updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.

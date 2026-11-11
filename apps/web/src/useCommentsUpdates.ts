@@ -1,7 +1,14 @@
 import { useCallback } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { readHistory } from './api';
-import { applyCommentEdit, applyCommentMessage, applyCommentReactions, isThreadComment, updateCommentsThread } from './state';
+import {
+  applyCommentDeleted,
+  applyCommentEdit,
+  applyCommentMessage,
+  applyCommentReactions,
+  isThreadComment,
+  updateCommentsThread,
+} from './state';
 import type { CommentsThread } from './state';
 import type { MessageDto, UpdateEvent } from './types';
 import type { CommentsPolling } from './useCommentsPoll';
@@ -44,6 +51,10 @@ export function useCommentsUpdates(
       if (update.type === 'edit_message') {
         applyKeyboard(update.message, true);
         setThread((current) => applyCommentEdit(current, update.message));
+        return;
+      }
+      if (update.type === 'deleted') {
+        setThread((current) => applyCommentDeleted(current, update.chatId, update.messageIds));
         return;
       }
       if (update.type === 'reactions') {

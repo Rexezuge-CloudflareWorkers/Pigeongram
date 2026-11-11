@@ -11,9 +11,12 @@ import {
 } from '../../apps/web/src/format';
 import {
   applyCommentCountDelta,
+  applyCommentDeleted,
   applyCommentEdit,
   applyCommentMessage,
   applyCommentReactions,
+  applyCommentRestored,
+  applyDeletedMessages,
   applyEditedMessage,
   applyNewMessage,
   applyOutboxReadUpdate,
@@ -29,6 +32,7 @@ import {
   isThreadComment,
   mergeMessages,
   reactionKey,
+  deletionReport,
   replaceMessage,
   toggleReaction,
   updateCommentsPoll,
@@ -95,7 +99,16 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
 }
 
 function chat(id: number): ChatDto {
-  return { id, kind: 'user', title: `Chat ${id}`, username: null, photo: null, canSendMessages: true, presence: null };
+  return {
+    id,
+    kind: 'user',
+    title: `Chat ${id}`,
+    username: null,
+    photo: null,
+    canSendMessages: true,
+    canDeleteMessages: true,
+    presence: null,
+  };
 }
 
 function dialog(id: number, overrides: Partial<DialogDto> = {}): DialogDto {
@@ -658,6 +671,49 @@ describe('comment state', () => {
     expect(next[2]).toBe(bare);
     expect(applyCommentCountDelta([post], 999)).toEqual([post]);
   });
+
+  it('drops a deleted comment, its count and its animation', () => {
+    const open = commentsThread({ count: 2, newMessageIds: new Set([502]) });
+    const next = applyCommentDeleted(open, -100, [502]);
+
+    expect(next?.comments.map((entry) => entry.id)).toEqual([501]);
+    expect(next?.count).toBe(1);
+    expect(next?.newMessageIds.size).toBe(0);
+  });
+
+  it('folds a peerless comment deletion by matching the loaded ids', () => {
+    const open = commentsThread();
+    expect(applyCommentDeleted(open, null, [501])?.comments.map((entry) => entry.id)).toEqual([502]);
+  });
+
+  it('leaves the comments thread alone for another chat, an unmatched id, or a null thread', () => {
+    const open = commentsThread();
+    expect(applyCommentDeleted(open, -200, [501])).toBe(open);
+    expect(applyCommentDeleted(open, -100, [999])).toBe(open);
+    expect(applyCommentDeleted(open, -100, [])).toBe(open);
+    expect(applyCommentDeleted(null, -100, [501])).toBeNull();
+  });
+
+  it('restores a refused comment delete in order and counts it again', () => {
+    const open = commentsThread({ comments: [comment(501, 500)], count: 1 });
+    const next = applyCommentRestored(open, [comment(502, 501), comment(501, 500)]);
+
+    expect(next?.comments.map((entry) => entry.id)).toEqual([501, 502]);
+    expect(next?.count).toBe(2);
+  });
+
+  it('leaves a restore that is already back alone', () => {
+    const open = commentsThread();
+
+    expect(applyCommentRestored(open, [comment(501, 500)])).toBe(open);
+  });
+
+  it('leaves the comments thread alone when the restore belongs elsewhere', () => {
+    const open = commentsThread();
+    expect(applyCommentRestored(open, [message({ id: 501, chatId: 10 })])).toBe(open);
+    expect(applyCommentRestored(open, [])).toBe(open);
+    expect(applyCommentRestored(null, [comment(501)])).toBeNull();
+  });
 });
 
 describe('read and key helpers', () => {
@@ -695,5 +751,93 @@ describe('read and key helpers', () => {
     expect(findPollMessage([post], { chatId: 1, messageId: 12, pollId: POLL.id })).toBe(post);
     expect(findPollMessage([post], { chatId: 1, messageId: 99, pollId: POLL.id })).toBe(post);
     expect(findPollMessage([post], { chatId: 1, messageId: 99, pollId: 'missing' })).toBeNull();
+  });
+});
+
+describe('deletion report', () => {
+  it('names what left the open window and what it still holds', () => {
+    const open = { messages: [message({ id: 1, chatId: 1 }), message({ id: 2, chatId: 1 })], chat: chat(1) };
+
+    expect(deletionReport(open as never, null, [2])).toEqual({
+      chatId: 1,
+      removed: [message({ id: 2, chatId: 1 })],
+      remaining: [message({ id: 1, chatId: 1 })],
+    });
+  });
+
+  it('reports nothing for another chat, an unmatched window or no thread', () => {
+    const open = { messages: [message({ id: 1, chatId: 1 })], chat: chat(1) };
+
+    expect(deletionReport(open as never, 2, [1])).toBeNull();
+    expect(deletionReport(open as never, 1, [9])).toBeNull();
+    expect(deletionReport(null, 1, [1])).toBeNull();
+  });
+});
+
+describe('dialog deletion state', () => {
+  it('falls the preview back to the newest message the window still holds', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })) })];
+    const remaining = [message({ id: 7, chatId: 1 }), message({ id: 8, chatId: 1 })];
+    const next = applyDeletedMessages(dialogs, 1, [9], [message({ id: 9, chatId: 1 })], remaining);
+
+    expect(next[0].lastMessage).toEqual(dialogMessage(message({ id: 8, chatId: 1 })));
+  });
+
+  it('empties the preview when nothing is left, and gives up the unread rows', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })), unread: 2 })];
+    const removed = [message({ id: 8, chatId: 1 }), message({ id: 9, chatId: 1 })];
+    const next = applyDeletedMessages(dialogs, 1, [8, 9], removed, []);
+
+    expect(next[0].lastMessage).toBeNull();
+    expect(next[0].unread).toBe(0);
+  });
+
+  it('counts a deleted album once when the badge gives it up', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1, groupedId: '77' })), unread: 1 })];
+    const removed = [message({ id: 8, chatId: 1, groupedId: '77' }), message({ id: 9, chatId: 1, groupedId: '77' })];
+    const next = applyDeletedMessages(dialogs, 1, [8, 9], removed, []);
+
+    expect(next[0].unread).toBe(0);
+  });
+
+  it('counts unread rows a deletion covered even when the preview survives', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })), unread: 2, readInboxMaxId: 1 })];
+    const removed = [message({ id: 2, chatId: 1 }), message({ id: 3, chatId: 1 })];
+    const next = applyDeletedMessages(dialogs, 1, [2, 3], removed, [message({ id: 9, chatId: 1 })]);
+
+    expect(next[0].lastMessage).toEqual(dialogMessage(message({ id: 9, chatId: 1 })));
+    expect(next[0].unread).toBe(0);
+  });
+
+  it('leaves an untouched preview and a badge the deletion did not cover', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })), unread: 2, readInboxMaxId: 8 })];
+    const next = applyDeletedMessages(dialogs, 1, [2], [message({ id: 2, chatId: 1 })]);
+
+    expect(next[0].lastMessage).toEqual(dialogMessage(message({ id: 9, chatId: 1 })));
+    expect(next[0].unread).toBe(2);
+  });
+
+  it('picks the newest remaining row wherever it sits in the list', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })) })];
+    const remaining = [message({ id: 8, chatId: 1 }), message({ id: 7, chatId: 1 }), message({ id: 6, chatId: 1 })];
+    const next = applyDeletedMessages(dialogs, 1, [9], [message({ id: 9, chatId: 1 })], remaining);
+
+    expect(next[0].lastMessage).toEqual(dialogMessage(message({ id: 8, chatId: 1 })));
+  });
+
+  it('clears a preview named by ids alone and leaves the badge for the next read', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })), unread: 2 })];
+    const next = applyDeletedMessages(dialogs, 1, [9]);
+
+    // The ids do not say whether the covered messages were incoming, so the
+    // badge can only wait for the server's count.
+    expect(next[0].lastMessage).toBeNull();
+    expect(next[0].unread).toBe(2);
+  });
+
+  it('leaves another chat and an empty deletion alone', () => {
+    const dialogs = [dialog(1, { lastMessage: dialogMessage(message({ id: 9, chatId: 1 })) })];
+    expect(applyDeletedMessages(dialogs, 2, [9])).toEqual(dialogs);
+    expect(applyDeletedMessages(dialogs, 1, [])).toBe(dialogs);
   });
 });

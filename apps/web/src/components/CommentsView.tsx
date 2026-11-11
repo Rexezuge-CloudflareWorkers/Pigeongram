@@ -52,6 +52,12 @@ interface CommentsViewProps {
    */
   onForward: (messages: readonly MessageDto[]) => void;
   /**
+   * Asks to delete a comment for everyone. The confirmation is the shell's,
+   * shared with the thread; only the account's own comments are offered,
+   * because this screen does not carry the discussion group's rights.
+   */
+  onDelete: (messages: readonly MessageDto[]) => void;
+  /**
    * Casts a vote in a poll comment, or retracts it with `null`.
    */
   onVote: (message: MessageDto, options: number[] | null) => void;
@@ -97,6 +103,7 @@ export function CommentsView({
   onDiscardPending,
   onReact,
   onForward,
+  onDelete,
   onVote,
   onPressButton,
   replyKeyboard,
@@ -250,6 +257,8 @@ export function CommentsView({
                 onPressButton={onPressButton}
                 onReply={(target) => setReplyingTo({ postId: thread.post.id, message: target })}
                 onForward={onForward}
+                onDelete={onDelete}
+                canDeleteOthers={false}
                 onJump={jumpToComment}
                 onOpenMedia={onOpenMedia}
               />

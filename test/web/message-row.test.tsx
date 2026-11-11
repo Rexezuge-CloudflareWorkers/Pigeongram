@@ -12,6 +12,7 @@ const chat: ChatDto = {
   username: 'bob',
   photo: null,
   canSendMessages: true,
+  canDeleteMessages: true,
   presence: null,
 };
 
@@ -193,5 +194,61 @@ describe('MessageRow bare media rendering', () => {
     expect(onReply).toHaveBeenCalledTimes(1);
     fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
     expect(screen.getByRole('menu', { name: 'Message actions' })).not.toBeNull();
+  });
+});
+
+describe('MessageRow delete affordance', () => {
+  function openMenu(row: HTMLElement): void {
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+  }
+
+  it('offers Delete on the account’s own message and hands over the display group', () => {
+    const onDelete = vi.fn();
+    const own = message({ id: 10, outgoing: true });
+    const { container } = renderRow([own], { onDelete });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+    expect(onDelete).toHaveBeenCalledWith([own]);
+  });
+
+  it('withholds Delete from someone else’s message without the moderation right', () => {
+    const { container } = renderRow([message()], { chat: { ...chat, canDeleteMessages: false }, onDelete: vi.fn() });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
+  });
+
+  it('offers Delete on someone else’s message when the chat allows it', () => {
+    const { container } = renderRow([message()], {
+      chat: { ...chat, kind: 'supergroup', canDeleteMessages: true },
+      onDelete: vi.fn(),
+    });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).not.toBeNull();
+  });
+
+  it('lets a screen with narrower rights withhold other people’s messages', () => {
+    const { container } = renderRow([message()], {
+      chat: { ...chat, kind: 'supergroup', canDeleteMessages: true },
+      onDelete: vi.fn(),
+      canDeleteOthers: false,
+    });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
+  });
+
+  it('never offers Delete for a service message', () => {
+    const { container } = renderRow([message({ outgoing: true, service: true, media: null, text: '' })], { onDelete: vi.fn() });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
   });
 });

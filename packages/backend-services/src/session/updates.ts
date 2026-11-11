@@ -30,6 +30,23 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
         message: toMessageDto(new Message(update.message, info.peers)),
       };
     }
+    case 'updateDeleteChannelMessages': {
+      // A channel's delete names the channel: supergroups and channels carry
+      // their own pts sequence, so the id is exact.
+      return {
+        type: 'deleted',
+        chatId: getMarkedPeerId(update.channelId, 'channel'),
+        messageIds: update.messages,
+      };
+    }
+    case 'updateDeleteMessages': {
+      // The non-channel update carries no peer: every private chat and basic
+      // group shares the account-level pts, and the engine keeps no per-chat
+      // pts map to resolve which one it belongs to. The SPA folds a null chat
+      // by matching the ids against the window it has loaded, and the next
+      // read settles anything outside it.
+      return { type: 'deleted', chatId: null, messageIds: update.messages };
+    }
     case 'updateMessageReactions': {
       const chatId = getMarkedPeerId(update.peer);
       const reactions = new MessageReactions(update.msgId, chatId, update.reactions, info.peers);
@@ -129,4 +146,21 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
       return null;
     }
   }
+}
+
+/**
+The `deleted` event a successful `deleteMessages` RPC implies.
+
+mtcute answers the call with a quiet pts step instead of the update Telegram
+would send, so this event never reaches the engine's raw-update listener on
+its own: a second tab would keep showing the deleted messages. The engine
+broadcasts it, and the tab that asked folds it again — both folds are keyed by
+id, so the repetition is free.
+*/
+export function deletedEvent(result: unknown): UpdateEvent | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const { chatId, messageIds } = result as { chatId?: unknown; messageIds?: unknown };
+  if (typeof chatId !== 'number' || !Array.isArray(messageIds)) return null;
+  const ids = messageIds.filter((id): id is number => typeof id === 'number');
+  return ids.length === 0 ? null : { type: 'deleted', chatId, messageIds: ids };
 }

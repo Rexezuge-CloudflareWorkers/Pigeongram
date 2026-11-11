@@ -14,7 +14,9 @@ Reply hands the message back to the view that owns the composer target;
 Forward hands the whole display group (an album forwards every member) to the
 destination picker; Copy Text puts the message's plain text on the clipboard;
 Copy Link puts its Telegram address there when the chat has one; Download saves
-the message's original media. Every action carries an icon from the shared set.
+the message's original media; Delete hands the display group to the confirm
+dialog, which deletes it for everyone. Every action carries an icon from the
+shared set.
 A portal with `position: fixed` keeps the menu out of the scroll container's
 clipping, which is also why it closes on any scroll outside itself: a menu
 anchored to a moving message would drift. The picker's own grid scrolls without
@@ -51,6 +53,12 @@ interface MessageMenuProps {
   */
   onReact?: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
+  Deletes this display group for everyone. Absent where the account may not
+  delete it (a preview chat, someone else's message in a chat it does not
+  moderate) or where the view does not delete (the comments screen's post).
+  */
+  onDelete?: (messages: readonly MessageDto[]) => void;
+  /**
   Whether a reaction request is in flight; the picker's emoji are disabled.
   */
   reacting?: boolean;
@@ -62,7 +70,18 @@ interface MessageMenuProps {
   onClose: () => void;
 }
 
-export function MessageMenu({ messages, x, y, onReply, onForward, onReact, reacting = false, link = null, onClose }: MessageMenuProps) {
+export function MessageMenu({
+  messages,
+  x,
+  y,
+  onReply,
+  onForward,
+  onReact,
+  onDelete,
+  reacting = false,
+  link = null,
+  onClose,
+}: MessageMenuProps) {
   const [expanded, setExpanded] = useState(false);
   const { menuRef, position, onKeyDown } = useAnchoredMenu({
     open: true,
@@ -79,9 +98,10 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   const canCopy = message.text.length > 0;
   const canCopyLink = link !== null;
   const canReact = onReact !== undefined && !message.service;
+  const canDelete = onDelete !== undefined && !message.service;
   const canDownload = messages.length === 1 && isDownloadable(message);
 
-  if (!canReply && !canForward && !canCopy && !canCopyLink && !canReact && !canDownload) return null;
+  if (!canReply && !canForward && !canCopy && !canCopyLink && !canReact && !canDelete && !canDownload) return null;
 
   const pickReaction = (emoji: string): void => {
     if (!onReact) return;
@@ -95,6 +115,7 @@ export function MessageMenu({ messages, x, y, onReply, onForward, onReact, react
   if (canCopy) items.push({ label: 'Copy Text', icon: 'copy', run: () => void copyToClipboard(message.text) });
   if (link !== null) items.push({ label: 'Copy Link', icon: 'link', run: () => void copyToClipboard(link) });
   if (canDownload) items.push({ label: 'Download', icon: 'download', run: () => downloadMedia(message) });
+  if (canDelete) items.push({ label: 'Delete', icon: 'delete', run: () => onDelete?.(messages) });
 
   return (
     <AnchoredMenu

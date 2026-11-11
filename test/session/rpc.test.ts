@@ -898,3 +898,26 @@ describe('searchGlobal dispatch', () => {
     await expect(rpc(client, 'searchGlobal', { query: '' })).rejects.toThrow('query must be a non-empty string');
   });
 });
+
+describe('deleteMessages dispatch', () => {
+  it('deletes for everyone and reports the ids it took', async () => {
+    const calls: unknown[] = [];
+    const client = {
+      deleteMessagesById: async (chatId: number, messageIds: number[], params?: unknown) => {
+        calls.push({ chatId, messageIds, params });
+      },
+    } as unknown as TelegramClient;
+
+    const result = await rpc(client, 'deleteMessages', { chatId: 1, messageIds: [8, 9] });
+
+    expect(calls).toEqual([{ chatId: 1, messageIds: [8, 9], params: { revoke: true } }]);
+    expect(result).toEqual({ chatId: 1, messageIds: [8, 9] });
+  });
+
+  it('rejects a malformed chat or an empty id list', async () => {
+    const client = { deleteMessagesById: async () => {} } as unknown as TelegramClient;
+
+    await expect(rpc(client, 'deleteMessages', { chatId: 1, messageIds: [] })).rejects.toMatchObject({ status: 400 });
+    await expect(rpc(client, 'deleteMessages', { chatId: 'one', messageIds: [1] })).rejects.toMatchObject({ status: 400 });
+  });
+});

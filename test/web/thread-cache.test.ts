@@ -10,6 +10,7 @@ const CHAT: ChatDto = {
   username: 'bob',
   photo: null,
   canSendMessages: true,
+  canDeleteMessages: true,
   presence: null,
 };
 

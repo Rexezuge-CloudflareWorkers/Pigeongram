@@ -100,6 +100,21 @@ interface MessageRowProps {
   */
   onForward?: (messages: readonly MessageDto[]) => void;
   /**
+  Deletes this display group for everyone; absent where the view does not
+  delete. Only the account's own messages are always deletable: another
+  member's needs the chat's `deleteMessages` right, and a service message has
+  nothing to revoke.
+  */
+  onDelete?: (messages: readonly MessageDto[]) => void;
+  /**
+  Whether the account may delete other people's messages here, when it differs
+  from the chat's own `canDeleteMessages`. The comments screen passes false: a
+  comment lives in the linked discussion group, and the screen carries that
+  group's id but not its rights, so only the account's own comments are offered
+  for deletion there.
+  */
+  canDeleteOthers?: boolean;
+  /**
   The group's shareable Telegram link, or null when the chat has none (a user
   chat or a basic group). The menu offers Copy Link only with one.
   */
@@ -133,6 +148,8 @@ export function MessageRow({
   readOutboxMaxId = 0,
   onReply,
   onForward,
+  onDelete,
+  canDeleteOthers,
   link = null,
   onJump,
   onOpenComments,
@@ -146,6 +163,9 @@ export function MessageRow({
   const read = showStatus && message.id <= readOutboxMaxId;
   const showSender = !own && chat.kind !== 'user' && !message.service;
   const comments = message.comments;
+  // A service message has nothing to revoke, and someone else's message can
+  // only be deleted with the chat's moderation right.
+  const canDelete = onDelete !== undefined && !message.service && (own || (canDeleteOthers ?? chat.canDeleteMessages));
   const album = group.length > 1;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
   // The caller enables avatars for group threads and comments; service messages and anonymous senders have none.
@@ -356,6 +376,7 @@ export function MessageRow({
           onReply={onReply}
           onForward={onForward}
           onReact={onReact}
+          onDelete={canDelete ? onDelete : undefined}
           reacting={reacting}
           link={link}
           onClose={() => setMenu(null)}

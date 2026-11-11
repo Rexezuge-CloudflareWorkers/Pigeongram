@@ -6,6 +6,7 @@ import type { SearchScope } from '../search';
 import { TelegramLinkProvider } from '../telegram-links';
 import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
 import { useComments } from '../useComments';
+import { useDeletionReport } from '../useDeletionReport';
 import { useDialogs } from '../useDialogs';
 import { useForwarding } from '../useForwarding';
 import { useSignedInNavigation } from '../useSignedInNavigation';
@@ -90,6 +91,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     load: loadDialogs,
     loadArchive,
     applyUpdate,
+    applyDeleted,
     setArchived,
     clear: clearDialogs,
   } = dialogs;
@@ -105,7 +107,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     [applyUpdate],
   );
 
-  const threads = useThread({ onSent: handleSent, onError, onNotice: notify });
+  const handleDeleted = useDeletionReport(applyDeleted);
+
+  const threads = useThread({ onSent: handleSent, onError, onNotice: notify, onDeleted: handleDeleted });
   const forwarding = useForwarding(handleSent, threads.applyUpdate, notify);
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;

@@ -147,6 +147,16 @@ describe('UnreadAlbumLedger', () => {
     expect(albums.excessFor(1)).toBe(0);
   });
 
+  it('drops the members a delete took out instead of a read', () => {
+    const albums = ledger();
+
+    albums.recordIncoming(1, 10, '77');
+    albums.recordIncoming(1, 11, '77');
+    albums.pruneDeleted(1, [10]);
+
+    expect(albums.excessFor(1)).toBe(0);
+  });
+
   it('empties itself when the account it described is gone', () => {
     const albums = ledger();
 
@@ -188,6 +198,28 @@ describe('the ledger and the update stream', () => {
     const event = albums.apply({ type: 'read', chatId: 1, maxId: 9, unread: 3, inbox: true });
 
     expect(event).toEqual({ type: 'read', chatId: 1, maxId: 9, unread: 1, inbox: true });
+  });
+
+  it('prunes a deleted album member from the stream', () => {
+    const albums = ledger();
+
+    albums.apply({ type: 'new_message', message: messageDto({ id: 10, groupedId: '77' }) });
+    albums.apply({ type: 'new_message', message: messageDto({ id: 11, groupedId: '77' }) });
+    const event: UpdateEvent = albums.apply({ type: 'deleted', chatId: 1, messageIds: [10] });
+
+    expect(event).toEqual({ type: 'deleted', chatId: 1, messageIds: [10] });
+    expect(albums.excessFor(1)).toBe(0);
+  });
+
+  it('leaves a peerless deletion to the thread it is not sure about', () => {
+    const albums = ledger();
+
+    albums.apply({ type: 'new_message', message: messageDto({ id: 10, groupedId: '77' }) });
+    albums.apply({ type: 'new_message', message: messageDto({ id: 11, groupedId: '77' }) });
+    const event: UpdateEvent = albums.apply({ type: 'deleted', chatId: null, messageIds: [10] });
+
+    expect(event).toEqual({ type: 'deleted', chatId: null, messageIds: [10] });
+    expect(albums.excessFor(1)).toBe(1);
   });
 
   it('leaves the outbox reads alone', () => {

@@ -79,6 +79,7 @@ interface Harness {
     signIn: ReturnType<typeof vi.fn>;
     checkPassword: ReturnType<typeof vi.fn>;
     call: ReturnType<typeof vi.fn>;
+    deleteMessagesById: ReturnType<typeof vi.fn>;
     logOut: ReturnType<typeof vi.fn>;
   };
   rawListeners: Set<(info: RawUpdateInfo) => void>;
@@ -138,6 +139,7 @@ function fakeBundle(options: { authorized?: boolean; destroyed?: boolean; pts?: 
     signIn: vi.fn(async () => signedInUser()),
     checkPassword: vi.fn(async () => signedInUser()),
     call: vi.fn(async () => ({})),
+    deleteMessagesById: vi.fn(async () => {}),
     logOut: vi.fn(async () => {}),
   };
   const storage = createNodeTransactionalStorage(openNodeDatabase());
@@ -316,6 +318,19 @@ describe('TelegramDriver', () => {
     expect(result).toEqual({
       me: { id: 1, firstName: 'Ada', lastName: null, username: 'ada', phone: '15551234567', photo: null },
     });
+  });
+
+  it('broadcasts the deletion its own delete RPC implies', async () => {
+    const harness = fakeBundle();
+    const seen: unknown[] = [];
+    harness.driver.onEvent((event) => seen.push(event));
+
+    await harness.driver.rpc('deleteMessages', { chatId: 1, messageIds: [8, 9] });
+
+    // mtcute swallows the delete's own update, so the engine echoes it for the
+    // tabs that did not ask.
+    expect(harness.client.deleteMessagesById).toHaveBeenCalledWith(1, [8, 9], { revoke: true });
+    expect(seen).toContainEqual({ type: 'deleted', chatId: 1, messageIds: [8, 9] });
   });
 
   it('relays a signalling packet to a call the update stream announced', async () => {

@@ -12,6 +12,7 @@ import type {
   UpdateEvent,
 } from './types';
 import type { UploadRequest } from './upload';
+import type { MessageDeletion } from './useMessageDelete';
 
 /**
  * The comments screen's controller contract, split from `useComments.ts` to
@@ -78,6 +79,19 @@ export interface CommentsController {
   discardPending: (key: string) => void;
   clearPending: () => void;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  The delete flow, shared with the thread: the display group awaiting
+  confirmation, and the actions the menu and the confirm dialog call.
+  */
+  deletion: MessageDeletion;
+  /**
+  Removes comments from the open window ahead of Telegram's answer.
+  */
+  removeMessages: (chatId: PeerId, messageIds: readonly number[]) => void;
+  /**
+  Puts comments a refused delete took out back into the open window.
+  */
+  restoreMessages: (messages: readonly MessageDto[]) => void;
   /**
   Casts a vote in a poll on the pinned post or a comment, or retracts it with
   `null`.

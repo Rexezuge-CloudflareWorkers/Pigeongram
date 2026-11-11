@@ -16,6 +16,7 @@ import type {
   UpdateEvent,
 } from './types';
 import type { UploadRequest } from './upload';
+import type { MessageDeletion } from './useMessageDelete';
 
 /**
  * The chat thread's controller contract, split from `useThread.ts` to keep the
@@ -118,6 +119,21 @@ export interface ThreadController {
   discardPending: (key: string) => void;
   clearPending: () => void;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  The delete flow: the display group awaiting confirmation, and the actions
+  the menu and the confirm dialog call. A delete removes the rows at once and
+  puts them back when Telegram refuses it.
+  */
+  deletion: MessageDeletion;
+  /**
+  Removes messages from the open window ahead of Telegram's answer. Called by
+  the shell's delete flow, which owns the confirmation both screens share.
+  */
+  removeMessages: (chatId: PeerId, messageIds: readonly number[]) => void;
+  /**
+  Puts messages a refused delete took out back into the open window.
+  */
+  restoreMessages: (messages: readonly MessageDto[]) => void;
   /**
   Casts a vote in a poll message: the indexes name the selected answers, or
   `null` retracts the current vote.

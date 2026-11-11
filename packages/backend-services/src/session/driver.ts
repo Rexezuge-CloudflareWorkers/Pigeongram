@@ -19,7 +19,7 @@ import { peerIdsIn, withPeerRetry } from './peers';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
 import { UnreadAlbumLedger } from './unread-albums';
-import { mapRawUpdate } from './updates';
+import { mapRawUpdate, deletedEvent } from './updates';
 
 /**
  * How the driver builds its client stack. Injectable so the lifecycle and
@@ -132,26 +132,35 @@ export class TelegramDriver {
         // connection.
         this.#activeCall = mapped.call.state !== 'empty' && mapped.call.state !== 'discarded';
       }
-      if (mapped) {
-        try {
-          // The ledger learns the albums from the stream and corrects the
-          // counts the bridge serves. Its failures stay as isolated as the
-          // mapping's: an update must always reach the browser.
-          mapped = this.#albums.apply(mapped);
-        } catch {
-          // Keep the uncorrected event rather than dropping it.
-        }
-      }
-      for (const listener of this.#listeners) {
-        try {
-          listener(mapped);
-        } catch {
-          // Listener failures are isolated the same way.
-        }
-      }
+      this.#publish(mapped);
     });
     this.#bundle = bundle;
     return bundle;
+  }
+
+  /**
+   * Hands one event to the ledger and then to every listener.
+   *
+   * The ledger learns the albums from the stream and corrects the counts the
+   * bridge serves. Its failures stay as isolated as the listeners': an update
+   * must always reach the browser.
+   */
+  #publish(event: UpdateEvent | null): void {
+    let corrected = event;
+    if (corrected) {
+      try {
+        corrected = this.#albums.apply(corrected);
+      } catch {
+        // Keep the uncorrected event rather than dropping it.
+      }
+    }
+    for (const listener of this.#listeners) {
+      try {
+        listener(corrected);
+      } catch {
+        // Listener failures are isolated the same way.
+      }
+    }
   }
 
   /**
@@ -306,7 +315,16 @@ export class TelegramDriver {
 
   async rpc(method: string, params: unknown): Promise<unknown> {
     const { client } = this.#ensure();
-    return withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums, this.#calls));
+    const result = await withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums, this.#calls));
+    // mtcute turns the delete's own update into a quiet pts step, so the raw
+    // update listener never sees it and the other tabs would keep the message.
+    // The engine broadcasts the event the call implies; the tab that asked
+    // folds its own result too, and both folds are keyed by id.
+    if (method === 'deleteMessages') {
+      const echo = deletedEvent(result);
+      if (echo) this.#publish(echo);
+    }
+    return result;
   }
 
   /**

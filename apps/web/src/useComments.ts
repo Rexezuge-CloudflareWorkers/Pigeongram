@@ -2,13 +2,14 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fetchComments, readHistory } from './api';
 import type { CommentsController, PostKey, PrefetchedComments } from './comments-controller';
 import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
-import { mergeMessages, updateCommentsThread } from './state';
+import { applyCommentDeleted, applyCommentRestored, mergeMessages, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
 import type { ChatDto, GetCommentsResult, MessageDto, MessageReplyKeyboardButtonDto, PeerId } from './types';
 import { useCommentsPoll } from './useCommentsPoll';
 import { useCommentsSend } from './useCommentsSend';
 import { useCommentsUpdates } from './useCommentsUpdates';
 import { useMessageButtons } from './useMessageButtons';
+import { useMessageDelete } from './useMessageDelete';
 
 /**
 The comments screen's controller: the open channel-post thread with its loaded
@@ -210,6 +211,22 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     }
   }, []);
 
+  /**
+  Removes comments from the open window ahead of Telegram's answer.
+  */
+  const removeMessages = useCallback((chatId: PeerId, messageIds: readonly number[]): void => {
+    setThread((current) => applyCommentDeleted(current, chatId, messageIds));
+  }, []);
+
+  /**
+  Puts comments a refused delete took out back into the open window.
+  */
+  const restoreMessages = useCallback((messages: readonly MessageDto[]): void => {
+    setThread((current) => applyCommentRestored(current, messages));
+  }, []);
+
+  const deletion = useMessageDelete({ remove: removeMessages, restore: restoreMessages, onError });
+
   const { pending, reactingIds, send, attach, react, retryPending, discardPending, clearPending } = useCommentsSend({
     thread,
     setThread,
@@ -252,6 +269,9 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
     discardPending,
     clearPending,
     react,
+    deletion,
+    removeMessages,
+    restoreMessages,
     vote,
     pressButton,
     pressReplyKeyboardButton,

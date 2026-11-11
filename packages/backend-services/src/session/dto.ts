@@ -1,12 +1,11 @@
-import type { Chat, Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
+import type { Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
 import { documentDimensions } from './dto-document';
 import { serviceText } from './service-text';
 import { toMessageMarkupDto, toMessageReplyKeyboardDto } from './markup';
-import { presenceOfPeer } from './presence';
+import { photoVersion, toChatDto } from './dto-chat';
 import { toMessageWebPageDto } from './web-page';
 import { videoQualities } from './dto-video';
 import type {
-  ChatDto,
   DialogDto,
   DialogMessageDto,
   MeDto,
@@ -19,6 +18,8 @@ import type {
   MessageReactionDto,
   MessageReplyDto,
 } from '../types';
+
+export { chatKind, photoVersion, toChatDto } from './dto-chat';
 
 /**
 Converts mtcute's high-level objects into the bridge's JSON DTOs.
@@ -33,80 +34,6 @@ export function toMeDto(user: User): MeDto {
     phone: user.raw.phone ?? null,
     photo: photoVersion(user),
   };
-}
-
-export function toChatDto(peer: Peer): ChatDto {
-  const base = {
-    id: peer.id,
-    title: peer.displayName,
-    username: peer.username ?? null,
-    photo: photoVersion(peer),
-    presence: presenceOfPeer(peer),
-  };
-  if (peer.type === 'user') {
-    return { ...base, kind: peer.isBot ? 'bot' : 'user', canSendMessages: true };
-  }
-  return { ...base, kind: chatKind(peer), canSendMessages: canSendMessages(peer) };
-}
-
-/**
-Whether the account may post in a chat.
-
-A chat the account is not in is never writable: a public channel or supergroup
-resolved from a link is readable as a preview, but a send there would only
-fail. Broadcast channels are admin-only, so the account can post only as the
-creator or with the `post_messages` right. Elsewhere a user-specific ban wins,
-then the group's default rights bind everyone but admins (a gigagroup is one
-whose defaults ban sending outright). An incomplete (`min`) peer carries none
-of these flags, so it stays writable rather than guessed at.
-*/
-function canSendMessages(chat: Chat): boolean {
-  if (!chat.isMember) return false;
-  if (chat.isMin) return true;
-  if (chat.permissions && !chat.permissions.canSendMessages) return false;
-  switch (chat.chatType) {
-    case 'channel': {
-      return chat.isCreator || chat.adminRights?.postMessages === true;
-    }
-    case 'monoforum': {
-      // The channel's direct-message space: any subscriber may write.
-      return true;
-    }
-    default: {
-      return chat.isAdmin || !chat.defaultPermissions || chat.defaultPermissions.canSendMessages;
-    }
-  }
-}
-
-/**
-The avatar's version token, or null when there is no usable photo.
-
-`User.photo` builds an input peer internally and throws for min users and
-entities without an access hash, so a missing token is the only safe answer
-there — an avatar must never break a dialog or message mapping.
-*/
-export function photoVersion(peer: User | Chat): string | null {
-  try {
-    return peer.photo?.small.uniqueFileId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function chatKind(chat: Chat): ChatDto['kind'] {
-  switch (chat.chatType) {
-    case 'group': {
-      return 'group';
-    }
-    case 'channel':
-    case 'monoforum': {
-      return 'channel';
-    }
-    default: {
-      // `supergroup`, `gigagroup` and `community` are all supergroups to the UI.
-      return 'supergroup';
-    }
-  }
 }
 
 function toMessageEntityDto(entity: MessageEntity): MessageEntityDto {

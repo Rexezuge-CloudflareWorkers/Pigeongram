@@ -1,7 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
-import { messageWebLink } from '../links';
 import { readWatermark } from '../reading';
 import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
@@ -9,13 +8,13 @@ import type { ThreadViewProps } from '../thread-view-props';
 import type { MessageDto, MessageReplyKeyboardButtonDto, PeerId } from '../types';
 import type { UploadRequest } from '../upload';
 import { JumpToLatest } from './JumpToLatest';
-import { MessageRow } from './MessageRow';
 import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
 import { Spinner } from './Spinner';
 import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
 import { ThreadHeader } from './ThreadHeader';
+import { ThreadMessageRows } from './ThreadMessageRows';
 import { ThreadPlaceholder } from './ThreadPlaceholder';
 
 /**
@@ -60,6 +59,7 @@ export function ThreadView({
   onDiscardPending,
   onReact,
   onForward,
+  onDelete,
   onVote,
   onPressButton,
   onPressReplyKeyboard,
@@ -320,45 +320,27 @@ export function ThreadView({
           ) : null}
           {loading && messages.length === 0 ? <MessageSkeleton label="Loading Messages…" /> : null}
           {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
-          {groups.map((group, index) => {
-            const anchor = group[0];
-            return (
-              <Fragment key={anchor.id}>
-                {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? (
-                  <div className="day">{formatDay(anchor.date)}</div>
-                ) : null}
-                {group.some((message) => message.id === unreadDividerId) ? (
-                  <div className="unread-divider" data-unread-divider>
-                    Unread Messages
-                  </div>
-                ) : null}
-                <MessageRow
-                  group={group}
-                  chat={chat}
-                  showAvatar={chat.kind === 'group' || chat.kind === 'supergroup'}
-                  original={
-                    anchor.reply?.origin === 'same_chat' && anchor.reply.messageId !== null
-                      ? (messageById.get(anchor.reply.messageId) ?? null)
-                      : null
-                  }
-                  isNew={group.some((message) => newMessageIds.has(message.id))}
-                  reacting={reactingIds.has(anchor.id)}
-                  onReact={preview === null ? onReact : undefined}
-                  voting={votingIds.has(anchor.id)}
-                  onVote={preview === null ? onVote : undefined}
-                  pressingButton={group.some((message) => pressingButtonIds.has(message.id))}
-                  onPressButton={preview === null ? onPressButton : undefined}
-                  readOutboxMaxId={readOutboxMaxId}
-                  onReply={preview === null ? (target) => setReplyingTo({ chatId: chat.id, message: target }) : undefined}
-                  onForward={onForward}
-                  link={messageWebLink(chat, anchor.id)}
-                  onJump={jumpToMessage}
-                  onOpenComments={preview === null && chat.kind === 'channel' ? openComments : undefined}
-                  onOpenMedia={onOpenMedia}
-                />
-              </Fragment>
-            );
-          })}
+          <ThreadMessageRows
+            chat={chat}
+            groups={groups}
+            messageById={messageById}
+            newMessageIds={newMessageIds}
+            reactingIds={reactingIds}
+            votingIds={votingIds}
+            pressingButtonIds={pressingButtonIds}
+            readOutboxMaxId={readOutboxMaxId}
+            unreadDividerId={unreadDividerId}
+            preview={preview}
+            onReact={onReact}
+            onVote={onVote}
+            onPressButton={onPressButton}
+            onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+            onForward={onForward}
+            onDelete={onDelete}
+            onJump={jumpToMessage}
+            onOpenComments={openComments}
+            onOpenMedia={onOpenMedia}
+          />
           {!atLatest && messages.length > 0 ? (
             <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
               {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load Newer Messages'}

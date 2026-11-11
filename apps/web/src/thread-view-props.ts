@@ -169,6 +169,11 @@ export interface ThreadViewProps {
    */
   onForward: (messages: readonly MessageDto[]) => void;
   /**
+   * Asks to delete a display group for everyone: the confirmation and the
+   * request belong to the shell, which owns the dialog both screens share.
+   */
+  onDelete: (messages: readonly MessageDto[]) => void;
+  /**
    * Casts a vote in a poll message, or retracts it with `null`.
    */
   onVote: (message: MessageDto, options: number[] | null) => void;

@@ -74,6 +74,13 @@ export interface ChatDto {
   */
   canSendMessages: boolean;
   /**
+  Whether the account may delete other people's messages in this chat: an
+  administrator of a group or a channel with the `delete_messages` right, or
+  its creator. The account's own messages are always deletable, so a false
+  here never hides deleting one's own.
+  */
+  canDeleteMessages: boolean;
+  /**
   The peer's presence, or null when it has none (a bot, a group, a channel)
   or when Telegram did not tell us.
   */
@@ -712,6 +719,21 @@ Updates pushed over the `/user/updates` WebSocket.
 export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
+  | {
+      type: 'deleted';
+      /**
+      Marked id of the chat the messages were deleted from, or null when
+      Telegram's update names no peer (`updateDeleteMessages` is one
+      account-level pts step for every private chat and basic group, and the
+      engine has no per-chat pts map to resolve it). A null chat is folded by
+      matching the ids against what the open window already holds.
+      */
+      chatId: PeerId | null;
+      /**
+      Ids of the deleted messages, in the chat above.
+      */
+      messageIds: number[];
+    }
   | { type: 'reactions'; chatId: PeerId; messageId: number; reactions: MessageReactionDto[] }
   | { type: 'views'; chatId: PeerId; messageId: number; views: number }
   | {

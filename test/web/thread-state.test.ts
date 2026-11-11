@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applyThreadEdit, applyThreadNewMessage, applyThreadSentMessages, threadReachesLatest } from '../../apps/web/src/thread-state';
+import {
+  applyThreadDeleted,
+  applyThreadEdit,
+  applyThreadNewMessage,
+  applyThreadRestored,
+  applyThreadSentMessages,
+  threadReachesLatest,
+} from '../../apps/web/src/thread-state';
 import type { ChatThread } from '../../apps/web/src/thread-state';
 import type { ChatDto, MessageDto } from '../../apps/web/src/types';
 
@@ -10,6 +17,7 @@ const CHAT: ChatDto = {
   username: 'bob',
   photo: null,
   canSendMessages: true,
+  canDeleteMessages: true,
   presence: null,
 };
 
@@ -144,5 +152,77 @@ describe('live thread updates', () => {
     const next = applyThreadEdit(current, message(2, 'edited'));
 
     expect(next?.messages.find((entry) => entry.id === 2)?.text).toBe('edited');
+  });
+});
+
+describe('thread deletions', () => {
+  it('drops the loaded rows and pulls the cursors off a deleted edge', () => {
+    const current = thread({ messages: [message(1), message(2), message(3)], windowEndId: 3, latestMessageId: 3 });
+    const next = applyThreadDeleted(current, 1, [2]);
+
+    expect(next?.messages.map((entry) => entry.id)).toEqual([1, 3]);
+    expect(next?.windowEndId).toBe(3);
+    expect(next?.latestMessageId).toBe(3);
+  });
+
+  it('moves the window end to what is left when it named a deleted message', () => {
+    const current = thread({ messages: [message(1), message(2), message(3)], windowEndId: 3, latestMessageId: 3 });
+    const next = applyThreadDeleted(current, 1, [3]);
+
+    expect(next?.windowEndId).toBe(2);
+    expect(next?.latestMessageId).toBe(2);
+  });
+
+  it('folds a peerless deletion by matching the loaded ids', () => {
+    const current = thread({ messages: [message(1), message(2), message(3)] });
+    const next = applyThreadDeleted(current, null, [1, 3]);
+
+    expect(next?.messages.map((entry) => entry.id)).toEqual([2]);
+  });
+
+  it('leaves the thread alone for another chat, an unmatched id, or an empty list', () => {
+    const current = thread();
+    expect(applyThreadDeleted(current, 2, [1])).toBe(current);
+    expect(applyThreadDeleted(current, null, [99])).toBe(current);
+    expect(applyThreadDeleted(current, 1, [])).toBe(current);
+    expect(applyThreadDeleted(null, 1, [1])).toBeNull();
+  });
+
+  it('forgets the unread divider, focus and animation of a deleted row', () => {
+    const current = thread({
+      messages: [message(1), message(2), message(3)],
+      unreadDividerId: 2,
+      focusMessageId: 2,
+      newMessageIds: new Set([2, 3]),
+    });
+    const next = applyThreadDeleted(current, 1, [2]);
+
+    expect(next?.unreadDividerId).toBeNull();
+    expect(next?.focusMessageId).toBeNull();
+    expect([...(next?.newMessageIds ?? [])]).toEqual([3]);
+  });
+
+  it('keeps the range when the deletion was beyond the loaded window', () => {
+    const current = thread({ messages: [message(1), message(2)], windowEndId: 2, latestMessageId: 9 });
+    const next = applyThreadDeleted(current, 1, [9]);
+
+    expect(next?.latestMessageId).toBe(9);
+    expect(next?.windowEndId).toBe(2);
+  });
+
+  it('restores a refused delete in order and without duplicating a redelivered row', () => {
+    const current = thread({ messages: [message(1), message(2)] });
+    const restored = applyThreadRestored(current, [message(3), message(2)]);
+
+    expect(restored?.messages.map((entry) => entry.id)).toEqual([1, 2, 3]);
+    expect(restored?.windowEndId).toBe(3);
+    expect(restored?.latestMessageId).toBe(3);
+  });
+
+  it('leaves the thread alone when the restore belongs elsewhere', () => {
+    const current = thread();
+    expect(applyThreadRestored(current, [message(1, 'x', { chatId: 2 })])).toBe(current);
+    expect(applyThreadRestored(current, [])).toBe(current);
+    expect(applyThreadRestored(null, [message(1)])).toBeNull();
   });
 });

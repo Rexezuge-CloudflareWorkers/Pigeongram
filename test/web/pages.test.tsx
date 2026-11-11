@@ -189,7 +189,16 @@ function dialogMessage(source: MessageDto): DialogMessageDto {
 const me = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ada', phone: null, photo: null };
 const dialogs: DialogDto[] = [
   {
-    chat: { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true, presence: null },
+    chat: {
+      id: 2,
+      kind: 'user',
+      title: 'Bob',
+      username: 'bob',
+      photo: null,
+      canSendMessages: true,
+      canDeleteMessages: true,
+      presence: null,
+    },
     lastMessage: {
       id: 10,
       date: 1_700_000_000_000,
@@ -258,7 +267,16 @@ const history: MessageDto[] = [
   },
 ];
 
-const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true, presence: null };
+const carol: ChatDto = {
+  id: 3,
+  kind: 'user',
+  title: 'Carol',
+  username: 'carol',
+  photo: null,
+  canSendMessages: true,
+  canDeleteMessages: true,
+  presence: null,
+};
 
 const carolDialog: DialogDto = {
   chat: carol,
@@ -867,6 +885,7 @@ describe('App', () => {
         username: 'announce',
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       const post = message({
@@ -1005,6 +1024,7 @@ describe('App', () => {
       username: 'helper_bot',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: true,
       presence: null,
     };
     installSignedInFetch({
@@ -1031,6 +1051,7 @@ describe('App', () => {
       username: 'helper_bot',
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: true,
       presence: null,
     };
     installSignedInFetch({
@@ -1178,7 +1199,16 @@ describe('App', () => {
   });
 
   it('renders the forwarded-from header above the sender name in a group', async () => {
-    const team: ChatDto = { id: 4, kind: 'supergroup', title: 'Team', username: null, photo: null, canSendMessages: true, presence: null };
+    const team: ChatDto = {
+      id: 4,
+      kind: 'supergroup',
+      title: 'Team',
+      username: null,
+      photo: null,
+      canSendMessages: true,
+      canDeleteMessages: true,
+      presence: null,
+    };
     const forwarded = message({
       id: 20,
       chatId: 4,
@@ -1218,6 +1248,7 @@ describe('App', () => {
       username: null,
       photo: null,
       canSendMessages: true,
+      canDeleteMessages: true,
       presence: null,
     };
     const incoming = message({
@@ -1908,6 +1939,7 @@ describe('App', () => {
         username: 'public_news',
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       const source = message({
@@ -1949,6 +1981,7 @@ describe('App', () => {
         username: 'joinable',
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       const source = message({
@@ -1991,6 +2024,7 @@ describe('App', () => {
         username: 'private_news',
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       const source = message({
@@ -2202,6 +2236,7 @@ describe('App', () => {
         username: 'announce',
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       const photo: MessageMediaDto = {
@@ -2382,6 +2417,35 @@ describe('App', () => {
         vi.advanceTimersByTime(1000);
       });
       expect(screen.getByRole('menu', { name: 'Message actions' })).toBeDefined();
+    });
+
+    it('deletes a message for everyone after the confirmation', async () => {
+      const calls = installSignedInFetch({
+        rpc: (call) => {
+          if (call.body?.method !== 'deleteMessages') return;
+          return json({ chatId: 2, messageIds: [10] });
+        },
+      });
+
+      render(<App />);
+      fireEvent.click(await screen.findByText('Bob'));
+      expect(await screen.findByText('oldest')).toBeDefined();
+
+      openMessageMenu(10);
+      clickMenuItem('Delete');
+
+      // The confirmation is the last step: a deletion is for everyone, on every
+      // device and in the account's own clients too.
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText('This Message Will Be Deleted For Everyone.')).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+      await waitFor(() => {
+        expect(bridgeCall(calls, 'deleteMessages')?.body?.params).toEqual({ chatId: 2, messageIds: [10] });
+      });
+      // The row leaves at once; the engine's echo repairs the chat list.
+      await waitFor(() => expect(within(threadSection()).queryByText('see you')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
     it('forwards a message to the picked writable destination', async () => {
@@ -3398,6 +3462,7 @@ describe('App', () => {
       username: 'announce',
       photo: null,
       canSendMessages: false,
+      canDeleteMessages: false,
       presence: null,
     };
 
@@ -3552,6 +3617,7 @@ describe('App', () => {
         username: null,
         photo: null,
         canSendMessages: true,
+        canDeleteMessages: true,
         presence: null,
       };
       const groupPost = message({
@@ -4209,6 +4275,7 @@ describe('App', () => {
         username: 'announce',
         photo: null,
         canSendMessages,
+        canDeleteMessages: canSendMessages,
         presence: null,
       };
       return {
@@ -4255,6 +4322,7 @@ describe('App', () => {
         username: null,
         photo: null,
         canSendMessages: false,
+        canDeleteMessages: false,
         presence: null,
       };
       installSignedInFetch({
@@ -4465,7 +4533,16 @@ describe('App', () => {
 
   describe('archive', () => {
     const archivedDialog: DialogDto = {
-      chat: { id: 4, kind: 'user', title: 'Dave', username: 'dave', photo: null, canSendMessages: true, presence: null },
+      chat: {
+        id: 4,
+        kind: 'user',
+        title: 'Dave',
+        username: 'dave',
+        photo: null,
+        canSendMessages: true,
+        canDeleteMessages: true,
+        presence: null,
+      },
       lastMessage: null,
       unread: 0,
       readInboxMaxId: 0,

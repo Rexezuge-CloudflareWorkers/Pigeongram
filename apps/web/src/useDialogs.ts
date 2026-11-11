@@ -1,6 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchArchivedDialogs, fetchDialogs, setArchived as setArchivedRpc } from './api';
-import { applyEditedMessage, applyNewMessage, applyOutboxReadUpdate, applyReadThrough, applyReadUpdate, applyUserStatus } from './state';
+import {
+  applyDeletedMessages,
+  applyEditedMessage,
+  applyNewMessage,
+  applyOutboxReadUpdate,
+  applyReadThrough,
+  applyReadUpdate,
+  applyUserStatus,
+} from './state';
 import type { DialogDto, MessageDto, PeerId, UpdateEvent } from './types';
 
 /**
@@ -55,6 +63,14 @@ export interface DialogsController {
   Folds an optimistic read into the lists.
   */
   applyRead: (chatId: PeerId, maxId: number, messages: readonly MessageDto[]) => void;
+  /**
+  Folds a deletion into the lists. A deletion made in the open chat comes with
+  what left the window and what it still holds, so the preview falls back to
+  the newest remaining message and the badge gives up the unread ones. The
+  engine's echo of the same deletion carries ids alone, which only clears a
+  preview it named — the open thread reports the richer half first.
+  */
+  applyDeleted: (chatId: PeerId, messageIds: readonly number[], removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
   /**
    * Folds a wholesale read into the lists: the badge empties and the watermark
    * moves to the chat's newest known message. The server's own `read` update
@@ -163,6 +179,14 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
           );
           return;
         }
+        case 'deleted': {
+          if (update.chatId === null) return;
+          commit(
+            applyDeletedMessages(current, update.chatId, update.messageIds),
+            applyDeletedMessages(currentArchive, update.chatId, update.messageIds),
+          );
+          return;
+        }
         case 'user_status': {
           commit(applyUserStatus(current, update.userId, update.presence), applyUserStatus(currentArchive, update.userId, update.presence));
           return;
@@ -192,6 +216,16 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
   const applyReadAll = useCallback(
     (chatId: PeerId, maxId: number): void => {
       commit(applyReadUpdate(mainRef.current, chatId, 0, maxId), applyReadUpdate(archivedRef.current, chatId, 0, maxId));
+    },
+    [commit],
+  );
+
+  const applyDeleted = useCallback(
+    (chatId: PeerId, messageIds: readonly number[], removed: readonly MessageDto[], remaining: readonly MessageDto[]): void => {
+      commit(
+        applyDeletedMessages(mainRef.current, chatId, messageIds, removed, remaining),
+        applyDeletedMessages(archivedRef.current, chatId, messageIds, removed, remaining),
+      );
     },
     [commit],
   );
@@ -247,6 +281,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     applyUpdate,
     applyRead,
     applyReadAll,
+    applyDeleted,
     setArchived,
   };
 }

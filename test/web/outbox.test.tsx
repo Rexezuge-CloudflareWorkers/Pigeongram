@@ -8,8 +8,26 @@ import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../app
 
 afterEach(cleanup);
 
-const bob: ChatDto = { id: 2, kind: 'user', title: 'Bob', username: 'bob', photo: null, canSendMessages: true, presence: null };
-const carol: ChatDto = { id: 3, kind: 'user', title: 'Carol', username: 'carol', photo: null, canSendMessages: true, presence: null };
+const bob: ChatDto = {
+  id: 2,
+  kind: 'user',
+  title: 'Bob',
+  username: 'bob',
+  photo: null,
+  canSendMessages: true,
+  canDeleteMessages: true,
+  presence: null,
+};
+const carol: ChatDto = {
+  id: 3,
+  kind: 'user',
+  title: 'Carol',
+  username: 'carol',
+  photo: null,
+  canSendMessages: true,
+  canDeleteMessages: true,
+  presence: null,
+};
 
 function message(overrides: Partial<MessageDto> & { id: number; chatId: number }): MessageDto {
   return {

@@ -159,3 +159,56 @@ export function applyThreadEdit(thread: ChatThread | null, message: MessageDto):
   }
   return { ...thread, messages: replaceMessage(thread.messages, message) };
 }
+
+/**
+Folds a deletion into the thread: the loaded rows go, and the cursors that
+named one of them move back to what is left.
+
+A null `chatId` is Telegram's peerless `updateDeleteMessages`: the engine cannot
+say which private chat or basic group it belongs to, so the thread takes the
+fold only when it already holds one of the ids — a chat's ids are its own, which
+makes a match proof. The newest-known cursor only falls when the deletion took
+the message it named; a deletion beyond the loaded window leaves the range
+alone, because forward paging still has to read up to it.
+*/
+export function applyThreadDeleted(thread: ChatThread | null, chatId: PeerId | null, messageIds: readonly number[]): ChatThread | null {
+  if (!thread || messageIds.length === 0) return thread;
+  if (chatId !== null && chatId !== thread.chat.id) return thread;
+  const ids = new Set(messageIds);
+  const messages = thread.messages.filter((message) => !ids.has(message.id));
+  if (messages.length === thread.messages.length) return thread;
+  const newest = messages.at(-1)?.id ?? null;
+  const windowEndId = thread.windowEndId !== null && ids.has(thread.windowEndId) ? newest : thread.windowEndId;
+  const latestMessageId = thread.latestMessageId !== null && ids.has(thread.latestMessageId) ? newest : thread.latestMessageId;
+  const newMessageIds = new Set(thread.newMessageIds);
+  for (const id of ids) newMessageIds.delete(id);
+  return {
+    ...thread,
+    messages,
+    windowEndId,
+    latestMessageId,
+    newMessageIds,
+    unreadDividerId: thread.unreadDividerId !== null && ids.has(thread.unreadDividerId) ? null : thread.unreadDividerId,
+    focusMessageId: thread.focusMessageId !== null && ids.has(thread.focusMessageId) ? null : thread.focusMessageId,
+  };
+}
+
+/**
+Puts messages a failed delete rolled back into the thread. The range's end and
+the newest-known cursor rise again when the restored ids are newer than what is
+loaded, and an id the socket already re-delivered is left as it is.
+*/
+export function applyThreadRestored(thread: ChatThread | null, messages: readonly MessageDto[]): ChatThread | null {
+  if (!thread || messages.length === 0) return thread;
+  const chatId = messages[0].chatId;
+  if (thread.chat.id !== chatId) return thread;
+  const fresh = messages.filter((message) => thread.messages.every((loaded) => loaded.id !== message.id));
+  if (fresh.length === 0) return thread;
+  const newest = fresh.reduce((id, message) => Math.max(id, message.id), 0);
+  return {
+    ...thread,
+    messages: mergeMessages(thread.messages, fresh),
+    windowEndId: Math.max(thread.windowEndId ?? 0, newest),
+    latestMessageId: Math.max(thread.latestMessageId ?? 0, newest),
+  };
+}

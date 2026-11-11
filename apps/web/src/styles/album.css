@@ -38,7 +38,8 @@
 }
 
 /* The data saver's album cell: the grid keeps its square, the bytes stay on
-   the server until the cell is opened. */
+   the server until the cell is tapped; that tap loads the thumbnail and the
+   next one opens the viewer. */
 .message .album .cell .cell-placeholder {
   position: absolute;
   inset: 0;

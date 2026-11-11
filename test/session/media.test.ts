@@ -243,6 +243,41 @@ describe('streamMessageMedia', () => {
     expect(requests[0]?.fileSize).toBe(50);
   });
 
+  it('serves a photo bubble the largest preview within the preview box', async () => {
+    const photo = {
+      type: 'photo',
+      fileSize: SIZE,
+      thumbnails: [
+        { isVideo: false, width: 100, height: 100, fileSize: 10 },
+        { isVideo: false, width: 800, height: 800, fileSize: 80 },
+        // A photo's size list carries its full-size entry too, which the
+        // bubble must not pick.
+        { isVideo: false, width: 1280, height: 1280, fileSize: 128 },
+      ],
+    };
+    const { client, requests } = fakeClient(photo);
+    const download = await streamMessageMedia(client, 1, 2, { thumb: true });
+
+    expect(download).toMatchObject({ mime: 'image/jpeg', size: null, length: 80, status: 200 });
+    expect(requests[0]?.fileSize).toBe(80);
+  });
+
+  it('keeps the largest thumbnail when none fits the preview box', async () => {
+    const photo = {
+      type: 'photo',
+      fileSize: SIZE,
+      thumbnails: [
+        { isVideo: false, width: 960, height: 960, fileSize: 96 },
+        { isVideo: false, width: 1280, height: 1280, fileSize: 128 },
+      ],
+    };
+    const { client, requests } = fakeClient(photo);
+    const download = await streamMessageMedia(client, 1, 2, { thumb: true });
+
+    expect(download).toMatchObject({ length: 128, status: 200 });
+    expect(requests[0]?.fileSize).toBe(128);
+  });
+
   it("streams a link preview's photo through the same route", async () => {
     const { client } = fakeClient(webpageMedia());
     const download = await streamMessageMedia(client, 1, 2);

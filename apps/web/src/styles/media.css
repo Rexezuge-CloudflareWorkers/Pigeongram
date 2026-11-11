@@ -1,7 +1,8 @@
-/* Message media: photos, animations and video poster tiles open the full-page
-   viewer, while audio, stickers and documents keep their inline controls.
-   The intrinsic-size attributes reserve each box before a lazy load; `height:
-   auto` keeps the intrinsic ratio while max-width caps it to the bubble. */
+/* Message media: photo, video and animation bubbles show a preview thumbnail
+   and open the full-page viewer, while audio, stickers and documents keep their
+   inline controls. The intrinsic-size attributes reserve each box before a lazy
+   load; `height: auto` keeps the intrinsic ratio while max-width caps it to the
+   bubble. */
 .message .media-open {
   display: block;
   max-width: 100%;
@@ -64,8 +65,8 @@
 }
 
 /* A media box the data saver has not downloaded. The aspect ratio comes from
-   the DTO, so swapping it for the real image does not move the thread; one
-   click opens the viewer and is the only thing that fetches the bytes. */
+   the DTO, so swapping it for the real preview does not move the thread; one
+   click loads that preview in place, and a second opens the viewer. */
 .message .media-placeholder {
   display: flex;
   flex-direction: column;

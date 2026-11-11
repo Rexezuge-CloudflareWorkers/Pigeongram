@@ -28,7 +28,8 @@ interface DataSaverSettings {
   */
   loadPreviews: boolean;
   /**
-  Request photo, video and album thumbnails. Off shows a tap-to-load tile.
+  Request photo, video and album thumbnails. Off shows a tap-to-load tile that
+  fetches the thumbnail in place; the full file is always the viewer's.
   */
   loadMedia: boolean;
   /**

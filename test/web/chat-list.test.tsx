@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatList } from '../../apps/web/src/components/ChatList';
-import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, PresenceDto } from '../../apps/web/src/types';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, PresenceDto } from '../../apps/web/src/types';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -218,6 +218,72 @@ describe('ChatList pin marker', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 
     expect(pinIn('Bob')?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('ChatList media preview glyph', () => {
+  function media(overrides: Partial<MessageMediaDto>): MessageMediaDto {
+    return {
+      kind: 'document',
+      fileName: null,
+      mime: null,
+      size: null,
+      width: null,
+      height: null,
+      duration: null,
+      ...overrides,
+    };
+  }
+
+  function previewIn(name: string): Element | null {
+    return rowIn(name).querySelector('.chat-preview');
+  }
+
+  it('leads a document preview with its glyph and names the file', () => {
+    const doc = message('');
+    doc.media = media({ fileName: 'report.pdf' });
+    renderList([dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(doc) })]);
+
+    expect(previewIn('Bob')?.querySelector('svg[data-icon="document"]')).not.toBeNull();
+    expect(previewIn('Bob')?.textContent).toBe('report.pdf');
+  });
+
+  it('keeps the glyph beside a caption, which outranks the file name', () => {
+    const doc = message('the numbers');
+    doc.media = media({ fileName: 'report.pdf' });
+    renderList([dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(doc) })]);
+
+    expect(previewIn('Bob')?.querySelector('svg[data-icon="document"]')).not.toBeNull();
+    expect(previewIn('Bob')?.textContent).toBe('the numbers');
+  });
+
+  it('falls back to the label for a document Telegram sent without a name', () => {
+    const doc = message('');
+    doc.media = media({ fileName: null });
+    renderList([dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(doc) })]);
+
+    expect(previewIn('Bob')?.textContent).toBe('Document');
+  });
+
+  it('draws the glyph of a photo', () => {
+    const photo = message('');
+    photo.media = media({ kind: 'photo' });
+    renderList([dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(photo) })]);
+
+    expect(previewIn('Bob')?.querySelector('svg[data-icon="image"]')).not.toBeNull();
+    expect(previewIn('Bob')?.textContent).toBe('Photo');
+  });
+
+  it('leaves the emoji-led sticker and a plain text message without a glyph', () => {
+    const sticker = message('');
+    sticker.media = media({ kind: 'sticker', emoji: '🙂' });
+    renderList([
+      dialog(chat(1, { title: 'Bob' }), { lastMessage: dialogMessage(sticker) }),
+      dialog(chat(2, { title: 'Carol' }), { lastMessage: dialogMessage(message('see you')) }),
+    ]);
+
+    expect(previewIn('Bob')?.querySelector('svg')).toBeNull();
+    expect(previewIn('Carol')?.querySelector('svg')).toBeNull();
   });
 });
 

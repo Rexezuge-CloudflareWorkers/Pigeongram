@@ -58,15 +58,25 @@ describe('UserMenu', () => {
     expect(screen.queryByRole('menu', { name: 'Account menu' })).toBeNull();
 
     const menu = openMenu(trigger);
-    // The first item is now the Light Mode toggle; Archived Chats follows.
+    // Archived Chats is the first item now that appearance moved to Settings.
     const archiveItem = within(menu).getByRole('menuitem', { name: 'Archived Chats' }) as HTMLButtonElement;
-    const themeItem = within(menu).getByRole('menuitem', { name: 'Light Mode' }) as HTMLButtonElement;
 
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(within(menu).getByText('@ada')).toBeDefined();
-    expect(document.activeElement).toBe(themeItem);
-    expect(archiveItem).toBeDefined();
+    expect(document.activeElement).toBe(archiveItem);
+    expect(within(menu).queryByRole('menuitem', { name: 'Light Mode' })).toBeNull();
+    expect(within(menu).queryByRole('radio', { name: 'Telegram Blue' })).toBeNull();
     expect(onSignOut).not.toHaveBeenCalled();
+  });
+
+  it('opens the settings window from the account menu and closes the menu', () => {
+    const trigger = renderMenu();
+
+    const menu = openMenu(trigger);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Settings' }));
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeDefined();
   });
 
   it('shows the phone handle with a plus when the account has no username', () => {

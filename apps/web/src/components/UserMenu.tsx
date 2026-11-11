@@ -5,14 +5,15 @@ import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import { Presence } from './Presence';
+import { SettingsPopup } from './SettingsPopup';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
-import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
+import { type Contrast, type Seed } from './useDynamicColor';
 
 /**
 The sidebar's account control. The profile row is the trigger for a
-Material-style menu anchored under it; the archive and Sign out live in that
-menu, and Sign out asks for confirmation in a modal before the existing logout
-flow runs.
+Material-style menu anchored under it; the archive, Settings, installing the app
+and Sign out live in that menu. Settings opens the appearance window, and Sign
+out asks for confirmation in a modal before the existing logout flow runs.
 
 The menu is a portal with `position: fixed` so the sidebar cannot clip it. Its
 position is measured from the trigger once the menu has a size, then clamped to
@@ -65,6 +66,7 @@ export function UserMenu({
   onSetContrast,
 }: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +98,11 @@ export function UserMenu({
   const requestArchive = (): void => {
     setMenuOpen(false);
     onOpenArchive();
+  };
+
+  const requestSettings = (): void => {
+    setMenuOpen(false);
+    setSettingsOpen(true);
   };
 
   /**
@@ -167,61 +174,6 @@ export function UserMenu({
             type="button"
             role="menuitem"
             className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
-            onClick={() => {
-              setMenuOpen(false);
-              onToggleTheme?.();
-            }}
-          >
-            <Icon name={theme === 'dark' ? 'light-mode' : 'dark-mode'} className="text-muted" />
-            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-          <div className="my-1 h-px bg-line" role="separator" />
-          <div className="flex items-center gap-2 px-3 py-1" role="group" aria-label="Accent">
-            <span className="text-xs text-muted">Accent</span>
-            <div className="flex gap-1.5">
-              {SEEDS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={seed === s.id}
-                  aria-label={s.label}
-                  title={s.label}
-                  onClick={() => {
-                    onSetSeed?.(s.id);
-                    setMenuOpen(false);
-                  }}
-                  className={`size-6 rounded-full border-2 transition-colors ${seed === s.id ? 'border-primary' : 'border-transparent'}`}
-                  style={{ background: s.hex }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1" role="group" aria-label="Contrast">
-            <span className="text-xs text-muted">Contrast</span>
-            <div className="flex gap-1">
-              {(['standard', 'medium', 'high'] as const).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  role="radio"
-                  aria-checked={contrast === level}
-                  onClick={() => {
-                    onSetContrast?.(level);
-                    setMenuOpen(false);
-                  }}
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${contrast === level ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
-                >
-                  {level === 'standard' ? 'Std' : level === 'medium' ? 'Med' : 'Hi'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="my-1 h-px bg-line" role="separator" />
-          <button
-            type="button"
-            role="menuitem"
-            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
             onClick={requestArchive}
           >
             <Icon name="archive" className="text-muted" />
@@ -238,6 +190,16 @@ export function UserMenu({
               <span>Install App</span>
             </button>
           ) : null}
+          <div className="my-1 h-px bg-line" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
+            onClick={requestSettings}
+          >
+            <Icon name="settings" className="text-muted" />
+            <span>Settings</span>
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -249,6 +211,21 @@ export function UserMenu({
           </button>
         </AnchoredMenu>
       ) : null}
+
+      <Presence visible={settingsOpen}>
+        {settingsOpen ? (
+          <SettingsPopup
+            theme={theme}
+            onToggleTheme={onToggleTheme}
+            seed={seed}
+            onSetSeed={onSetSeed}
+            contrast={contrast}
+            onSetContrast={onSetContrast}
+            onClose={() => setSettingsOpen(false)}
+            returnFocus={focusTrigger}
+          />
+        ) : null}
+      </Presence>
 
       <Presence visible={confirmOpen}>
         {confirmOpen ? (

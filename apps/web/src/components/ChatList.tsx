@@ -37,6 +37,10 @@ interface ChatListProps {
    */
   onMarkRead?: (chatId: PeerId) => void;
   /**
+   * Pins the chat in this list, or unpins it.
+   */
+  onSetPinned?: (chatId: PeerId, pinned: boolean) => void;
+  /**
    * What an empty list says. The archive has its own wording: an empty
    * archive is not an account without chats.
    */
@@ -66,7 +70,7 @@ function ChatPreviewBody({ message }: { message: DialogMessageDto }) {
   );
 }
 
-export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, onMarkRead, emptyLabel }: ChatListProps) {
+export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, onMarkRead, onSetPinned, emptyLabel }: ChatListProps) {
   /**
    * The open context menu, named by chat rather than by dialog: a live update
    * can replace the row's DTO while the menu is open, and the disabled state
@@ -261,7 +265,14 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
         })}
       </ul>
       {menu && menuDialog ? (
-        <ChatMenu dialog={menuDialog} x={menu.x} y={menu.y} onMarkRead={(chatId) => onMarkRead?.(chatId)} onClose={() => setMenu(null)} />
+        <ChatMenu
+          dialog={menuDialog}
+          x={menu.x}
+          y={menu.y}
+          onMarkRead={(chatId) => onMarkRead?.(chatId)}
+          onSetPinned={onSetPinned}
+          onClose={() => setMenu(null)}
+        />
       ) : null}
     </>
   );

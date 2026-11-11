@@ -273,6 +273,40 @@ describe('mapRawUpdate', () => {
     });
   });
 
+  it('turns a dialog pin update into a pinned event', () => {
+    expect(
+      mapRawUpdate(
+        info({
+          _: 'updateDialogPinned',
+          pinned: true,
+          folderId: 0,
+          peer: { _: 'dialogPeer', peer: { _: 'peerUser', userId: 1 } },
+        }),
+      ),
+    ).toEqual({ type: 'pinned', chatId: 1, pinned: true });
+
+    expect(
+      mapRawUpdate(
+        info({
+          _: 'updateDialogPinned',
+          pinned: false,
+          peer: { _: 'dialogPeer', peer: { _: 'peerChannel', channelId: 20 } },
+        }),
+      ),
+    ).toEqual({ type: 'pinned', chatId: getMarkedPeerId(20, 'channel'), pinned: false });
+  });
+
+  it('reads a missing pinned flag as unpinned', () => {
+    expect(
+      mapRawUpdate(
+        info({
+          _: 'updateDialogPinned',
+          peer: { _: 'dialogPeer', peer: { _: 'peerUser', userId: 1 } },
+        }),
+      ),
+    ).toEqual({ type: 'pinned', chatId: 1, pinned: false });
+  });
+
   it('ignores updates the bridge has no event for', () => {
     expect(mapRawUpdate(info({ _: 'updateUserTyping', userId: 1 }))).toBeNull();
   });

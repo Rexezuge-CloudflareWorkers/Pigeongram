@@ -40,6 +40,7 @@ import {
   updateThread,
   updateThreadPoll,
 } from '../../apps/web/src/state';
+import { applyPinnedDialog } from '../../apps/web/src/state/pinned';
 import { firstUnread, readWatermark } from '../../apps/web/src/reading';
 import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, MessageMediaDto, MessagePollDto } from '../../apps/web/src/types';
 import type { CommentsThread } from '../../apps/web/src/state';
@@ -155,6 +156,31 @@ describe('chat-list state', () => {
     expect(next[1].unread).toBe(1);
     // The list keeps a preview of the message, not the whole message.
     expect(next[1].lastMessage).toEqual(dialogMessage(incoming));
+  });
+
+  it('pins a chat at the top of the pinned block', () => {
+    const dialogs = [dialog(1, { pinned: true }), dialog(2), dialog(3)];
+    const next = applyPinnedDialog(dialogs, 3, true);
+
+    expect(next.map((entry) => entry.chat.id)).toEqual([3, 1, 2]);
+    expect(next[0].pinned).toBe(true);
+    expect(dialogs[2].pinned).toBe(false);
+  });
+
+  it('unpins a chat to the top of the unpinned block', () => {
+    const dialogs = [dialog(1, { pinned: true }), dialog(2, { pinned: true }), dialog(3, { pinned: true }), dialog(4)];
+    const next = applyPinnedDialog(dialogs, 2, false);
+
+    expect(next.map((entry) => entry.chat.id)).toEqual([1, 3, 2, 4]);
+    expect(next[2].pinned).toBe(false);
+  });
+
+  it('leaves an unknown chat or an unchanged pin state alone', () => {
+    const dialogs = [dialog(1, { pinned: true }), dialog(2)];
+
+    expect(applyPinnedDialog(dialogs, 99, true)).toBe(dialogs);
+    expect(applyPinnedDialog(dialogs, 1, true)).toBe(dialogs);
+    expect(applyPinnedDialog(dialogs, 2, false)).toBe(dialogs);
   });
 
   it('counts an album once, however many of its members arrive', () => {

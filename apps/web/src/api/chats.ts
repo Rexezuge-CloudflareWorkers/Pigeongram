@@ -10,6 +10,7 @@ import type {
   ResolveChatParams,
   ResolveChatResult,
   SetArchivedResult,
+  SetPinnedResult,
 } from '../types';
 import { batchResult, rpc, rpcBatch } from './request';
 
@@ -32,6 +33,12 @@ export const fetchArchivedDialogs = (): Promise<GetDialogsResult> => rpc('getDia
 Moves a chat into the archive, or back out of it.
 */
 export const setArchived = (chatId: PeerId, archived: boolean): Promise<SetArchivedResult> => rpc('setArchived', { chatId, archived });
+
+/**
+ * Pins a chat in its list, or unpins it. Telegram keeps a pinned block per
+ * peer folder, so the main list and the archive each have their own.
+ */
+export const setPinned = (chatId: PeerId, pinned: boolean): Promise<SetPinnedResult> => rpc('setPinned', { chatId, pinned });
 
 /**
 The signed-in shell's first read: who the account is and the chat list.

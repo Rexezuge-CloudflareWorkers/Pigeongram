@@ -732,6 +732,17 @@ export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
   | {
+      type: 'pinned';
+      /**
+      Marked id of the chat whose pin state changed.
+      */
+      chatId: PeerId;
+      /**
+      The chat's new state: `true` when it was pinned, `false` when unpinned.
+      */
+      pinned: boolean;
+    }
+  | {
       type: 'deleted';
       /**
       Marked id of the chat the messages were deleted from, or null when

@@ -10,7 +10,16 @@ import type { EngineStateDto } from './types';
  * about a second calling convention.
  */
 
-export { fetchArchivedDialogs, fetchBootstrap, fetchDialogs, fetchProfile, joinChat, resolveChat, setArchived } from './api/chats';
+export {
+  fetchArchivedDialogs,
+  fetchBootstrap,
+  fetchDialogs,
+  fetchProfile,
+  joinChat,
+  resolveChat,
+  setArchived,
+  setPinned,
+} from './api/chats';
 export {
   deleteMessages,
   fetchChatScreen,

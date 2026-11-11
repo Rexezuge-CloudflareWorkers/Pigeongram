@@ -11,7 +11,7 @@ import type { DialogDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 
-function dialog(unread: number): DialogDto {
+function dialog(unread: number, overrides: Partial<DialogDto> = {}): DialogDto {
   return {
     chat: {
       id: 2,
@@ -30,22 +30,60 @@ function dialog(unread: number): DialogDto {
     pinned: false,
     muted: false,
     archived: false,
+    ...overrides,
   };
 }
 
-function renderMenu(unread: number, handlers: { onMarkRead?: (chatId: number) => void; onClose?: () => void } = {}) {
+function renderMenu(
+  unread: number,
+  handlers: {
+    onMarkRead?: (chatId: number) => void;
+    onSetPinned?: (chatId: number, pinned: boolean) => void;
+    onClose?: () => void;
+    pinned?: boolean;
+  } = {},
+) {
   const onMarkRead = handlers.onMarkRead ?? vi.fn();
+  const onSetPinned = handlers.onSetPinned ?? vi.fn();
   const onClose = handlers.onClose ?? vi.fn();
-  render(<ChatMenu dialog={dialog(unread)} x={20} y={30} onMarkRead={onMarkRead} onClose={onClose} />);
-  return { onMarkRead, onClose };
+  render(
+    <ChatMenu
+      dialog={dialog(unread, { pinned: handlers.pinned ?? false })}
+      x={20}
+      y={30}
+      onMarkRead={onMarkRead}
+      onSetPinned={onSetPinned}
+      onClose={onClose}
+    />,
+  );
+  return { onMarkRead, onSetPinned, onClose };
 }
 
 describe('ChatMenu', () => {
-  it('offers Mark As Read as the one action', () => {
+  it('offers Pin beside Mark As Read', () => {
     renderMenu(3);
 
     expect(screen.getByRole('menu', { name: 'Chat actions' })).toBeDefined();
     expect(screen.getByRole('menuitem', { name: 'Mark As Read' })).toBeDefined();
+    expect(screen.getByRole('menuitem', { name: 'Pin' })).toBeDefined();
+  });
+
+  it('pins a chat and closes the menu', () => {
+    const { onSetPinned, onClose } = renderMenu(3);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
+    expect(onSetPinned).toHaveBeenCalledWith(2, true);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('offers Unpin for a chat that is already pinned', () => {
+    const { onSetPinned, onClose } = renderMenu(0, { pinned: true });
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unpin' }));
+
+    expect(onSetPinned).toHaveBeenCalledWith(2, false);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('marks a chat read and closes the menu', () => {

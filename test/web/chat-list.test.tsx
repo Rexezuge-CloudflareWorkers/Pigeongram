@@ -288,7 +288,10 @@ describe('ChatList media preview glyph', () => {
 });
 
 describe('ChatList context menu', () => {
-  function renderWithHandlers(dialogs: DialogDto[], handlers: { onSelect?: () => void; onMarkRead?: () => void } = {}): void {
+  function renderWithHandlers(
+    dialogs: DialogDto[],
+    handlers: { onSelect?: () => void; onMarkRead?: () => void; onSetPinned?: (chatId: number, pinned: boolean) => void } = {},
+  ): void {
     render(
       <ChatList
         dialogs={dialogs}
@@ -296,9 +299,31 @@ describe('ChatList context menu', () => {
         loading={false}
         onSelect={handlers.onSelect ?? (() => {})}
         onMarkRead={handlers.onMarkRead}
+        onSetPinned={handlers.onSetPinned}
       />,
     );
   }
+
+  it('offers Pin and reports the chat from the menu', () => {
+    const onSetPinned = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }))], { onSetPinned });
+
+    fireEvent.contextMenu(rowIn('Bob'), { clientX: 20, clientY: 30 });
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Chat actions' })).getByRole('menuitem', { name: 'Pin' }));
+
+    expect(onSetPinned).toHaveBeenCalledWith(1, true);
+    expect(screen.queryByRole('menu', { name: 'Chat actions' })).toBeNull();
+  });
+
+  it('offers Unpin for a pinned chat', () => {
+    const onSetPinned = vi.fn();
+    renderWithHandlers([dialog(chat(1, { title: 'Bob' }), { pinned: true })], { onSetPinned });
+
+    fireEvent.contextMenu(rowIn('Bob'), { clientX: 20, clientY: 30 });
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Chat actions' })).getByRole('menuitem', { name: 'Unpin' }));
+
+    expect(onSetPinned).toHaveBeenCalledWith(1, false);
+  });
 
   it('opens Chat actions on a right-click and marks the chat read', () => {
     const onMarkRead = vi.fn();

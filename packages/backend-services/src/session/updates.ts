@@ -121,6 +121,13 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
         inbox: false,
       };
     }
+    case 'updateDialogPinned': {
+      // The update names a dialog peer, which wraps the actual peer. The
+      // folder it was pinned in is the chat's own, so the SPA folds the state
+      // into whichever list already holds it.
+      if (update.peer._ !== 'dialogPeer') return null;
+      return { type: 'pinned', chatId: getMarkedPeerId(update.peer.peer), pinned: update.pinned === true };
+    }
     case 'updateUserStatus': {
       // A peer came online or went offline. The id is the user's plain id,
       // which is also the marked peer id of a user chat.

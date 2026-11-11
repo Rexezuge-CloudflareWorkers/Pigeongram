@@ -324,6 +324,12 @@ protocol,registry}`) and the mtcute integration
   opened from the archive keeps the archive list in the sidebar; bringing the open chat back out of the archive hands
   the sidebar back to the chat list, where the chat now lives. The archive bar's back leaves that list for the chat
   list too: while one of its chats is open it changes only the sidebar, so the open thread stays.
+- **Pinning is per folder, optimistic, and repaired by the update stream.** `setPinned` calls
+  `messages.toggleDialogPin` with the requested flag, so the main list and the archive keep independent pinned blocks.
+  The chat list's context menu offers Pin/Unpin: pinning moves the row to the top of the pinned block and unpinning
+  drops it at the top of the unpinned one, with the same rollback on a refused call as `setArchived`. The engine maps
+  `updateDialogPinned` onto a `pinned` event and the SPA folds it into whichever list already holds the chat; the pin
+  marker in the row stays a render of `DialogDto.pinned`, never a local-only flag.
 - **The profile popup is a self-contained overlay, not a history layer.** The nav bar of the open chat opens the
   peer's profile — from its picture, from its name, or from the ⋮ menu's "View Profile" — and the popup closes on
   Escape, a backdrop press or its close button. It is deliberately **not** a `history.state` layer (only the media

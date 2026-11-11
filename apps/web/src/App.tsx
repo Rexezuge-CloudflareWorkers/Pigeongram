@@ -1,5 +1,6 @@
 import { HomeScreen } from './components/HomeScreen';
 import { SignedInShell } from './components/SignedInShell';
+import { DataSaverProvider, useDataSaverPreferences } from './data-saver';
 import { useLoginFlow } from './hooks';
 import { usePwa } from './pwa/usePwa';
 import { useAppHeight } from './useAppHeight';
@@ -17,6 +18,9 @@ export function App() {
   const { state, access, error, reportError, retryAccess, onPhone, onCode, onPassword, onRetry, reset } = useLoginFlow();
   // Registered on every screen: the public intro is installable too.
   const pwa = usePwa();
+  // The media-loading choices belong to the device, so they load before the
+  // signed-in plane and survive a sign-out.
+  const dataSaver = useDataSaverPreferences();
   const authorized = state?.authorized ?? false;
 
   if (access !== 'authenticated' || !authorized) {
@@ -34,5 +38,9 @@ export function App() {
     );
   }
 
-  return <SignedInShell initialMe={state?.me ?? null} error={error} pwa={pwa} onError={reportError} onSignedOut={reset} />;
+  return (
+    <DataSaverProvider value={dataSaver}>
+      <SignedInShell initialMe={state?.me ?? null} error={error} pwa={pwa} onError={reportError} onSignedOut={reset} />
+    </DataSaverProvider>
+  );
 }

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { fileUrl } from '../api';
+import { useDataSaver } from '../data-saver';
 import { mediaPreview } from '../format';
 import { isVisualAlbum } from '../groups';
 import type { MessageDto, MessageMediaDto } from '../types';
 import { DocumentLink } from './DocumentLink';
 import { Icon } from './Icon';
+import { MediaPlaceholder } from './MediaPlaceholder';
 import { MessageText } from './MessageText';
 import { StickerMedia } from './Sticker';
 
@@ -52,6 +54,7 @@ file stays reachable instead of leaving a dead player.
 */
 export function MessageMedia({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
   const src = fileUrl(message.chatId, message.id);
+  const { loadMedia, animateMedia } = useDataSaver();
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (failedSrc === src) return <DocumentLink message={message} />;
   const onError = (): void => {
@@ -59,6 +62,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
   };
   switch (media.kind) {
     case 'photo': {
+      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
       return (
         <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'photo'}`}>
           <img
@@ -73,6 +77,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       );
     }
     case 'video': {
+      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
       return (
         <button type="button" className="video-tile" onClick={onOpen} aria-label={`Play ${media.fileName ?? 'video'}`}>
           <img
@@ -90,6 +95,25 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       );
     }
     case 'animation': {
+      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
+      // The saver keeps the poster but stops the loop: the GIF is fetched only
+      // when the viewer opens it.
+      if (!animateMedia) {
+        return (
+          <button type="button" className="video-tile" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'GIF'}`}>
+            <img
+              src={fileUrl(message.chatId, message.id, { thumb: true })}
+              alt=""
+              width={media.width ?? undefined}
+              height={media.height ?? undefined}
+              loading="lazy"
+            />
+            <span className="play" aria-hidden="true">
+              <Icon name="play" size={22} />
+            </span>
+          </button>
+        );
+      }
       return (
         <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'GIF'}`}>
           <video
@@ -117,7 +141,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
     }
     case 'document': {
       return isImageDocument(media) ? (
-        <DocumentImage message={message} media={media} onOpen={onOpen} />
+        <DocumentImage message={message} media={media} onOpen={onOpen} loadMedia={loadMedia} />
       ) : (
         <DocumentLink message={message} />
       );
@@ -139,12 +163,23 @@ the bubble; the original is used for a GIF (so it animates) and as the fallback
 when a document has no thumbnail. An image the browser cannot decode falls back
 to the download link rather than leaving an empty box.
 */
-function DocumentImage({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
+function DocumentImage({
+  message,
+  media,
+  onOpen,
+  loadMedia,
+}: {
+  message: MessageDto;
+  media: MessageMediaDto;
+  onOpen: () => void;
+  loadMedia: boolean;
+}) {
   const original = fileUrl(message.chatId, message.id);
   const [src, setSrc] = useState(() =>
     media.mime?.toLowerCase() === 'image/gif' ? original : fileUrl(message.chatId, message.id, { thumb: true }),
   );
   const [failed, setFailed] = useState(false);
+  if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
   if (failed) return <DocumentLink message={message} />;
   return (
     <button type="button" className="media-open document-image" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'image'}`}>
@@ -205,12 +240,19 @@ front.
 */
 function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => void }) {
   const media = message.media;
+  const { loadMedia } = useDataSaver();
   if (!media) return null;
   const animated = media.kind === 'video' || media.kind === 'animation';
   return (
     <button type="button" className="cell" onClick={onOpen} aria-label={`Open ${media.fileName ?? mediaPreview(media.kind)}`}>
-      <img src={fileUrl(message.chatId, message.id, { thumb: true })} alt="" loading="lazy" />
-      {animated ? (
+      {loadMedia ? (
+        <img src={fileUrl(message.chatId, message.id, { thumb: true })} alt="" loading="lazy" />
+      ) : (
+        <span className="cell-placeholder" aria-hidden="true">
+          <Icon name={animated ? 'video' : 'image'} size={24} />
+        </span>
+      )}
+      {animated && loadMedia ? (
         <span className="play" aria-hidden="true">
           <Icon name="play" size={22} />
         </span>

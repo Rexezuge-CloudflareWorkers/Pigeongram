@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MessageWebPage } from '../../apps/web/src/components/WebPagePreview';
+import { DEFAULT_DATA_SAVER, DataSaverProvider } from '../../apps/web/src/data-saver';
 import { TelegramLinkProvider } from '../../apps/web/src/telegram-links';
 import type { MessageDto, MessageWebPageDto } from '../../apps/web/src/types';
 
@@ -92,6 +93,18 @@ describe('MessageWebPage', () => {
 
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('a')?.textContent).toContain('An article');
+  });
+
+  it('drops the thumbnail without dropping the card when the data saver is on', () => {
+    const { container } = render(
+      <DataSaverProvider value={{ settings: { ...DEFAULT_DATA_SAVER, loadPreviews: false }, setSetting: () => {} }}>
+        <MessageWebPage message={message()} page={page()} />
+      </DataSaverProvider>,
+    );
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('a')?.textContent).toContain('An article');
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.com/article');
   });
 
   it('keeps a sparse page down to its display URL', () => {

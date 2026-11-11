@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fileUrl } from '../api';
+import { useDataSaver } from '../data-saver';
 import { useTelegramLinkHandler } from '../telegram-links';
 import type { MessageDto, MessageWebPageDto } from '../types';
 
@@ -18,13 +19,14 @@ whose photo fails to load, keeps the text card.
 */
 export function MessageWebPage({ message, page }: { message: MessageDto; page: MessageWebPageDto }) {
   const link = useTelegramLinkHandler();
+  const { loadPreviews } = useDataSaver();
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   // Only a web URL is a safe card target. The engine filters these already;
   // the guard keeps a malformed bridge payload from becoming a live link.
   if (!/^https?:\/\//i.test(page.url)) return null;
 
   const small = page.displaySize === 'small';
-  const photo = page.photo;
+  const photo = loadPreviews ? page.photo : null;
   const src = photo === null ? null : fileUrl(message.chatId, message.id, { version: photo.id });
   const thumbnail =
     photo === null || src === null || failedSrc === src ? null : (

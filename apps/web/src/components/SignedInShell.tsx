@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchBootstrap, logout } from '../api';
 import { useCallHost } from '../calls/host';
-import type { PwaState } from '../pwa/usePwa';
 import type { SearchScope } from '../search';
 import { TelegramLinkProvider } from '../telegram-links';
 import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
@@ -18,6 +17,7 @@ import { MediaViewer } from './MediaViewer';
 import { ShellOverlays } from './ShellOverlays';
 import { ThreadPane } from './ThreadPane';
 import { Toasts } from './Toasts';
+import type { SignedInShellProps } from './signed-in-shell-types';
 import { useDropNotice } from './useDropNotice';
 import { useExitAnimation } from './useExitAnimation';
 import { useTheme } from './useTheme';
@@ -32,30 +32,6 @@ flow, the screen picker and the app-wide behaviors, and the shell's routing
 lives in `useSignedInNavigation`; this keeps the account plane, so neither file
 is one feature away from the god-file cap.
 */
-
-interface SignedInShellProps {
-  /**
-  The account the login flow already read. The boot's own read replaces it.
-  */
-  initialMe: MeDto | null;
-  /**
-  The login flow's failure, shown by the global toast.
-  */
-  error: string | null;
-  /**
-  The installable app's offer, shown by the account menu.
-  */
-  pwa: PwaState;
-  /**
-  Reports a failure to the login flow's toast (and drops an expired Access session).
-  */
-  onError: (failure: unknown) => void;
-  onDismissError: () => void;
-  /**
-  Drops the login snapshot after a sign-out.
-  */
-  onSignedOut: () => void;
-}
 
 export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, onSignedOut }: SignedInShellProps) {
   const [me, setMe] = useState<MeDto | null>(initialMe);

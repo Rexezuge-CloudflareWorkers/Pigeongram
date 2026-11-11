@@ -28,7 +28,7 @@ export function App() {
       <HomeScreen
         access={access}
         state={state}
-        error={error}
+        error={error?.text ?? null}
         onRetryAccess={retryAccess}
         onPhone={onPhone}
         onCode={onCode}

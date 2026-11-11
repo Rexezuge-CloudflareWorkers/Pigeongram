@@ -51,33 +51,54 @@ A video bubble is a poster tile and opens the full-page viewer; an animation
 or audio element that fails — a container or codec the browser cannot decode,
 which Telegram does not transcode for — falls back to the document link, so the
 file stays reachable instead of leaving a dead player.
+
+Every visual bubble is a preview: photos, video posters, animation posters and
+album cells request the thumbnail, and the viewer is the only place that asks
+for the original bytes. With the data saver's media switch off, the preview is
+withheld behind a tap-to-load box; the first tap loads it in place and the
+second opens the viewer.
 */
 export function MessageMedia({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
   const src = fileUrl(message.chatId, message.id);
   const { loadMedia, animateMedia } = useDataSaver();
+  const [revealed, setRevealed] = useState(false);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [photoSrc, setPhotoSrc] = useState(() => fileUrl(message.chatId, message.id, { thumb: true }));
   if (failedSrc === src) return <DocumentLink message={message} />;
+  const loaded = loadMedia || revealed;
+  const reveal = (): void => {
+    setRevealed(true);
+  };
   const onError = (): void => {
     setFailedSrc(src);
   };
   switch (media.kind) {
     case 'photo': {
-      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
+      if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
         <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'photo'}`}>
           <img
             className="photo"
-            src={src}
+            src={photoSrc}
             alt={media.fileName ?? 'Photo'}
             width={media.width ?? undefined}
             height={media.height ?? undefined}
             loading="lazy"
+            onError={() => {
+              // A photo without a usable thumbnail still renders inline from
+              // the original; the viewer remains the normal full-size path.
+              if (photoSrc !== src) {
+                setPhotoSrc(src);
+                return;
+              }
+              setFailedSrc(src);
+            }}
           />
         </button>
       );
     }
     case 'video': {
-      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
+      if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
         <button type="button" className="video-tile" onClick={onOpen} aria-label={`Play ${media.fileName ?? 'video'}`}>
           <img
@@ -95,7 +116,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       );
     }
     case 'animation': {
-      if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
+      if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       // The saver keeps the poster but stops the loop: the GIF is fetched only
       // when the viewer opens it.
       if (!animateMedia) {
@@ -175,11 +196,21 @@ function DocumentImage({
   loadMedia: boolean;
 }) {
   const original = fileUrl(message.chatId, message.id);
+  const [revealed, setRevealed] = useState(false);
   const [src, setSrc] = useState(() =>
     media.mime?.toLowerCase() === 'image/gif' ? original : fileUrl(message.chatId, message.id, { thumb: true }),
   );
   const [failed, setFailed] = useState(false);
-  if (!loadMedia) return <MediaPlaceholder media={media} onOpen={onOpen} />;
+  if (!loadMedia && !revealed) {
+    return (
+      <MediaPlaceholder
+        media={media}
+        onLoad={() => {
+          setRevealed(true);
+        }}
+      />
+    );
+  }
   if (failed) return <DocumentLink message={message} />;
   return (
     <button type="button" className="media-open document-image" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'image'}`}>
@@ -204,7 +235,7 @@ function DocumentImage({
 
 /**
 One album's content. Photos, videos and animations share a square grid (the
-thumbnail is enough until a cell is opened); file albums keep a stacked
+thumbnail is enough until a cell is tapped); file albums keep a stacked
 layout, where Telegram allows a caption under each file.
 */
 export function MessageAlbum({ messages, onOpenMedia }: { messages: readonly MessageDto[]; onOpenMedia: (message: MessageDto) => void }) {
@@ -236,23 +267,38 @@ export function MessageAlbum({ messages, onOpenMedia }: { messages: readonly Mes
 /**
 A grid cell: the thumbnail is enough until the cell opens the full-page
 viewer, which keeps a ten-photo album from downloading every original up
-front.
+front. With the data saver's media switch off, the first tap loads the
+thumbnail and the second opens the viewer.
 */
 function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => void }) {
   const media = message.media;
   const { loadMedia } = useDataSaver();
+  const [revealed, setRevealed] = useState(false);
   if (!media) return null;
   const animated = media.kind === 'video' || media.kind === 'animation';
+  const loaded = loadMedia || revealed;
+  const name = media.fileName ?? mediaPreview(media.kind);
   return (
-    <button type="button" className="cell" onClick={onOpen} aria-label={`Open ${media.fileName ?? mediaPreview(media.kind)}`}>
-      {loadMedia ? (
+    <button
+      type="button"
+      className="cell"
+      onClick={
+        loaded
+          ? onOpen
+          : () => {
+              setRevealed(true);
+            }
+      }
+      aria-label={`${loaded ? 'Open' : 'Load'} ${name}`}
+    >
+      {loaded ? (
         <img src={fileUrl(message.chatId, message.id, { thumb: true })} alt="" loading="lazy" />
       ) : (
         <span className="cell-placeholder" aria-hidden="true">
           <Icon name={animated ? 'video' : 'image'} size={24} />
         </span>
       )}
-      {animated && loadMedia ? (
+      {animated && loaded ? (
         <span className="play" aria-hidden="true">
           <Icon name="play" size={22} />
         </span>

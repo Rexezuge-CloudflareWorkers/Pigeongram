@@ -57,8 +57,9 @@ export interface MessageMediaOptions {
  * Streams a message's media (photo, video, audio, voice, sticker, document),
  * or the photo of a link preview.
  *
- * `thumb: true` resolves the best thumbnail of the media instead — the poster
- * for a video or the preview of a photo. A `range` produces a partial
+ * `thumb: true` resolves a bubble-sized preview instead — the poster for a
+ * video or the largest preview of a photo within {@link PREVIEW_MAX_EDGE}. A
+ * `range` produces a partial
  * response from the closest block-aligned offset, which is what lets `<video>`
  * seek without downloading the whole file (`media-stream.ts` cuts the window
  * itself, for the reason documented there). `quality` selects a video variant
@@ -323,12 +324,27 @@ function videoPixels(document: tl.RawDocument): number {
   return image ? image.w * image.h : 0;
 }
 
+/**
+ * The largest edge a bubble preview may have. A photo's thumbnail list also
+ * carries its full-size image, so `thumb: true` picks the largest entry that
+ * still fits a bubble; the viewer is what asks for the original.
+ */
+const PREVIEW_MAX_EDGE = 800;
+
+function previewEdge(thumb: Thumbnail): number {
+  return Math.max(thumb.width, thumb.height);
+}
+
 function pickThumbnail(thumbnails: ReadonlyArray<Thumbnail>): Thumbnail | null {
-  let picked: Thumbnail | null = null;
+  let largest: Thumbnail | null = null;
+  let preview: Thumbnail | null = null;
   for (const thumb of thumbnails) {
-    // The last static entry is the largest; video thumbnails (animated
-    // profile previews) cannot be served as a poster.
-    if (!thumb.isVideo) picked = thumb;
+    // Video thumbnails (animated profile previews) cannot be served as a poster.
+    if (thumb.isVideo) continue;
+    // The last static entry is the largest.
+    largest = thumb;
+    if (!Number.isFinite(thumb.width) || !Number.isFinite(thumb.height) || previewEdge(thumb) > PREVIEW_MAX_EDGE) continue;
+    if (preview === null || previewEdge(thumb) > previewEdge(preview)) preview = thumb;
   }
-  return picked ?? thumbnails.at(-1) ?? null;
+  return preview ?? largest ?? thumbnails.at(-1) ?? null;
 }

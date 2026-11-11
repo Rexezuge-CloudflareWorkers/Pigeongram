@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MessageMedia } from '../../apps/web/src/components/Media';
+import { MessageAlbum, MessageMedia } from '../../apps/web/src/components/Media';
 import { DEFAULT_DATA_SAVER, DataSaverProvider } from '../../apps/web/src/data-saver';
 import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
@@ -60,10 +60,10 @@ function renderSticker(media: MessageMediaDto): HTMLElement {
   return container;
 }
 
-function renderWithSettings(media: MessageMediaDto, settings: typeof DEFAULT_DATA_SAVER): HTMLElement {
+function renderWithSettings(media: MessageMediaDto, settings: typeof DEFAULT_DATA_SAVER, onOpen: () => void = () => {}): HTMLElement {
   const { container } = render(
     <DataSaverProvider value={{ settings, setSetting: () => {} }}>
-      <MessageMedia message={message(media)} media={media} onOpen={() => {}} />
+      <MessageMedia message={message(media)} media={media} onOpen={onOpen} />
     </DataSaverProvider>,
   );
   return container;
@@ -226,7 +226,7 @@ describe('data saver', () => {
     height: 180,
   };
 
-  it('leaves a photo unfetched until it is opened', () => {
+  it('leaves a photo unfetched until it is loaded', () => {
     const container = renderWithSettings(photo, { ...DEFAULT_DATA_SAVER, loadMedia: false });
 
     expect(container.querySelector('img')).toBeNull();
@@ -234,6 +234,86 @@ describe('data saver', () => {
     expect(placeholder?.getAttribute('aria-label')).toBe('Load photo.jpg');
     expect(placeholder?.textContent).toBe('Tap To Load');
     expect(placeholder?.getAttribute('style')).toContain('aspect-ratio: 640 / 480');
+  });
+
+  it('loads a photo preview on the first tap and opens the viewer on the second', () => {
+    const onOpen = vi.fn();
+    const container = renderWithSettings(photo, { ...DEFAULT_DATA_SAVER, loadMedia: false }, onOpen);
+
+    fireEvent.click(container.querySelector('button.media-placeholder')!);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    const image = container.querySelector(':scope button.media-open img.photo');
+    expect(image?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+
+    fireEvent.click(container.querySelector('button.media-open')!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a loaded photo bubble from its thumbnail', () => {
+    const container = renderWithSettings(photo, DEFAULT_DATA_SAVER);
+
+    expect(container.querySelector('img.photo')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+  });
+
+  it('falls back from a photo thumbnail to the original and then the download link', () => {
+    const container = renderWithSettings(photo, DEFAULT_DATA_SAVER);
+
+    fireEvent.error(container.querySelector('img.photo')!);
+    expect(container.querySelector('img.photo')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10');
+
+    fireEvent.error(container.querySelector('img.photo')!);
+    expect(container.querySelector('img.photo')).toBeNull();
+    expect(container.querySelector('a.document')).not.toBeNull();
+  });
+
+  it('loads a video poster on the first tap and opens the viewer on the second', () => {
+    const video: MessageMediaDto = { ...photo, kind: 'video', fileName: 'clip.mp4' };
+    const onOpen = vi.fn();
+    const container = renderWithSettings(video, { ...DEFAULT_DATA_SAVER, loadMedia: false }, onOpen);
+
+    fireEvent.click(container.querySelector('button.media-placeholder')!);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(container.querySelector(':scope button.video-tile img')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+
+    fireEvent.click(container.querySelector('button.video-tile')!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads an album cell on the first tap and opens the viewer on the second', () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <DataSaverProvider value={{ settings: { ...DEFAULT_DATA_SAVER, loadMedia: false }, setSetting: () => {} }}>
+        <MessageAlbum messages={[message(photo)]} onOpenMedia={onOpen} />
+      </DataSaverProvider>,
+    );
+
+    const cell = container.querySelector('button.cell');
+    expect(cell?.getAttribute('aria-label')).toBe('Load photo.jpg');
+    expect(container.querySelector(':scope button.cell img')).toBeNull();
+
+    fireEvent.click(cell!);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(container.querySelector(':scope button.cell img')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+    expect(cell?.getAttribute('aria-label')).toBe('Open photo.jpg');
+
+    fireEvent.click(cell!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads an image document preview before opening it', () => {
+    const image: MessageMediaDto = { ...photo, kind: 'document', fileName: 'photo.jpg' };
+    const onOpen = vi.fn();
+    const container = renderWithSettings(image, { ...DEFAULT_DATA_SAVER, loadMedia: false }, onOpen);
+
+    fireEvent.click(container.querySelector('button.media-placeholder')!);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(container.querySelector(':scope button.document-image img.photo')?.getAttribute('src')).toBe(
+      '/user/file?chatId=2&messageId=10&thumb=1',
+    );
+
+    fireEvent.click(container.querySelector('button.document-image')!);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it('leaves a video poster unfetched too', () => {

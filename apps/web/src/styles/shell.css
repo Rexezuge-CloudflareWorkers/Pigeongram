@@ -135,6 +135,27 @@
   touch-action: pan-x;
 }
 
+/* The auto-dismiss countdown, drawn along the snackbar's bottom edge. Width
+   comes from the countdown hook on every tick; the short transition only
+   smooths the gap between ticks and is collapsed under reduced motion. */
+.toast-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.toast-progress-bar {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  opacity: 0.8;
+  transition: width 50ms linear;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

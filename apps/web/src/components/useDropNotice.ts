@@ -1,41 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
- * The notice toast's auto-dismiss timer. Kept in a hook so the shell stays
- * under the god-file cap: a notice dismisses itself after NOTICE_MS, while
- * the shell's `notify` refreshes the timer on every new toast.
+ * The shell's notice slot. The toast surface (`Toasts`) owns the auto-dismiss
+ * countdown, its hover pause and the bar, so this only keeps which notice is
+ * current and lets the surface clear it when its timer runs out.
  */
-const NOTICE_MS = 4000;
-
 export function useDropNotice(): { notice: string | null; notify: (text: string) => void; clearNotice: () => void } {
   const [notice, setNotice] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearNotice = useCallback((): void => {
-    setNotice(null);
-    if (timerRef.current === null) {
-      return;
-    }
-
-    clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }, []);
-
-  const notify = useCallback(
-    (text: string): void => {
-      setNotice(text);
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(clearNotice, NOTICE_MS);
-    },
-    [clearNotice],
-  );
-
-  useEffect(
-    () => () => {
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  const clearNotice = useCallback((): void => setNotice(null), []);
+  const notify = useCallback((text: string): void => setNotice(text), []);
 
   return { notice, notify, clearNotice };
 }

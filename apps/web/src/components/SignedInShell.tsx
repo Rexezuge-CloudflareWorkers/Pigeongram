@@ -47,19 +47,19 @@ interface SignedInShellProps {
   */
   pwa: PwaState;
   /**
-  Reports a failure to the login flow's toast (and drops an expired Access
-  session back to the public intro).
+  Reports a failure to the login flow's toast (and drops an expired Access session).
   */
   onError: (failure: unknown) => void;
+  onDismissError: () => void;
   /**
   Drops the login snapshot after a sign-out.
   */
   onSignedOut: () => void;
 }
 
-export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: SignedInShellProps) {
+export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, onSignedOut }: SignedInShellProps) {
   const [me, setMe] = useState<MeDto | null>(initialMe);
-  const { notice, notify } = useDropNotice();
+  const { notice, notify, clearNotice } = useDropNotice();
   const { theme, setTheme } = useTheme();
   const { seed, setSeed, contrast, setContrast } = useDynamicColor();
   /**
@@ -393,7 +393,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
         onCloseSearch={() => setSearch(null)}
       />
       {calls.overlay}
-      <Toasts error={error} notice={notice} />
+      <Toasts error={error} notice={notice} onDismissError={onDismissError} onDismissNotice={clearNotice} />
     </div>
   );
 }

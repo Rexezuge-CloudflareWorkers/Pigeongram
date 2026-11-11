@@ -45,6 +45,7 @@ interface LoginFlowState {
   access: AccessStatus;
   error: string | null;
   reportError: (failure: unknown) => void;
+  dismissError: () => void;
   retryAccess: () => void;
   onPhone: (phone: string) => Promise<void>;
   onCode: (code: string) => Promise<void>;
@@ -69,6 +70,8 @@ export function useLoginFlow(): LoginFlowState {
     }
     setError(failure instanceof Error ? failure.message : String(failure));
   }, []);
+
+  const dismissError = useCallback((): void => setError(null), []);
 
   const refreshState = useCallback(async (): Promise<void> => {
     let next: EngineStateDto;
@@ -182,6 +185,7 @@ export function useLoginFlow(): LoginFlowState {
     access,
     error,
     reportError,
+    dismissError,
     retryAccess,
     onPhone: useCallback((phone: string) => applyLogin(() => startPhoneLogin(phone)), [applyLogin]),
     onCode: useCallback((code: string) => applyLogin(() => submitLoginCode(code)), [applyLogin]),

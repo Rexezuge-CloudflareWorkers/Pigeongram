@@ -123,11 +123,20 @@
   width: min(560px, 90vw);
 }
 
-.toasts > * {
+/* One toast kind's slot. The preempted toast and its replacement overlap in a
+   single grid cell while the old one runs its exit keyframe, so the stack
+   below does not jump. */
+.toast-stack {
+  display: grid;
+  width: 100%;
+}
+
+.toast-stack > * {
+  grid-area: 1 / 1;
   animation: toast-in 240ms var(--ease-out);
 }
 
-.toasts > *.is-exiting {
+.toast-stack > *.is-exiting {
   animation: toast-out 220ms var(--ease-out) forwards;
 }
 
@@ -233,7 +242,7 @@
    keyframes and press feedback belong under `no-preference`; hover color,
    the focus ring and spinners stay alive in every mode. */
 @media (prefers-reduced-motion: no-preference) {
-  .toasts > *,
+  .toast-stack > *,
   .dialog-scrim,
   .dialog-panel {
     will-change: transform, opacity;

@@ -1,6 +1,7 @@
 import { ServiceError } from '@rexezuge/errors';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cancelLogin, getState, isAuthError, startPhoneLogin, startQr, submitLoginCode, submitPassword } from './api';
+import type { ToastMessage } from './toast-message';
 import type { EngineStateDto } from './types';
 
 const POLL_INTERVAL_MS = 2500;
@@ -43,7 +44,7 @@ export type AccessStatus = 'checking' | 'anonymous' | 'authenticated' | 'offline
 interface LoginFlowState {
   state: EngineStateDto | null;
   access: AccessStatus;
-  error: string | null;
+  error: ToastMessage | null;
   reportError: (failure: unknown) => void;
   dismissError: () => void;
   retryAccess: () => void;
@@ -60,7 +61,8 @@ interface LoginFlowState {
 export function useLoginFlow(): LoginFlowState {
   const [state, setState] = useState<EngineStateDto | null>(null);
   const [access, setAccess] = useState<AccessStatus>('checking');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ToastMessage | null>(null);
+  const errorToken = useRef(0);
 
   const reportError = useCallback((failure: unknown): void => {
     if (isAuthError(failure)) {
@@ -68,7 +70,8 @@ export function useLoginFlow(): LoginFlowState {
       setState(null);
       return;
     }
-    setError(failure instanceof Error ? failure.message : String(failure));
+    errorToken.current += 1;
+    setError({ text: failure instanceof Error ? failure.message : String(failure), token: errorToken.current });
   }, []);
 
   const dismissError = useCallback((): void => setError(null), []);

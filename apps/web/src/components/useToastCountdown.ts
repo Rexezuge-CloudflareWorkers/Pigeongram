@@ -26,23 +26,24 @@ interface ToastCountdown {
  * the timer the functional one, so they share a single clock: hovering freezes
  * both, and leaving resumes both from the same remaining time.
  *
- * `message` is the toast slot. A new message restarts the countdown (and the
- * bar) from full; null stops the timer and leaves the bar where the exit found
- * it, so the toast's fade-out does not jump back to full.
+ * `token` identifies the toast on screen; it is the slot's clock, not its text.
+ * A new token restarts the countdown (and the bar) from full even when the
+ * message repeats, and null stops the timer and leaves the bar where the exit
+ * found it, so the toast's fade-out does not jump back to full.
  */
-export function useToastCountdown(message: string | null, durationMs: number, onElapsed: () => void): ToastCountdown {
+export function useToastCountdown(token: number | null, durationMs: number, onElapsed: () => void): ToastCountdown {
   const [progress, setProgress] = useState(1);
   const [paused, setPaused] = useState(false);
-  const [trackedMessage, setTrackedMessage] = useState(message);
+  const [trackedToken, setTrackedToken] = useState(token);
   const remainingRef = useRef(durationMs);
   const elapsedRef = useRef(onElapsed);
 
   // A new toast restarts the bar from full before the timer effect below runs.
   // Guarded setState during render is the established pattern in this repo
   // (`useExitAnimation` does the same) and avoids a cascading effect render.
-  if (trackedMessage !== message) {
-    setTrackedMessage(message);
-    if (message !== null) {
+  if (trackedToken !== token) {
+    setTrackedToken(token);
+    if (token !== null) {
       setProgress(1);
       setPaused(false);
     }
@@ -57,11 +58,11 @@ export function useToastCountdown(message: string | null, durationMs: number, on
   // A new slot starts a full duration; a pause/resume of the same slot keeps
   // whatever remaining time the last tick recorded.
   useEffect(() => {
-    if (message !== null) remainingRef.current = durationMs;
-  }, [message, durationMs]);
+    if (token !== null) remainingRef.current = durationMs;
+  }, [token, durationMs]);
 
   useEffect(() => {
-    if (message === null || paused) return;
+    if (token === null || paused) return;
     const startedAt = Date.now();
     const startedWith = remainingRef.current;
     const tick = (): void => {
@@ -74,7 +75,7 @@ export function useToastCountdown(message: string | null, durationMs: number, on
     };
     const id = setInterval(tick, TICK_MS);
     return () => clearInterval(id);
-  }, [message, durationMs, paused]);
+  }, [token, durationMs, paused]);
 
   const pause = useCallback((): void => setPaused(true), []);
   const resume = useCallback((): void => setPaused(false), []);

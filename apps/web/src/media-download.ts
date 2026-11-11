@@ -34,10 +34,11 @@ export function downloadFileName(message: MessageDto): string {
 
 /**
  * Whether `/user/file` can serve this message's bytes. Polls, geo points and
- * other non-file media have no media DTO.
+ * other non-file media have no media DTO, and an `unsupported` payload has no
+ * bytes the engine can ask Telegram for.
  */
 export function isDownloadable(message: MessageDto): boolean {
-  return message.media !== null;
+  return message.media !== null && message.media.kind !== 'unsupported';
 }
 
 /**

@@ -252,3 +252,41 @@ describe('MessageRow delete affordance', () => {
     expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
   });
 });
+
+describe('MessageRow unsupported payloads', () => {
+  const unsupported = media({
+    kind: 'unsupported',
+    fileName: null,
+    mime: null,
+    size: null,
+    width: null,
+    height: null,
+  });
+
+  it('names the gap and links the post in Telegram instead of rendering a hole', () => {
+    const link = 'https://t.me/dmhyshare/132281';
+    const { container } = renderRow([message({ media: unsupported, text: '' })], { link });
+
+    const row = container.querySelector('[data-message-id="10"]');
+    expect(row?.querySelector('[data-unsupported-message]')).not.toBeNull();
+    expect(row?.classList.contains('bare')).toBe(false);
+    expect(row?.textContent).toContain("This Message Isn't Supported Yet");
+    expect(row?.querySelector('a')?.getAttribute('href')).toBe(link);
+    expect(row?.querySelector('.meta')).not.toBeNull();
+  });
+
+  it('renders the same card for a message with nothing else to show', () => {
+    const { container } = renderRow([message({ media: null, text: '' })]);
+
+    expect(container.querySelector('[data-unsupported-message]')).not.toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('never offers a download for a payload with no bytes', () => {
+    const { container } = renderRow([message({ media: unsupported, text: '' })], { onForward: vi.fn() });
+
+    fireEvent.contextMenu(container.querySelector('[data-message-id="10"]') as HTMLElement, { clientX: 10, clientY: 10 });
+
+    expect(screen.queryByRole('menuitem', { name: /Download/ })).toBeNull();
+  });
+});

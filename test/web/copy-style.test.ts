@@ -175,6 +175,7 @@ describe('visible copy style', () => {
     expect(formatPresence(presence(null, 'within_month'))).toBe('Last Seen Within A Month');
     expect(formatPresence(presence(0, 'offline'))).toMatch(/^Last Seen .+ At .+$/);
     expect(mediaPreview('voice')).toBe('Voice Message');
+    expect(mediaPreview('unsupported')).toBe('Unsupported Message');
     expect(pollPreview(POLL)).toBe('Poll: Where?');
     expect(formatListStamp(Date.now())).toBe('Now');
     expect(previewOf('', null, POLL)).toBe('Poll: Where?');

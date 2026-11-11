@@ -163,7 +163,7 @@ export function toMessageDto(message: Message): MessageDto {
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),
     service: message.isService,
-    media: toMessageMediaDto(media, { qualities: true }),
+    media: toMessageMediaDto(media, { qualities: true }) ?? unsupportedMediaDto(message),
     webPage: toMessageWebPageDto(media),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     markup: toMessageMarkupDto(message),
@@ -250,6 +250,26 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
 }
 
 /**
+ * The media DTO for a payload this client's MTProto layer cannot read.
+ *
+ * Telegram answers a message whose media type is newer than the layer the
+ * client advertised with `messageMediaUnsupported` **and blanks the caption**,
+ * so mtcute's high-level `media` is `null` and the message would reach the SPA
+ * with nothing to render. The engine keeps it addressable instead: the DTO
+ * names the kind `unsupported`, and the UI shows a labelled card with a link
+ * to the post in Telegram rather than an empty bubble.
+ *
+ * Telegram Widgets (layer 233) are the current case: our client advertises
+ * layer 232, so every widget arrives this way. `docs/TELEGRAM_WIDGETS.md`
+ * records the upgrade path.
+ */
+function unsupportedMediaDto(message: Message): MessageMediaDto | null {
+  const raw = message.raw;
+  if (raw._ !== 'message' || raw.media?._ !== 'messageMediaUnsupported') return null;
+  return { kind: 'unsupported', fileName: null, mime: null, size: null, width: null, height: null, duration: null };
+}
+
+/**
 Maps mtcute's poll media onto the wire shape.
 
 `voters`/`correct` are only carried when Telegram sent results with the poll:
@@ -315,7 +335,9 @@ export function toDialogMessageDto(message: Message): DialogMessageDto {
     id: message.id,
     date: message.date.getTime(),
     text: message.text,
-    media: media === undefined ? null : toMessageMediaDto(media),
+    // The `media` getter is typed non-null but answers `null` for a text-only
+    // message and for a payload it could not read.
+    media: toMessageMediaDto(media) ?? unsupportedMediaDto(message),
     poll: media?.type === 'poll' ? toPollDto(media) : null,
     outgoing: message.isOutgoing,
     service: message.isService,

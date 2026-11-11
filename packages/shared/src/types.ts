@@ -547,8 +547,16 @@ export interface MessageDto {
 /**
 Kinds of user-visible media the bridge carries. `animation` is Telegram's
 GIF-style silent video.
+
+`unsupported` is not a media type of its own: it names a payload this client's
+MTProto layer is too old to read. Telegram answers such a message with
+`messageMediaUnsupported` and blanks its caption, so the message would reach the
+SPA with nothing to show. The DTO keeps the message addressable instead, and
+the UI renders a labelled card with a link to the post in Telegram. Telegram
+Widgets (layer 233) are the current case — `docs/TELEGRAM_WIDGETS.md` has the
+upgrade path.
 */
-export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document';
+export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document' | 'unsupported';
 
 /**
 One streamable variant of a video. `index` is the selector for `/user/file`
@@ -574,6 +582,10 @@ export interface VideoQualityDto {
 }
 
 export interface MessageMediaDto {
+  /**
+  The media kind. `unsupported` carries every field null: there is nothing to
+  download, and the UI shows the placeholder card instead.
+  */
   kind: MessageMediaKind;
   /**
   Original file name for documents; null for photos.

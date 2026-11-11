@@ -322,6 +322,14 @@ keeps "unknown" apart from zero voters. `sendVote` therefore takes answer **inde
 stale list can never send a wrong answer's bytes. `null`/omitted `options` retracts the vote. The comments screen
 votes through the same RPCs, including polls on the pinned channel post and on comments in the discussion group.
 
+A message's media arrives as `media` only for the kinds the UI can draw (`photo`, `video`, `animation`, `audio`,
+`voice`, `sticker`, `document`). Two non-file kinds ride beside it: polls through `poll` and link previews through
+`webPage`. A payload this client's MTProto layer cannot read — Telegram substitutes `messageMediaUnsupported` for a
+media type newer than the layer we advertise, **and blanks the caption** — is carried as `kind: 'unsupported'` with
+every other field null, so the SPA renders a labelled card with an _Open In Telegram_ link instead of an empty bubble.
+Telegram Widgets (layer 233) are the current case; see [TELEGRAM_WIDGETS.md](TELEGRAM_WIDGETS.md). Geo points,
+contacts, games, stories, paid media and todo lists stay text-only (`media` null) until they get a UI of their own.
+
 A link preview carries `webPage` beside `media` — Telegram's `messageMediaWebPage` has no message file either, so
 `media` stays null. `MessageWebPageDto` holds the page's `url` and `displayUrl`, `siteName`/`title`/`description`
 (Telegram's `author` stands in for a missing description), its `displaySize` layout hint (`small` keeps the

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { isDownloadable } from '../media-download';
-import { reactionKey } from '../state';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { ForwardOrigin } from './ForwardOrigin';
@@ -11,8 +10,10 @@ import { MessageAlbum, MessageMedia } from './Media';
 import { MessageButtons } from './MessageButtons';
 import { MessageMenu } from './MessageMenu';
 import { MessagePoll } from './Poll';
+import { MessageReactions } from './MessageReactions';
 import { MessageReplyQuote } from './ReplyQuote';
 import { MessageText } from './MessageText';
+import { MessageUnsupported } from './UnsupportedMedia';
 import { useMessageGestures } from './useMessageGestures';
 import { MessageWebPage } from './WebPagePreview';
 
@@ -217,6 +218,20 @@ export function MessageRow({
   // context (caption, reply, forward, sender, reactions, buttons, web page) or
   // needs the avatar gutter keeps the bubble. Polls and albums stay bubbled.
   const hasCaption = !album && message.text.length > 0;
+  // A payload the engine could not read (a media type newer than its MTProto
+  // layer, e.g. a Telegram Widget) has no bytes and no caption: the card in
+  // its place keeps the message visible instead of leaving a hole.
+  const unsupported = message.media?.kind === 'unsupported';
+  // A message with nothing at all to draw is the same hole without a media
+  // DTO: name it the same way rather than rendering an empty bubble.
+  const emptyBody =
+    !message.service &&
+    !album &&
+    message.poll === null &&
+    message.media === null &&
+    message.webPage === null &&
+    message.text.length === 0 &&
+    (buttonMessage?.markup ?? null) === null;
   const hasExtras =
     message.forward !== null ||
     (showSender && message.senderName !== null) ||
@@ -225,7 +240,7 @@ export function MessageRow({
     message.reactions.length > 0 ||
     (buttonMessage?.markup ?? null) !== null ||
     message.webPage !== null;
-  const bare = !album && message.media !== null && message.poll === null && !message.service && !hasCaption && !hasExtras;
+  const bare = !album && message.media !== null && !unsupported && message.poll === null && !message.service && !hasCaption && !hasExtras;
 
   const meta = (
     <span className="meta">
@@ -309,6 +324,8 @@ export function MessageRow({
             <MessageAlbum messages={group} onOpenMedia={(target) => onOpenMedia(target.id)} />
           ) : message.poll ? (
             <MessagePoll message={message} poll={message.poll} onVote={onVote} voting={voting} />
+          ) : unsupported || emptyBody ? (
+            <MessageUnsupported link={link} />
           ) : message.media ? (
             <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} />
           ) : null}
@@ -326,39 +343,7 @@ export function MessageRow({
             <MessageButtons message={buttonMessage} markup={buttonMessage.markup} pressing={pressingButton} onPress={onPressButton} />
           ) : null}
           {message.reactions.length > 0 ? (
-            <div className="reactions">
-              {message.reactions.map((reaction) => {
-                const title = reaction.emoji ?? 'Custom emoji';
-                const emoji = <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>;
-                const count = <span className="reaction-count">{reaction.count}</span>;
-                if (!onReact) {
-                  return (
-                    <span key={reactionKey(reaction)} className={`reaction is-static${reaction.chosen ? ' chosen' : ''}`} title={title}>
-                      {emoji}
-                      {count}
-                    </span>
-                  );
-                }
-                return (
-                  <button
-                    key={reactionKey(reaction)}
-                    type="button"
-                    className={`reaction${reaction.chosen ? ' chosen' : ''}${burstKey === reactionKey(reaction) ? ' burst' : ''}`}
-                    disabled={reacting}
-                    title={title}
-                    aria-label={`React ${title} (${String(reaction.count)})`}
-                    aria-pressed={reaction.chosen}
-                    onClick={() => {
-                      if (!reaction.chosen) burst(reactionKey(reaction));
-                      onReact(message, reaction);
-                    }}
-                  >
-                    {emoji}
-                    {count}
-                  </button>
-                );
-              })}
-            </div>
+            <MessageReactions message={message} reacting={reacting} onReact={onReact} burstKey={burstKey} burst={burst} />
           ) : null}
           {meta}
           {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (

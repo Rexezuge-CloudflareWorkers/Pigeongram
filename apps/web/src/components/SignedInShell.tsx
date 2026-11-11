@@ -93,6 +93,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
     applyUpdate,
     applyDeleted,
     setArchived,
+    setPinned,
     clear: clearDialogs,
   } = dialogs;
 
@@ -340,6 +341,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onSignedOut }: S
           pending={threads.pending}
           onSelect={openChat}
           onMarkRead={markAllRead}
+          onSetPinned={(chatId, pinned) => void setPinned(chatId, pinned)}
           emptyLabel={showArchive ? 'No Archived Chats.' : undefined}
         />
       </aside>

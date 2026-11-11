@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { fetchArchivedDialogs, fetchDialogs, setArchived as setArchivedRpc } from './api';
+import { fetchArchivedDialogs, fetchDialogs, setArchived as setArchivedRpc, setPinned as setPinnedRpc } from './api';
 import {
   applyDeletedMessages,
   applyEditedMessage,
@@ -9,6 +9,7 @@ import {
   applyReadUpdate,
   applyUserStatus,
 } from './state';
+import { applyPinnedDialog } from './state/pinned';
 import type { DialogDto, MessageDto, PeerId, UpdateEvent } from './types';
 
 /**
@@ -81,6 +82,10 @@ export interface DialogsController {
   Moves a chat into the archive, or back out of it.
   */
   setArchived: (chatId: PeerId, archived: boolean) => Promise<void>;
+  /**
+  Pins a chat in its list, or unpins it.
+  */
+  setPinned: (chatId: PeerId, pinned: boolean) => Promise<void>;
 }
 
 interface DialogsOptions {
@@ -191,6 +196,10 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
           commit(applyUserStatus(current, update.userId, update.presence), applyUserStatus(currentArchive, update.userId, update.presence));
           return;
         }
+        case 'pinned': {
+          commit(applyPinnedDialog(current, update.chatId, update.pinned), applyPinnedDialog(currentArchive, update.chatId, update.pinned));
+          return;
+        }
         default: {
           // The other updates (reactions, views, polls) belong to the open
           // thread, not to the chat list.
@@ -255,6 +264,30 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     [commit, onError, onNotice],
   );
 
+  /**
+  Pins a chat in its list, or unpins it.
+
+  Like the archive move, the reorder is optimistic and a refused call puts the
+  row back where it was; the outcome is announced only once the bridge has
+  answered.
+  */
+  const setPinned = useCallback(
+    async (chatId: PeerId, pinned: boolean): Promise<void> => {
+      const current = ref.current.find((dialog) => dialog.chat.id === chatId);
+      if (!current || current.pinned === pinned) return;
+      const before = { main: mainRef.current, archived: archivedRef.current };
+      commit(applyPinnedDialog(before.main, chatId, pinned), applyPinnedDialog(before.archived, chatId, pinned));
+      try {
+        await setPinnedRpc(chatId, pinned);
+        onNotice(pinned ? 'Chat Pinned' : 'Chat Unpinned');
+      } catch (failure) {
+        commit(before.main, before.archived);
+        onError(failure);
+      }
+    },
+    [commit, onError, onNotice],
+  );
+
   const find = useCallback((chatId: PeerId): DialogDto | undefined => {
     return ref.current.find((dialog) => dialog.chat.id === chatId);
   }, []);
@@ -283,6 +316,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     applyReadAll,
     applyDeleted,
     setArchived,
+    setPinned,
   };
 }
 

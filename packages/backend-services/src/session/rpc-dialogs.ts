@@ -6,6 +6,7 @@ import { setChatArchived } from './archive';
 import { resolveDiscussion } from './comments';
 import { toDialogDto, toMeDto } from './dto';
 import { clampInt, optionalBoolean, optionalMessageId, requireBoolean, requirePeerId } from './params';
+import { setChatPinned } from './pin';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
 import { joinChatTarget, resolveChatTarget } from './resolve-chat';
@@ -14,11 +15,12 @@ import type { PartialMethodTable } from './rpc-methods';
 
 /**
  * The chat-list half of the bridge: who the account is, which chats it has,
- * the archive move, and the per-chat reads that are not message windows.
+ * the archive and pin moves, and the per-chat reads that are not message
+ * windows.
  *
- * Every method here is a read except `setArchived`, which is the one write the
- * chat list itself can make. The album ledger is consulted wherever a count is
- * served, so the badge and the list agree on what an album is worth.
+ * Every method here is a read except `setArchived` and `setPinned`, the two
+ * writes the chat list itself can make. The album ledger is consulted wherever
+ * a count is served, so the badge and the list agree on what an album is worth.
  */
 export const dialogsRpcMethods = {
   getMe: {
@@ -50,6 +52,16 @@ export const dialogsRpcMethods = {
       const archived = requireBoolean(params.archived, 'archived');
       await setChatArchived(context.client, chatId, archived);
       return { chatId, archived };
+    },
+  },
+
+  setPinned: {
+    readOnly: false,
+    run: async (context, params) => {
+      const chatId = requirePeerId(params.chatId);
+      const pinned = requireBoolean(params.pinned, 'pinned');
+      await setChatPinned(context.client, chatId, pinned);
+      return { chatId, pinned };
     },
   },
 

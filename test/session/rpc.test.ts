@@ -205,6 +205,65 @@ describe('getDialogs dispatch', () => {
   });
 });
 
+describe('setPinned dispatch', () => {
+  function fakePinClient(): { client: TelegramClient; calls: unknown[] } {
+    const calls: unknown[] = [];
+    const client = {
+      resolvePeer: async (chatId: number) => ({ _: 'inputPeerUser', userId: chatId, accessHash: 7 }),
+      call: async (request: unknown) => {
+        calls.push(request);
+        return true;
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('pins a chat in its list', async () => {
+    const { client, calls } = fakePinClient();
+
+    const result = (await rpc(client, 'setPinned', { chatId: 5, pinned: true })) as { chatId: number; pinned: boolean };
+
+    expect(result).toEqual({ chatId: 5, pinned: true });
+    expect(calls).toEqual([
+      {
+        _: 'messages.toggleDialogPin',
+        pinned: true,
+        peer: { _: 'inputDialogPeer', peer: { _: 'inputPeerUser', userId: 5, accessHash: 7 } },
+      },
+    ]);
+  });
+
+  it('unpins a chat', async () => {
+    const { client, calls } = fakePinClient();
+
+    await rpc(client, 'setPinned', { chatId: 5, pinned: false });
+
+    expect(calls[0]).toMatchObject({ _: 'messages.toggleDialogPin', pinned: false });
+  });
+
+  it('rejects a chat that is not a marked peer id', async () => {
+    const { client, calls } = fakePinClient();
+
+    await expect(rpc(client, 'setPinned', { chatId: 0, pinned: true })).rejects.toThrow('marked Telegram peer id');
+    expect(calls).toEqual([]);
+  });
+
+  it('rejects a flag that is not a boolean', async () => {
+    const { client, calls } = fakePinClient();
+
+    await expect(rpc(client, 'setPinned', { chatId: 5, pinned: 'yes' })).rejects.toThrow('pinned must be a boolean');
+    expect(calls).toEqual([]);
+  });
+
+  it('is not a method a batch may carry', async () => {
+    const { client } = fakePinClient();
+
+    await expect(rpc(client, 'batch', { calls: [{ method: 'setPinned', params: { chatId: 5, pinned: true } }] })).rejects.toThrow(
+      'batchable read method',
+    );
+  });
+});
+
 describe('setArchived dispatch', () => {
   function fakeArchiveClient(): { client: TelegramClient; calls: unknown[] } {
     const calls: unknown[] = [];

@@ -201,6 +201,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `sendComment`         | `{chatId, messageId, text, replyTo?, randomId?}`                                  | `{message}`                                                                                                                                  |
 | `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                                                                |
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                                                         |
+| `setPinned`           | `{chatId, pinned: boolean}`                                                       | `{chatId, pinned}`                                                                                                                           |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
 | `resolveChat`         | `{username}\|{chatId}` (exactly one)                                              | `{chat: ChatDto, member: boolean}`                                                                                                           |
 | `joinChat`            | `{username}\|{chatId}` (exactly one)                                              | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
@@ -221,6 +222,11 @@ both would cost the chat list the chats the archive holds.
 and `folders.editPeerFolders` is the API the official clients use for it, so the move is the same one Telegram's own
 clients make. The peer is resolved server-side, and the method is a write: it is not on the batch whitelist.
 
+`setPinned` pins a chat in its list or unpins it. Telegram keeps a pinned block per peer folder, so the chat list and
+the archive each pin independently; the engine resolves the peer server-side and calls `messages.toggleDialogPin` with
+the requested `pinned` flag, which makes a retried call a set rather than a toggle. It is a write like `setArchived`, and
+the SPA folds the `pinned` update into whichever list already holds the chat.
+
 `getHistory`'s `anchorId` names the message the window has to hold: the engine reads _around_ it (with the newer
 context beside it) and, when the first read missed it — a deleted post, or one past the end of the history — reads the
 page that ends at it instead. The fallback the SPA used to spend a second round trip on now happens server-side.
@@ -236,9 +242,9 @@ cursor opaque and sends it back verbatim for "load more".
 `getProfile` and `resolveChat`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark,
-`setArchived` because it moves a chat between the chat list and the archive, and `joinChat` because it changes the
-account's membership. Each call reports its own outcome, so one broken read (a post without a comments section) never
-takes the reads beside it down with it.
+`setArchived` because it moves a chat between the chat list and the archive, `setPinned` because it changes the pinned
+block, and `joinChat` because it changes the account's membership. Each call reports its own outcome, so one broken read
+(a post without a comments section) never takes the reads beside it down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -461,6 +467,11 @@ list load pays for.
 
 `setArchived` moves a chat between the two. It resolves the peer server-side and calls `folders.editPeerFolders`,
 the API the official clients use for the archive, so the move is the one Telegram's own clients make.
+
+Pinning follows the same split: `setPinned` calls `messages.toggleDialogPin`, so the main list and the archive each
+carry their own pinned block. The chat list's context menu offers Pin/Unpin; the move is optimistic (pinning puts the
+chat at the top of the pinned block, unpinning at the top of the unpinned one), and a refused call restores the row.
+The engine maps `updateDialogPinned` onto a `pinned` event, so another tab follows the state without a reload.
 
 On the SPA side the archive is a screen of its own (`/archived`), reached from the account popup in the sidebar. The
 chat list and the archive live in one list (`apps/web/src/useDialogs.ts`), so every lookup of a chat — the router, the

@@ -2576,6 +2576,50 @@ describe('App', () => {
   });
 
   describe('chat list context menu', () => {
+    it('pins a chat from its right-click menu', async () => {
+      const calls = installSignedInFetch({
+        dialogs: [dialogs[0], carolDialog],
+        rpc: (call) => {
+          if (call.body?.method !== 'setPinned') return;
+          const params = call.body?.params as { chatId: number; pinned: boolean };
+          return json({ chatId: params.chatId, pinned: params.pinned });
+        },
+      });
+
+      render(<App />);
+      const row = (await screen.findByText('Carol')).closest('button');
+      if (!row) throw new Error('Carol has no chat row');
+      fireEvent.contextMenu(row, { clientX: 20, clientY: 30 });
+
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Chat actions' })).getByRole('menuitem', { name: 'Pin' }));
+
+      expect(await screen.findByText('Chat Pinned')).toBeDefined();
+      expect(row.querySelector('[data-pin]')).not.toBeNull();
+      const pin = calls.find((call) => call.body?.method === 'setPinned');
+      expect(pin?.body?.params).toEqual({ chatId: 3, pinned: true });
+    });
+
+    it('puts a chat back when the bridge refuses the pin', async () => {
+      installSignedInFetch({
+        dialogs: [dialogs[0], carolDialog],
+        rpc: (call) => {
+          if (call.body?.method !== 'setPinned') return;
+          return json({ error: 'PINNED_DIALOGS_TOO_MUCH' }, 400);
+        },
+      });
+
+      render(<App />);
+      const row = (await screen.findByText('Carol')).closest('button');
+      if (!row) throw new Error('Carol has no chat row');
+      fireEvent.contextMenu(row, { clientX: 20, clientY: 30 });
+
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Chat actions' })).getByRole('menuitem', { name: 'Pin' }));
+
+      expect(await screen.findByRole('alert')).toBeDefined();
+      expect(row.querySelector('[data-pin]')).toBeNull();
+      expect(screen.queryByText('Chat Pinned')).toBeNull();
+    });
+
     it('marks an unread chat read from its right-click menu', async () => {
       const calls = installSignedInFetch();
 

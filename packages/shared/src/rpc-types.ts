@@ -51,6 +51,7 @@ export type RpcMethod =
   | 'sendComment'
   | 'getBotCommands'
   | 'setArchived'
+  | 'setPinned'
   | 'getProfile'
   | 'resolveChat'
   | 'joinChat'
@@ -72,7 +73,8 @@ concurrently, so a write in it would have no defined completion order, and
 Telegram's own ordering guarantees matter more than the round trip saved.
 `readHistory` is excluded for the same reason it stays a single call — it
 mutates the account's read watermark. `setArchived` is excluded because it
-moves a chat between the chat list and the archive.
+moves a chat between the chat list and the archive, and `setPinned` because it
+changes the pinned block.
 */
 export type BatchableRpcMethod =
   | 'getMe'
@@ -132,6 +134,17 @@ export interface SetArchivedParams {
    * `true` archives the chat, `false` brings it back into the main list.
    */
   archived: boolean;
+}
+
+/**
+Pins a chat in its list, or unpins it.
+*/
+export interface SetPinnedParams {
+  chatId: PeerId;
+  /**
+   * `true` pins the chat, `false` unpins it.
+   */
+  pinned: boolean;
 }
 
 export interface GetHistoryParams {
@@ -231,6 +244,14 @@ The state a chat was left in: `true` when it is in the archive.
 export interface SetArchivedResult {
   chatId: PeerId;
   archived: boolean;
+}
+
+/**
+The state a chat was left in: `true` when it is pinned in its list.
+*/
+export interface SetPinnedResult {
+  chatId: PeerId;
+  pinned: boolean;
 }
 
 export interface GetHistoryResult {

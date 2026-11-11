@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Avatar } from '../../apps/web/src/components/Avatar';
+import { DEFAULT_DATA_SAVER, DataSaverProvider } from '../../apps/web/src/data-saver';
 
 /**
  * The profile picture and its fallbacks.
@@ -114,5 +115,19 @@ describe('Avatar', () => {
   it('requests the large avatar from the profile', () => {
     render(<Avatar chatId={2} photo="v3" title="Bob" big />);
     expect(document.querySelector('img')!.getAttribute('src')).toBe('/user/avatar?chatId=2&size=big&v=v3');
+  });
+
+  it('keeps the initials and skips the request when the data saver is on', () => {
+    const observers = installObserver();
+    const settings = { ...DEFAULT_DATA_SAVER, loadAvatars: false };
+    render(
+      <DataSaverProvider value={{ settings, setSetting: () => {} }}>
+        <Avatar chatId={2} photo="v1" title="Bob Smith" />
+      </DataSaverProvider>,
+    );
+
+    expect(document.querySelector('img')).toBeNull();
+    expect(screen.getByText('BS')).toBeDefined();
+    expect(observers).toHaveLength(0);
   });
 });

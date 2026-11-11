@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MessageMedia } from '../../apps/web/src/components/Media';
+import { DEFAULT_DATA_SAVER, DataSaverProvider } from '../../apps/web/src/data-saver';
 import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 const lottie = vi.hoisted(() => ({
@@ -56,6 +57,15 @@ function message(media: MessageMediaDto): MessageDto {
 
 function renderSticker(media: MessageMediaDto): HTMLElement {
   const { container } = render(<MessageMedia message={message(media)} media={media} onOpen={() => {}} />);
+  return container;
+}
+
+function renderWithSettings(media: MessageMediaDto, settings: typeof DEFAULT_DATA_SAVER): HTMLElement {
+  const { container } = render(
+    <DataSaverProvider value={{ settings, setSetting: () => {} }}>
+      <MessageMedia message={message(media)} media={media} onOpen={() => {}} />
+    </DataSaverProvider>,
+  );
   return container;
 }
 
@@ -195,5 +205,82 @@ describe('sticker previews', () => {
 
     const document = container.querySelector('.document');
     expect(document?.getAttribute('download')).toBe('AnimatedSticker.tgs');
+  });
+});
+
+describe('data saver', () => {
+  const photo: MessageMediaDto = {
+    ...sticker,
+    kind: 'photo',
+    fileName: 'photo.jpg',
+    mime: 'image/jpeg',
+    width: 640,
+    height: 480,
+  };
+  const animation: MessageMediaDto = {
+    ...sticker,
+    kind: 'animation',
+    fileName: 'loop.mp4',
+    mime: 'video/mp4',
+    width: 320,
+    height: 180,
+  };
+
+  it('leaves a photo unfetched until it is opened', () => {
+    const container = renderWithSettings(photo, { ...DEFAULT_DATA_SAVER, loadMedia: false });
+
+    expect(container.querySelector('img')).toBeNull();
+    const placeholder = container.querySelector('button.media-placeholder');
+    expect(placeholder?.getAttribute('aria-label')).toBe('Load photo.jpg');
+    expect(placeholder?.textContent).toBe('Tap To Load');
+    expect(placeholder?.getAttribute('style')).toContain('aspect-ratio: 640 / 480');
+  });
+
+  it('leaves a video poster unfetched too', () => {
+    const video: MessageMediaDto = { ...photo, kind: 'video', fileName: 'clip.mp4' };
+    const container = renderWithSettings(video, { ...DEFAULT_DATA_SAVER, loadMedia: false });
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('button.media-placeholder')).not.toBeNull();
+  });
+
+  it('keeps a GIF as a still poster when autoplay is off', () => {
+    const container = renderWithSettings(animation, { ...DEFAULT_DATA_SAVER, animateMedia: false });
+
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10&thumb=1');
+    expect(container.querySelector('.play')).not.toBeNull();
+  });
+
+  it('leaves an image document unfetched when media loading is off', () => {
+    const image: MessageMediaDto = { ...photo, kind: 'document', fileName: 'photo.jpg' };
+    const container = renderWithSettings(image, { ...DEFAULT_DATA_SAVER, loadMedia: false });
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('a.document')).toBeNull();
+    expect(container.querySelector('button.media-placeholder')?.getAttribute('aria-label')).toBe('Load photo.jpg');
+  });
+
+  it('keeps a video sticker as its still thumbnail when autoplay is off', () => {
+    const container = renderWithSettings(sticker, { ...DEFAULT_DATA_SAVER, animateMedia: false });
+
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector(':scope a.sticker-link img.sticker')?.getAttribute('src')).toBe(
+      '/user/file?chatId=2&messageId=10&thumb=1',
+    );
+  });
+
+  it('does not fetch an animated sticker when autoplay is off', () => {
+    const request = vi.fn();
+    vi.stubGlobal('fetch', request);
+
+    const container = renderWithSettings(
+      { ...sticker, fileName: 'AnimatedSticker.tgs', mime: 'application/x-tgsticker' },
+      { ...DEFAULT_DATA_SAVER, animateMedia: false },
+    );
+
+    expect(request).not.toHaveBeenCalled();
+    expect(container.querySelector('.sticker-lottie')).toBeNull();
+    expect(container.querySelector(':scope a.sticker-link img.sticker')).not.toBeNull();
   });
 });

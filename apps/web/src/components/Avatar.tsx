@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { avatarUrl } from '../api';
+import { useDataSaver } from '../data-saver';
 import { initials } from '../format';
 import type { PresenceDto } from '../types';
 
@@ -41,6 +42,7 @@ initials stand in. An online peer carries a green badge on the avatar's
 corner, the way the official clients mark it.
 */
 export function Avatar({ chatId, photo, title, kind, small, big, presence }: AvatarProps) {
+  const { loadAvatars } = useDataSaver();
   const [failedFor, setFailedFor] = useState<string | null>(null);
   // Without an observer there is no viewport to wait for: ask at once.
   const [nearby, setNearby] = useState(() => typeof IntersectionObserver === 'undefined');
@@ -48,7 +50,7 @@ export function Avatar({ chatId, photo, title, kind, small, big, presence }: Ava
 
   useEffect(() => {
     const element = holder.current;
-    if (!element || nearby) return;
+    if (!loadAvatars || !element || nearby) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.every((entry) => !entry.isIntersecting)) return;
@@ -59,9 +61,9 @@ export function Avatar({ chatId, photo, title, kind, small, big, presence }: Ava
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [nearby]);
+  }, [loadAvatars, nearby]);
 
-  const showImage = photo !== null && failedFor !== photo && nearby;
+  const showImage = loadAvatars && photo !== null && failedFor !== photo && nearby;
   const avatar = (
     <span ref={holder} className={`avatar${small ? ' small' : ''}${big ? ' size-28 text-4xl' : ''}${kind ? ` kind-${kind}` : ''}`}>
       {showImage ? (

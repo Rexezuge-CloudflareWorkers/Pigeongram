@@ -37,6 +37,17 @@
   object-fit: cover;
 }
 
+/* The data saver's album cell: the grid keeps its square, the bytes stay on
+   the server until the cell is opened. */
+.message .album .cell .cell-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
 .message .album .cell .play,
 .message .video-tile .play {
   position: absolute;

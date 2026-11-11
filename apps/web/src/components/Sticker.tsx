@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AnimationItem } from 'lottie-web';
 import { fileUrl } from '../api';
+import { useDataSaver } from '../data-saver';
 import type { MessageDto, MessageMediaDto } from '../types';
 import { DocumentLink } from './DocumentLink';
 
@@ -22,6 +23,7 @@ document link when even that is missing: a still preview still beats a download
 prompt.
 */
 export function StickerMedia({ message, media }: StickerProps) {
+  const { animateMedia } = useDataSaver();
   switch (media.mime) {
     case 'image/webp': {
       return (
@@ -36,10 +38,12 @@ export function StickerMedia({ message, media }: StickerProps) {
       );
     }
     case 'video/webm': {
-      return <VideoSticker message={message} media={media} />;
+      // The saver keeps the still frame: a video sticker is a loop nobody asked
+      // for, and its thumbnail is one small image instead.
+      return animateMedia ? <VideoSticker message={message} media={media} /> : <StickerThumb message={message} media={media} />;
     }
     case 'application/x-tgsticker': {
-      return <AnimatedSticker message={message} media={media} />;
+      return animateMedia ? <AnimatedSticker message={message} media={media} /> : <StickerThumb message={message} media={media} />;
     }
     default: {
       return <DocumentLink message={message} />;

@@ -1,11 +1,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPopup } from '../../apps/web/src/components/SettingsPopup';
+import { DataSaverProvider } from '../../apps/web/src/data-saver';
+import type { DataSaverControls } from '../../apps/web/src/data-saver';
 
 afterEach(cleanup);
 
-function renderSettings(overrides: Partial<Parameters<typeof SettingsPopup>[0]> = {}): ReturnType<typeof render> {
-  return render(
+function renderSettings(
+  overrides: Partial<Parameters<typeof SettingsPopup>[0]> = {},
+  dataSaver?: DataSaverControls,
+): ReturnType<typeof render> {
+  const popup = (
     <SettingsPopup
       theme="dark"
       seed="telegram"
@@ -15,8 +20,9 @@ function renderSettings(overrides: Partial<Parameters<typeof SettingsPopup>[0]> 
       onSetContrast={() => {}}
       onClose={() => {}}
       {...overrides}
-    />,
+    />
   );
+  return render(dataSaver ? <DataSaverProvider value={dataSaver}>{popup}</DataSaverProvider> : popup);
 }
 
 describe('SettingsPopup', () => {
@@ -49,6 +55,27 @@ describe('SettingsPopup', () => {
 
     expect(onSetSeed).toHaveBeenCalledWith('indigo');
     expect(onSetContrast).toHaveBeenCalledWith('high');
+  });
+
+  it('reflects and reports the data saver switches', () => {
+    const setSetting = vi.fn();
+    renderSettings(
+      {},
+      {
+        settings: { loadAvatars: false, loadPreviews: true, loadMedia: true, animateMedia: true },
+        setSetting,
+      },
+    );
+
+    expect(screen.getByText('Data Saver')).toBeDefined();
+    expect(screen.getByRole('switch', { name: 'Profile Pictures' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('switch', { name: 'Link Previews' }).getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Link Previews' }));
+    expect(setSetting).toHaveBeenCalledWith('loadPreviews', false);
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Photos & Videos' }));
+    expect(setSetting).toHaveBeenLastCalledWith('loadMedia', false);
   });
 
   it('closes from Done, Escape and the scrim', () => {

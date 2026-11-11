@@ -1,21 +1,25 @@
 import { useId } from 'react';
+import { useDataSaverControls, type DataSaverKey } from '../data-saver';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
+import type { IconName } from './Icon';
+import { ToggleSwitch } from './ToggleSwitch';
 import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
 /**
  * The reader's settings, in a modal window.
  *
  * Only the choices that belong to this device live here: the theme, the accent
- * seed and the contrast level. The account menu keeps the actions that act on
- * the account or navigate the app (the archive, installing the app, signing
- * out), so this window is the one place appearance is changed.
+ * seed, the contrast level and the data-saving switches. The account menu keeps
+ * the actions that act on the account or navigate the app (the archive,
+ * installing the app, signing out), so this window is the one place appearance
+ * and media loading are changed.
  *
  * The shared `Dialog` carries the modal behaviour — focus, the focus trap,
  * Escape and scrim dismissal — and the settings rows are plain controls inside
- * it. The choices persist through `useTheme`/`useDynamicColor`, so the buttons
- * only report the next value.
+ * it. The choices persist through `useTheme`/`useDynamicColor` and
+ * `useDataSaverPreferences`, so the controls only report the next value.
  */
 
 interface SettingsPopupProps {
@@ -38,6 +42,13 @@ interface SettingsPopupProps {
   exiting?: boolean;
 }
 
+const DATA_SAVER_ROWS: ReadonlyArray<{ key: DataSaverKey; label: string; description: string; icon: IconName }> = [
+  { key: 'loadAvatars', label: 'Profile Pictures', description: 'Show Profile Photos Across The App', icon: 'person' },
+  { key: 'loadPreviews', label: 'Link Previews', description: 'Load Link Preview Thumbnails', icon: 'link' },
+  { key: 'loadMedia', label: 'Photos & Videos', description: 'Fetch Photo And Video Thumbnails', icon: 'image' },
+  { key: 'animateMedia', label: 'Autoplay Media', description: 'Play GIFs, Video Stickers And Animated Stickers', icon: 'gif' },
+];
+
 export function SettingsPopup({
   theme,
   onToggleTheme,
@@ -50,6 +61,8 @@ export function SettingsPopup({
   exiting = false,
 }: SettingsPopupProps) {
   const appearanceId = useId();
+  const dataSaverId = useId();
+  const { settings: dataSaver, setSetting: onSetDataSaver } = useDataSaverControls();
 
   return (
     <Dialog
@@ -116,6 +129,24 @@ export function SettingsPopup({
             ))}
           </div>
         </div>
+      </section>
+      <div className="h-px bg-line" role="separator" />
+      <section className="flex flex-col gap-4" aria-labelledby={dataSaverId}>
+        <h3 id={dataSaverId} className="text-xs font-semibold tracking-wide text-muted uppercase">
+          Data Saver
+        </h3>
+        {DATA_SAVER_ROWS.map((row) => (
+          <div key={row.key} className="flex items-center justify-between gap-4">
+            <span className="flex min-w-0 items-center gap-2">
+              <Icon name={row.icon} size={18} className="shrink-0 text-muted" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-fg">{row.label}</span>
+                <span className="text-xs text-muted">{row.description}</span>
+              </span>
+            </span>
+            <ToggleSwitch checked={dataSaver[row.key]} label={row.label} onChange={(enabled) => onSetDataSaver(row.key, enabled)} />
+          </div>
+        ))}
       </section>
     </Dialog>
   );

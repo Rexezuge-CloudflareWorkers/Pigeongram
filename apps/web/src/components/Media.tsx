@@ -7,6 +7,7 @@ import type { MessageDto, MessageMediaDto } from '../types';
 import { DocumentLink } from './DocumentLink';
 import { Icon } from './Icon';
 import { MediaPlaceholder } from './MediaPlaceholder';
+import { MediaThumb } from './MediaThumb';
 import { MessageText } from './MessageText';
 import { StickerMedia } from './Sticker';
 
@@ -77,13 +78,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
         <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'photo'}`}>
-          <img
+          <MediaThumb
             className="photo"
             src={photoSrc}
             alt={media.fileName ?? 'Photo'}
-            width={media.width ?? undefined}
-            height={media.height ?? undefined}
-            loading="lazy"
+            width={media.width}
+            height={media.height}
             onError={() => {
               // A photo without a usable thumbnail still renders inline from
               // the original; the viewer remains the normal full-size path.
@@ -101,12 +101,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
         <button type="button" className="video-tile" onClick={onOpen} aria-label={`Play ${media.fileName ?? 'video'}`}>
-          <img
+          <MediaThumb
             src={fileUrl(message.chatId, message.id, { thumb: true })}
             alt=""
-            width={media.width ?? undefined}
-            height={media.height ?? undefined}
-            loading="lazy"
+            width={media.width}
+            height={media.height}
+            fallbackRatio="16 / 9"
           />
           <span className="play" aria-hidden="true">
             <Icon name="play" size={22} />
@@ -122,12 +122,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       if (!animateMedia) {
         return (
           <button type="button" className="video-tile" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'GIF'}`}>
-            <img
+            <MediaThumb
               src={fileUrl(message.chatId, message.id, { thumb: true })}
               alt=""
-              width={media.width ?? undefined}
-              height={media.height ?? undefined}
-              loading="lazy"
+              width={media.width}
+              height={media.height}
+              fallbackRatio="16 / 9"
             />
             <span className="play" aria-hidden="true">
               <Icon name="play" size={22} />
@@ -214,13 +214,12 @@ function DocumentImage({
   if (failed) return <DocumentLink message={message} />;
   return (
     <button type="button" className="media-open document-image" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'image'}`}>
-      <img
+      <MediaThumb
         className="photo"
         src={src}
         alt={media.fileName ?? 'Image'}
-        width={media.width ?? undefined}
-        height={media.height ?? undefined}
-        loading="lazy"
+        width={media.width}
+        height={media.height}
         onError={() => {
           if (src !== original) {
             setSrc(original);
@@ -292,7 +291,13 @@ function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => voi
       aria-label={`${loaded ? 'Open' : 'Load'} ${name}`}
     >
       {loaded ? (
-        <img src={fileUrl(message.chatId, message.id, { thumb: true })} alt="" loading="lazy" />
+        <MediaThumb
+          fit="fill"
+          src={fileUrl(message.chatId, message.id, { thumb: true })}
+          alt=""
+          width={media.width}
+          height={media.height}
+        />
       ) : (
         <span className="cell-placeholder" aria-hidden="true">
           <Icon name={animated ? 'video' : 'image'} size={24} />

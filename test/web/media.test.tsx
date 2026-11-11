@@ -364,3 +364,65 @@ describe('data saver', () => {
     expect(container.querySelector(':scope a.sticker-link img.sticker')).not.toBeNull();
   });
 });
+
+describe('thumbnail loading', () => {
+  const photo: MessageMediaDto = {
+    ...sticker,
+    kind: 'photo',
+    fileName: 'photo.jpg',
+    mime: 'image/jpeg',
+    width: 640,
+    height: 480,
+  };
+
+  it('reserves the media box and shows a skeleton until the thumbnail lands', () => {
+    const { container } = render(<MessageMedia message={message(photo)} media={photo} onOpen={() => {}} />);
+
+    const thumb = container.querySelector('.media-thumb');
+    expect(thumb?.classList.contains('is-loading')).toBe(true);
+    expect(container.querySelector('.media-thumb-skeleton')).not.toBeNull();
+
+    fireEvent.load(container.querySelector('img.photo')!);
+
+    expect(container.querySelector('.media-thumb-skeleton')).toBeNull();
+    expect(thumb?.classList.contains('is-loaded')).toBe(true);
+  });
+
+  it('falls back to a preview box when Telegram reported no dimensions', () => {
+    const unsized: MessageMediaDto = { ...photo, width: null, height: null };
+    const { container } = render(<MessageMedia message={message(unsized)} media={unsized} onOpen={() => {}} />);
+
+    const style = container.querySelector('.media-thumb.is-fallback')?.getAttribute('style') ?? '';
+    expect(style).toContain('width: min(280px, 100%)');
+    expect(style).toContain('aspect-ratio: 4 / 3');
+    expect(container.querySelector('.media-thumb-skeleton')).not.toBeNull();
+  });
+
+  it('brings the skeleton back when a failed thumbnail swaps to the original', () => {
+    const { container } = render(<MessageMedia message={message(photo)} media={photo} onOpen={() => {}} />);
+    fireEvent.load(container.querySelector('img.photo')!);
+    expect(container.querySelector('.media-thumb-skeleton')).toBeNull();
+
+    fireEvent.error(container.querySelector('img.photo')!);
+
+    expect(container.querySelector('img.photo')?.getAttribute('src')).toBe('/user/file?chatId=2&messageId=10');
+    expect(container.querySelector('.media-thumb-skeleton')).not.toBeNull();
+  });
+
+  it('shows a skeleton in an album cell until its thumbnail loads', () => {
+    const { container } = render(<MessageAlbum messages={[message(photo)]} onOpenMedia={() => {}} />);
+
+    expect(container.querySelector(':scope .cell .media-thumb-skeleton')).not.toBeNull();
+    fireEvent.load(container.querySelector(':scope .cell img')!);
+    expect(container.querySelector(':scope .cell .media-thumb-skeleton')).toBeNull();
+  });
+
+  it('shows a poster skeleton for a video thumbnail', () => {
+    const video: MessageMediaDto = { ...photo, kind: 'video', fileName: 'clip.mp4' };
+    const { container } = render(<MessageMedia message={message(video)} media={video} onOpen={() => {}} />);
+
+    expect(container.querySelector(':scope .video-tile .media-thumb-skeleton')).not.toBeNull();
+    fireEvent.load(container.querySelector(':scope .video-tile img')!);
+    expect(container.querySelector(':scope .video-tile .media-thumb-skeleton')).toBeNull();
+  });
+});

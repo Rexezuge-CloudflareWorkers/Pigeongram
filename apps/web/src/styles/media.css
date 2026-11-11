@@ -9,7 +9,64 @@
   padding: 0;
   border-radius: 8px;
   overflow: hidden;
+  line-height: 0;
   cursor: zoom-in;
+}
+
+/* Every thumbnail reserves its box before the bytes arrive and shows the
+   shared skeleton sheen while it loads. A known width/height pair comes from
+   the DTO (the image attributes already reserve the exact ratio); a missing
+   pair falls back to `mediaBoxStyle`'s box, which the image fills. */
+.message .media-thumb {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  line-height: 0;
+  vertical-align: top;
+}
+
+.message .media-thumb img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.message .media-thumb.is-loaded img {
+  opacity: 1;
+}
+
+/* An album cell owns its square; the thumbnail fills it. */
+.message .media-thumb.is-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.message .media-thumb.is-fill img,
+.message .media-thumb.is-fallback img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No dimensions from Telegram: the box comes from `mediaBoxStyle`, so the
+   image fills the reserved ratio instead of collapsing. */
+.message .media-thumb.is-fallback {
+  display: block;
+}
+
+.message .media-thumb-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--panel-3);
 }
 
 .message .media-open:focus-visible,
@@ -64,17 +121,16 @@
   line-height: 1.5;
 }
 
-/* A media box the data saver has not downloaded. The aspect ratio comes from
-   the DTO, so swapping it for the real preview does not move the thread; one
-   click loads that preview in place, and a second opens the viewer. */
+/* A media box the data saver has not downloaded. The box geometry comes from
+   the same helper as the loaded thumbnail, so swapping it for the real preview
+   does not move the thread; one click loads that preview in place, and a second
+   opens the viewer. */
 .message .media-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  width: min(280px, 100%);
-  max-height: 360px;
   padding: 0;
   border: 0;
   border-radius: 8px;

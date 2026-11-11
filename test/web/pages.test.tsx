@@ -2927,7 +2927,7 @@ describe('App', () => {
         return {
           ...dialogs[0],
           lastMessage: dialogMessage(backlogMessage(lastMessageId)),
-          unread: 300,
+          unread: 1200,
           readInboxMaxId: watermark,
         };
       }
@@ -3014,7 +3014,7 @@ describe('App', () => {
         render(<App />);
         fireEvent.click(await screen.findByText('Bob'));
         expect(await within(threadSection()).findByText('first unread')).toBeDefined();
-        expect(document.querySelector('[data-badge]')?.textContent).toBe('99+');
+        expect(document.querySelector('[data-badge]')?.textContent).toBe('999+');
 
         fireEvent.click(within(threadSection()).getByRole('button', { name: 'Jump To Latest And Mark As Read' }));
 

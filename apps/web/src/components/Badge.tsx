@@ -6,7 +6,7 @@
  */
 
 export function Badge({ count, label, className = '' }: { count?: number; label?: string; className?: string }) {
-  const text = label ?? (count === undefined ? null : count > 99 ? '99+' : String(count));
+  const text = label ?? (count === undefined ? null : count > 999 ? '999+' : String(count));
   if (text === null) return null;
   return (
     <span

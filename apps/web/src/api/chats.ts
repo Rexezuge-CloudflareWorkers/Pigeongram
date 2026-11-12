@@ -5,10 +5,14 @@ import type {
   GetProfileResult,
   JoinChatParams,
   JoinChatResult,
+  JoinInviteParams,
+  JoinInviteResult,
   MeDto,
   PeerId,
   ResolveChatParams,
   ResolveChatResult,
+  ResolveInviteParams,
+  ResolveInviteResult,
   SetArchivedResult,
   SetPinnedResult,
 } from '../types';
@@ -72,3 +76,15 @@ Joins a resolved public chat, or reports that an admin must approve the
 request or that a guard bot wants its web view opened.
 */
 export const joinChat = (params: JoinChatParams): Promise<JoinChatResult> => rpc('joinChat', { ...params });
+
+/**
+Resolves a private invite link: the chat when the account is already in it, or
+the card Telegram describes for one it is not.
+*/
+export const resolveInvite = (params: ResolveInviteParams): Promise<ResolveInviteResult> => rpc('resolveInvite', { ...params });
+
+/**
+Joins the chat an invite link names, with the same three outcomes as a public
+chat's join.
+*/
+export const joinInvite = (params: JoinInviteParams): Promise<JoinInviteResult> => rpc('joinInvite', { ...params });

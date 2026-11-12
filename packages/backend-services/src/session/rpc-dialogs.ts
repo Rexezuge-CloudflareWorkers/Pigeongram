@@ -6,6 +6,7 @@ import { setChatArchived } from './archive';
 import { resolveDiscussion } from './comments';
 import { toDialogDto, toMeDto } from './dto';
 import { clampInt, optionalBoolean, optionalMessageId, requireBoolean, requirePeerId } from './params';
+import { joinInviteTarget, resolveInviteTarget } from './invites';
 import { setChatPinned } from './pin';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
@@ -103,6 +104,19 @@ export const dialogsRpcMethods = {
     // of a batch.
     readOnly: false,
     run: async (context, params) => joinChatTarget(context.client, params),
+  },
+
+  resolveInvite: {
+    // Telegram's checkChatInvite is a read: it describes the chat a private
+    // link names without changing the account's membership.
+    readOnly: true,
+    run: async (context, params) => resolveInviteTarget(context.client, params),
+  },
+
+  joinInvite: {
+    // importChatInvite writes the membership, exactly like joinChat.
+    readOnly: false,
+    run: async (context, params) => joinInviteTarget(context.client, params),
   },
 } as const satisfies PartialMethodTable;
 

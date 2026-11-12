@@ -1,5 +1,6 @@
 import type { ChatDto, MessageForwardDto } from './types';
-import type { TelegramChatRef } from './links-targets';
+import type { TelegramChatRef, TelegramChatTarget } from './links-targets';
+import { targetAppLink } from './links-targets';
 
 export type { TelegramChatRef, TelegramChatTarget } from './links-targets';
 export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAppLink, usernameAppLink } from './links-targets';
@@ -20,10 +21,15 @@ export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAp
 
 export interface TelegramLink {
   /**
-   * The chat the link names, or null for link kinds that name no chat (an
+   * The chat the link names, or null for link kinds that name no peer (an
    * invite, a sticker set, an unknown `tg://` operation).
    */
   chat: TelegramChatRef | null;
+  /**
+   * The hash of a private invite link (`t.me/+hash`), or null. Telegram is the
+   * only side that can turn it into a chat, so the bridge resolves it.
+   */
+  invite: string | null;
   /**
    * The post (message) id the link points at, or null.
    */
@@ -57,6 +63,13 @@ const TELEGRAM_HOSTS = new Set(['t.me', 'telegram.me', 'telegram.dog']);
 const RESERVED = new Set(['c', 's', 'share', 'proxy', 'socks', 'joinchat', 'addstickers', 'addemoji', 'iv', 'bg', 'setlanguage']);
 
 const USERNAME = /^[a-z][a-z0-9_]{2,31}$/;
+
+/**
+ * The part of a private invite link after the `+` or `joinchat/`. Telegram's
+ * own regex is `[\w-]+`; the cap only keeps a pasted document from becoming a
+ * request.
+ */
+const INVITE_HASH = /^[\w-]{1,128}$/;
 
 /**
  * Parses a `t.me` URL or a `tg://` deep link into one target. Returns null for
@@ -166,12 +179,13 @@ export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | nu
   const target = forward.senderId ?? forward.fromChatId;
   if (target === null) return null;
   if (target > 0) {
-    return { chat: null, postId: null, commentId: null, deepLink: `tg://user?id=${String(target)}`, webUrl: null };
+    return { chat: null, invite: null, postId: null, commentId: null, deepLink: `tg://user?id=${String(target)}`, webUrl: null };
   }
   if (target < -1_000_000_000_000) {
     const internalId = -target - 1_000_000_000_000;
     return {
       chat: null,
+      invite: null,
       postId: null,
       commentId: null,
       deepLink: `tg://privatepost?channel=${String(internalId)}`,
@@ -217,6 +231,24 @@ export function launchTelegramApp(deepLink: string, webUrl: string | null): void
 
   window.addEventListener('blur', stop);
   document.addEventListener('visibilitychange', onVisibility);
+}
+
+/**
+ * Hands a chat the bridge could not resolve to the installed app, using the
+ * link's own address where there is one.
+ *
+ * A link that asked for the chat is the most faithful address: it may name a
+ * chat this client cannot address yet. Without one, the resolved target is the
+ * address, and a target that has no addressable form (a basic group known only
+ * by its marked id) leaves the call with nothing to do.
+ */
+export function handOffTarget(target: TelegramChatTarget, link?: TelegramLink): void {
+  if (link !== undefined) {
+    launchTelegramApp(link.deepLink, link.webUrl);
+    return;
+  }
+  const address = targetAppLink(target);
+  if (address !== null) launchTelegramApp(address.deepLink, address.webUrl);
 }
 
 function parseWebPath(url: URL): TelegramLink | null {
@@ -268,7 +300,7 @@ function parseDeepLink(raw: string): TelegramLink {
     }
     case 'join': {
       const hash = params.get('invite');
-      return hash === null || hash === '' ? passthrough(raw) : invite(hash);
+      return hash === null || hash === '' ? passthrough(raw) : (invite(hash) ?? passthrough(raw));
     }
     case 'addstickers': {
       const name = params.get('set');
@@ -289,6 +321,7 @@ function chatLink(username: string, postId: number | null, commentId: number | n
   const query = comment === null ? '' : `?comment=${String(comment)}`;
   return {
     chat: { username },
+    invite: null,
     postId,
     commentId: comment,
     deepLink: `tg://resolve?${params.toString()}`,
@@ -301,6 +334,7 @@ function privatePost(internalId: number, postId: number | null): TelegramLink {
   if (postId !== null) params.set('post', String(postId));
   return {
     chat: { internalId },
+    invite: null,
     postId,
     commentId: null,
     deepLink: `tg://privatepost?${params.toString()}`,
@@ -308,9 +342,11 @@ function privatePost(internalId: number, postId: number | null): TelegramLink {
   };
 }
 
-function invite(hash: string): TelegramLink {
+function invite(hash: string): TelegramLink | null {
+  if (!INVITE_HASH.test(hash)) return null;
   return {
     chat: null,
+    invite: hash,
     postId: null,
     commentId: null,
     deepLink: `tg://join?invite=${encodeURIComponent(hash)}`,
@@ -321,6 +357,7 @@ function invite(hash: string): TelegramLink {
 function stickerSet(name: string): TelegramLink {
   return {
     chat: null,
+    invite: null,
     postId: null,
     commentId: null,
     deepLink: `tg://addstickers?set=${encodeURIComponent(name)}`,
@@ -329,7 +366,7 @@ function stickerSet(name: string): TelegramLink {
 }
 
 function passthrough(raw: string): TelegramLink {
-  return { chat: null, postId: null, commentId: null, deepLink: raw, webUrl: null };
+  return { chat: null, invite: null, postId: null, commentId: null, deepLink: raw, webUrl: null };
 }
 
 function usernameOf(value: string): string | null {

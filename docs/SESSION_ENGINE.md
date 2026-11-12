@@ -205,6 +205,8 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
 | `resolveChat`         | `{username}\|{chatId}` (exactly one)                                              | `{chat: ChatDto, member: boolean}`                                                                                                           |
 | `joinChat`            | `{username}\|{chatId}` (exactly one)                                              | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
+| `resolveInvite`       | `{invite}` (a hash, or the `t.me/+…` link)                                        | `{status: 'joined', chat: ChatDto}` \| `{status: 'preview', preview: ChatInvitePreviewDto}`                                                  |
+| `joinInvite`          | `{invite}` (a hash, or the `t.me/+…` link)                                        | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
 | `getCallDhConfig`     | —                                                                                 | `{g: number, p: string (base64), version: number}`                                                                                           |
 | `requestCall`         | `{chatId, gAHash: string (base64, 32-byte SHA-256), randomId: string}`            | `{call: CallDto}`                                                                                                                            |
 | `receivedCall`        | `{callId}`                                                                        | `{}`                                                                                                                                         |
@@ -239,12 +241,12 @@ cursor opaque and sends it back verbatim for "load more".
 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
 `getMe`, `getDialogs`, `getHistory`, `searchMessages`, `searchGlobal`, `getPollResults`, `getComments`, `getBotCommands`,
-`getProfile` and `resolveChat`; a
+`getProfile`, `resolveChat` and `resolveInvite`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark,
 `setArchived` because it moves a chat between the chat list and the archive, `setPinned` because it changes the pinned
-block, and `joinChat` because it changes the account's membership. Each call reports its own outcome, so one broken read
-(a post without a comments section) never takes the reads beside it down with it.
+block, and `joinChat`/`joinInvite` because they change the account's membership. Each call reports its own outcome, so
+one broken read (a post without a comments section) never takes the reads beside it down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
 The client never sends raw MTProto; the engine resolves peers server-side.
@@ -287,9 +289,25 @@ calls `joinChat` with the resolved username (falling back to the requested targe
 is Telegram's own outcome: `joined` carries the chat, `request_sent` means an admin must approve the request, and
 `webview` means a guard bot wants its web view opened. It is a write, so it stays out of a batch.
 
-`resolveChat` and `joinChat` are deliberately narrow: invite links (`t.me/+…`) hand off to the installed app, and a
-private `t.me/c/<id>` link resolves only when the engine already knows the peer. There is no invite-joining, no
-history backfill and no storage write on either path.
+`resolveInvite` turns a private invite link (`t.me/+hash`, `t.me/joinchat/hash`, `tg://join?invite=hash`) into what the
+account can do with it. It normalizes the request to the bare hash and asks Telegram's `messages.checkChatInvite`, which
+answers three ways: the account is already in the chat (`chatInviteAlready`), it may still read the chat until a date
+(`chatInvitePeek`), or it is not in it and Telegram describes the chat without a peer (`chatInvite`). The first two
+answer `{status: 'joined', chat}` after storing the chat in the peer cache — a member chat is normally a dialog, but the
+archive is read only when the reader opens it, so the following `getHistory` must not be left without an access hash.
+The third answers `{status: 'preview', preview}` with the title, kind, member count, approval flag and description the
+join card shows; there is no chat to open until the join succeeds. An expired or malformed link is answered by code
+(`invite_expired`, `invite_invalid`) so the card can say which it was. The method is read-only and on the batch
+whitelist.
+
+`joinInvite` calls Telegram's `importChatInvite` through mtcute's `joinChat`, with the same three outcomes as a public
+chat's join: `joined` carries the chat, `request_sent` means an admin must approve, and `webview` means a guard bot wants
+its web view opened. `USER_ALREADY_PARTICIPANT` — the account joined between the card and the tap — resolves the invite
+again and answers `joined`. It is a write, so it stays out of a batch.
+
+`resolveChat`, `joinChat`, `resolveInvite` and `joinInvite` are deliberately narrow: a private `t.me/c/<id>` link
+resolves only when the engine already knows the peer, and only the two invite methods can turn a bearer hash into a
+membership. There is no history backfill and no storage write on any of them beyond the peer cache.
 
 `DialogDto` carries the chat, its `lastMessage`, `unread`, `readInboxMaxId` (the read watermark: the
 last read incoming message) and `readOutboxMaxId` (the last outgoing message the peer has read), plus

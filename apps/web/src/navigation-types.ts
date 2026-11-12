@@ -2,7 +2,7 @@ import type { CommentsController } from './comments-controller';
 import type { TelegramChatTarget, TelegramLink } from './links';
 import type { Route } from './routes';
 import type { ThreadController } from './thread-controller';
-import type { ChatDto, MessageDto, MessageForwardDto, PeerId } from './types';
+import type { ChatDto, ChatInvitePreviewDto, MessageDto, MessageForwardDto, PeerId } from './types';
 import type { DialogsController } from './useDialogs';
 import type { MediaViewerController } from './useMediaViewer';
 import type { Router } from './useRouter';
@@ -30,6 +30,28 @@ export interface ChatPreview {
   target: TelegramChatTarget;
   /**
    * A join request is in flight; the Join button is disabled.
+   */
+  joining: boolean;
+  /**
+   * Telegram accepted the join request and an admin has to approve it.
+   */
+  requested: boolean;
+}
+
+/**
+ * A private invite link whose chat the account is not in.
+ *
+ * Telegram describes such a chat without an id, so there is nothing to open
+ * before the join succeeds: the card is the reader's decision, and it sits
+ * outside the route and the history on purpose. The link is kept beside the
+ * preview because it is the only address a guard bot's web view can be handed
+ * to the installed app with.
+ */
+export interface PendingInvite {
+  preview: ChatInvitePreviewDto;
+  link: TelegramLink;
+  /**
+   * A join is in flight; both actions are disabled.
    */
   joining: boolean;
   /**
@@ -94,6 +116,20 @@ export interface SignedInNavigation {
    * thread renders Join instead of a composer then.
    */
   preview: ChatPreview | null;
+  /**
+   * The private invite card, or null when none is open.
+   */
+  invite: PendingInvite | null;
+  /**
+   * Joins the chat the invite card describes. A successful join replaces the
+   * card with the chat Telegram returned and refreshes the list; a pending
+   * request or a guard bot's web view is reported.
+   */
+  joinInvite: () => void;
+  /**
+   * Closes the invite card without joining.
+   */
+  dismissInvite: () => void;
   /**
    * Joins the open preview chat. A successful join replaces the preview with
    * the chat Telegram returned and refreshes the list; a pending request or a

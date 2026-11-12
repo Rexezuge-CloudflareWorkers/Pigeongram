@@ -116,8 +116,12 @@ protocol,registry}`) and the mtcute integration
   `ThreadView` puts Join where the composer would be, the write affordances (reply, reactions, votes, callback
   buttons, comments) are withheld, and its scroll position never sends a read receipt. `joinChat` folds the joined
   chat into the open thread and reads the list again; `request_sent` and `webview` leave the preview in place and
-  report the outcome (a guard bot's web view is handed to the installed app). Invite links and private `t.me/c` ids the
-  engine does not already know still go straight to the app. Styling is
+  report the outcome (a guard bot's web view is handed to the installed app). A private invite link (`t.me/+hash`,
+  `t.me/joinchat/hash`, `tg://join?invite=`) is resolved by the engine (`resolveInvite`): when the account is already in
+  the chat it opens like a resolved link, otherwise `InviteDialog` shows what Telegram knows — title, kind, member count,
+  approval — and `joinInvite` makes the join the reader asked for. Telegram names no peer for the unjoined case, so the
+  card is a modal beside the thread rather than a route. A dead link is reported (`invite_expired`/`invite_invalid`),
+  not handed off; only private `t.me/c` ids the engine does not already know still go straight to the app. Styling is
   Tailwind v4 through `@tailwindcss/vite`: `src/styles/tailwind.css` imports full Tailwind (preflight included) and
   layers the existing stylesheets under `components`, so legacy rules sit above preflight but below utilities. New UI
   should use utilities; extend a legacy sheet only for a genuinely shared rule. The installable app sits beside it:

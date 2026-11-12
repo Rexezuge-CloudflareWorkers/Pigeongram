@@ -159,6 +159,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     leaveArchive,
     handleTelegramLink,
     preview,
+    invite,
+    joinInvite,
+    dismissInvite,
     joinPreview,
     markRead,
     markAllRead,
@@ -367,6 +370,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
         search={search}
         onOpenResult={handleSearchResult}
         onCloseSearch={() => setSearch(null)}
+        invite={invite}
+        onJoinInvite={joinInvite}
+        onCloseInvite={dismissInvite}
       />
       {calls.overlay}
       <Toasts error={error} notice={notice} onDismissError={onDismissError} onDismissNotice={clearNotice} />

@@ -16,7 +16,9 @@ export {
   fetchDialogs,
   fetchProfile,
   joinChat,
+  joinInvite,
   resolveChat,
+  resolveInvite,
   setArchived,
   setPinned,
 } from './api/chats';

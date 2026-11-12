@@ -56,6 +56,7 @@ describe('parseTelegramLink', () => {
   it('reads a public username, however the host is spelled', () => {
     const expected = {
       chat: { username: 'durov' },
+      invite: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://resolve?domain=durov',
@@ -70,6 +71,7 @@ describe('parseTelegramLink', () => {
   it('reads a post and its comment', () => {
     expect(parseTelegramLink('https://t.me/durov/42?comment=7')).toEqual({
       chat: { username: 'durov' },
+      invite: null,
       postId: 42,
       commentId: 7,
       deepLink: 'tg://resolve?domain=durov&post=42&comment=7',
@@ -87,6 +89,7 @@ describe('parseTelegramLink', () => {
   it('reads a private channel by its raw id, with no https fallback', () => {
     expect(parseTelegramLink('https://t.me/c/1234567890/55')).toEqual({
       chat: { internalId: 1_234_567_890 },
+      invite: null,
       postId: 55,
       commentId: null,
       deepLink: 'tg://privatepost?channel=1234567890&post=55',
@@ -95,22 +98,32 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('https://t.me/c/1234567890')?.postId).toBeNull();
   });
 
-  it('reads invite and sticker links, which name no chat', () => {
+  it('reads invite links, which name no chat but carry the hash', () => {
     expect(parseTelegramLink('https://t.me/+AbCd-123')).toEqual({
       chat: null,
+      invite: 'AbCd-123',
       postId: null,
       commentId: null,
       deepLink: 'tg://join?invite=AbCd-123',
       webUrl: 'https://t.me/+AbCd-123',
     });
-    expect(parseTelegramLink('https://t.me/joinchat/AbCd-123')?.deepLink).toBe('tg://join?invite=AbCd-123');
+    expect(parseTelegramLink('https://t.me/joinchat/AbCd-123')).toEqual(parseTelegramLink('https://t.me/+AbCd-123'));
+    expect(parseTelegramLink('https://t.me/+AbCd-123?join=1')?.invite).toBe('AbCd-123');
+    expect(parseTelegramLink('tg://join?invite=abc')?.invite).toBe('abc');
     expect(parseTelegramLink('https://t.me/addstickers/UtyaDuck')).toEqual({
       chat: null,
+      invite: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://addstickers?set=UtyaDuck',
       webUrl: 'https://t.me/addstickers/UtyaDuck',
     });
+  });
+
+  it('leaves an invite without a usable hash to the browser', () => {
+    expect(parseTelegramLink('https://t.me/+')).toBeNull();
+    expect(parseTelegramLink('https://t.me/joinchat/')).toBeNull();
+    expect(parseTelegramLink('https://t.me/+not%20a%20hash')).toBeNull();
   });
 
   it('normalizes the tg:// forms to the same targets', () => {
@@ -123,6 +136,7 @@ describe('parseTelegramLink', () => {
   it('passes an unknown tg:// operation through for the app to sort out', () => {
     expect(parseTelegramLink('tg://settings')).toEqual({
       chat: null,
+      invite: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://settings',
@@ -281,6 +295,7 @@ describe('forwardOriginLink', () => {
   it('prefers a public username, which has a web fallback too', () => {
     expect(forwardOriginLink(forward({ senderId: 42, senderUsername: 'carol' }))).toEqual({
       chat: { username: 'carol' },
+      invite: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://resolve?domain=carol',

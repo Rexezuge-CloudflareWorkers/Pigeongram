@@ -1,8 +1,9 @@
 /**
  * The link and forward half of the bridge contract: resolving a chat named by
- * a public username or a marked peer id, and joining one the account has not
- * joined yet. Split from `rpc-types.ts` so the method shapes stay under the
- * god-file cap; the SPA mirrors these types in `apps/web/src/types.ts`.
+ * a public username, a marked peer id or an invite link, and joining one the
+ * account has not joined yet. Split from `rpc-types.ts` so the method shapes
+ * stay under the god-file cap; the SPA re-exports these types from
+ * `apps/web/src/types.ts`.
  */
 
 import type { ChatDto, PeerId } from './types';
@@ -30,6 +31,42 @@ export interface ResolveChatResult {
   member: boolean;
 }
 
+/**
+ * The preview of a private invite link (`t.me/+hash`) the account has not
+ * joined yet.
+ *
+ * Telegram's `chatInvite` carries no peer, so there is nothing to open: only
+ * what the join card can show before the reader commits. A link to a chat the
+ * account already belongs to resolves to the chat itself instead.
+ */
+export interface ChatInvitePreviewDto {
+  title: string;
+  kind: 'group' | 'supergroup' | 'channel';
+  memberCount: number;
+  /**
+   * The join needs an admin's approval before the account gets in.
+   */
+  withApproval: boolean;
+  about: string | null;
+}
+
+/**
+ * An invite link to resolve: the hash it carries, or the link itself.
+ */
+export interface ResolveInviteParams {
+  invite: string;
+}
+
+/**
+ * A resolved invite: the chat when the account is already in it, or the card
+ * Telegram describes for one it is not.
+ */
+export type ResolveInviteResult = { status: 'joined'; chat: ChatDto } | { status: 'preview'; preview: ChatInvitePreviewDto };
+
+export interface JoinInviteParams {
+  invite: string;
+}
+
 export interface JoinChatParams {
   username?: string;
   chatId?: PeerId;
@@ -48,3 +85,9 @@ export interface JoinChatResult {
    */
   chat: ChatDto | null;
 }
+
+/**
+ * Joining through an invite answers the same three outcomes as joining a
+ * public chat, because Telegram's `importChatInvite` reports them the same way.
+ */
+export type JoinInviteResult = JoinChatResult;

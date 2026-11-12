@@ -1,14 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { joinChat, readHistory, resolveChat } from './api';
-import { findLinkedChat, launchTelegramApp, linkTarget, parseTelegramLink, targetAppLink } from './links';
-import type { TelegramChatTarget } from './links';
-import type { ChatPreview, ResolveRequest, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
+import { launchTelegramApp, targetAppLink } from './links';
+import type { ChatPreview, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
 import type { Route, RouteApplyOptions } from './routes';
 import { routeForChat } from './routes';
 import type { ChatDto, DialogDto, MessageDto, PeerId } from './types';
 import { useChatNavigation } from './useChatNavigation';
-import { useForwardOrigin } from './useForwardOrigin';
+import { useLinkRouting } from './useLinkRouting';
 import { useMediaViewer } from './useMediaViewer';
 import { useRouter } from './useRouter';
 
@@ -165,75 +164,16 @@ export function useSignedInNavigation({
     [openChat, registerTransient],
   );
 
-  /**
-   * Hands a target the bridge could not resolve to the installed app, using
-   * the link's own address where there is one.
-   */
-  const handOff = useCallback((target: TelegramChatTarget, request: ResolveRequest): void => {
-    if (request.link !== undefined) {
-      launchTelegramApp(request.link.deepLink, request.link.webUrl);
-      return;
-    }
-    const link = targetAppLink(target);
-    if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
-  }, []);
-
-  /**
-   * Turns a resolved chat into a thread: a member opens normally, a public
-   * chat the account is not in opens as a preview. A target with no public
-   * username could not be joined from here, so it goes to the installed app.
-   */
-  const showResolved = useCallback(
-    (chat: ChatDto, member: boolean, target: TelegramChatTarget, request: ResolveRequest): void => {
-      if (!member && chat.username === null) {
-        handOff(target, request);
-        return;
-      }
-      registerTransient(chat);
-      openChat(chat, {
-        ...(request.postId !== undefined && { postId: request.postId }),
-        ...(request.commentId !== undefined && { commentId: request.commentId }),
-      });
-      setPreview(
-        member
-          ? null
-          : {
-              chatId: chat.id,
-              target,
-              joining: false,
-              requested: false,
-            },
-      );
-    },
-    [handOff, openChat, registerTransient],
-  );
-
-  /**
-   * Resolves a username or marked id the loaded list does not carry. A 404 is
-   * the unknown-chat case and hands the target to the installed app; every
-   * other failure is reported.
-   */
-  const resolveTarget = useCallback(
-    (target: TelegramChatTarget, request: ResolveRequest = {}): void => {
-      const ticket = ++resolution.current;
-      void resolveChat(target)
-        .then((result) => {
-          if (ticket !== resolution.current) return;
-          showResolved(result.chat, result.member, target, request);
-        })
-        .catch((failure: unknown) => {
-          if (ticket !== resolution.current) return;
-          if (failure instanceof ServiceError && failure.status === 404) {
-            handOff(target, request);
-            return;
-          }
-          onError(failure);
-        });
-    },
-    [handOff, onError, showResolved],
-  );
-
-  const openForwardOrigin = useForwardOrigin(dialogs.all, openChat, resolveTarget);
+  const { openForwardOrigin, handleTelegramLink, invite, joinInvite, dismissInvite } = useLinkRouting({
+    dialogs: dialogs.all,
+    resolutionRef: resolution,
+    openChat,
+    registerChat: registerTransient,
+    setPreview,
+    reload: load,
+    onError,
+    onNotice,
+  });
 
   /**
    * Opens the archive: the screen of the chats the account archived.
@@ -254,40 +194,6 @@ export function useSignedInNavigation({
   const leaveArchive = useCallback(
     (): void => (router.route().view === 'archived' ? router.back() : onArchiveContext(false)),
     [router, onArchiveContext],
-  );
-
-  /**
-   * Routes a click on a link inside a message: a chat this client already knows
-   * opens in the thread (a linked post lands on that post), any other Telegram
-   * chat is resolved and opened or previewed, and everything Telegram cannot
-   * open here is handed to the installed app. `false` leaves ordinary web links
-   * to the browser.
-   */
-  const handleTelegramLink = useCallback(
-    (url: string): boolean => {
-      const link = parseTelegramLink(url);
-      if (link === null) return false;
-      if (link.chat === null) {
-        launchTelegramApp(link.deepLink, link.webUrl);
-        return true;
-      }
-      const target = linkTarget(link.chat);
-      const known = findLinkedChat(dialogs.all, target);
-      if (known !== null) {
-        openChat(known, {
-          ...(link.postId !== null && { postId: link.postId }),
-          ...(link.commentId !== null && { commentId: link.commentId }),
-        });
-        return true;
-      }
-      resolveTarget(target, {
-        ...(link.postId !== null && { postId: link.postId }),
-        ...(link.commentId !== null && { commentId: link.commentId }),
-        link,
-      });
-      return true;
-    },
-    [dialogs.all, openChat, resolveTarget],
   );
 
   /**
@@ -387,6 +293,9 @@ export function useSignedInNavigation({
     leaveArchive,
     handleTelegramLink,
     preview: activePreview,
+    invite,
+    joinInvite,
+    dismissInvite,
     joinPreview,
     markRead,
     markAllRead,

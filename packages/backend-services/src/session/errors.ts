@@ -11,6 +11,8 @@ import { ServiceError } from '@rexezuge/errors';
 export type EngineErrorCode =
   | 'validation'
   | 'not_found'
+  | 'invite_expired'
+  | 'invite_invalid'
   | 'conflict'
   | 'access'
   | 'access_config'

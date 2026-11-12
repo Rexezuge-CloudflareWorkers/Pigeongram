@@ -6,7 +6,17 @@
 
 import type { BotCommandDto, DialogDto, MeDto, MessageDto, PeerId, ProfileDto } from './types';
 
-export type { JoinChatParams, JoinChatResult, ResolveChatParams, ResolveChatResult } from './chat-link-types';
+export type {
+  ChatInvitePreviewDto,
+  JoinChatParams,
+  JoinChatResult,
+  JoinInviteParams,
+  JoinInviteResult,
+  ResolveChatParams,
+  ResolveChatResult,
+  ResolveInviteParams,
+  ResolveInviteResult,
+} from './chat-link-types';
 export type {
   DeleteMessagesParams,
   DeleteMessagesResult,
@@ -55,6 +65,8 @@ export type RpcMethod =
   | 'getProfile'
   | 'resolveChat'
   | 'joinChat'
+  | 'resolveInvite'
+  | 'joinInvite'
   | 'getCallDhConfig'
   | 'requestCall'
   | 'receivedCall'
@@ -86,7 +98,8 @@ export type BatchableRpcMethod =
   | 'getComments'
   | 'getBotCommands'
   | 'getProfile'
-  | 'resolveChat';
+  | 'resolveChat'
+  | 'resolveInvite';
 
 /**
 One call inside a `batch`.

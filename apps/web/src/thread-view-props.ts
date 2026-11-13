@@ -74,6 +74,12 @@ export interface ThreadViewProps {
   pending: readonly PendingMessage[];
   error: string | null;
   /**
+   * Whether the chat is one Telegram no longer offers to this account: the pane
+   * replaces the message list and the composer with the unavailable card, since
+   * no retry could bring the chat back.
+   */
+  unavailable: boolean;
+  /**
    * The slash-command menu of the open chat, empty for a chat without one.
    * It is read together with the thread's window, so the composer offers the
    * menu as soon as the thread is there.

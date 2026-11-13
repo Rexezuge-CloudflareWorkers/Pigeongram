@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { ServiceError } from '@rexezuge/errors';
 import { fetchChatScreen } from './api';
 import { firstUnread } from './reading';
 import { foldKeyboardSeed } from './reply-keyboard';
@@ -10,7 +11,7 @@ import type { ThreadPositionMemory } from './thread-position';
 import type { ChatThread } from './thread-state';
 import { OPEN_LIMIT, supportsCommands, unreadWindow } from './thread-window';
 import type { OpenThreadOptions } from './thread-window';
-import type { BotCommandDto, ChatDto, DialogDto, MessageDto } from './types';
+import type { BotCommandDto, ChatDto, DialogDto, MessageDto, PeerId } from './types';
 
 /**
  * The opening half of the thread controller: the first read of a chat, the
@@ -32,6 +33,12 @@ interface UseThreadOpenOptions {
   owns the state so a live message can advance it too.
   */
   setKeyboardSeed: (seed: MessageDto | null) => void;
+  /**
+  Reports a chat Telegram no longer offers to this account, once per open: the
+  chat list drops the row, and the thread shows the unavailable card instead of
+  a retry that cannot work.
+  */
+  onUnavailable: (chatId: PeerId) => void;
 }
 
 interface ThreadOpening {
@@ -44,12 +51,27 @@ interface ThreadOpening {
   loading: boolean;
   error: string | null;
   setError: (message: string | null) => void;
+  /**
+   * Whether the open chat answered `not_found`: Telegram does not offer it to
+   * this account any more (deleted, or the account left it). The view shows the
+   * unavailable card rather than an empty thread and a working composer.
+   */
+  unavailable: boolean;
   botCommands: readonly BotCommandDto[];
   description: string | null;
 }
 
 function failureText(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
+}
+
+/**
+Whether a failed read means the chat is gone rather than unreachable for a
+moment. The engine answers Telegram's own refusals with a `not_found` status,
+so this is the same fact the chat list acts on.
+*/
+function isUnavailable(failure: unknown): boolean {
+  return failure instanceof ServiceError && failure.status === 404;
 }
 
 /**
@@ -65,9 +87,10 @@ function keyboardCandidate(messages: readonly MessageDto[]): MessageDto | null {
   return messages.reduce<MessageDto | null>((seed, message) => foldKeyboardSeed(seed, message), null);
 }
 
-export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }: UseThreadOpenOptions): ThreadOpening {
+export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, onUnavailable }: UseThreadOpenOptions): ThreadOpening {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const [botCommands, setBotCommands] = useState<readonly BotCommandDto[]>(NO_COMMANDS);
   const [description, setDescription] = useState<string | null>(null);
   const cache = useRef<ThreadCache | null>(null);
@@ -75,6 +98,23 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
   // Every open takes a ticket: a slow read for a chat the reader already left
   // must not paint over the one they are in, and closing cancels too.
   const ticket = useRef(0);
+
+  /**
+   * Files a failed read: a chat Telegram no longer offers is not an error to
+   * retry, so it reports itself to the caller once and leaves the error slot
+   * empty for the card to explain.
+   */
+  const report = useCallback(
+    (failure: unknown, chatId: PeerId): void => {
+      if (!isUnavailable(failure)) {
+        setError(failureText(failure));
+        return;
+      }
+      setUnavailable(true);
+      onUnavailable(chatId);
+    },
+    [onUnavailable],
+  );
 
   // The cache follows the open thread: a send, a read or a live message moves
   // the copy a reopen would paint, and `ThreadCache` refuses a window that does
@@ -87,6 +127,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
     ticket.current += 1;
     setLoading(false);
     setError(null);
+    setUnavailable(false);
     setBotCommands(NO_COMMANDS);
     setDescription(null);
     setKeyboardSeed(null);
@@ -113,10 +154,10 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
         );
       } catch (failure) {
         if (sequence !== ticket.current) return;
-        setError(failureText(failure));
+        report(failure, chat.id);
       }
     },
-    [setThread, setKeyboardSeed],
+    [setThread, setKeyboardSeed, report],
   );
 
   const open = useCallback(
@@ -130,6 +171,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
       // The menu and the empty-chat description belong to the chat being
       // opened, so the previous chat's answer must not survive a failed read.
       setError(null);
+      setUnavailable(false);
       setBotCommands(NO_COMMANDS);
       setDescription(null);
       setKeyboardSeed(null);
@@ -213,14 +255,14 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed }:
         return { messages: screen.messages, comments: screen.comments, commentsError: screen.commentsError };
       } catch (failure) {
         if (sequence !== ticket.current) return { messages: [], comments: null, commentsError: failureText(failure) };
-        setError(failureText(failure));
+        report(failure, chat.id);
         return { messages: [], comments: null, commentsError: failureText(failure) };
       } finally {
         if (sequence === ticket.current) setLoading(false);
       }
     },
-    [positions, refresh, setThread, setKeyboardSeed],
+    [positions, refresh, setThread, setKeyboardSeed, report],
   );
 
-  return { open, reset, loading, error, setError, botCommands, description };
+  return { open, reset, loading, error, setError, unavailable, botCommands, description };
 }

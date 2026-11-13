@@ -51,11 +51,29 @@ export async function rpcBatch(calls: readonly RpcBatchCall[]): Promise<RpcBatch
 }
 
 /**
+The HTTP status a bridge code stands for, so a batched failure arrives with
+the same shape a direct one does: the thread controller tells a chat Telegram
+no longer offers (`not_found`) from a read that merely failed.
+*/
+const CODE_STATUS: Readonly<Record<string, number>> = {
+  validation: 400,
+  not_found: 404,
+  invite_expired: 404,
+  invite_invalid: 404,
+  access: 403,
+  conflict: 409,
+  rate_limited: 429,
+  upstream: 502,
+  unavailable: 503,
+};
+
+/**
 The result of one batched call, or a thrown failure.
 */
 export function batchResult<T>(outcome: RpcBatchOutcome | undefined, what: string): T {
   if (!outcome || !outcome.ok) {
-    throw new HttpStatusError(500, outcome?.error ?? `The ${what} Could Not Be Read`, null);
+    const status = CODE_STATUS[outcome?.code ?? ''] ?? 500;
+    throw new HttpStatusError(status, outcome?.error ?? `The ${what} Could Not Be Read`, outcome?.code ?? null);
   }
   return outcome.result as T;
 }

@@ -125,6 +125,12 @@ export interface RpcBatchOutcome {
   The failure's message, when it failed.
   */
   error?: string;
+  /**
+  The bridge code the failure maps to (`not_found`, `conflict`, …), so the
+  caller can tell a chat Telegram no longer offers from a failed read without
+  matching on prose.
+  */
+  code?: string;
 }
 
 export interface GetDialogsParams {

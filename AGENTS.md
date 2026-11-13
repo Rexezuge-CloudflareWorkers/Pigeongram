@@ -190,12 +190,24 @@ protocol,registry}`) and the mtcute integration
   are the case in hand: never render the widget HTML without the official `@telegram/widget-sandbox`, and never leave a
   blank bubble in the meantime. `docs/TELEGRAM_WIDGETS.md` holds the upgrade path.
 - **Bridge failures carry a stable code, and the engine logs one JSON line per event.** `EngineError` derives a coarse
-  `code` from its status (`validation`, `not_found`, `conflict`, `access`, `upstream`, `unavailable`, `internal`) and a
-  call site may name a more specific one; `errorResponse` sends `{error, code}` still additively, `EngineConfigError` is
-  `config`, and an exhausted write budget keeps `storage_write_quota`. The SPA's `ApiError.code` reads it. `session/log.ts`
+  `code` from its status (`validation`, `not_found`, `conflict`, `access`, `rate_limited`, `upstream`, `unavailable`,
+  `internal`) and a call site may name a more specific one; `errorResponse` sends the canonical
+  `{Exception: {Type, Message}}` envelope still additively, `EngineConfigError` is `config`, and an exhausted write budget
+  keeps `storage_write_quota`. The SPA reads the envelope's `Type`. `session/log.ts`
   writes `{level, event, …fields}` through the matching console method, so Workers Logs and tests query fields instead of
   prose; `session/config.ts` reads `WAKE_INTERVAL_SECONDS`, `UPLOAD_MAX_BYTES` and the media window once per engine (and
   once per upload pre-flight at the edge). Do not parse an env bound inside a request handler again.
+- **Telegram's refusals are mapped, never masked as 500s.** `session/rpc-errors.ts`'s `rpcErrorToEngineError` turns a
+  peer Telegram no longer offers and a message that left the chat into `404 not_found`, a forbidden write into
+  `403 access`, `REACTIONS_TOO_MANY`/`MESSAGE_NOT_MODIFIED` into `409 conflict`, and `FLOOD_WAIT_%d` into
+  `429 rate_limited`; any other refusal is a `400 validation` carrying Telegram's own code text. The same mapping runs at
+  the HTTP boundary (`session/http.ts`, which logs `request.refused` at warn) and per failed call inside a `batch`
+  (`RpcBatchOutcome.code`, which `batchResult` turns back into the status). A new Telegram code that should mean
+  "gone"/"forbidden"/"conflict" belongs in that map, not in a caller's string comparison.
+- **A chat the account no longer has is a state of the SPA, not a retry.** A `404 not_found` on a thread open sets the
+  controller's `unavailable` flag: `ThreadUnavailable` replaces the message list and the composer, and
+  `SignedInShell` drops the chat from the merged list (`useDialogs.drop`). Retrying cannot bring the chat back; the next
+  chat-list read is the truth, so a row dropped wrongly (a transient failure that mapped to 404) returns on its own.
 - **The worker is API-only.** No `assets`, no `spa-shell` embedding, no open-next workarounds, and no D1 — the session
   engine's storage is the Durable Object's SQLite. The UI lives on Pages.
 - **The SPA relies on the Pages default fallback for pathname routes.** There is deliberately no top-level `404.html`:
@@ -348,10 +360,15 @@ protocol,registry}`) and the mtcute integration
   A chat that is a dialog — a full peer in storage — starts failing that way after a min copy of it arrives from a
   group's or channel's message list, which is why the official app still opens it and a reload sometimes does.
   `session/peers.ts` is the guard: `withPeerRetry` wraps every peer-addressed bridge call (the batch's per-call dispatch,
-  `driver.rpc`, media streams, uploads) and retries **once** on `PEER_ID_INVALID`/`CHANNEL_INVALID`/`USER_ID_INVALID`,
-  after re-storing the full entity mtcute already holds when the cached input hash differs from it, or refreshing through
-  `resolvePeer(id, true)` when there is no full entity. A rejected peer was never acted on, so the retry is safe for
-  writes too. Do not try to solve this by upgrading mtcute: 0.32.6 has the same cache.
+  `driver.rpc`, media streams, avatar reads, uploads) and retries **once** on
+  `PEER_ID_INVALID`/`CHANNEL_INVALID`/`USER_ID_INVALID`, healing the cache first in escalating steps — re-store the full
+  entity mtcute already holds when the cached input hash differs from it (`cache`), refresh through
+  `resolvePeer(id, true)` (`resolve`) — and, as the last resort, scan the account's dialog list (`client.iterDialogs`,
+  bounded by `DIALOG_SCAN_LIMIT = 500`, `dialogs`). The scan is what recovers a username-less channel: `channels.getChannels`
+  refuses its zero access hash, and `findDialogs` throws through the same poisoned cache. `peer.refreshed` names the ids
+  and the step; `via: none` means no step found the peer, so the chat really is gone from the account. A rejected peer was
+  never acted on, so the retry is safe for writes too. Do not try to solve this by upgrading mtcute (0.32.7 has the same
+  cache) or by guarding the peers repository alone — mtcute's `PeersService` caches the min input peer independently.
 - **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
   `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
   in the system and holding the gate for it queued every bridge call behind it. The engine's storage warms up in

@@ -70,6 +70,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     applyDeleted,
     setArchived,
     setPinned,
+    drop: dropDialog,
     clear: clearDialogs,
   } = dialogs;
 
@@ -86,7 +87,19 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
 
   const handleDeleted = useDeletionReport(applyDeleted);
 
-  const threads = useThread({ onSent: handleSent, onError, onNotice: notify, onDeleted: handleDeleted });
+  /**
+  A chat Telegram no longer offers to this account: its thread says so, and the
+  row leaves the sidebar. Dropping it is local — the next list read is the
+  truth, and a chat the account still holds comes back.
+  */
+  const handleUnavailable = useCallback(
+    (chatId: PeerId): void => {
+      dropDialog(chatId);
+    },
+    [dropDialog],
+  );
+
+  const threads = useThread({ onSent: handleSent, onError, onNotice: notify, onDeleted: handleDeleted, onUnavailable: handleUnavailable });
   const forwarding = useForwarding(handleSent, threads.applyUpdate, notify);
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;

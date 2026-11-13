@@ -765,6 +765,29 @@ describe('batch dispatch', () => {
     expect(result.results[1].ok).toBe(true);
   });
 
+  it('reports the bridge code beside a failed call', async () => {
+    const { client } = fakeBatchClient();
+
+    // A malformed parameter is the engine's own refusal.
+    const invalid = (await rpc(client, 'batch', { calls: [{ method: 'getHistory', params: { chatId: 0 } }] })) as {
+      results: Array<{ ok: boolean; code?: string }>;
+    };
+    expect(invalid.results[0]).toMatchObject({ ok: false, code: 'validation' });
+
+    // A peer Telegram refuses is a chat that is gone, which is what the SPA
+    // keys the unavailable card on.
+    const refused = {
+      ...client,
+      getHistory: async () => {
+        throw Object.assign(new Error('Telegram API error 400: CHANNEL_INVALID'), { text: 'CHANNEL_INVALID' });
+      },
+    } as unknown as TelegramClient;
+    const gone = (await rpc(refused, 'batch', { calls: [{ method: 'getHistory', params: { chatId: 5 } }] })) as {
+      results: Array<{ ok: boolean; code?: string }>;
+    };
+    expect(gone.results[0]).toMatchObject({ ok: false, code: 'not_found' });
+  });
+
   it('refuses a write, which has no defined order in a batch', async () => {
     const { client, calls } = fakeBatchClient();
 

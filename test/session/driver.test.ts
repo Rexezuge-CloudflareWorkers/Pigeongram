@@ -382,6 +382,17 @@ describe('TelegramDriver', () => {
     expect(upload.sendUploadedMediaGroup).toHaveBeenCalledWith(harness.client, group, body, undefined);
   });
 
+  it('retries an avatar read once when Telegram rejects the peer', async () => {
+    const harness = fakeBundle();
+    const avatar = { mime: 'image/jpeg', bytes: new Uint8Array([1]), version: 'v1' };
+    media.readAvatar
+      .mockRejectedValueOnce(Object.assign(new Error('Telegram API error 400: CHANNEL_INVALID'), { text: 'CHANNEL_INVALID' }))
+      .mockResolvedValueOnce(avatar);
+
+    await expect(harness.driver.readAvatar(2, 'small')).resolves.toBe(avatar);
+    expect(media.readAvatar).toHaveBeenCalledTimes(2);
+  });
+
   it('signs out on the server, clears the account state and drops the bundle', async () => {
     const harness = fakeBundle();
     await harness.driver.isAuthorized();

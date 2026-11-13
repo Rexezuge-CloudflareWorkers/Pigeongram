@@ -1,7 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { RpcBatchCall, RpcBatchOutcome } from '../rpc-types';
 import { peerIdsIn, withPeerRetry } from './peers';
-import { failureText } from './rpc-errors';
+import { failureCode, failureText } from './rpc-errors';
 
 /**
  * The `batch` method: several reads in one request.
@@ -27,7 +27,7 @@ export async function dispatchBatch(
         const result = await withPeerRetry(client, peerIdsIn(call.params), () => run(call.method, call.params));
         return { ok: true, result } satisfies RpcBatchOutcome;
       } catch (error) {
-        return { ok: false, error: failureText(error) } satisfies RpcBatchOutcome;
+        return { ok: false, error: failureText(error), code: failureCode(error) } satisfies RpcBatchOutcome;
       }
     }),
   );

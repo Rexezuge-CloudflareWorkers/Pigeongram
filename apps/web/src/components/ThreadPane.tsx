@@ -153,6 +153,7 @@ export function ThreadPane({
         newMessageIds={threads.thread?.newMessageIds ?? NO_NEW_MESSAGE_IDS}
         pending={threads.pending}
         error={threads.error}
+        unavailable={threads.unavailable}
         botCommands={threads.botCommands}
         description={threads.description}
         replyKeyboard={threads.replyKeyboard}

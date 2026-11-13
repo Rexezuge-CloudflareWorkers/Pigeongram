@@ -17,6 +17,7 @@ export type EngineErrorCode =
   | 'access'
   | 'access_config'
   | 'config'
+  | 'rate_limited'
   | 'storage_write_quota'
   | 'upstream'
   | 'unavailable'

@@ -2,6 +2,7 @@ import { ServiceError } from '@rexezuge/errors';
 import { toErrorResponse } from '@rexezuge/http';
 import { EngineError, isStorageWriteQuotaError, STORAGE_WRITE_QUOTA_MESSAGE } from './errors';
 import { log } from './log';
+import { rpcErrorText, rpcErrorToEngineError } from './rpc-errors';
 
 /**
  * HTTP plumbing shared by the engine's bridge routes: request bodies in,
@@ -90,6 +91,14 @@ function mapToServiceError(error: unknown, correlationId?: string): ServiceError
     // working, so the failure gets its own code instead of a generic 500.
     log.warn('storage.quota_exhausted', { correlationId });
     return new EngineError(STORAGE_WRITE_QUOTA_MESSAGE, 503, 'storage_write_quota');
+  }
+  const refused = rpcErrorToEngineError(error);
+  if (refused !== null) {
+    // Telegram's own answer about the account's state: an expected outcome of
+    // a bridge call, so it is filed below the error level the masked 500 goes
+    // to. The event name matches the real failure so one query finds both.
+    log.warn('request.refused', { correlationId, type: refused.type, rpc: rpcErrorText(error) });
+    return refused;
   }
   log.error('request.failed', { error, correlationId });
   return new EngineError('Internal server error', 500, 'internal');

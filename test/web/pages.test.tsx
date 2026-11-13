@@ -358,7 +358,7 @@ async function answerBatch(
     method: string;
     params?: Record<string, unknown>;
   }>;
-  const results: Array<{ ok: boolean; result?: unknown; error?: string }> = [];
+  const results: Array<{ ok: boolean; result?: unknown; error?: string; code?: string }> = [];
   for (const sub of subCalls) {
     const subCall: FetchCall = { method: 'POST', path: call.path, body: { method: sub.method, params: sub.params ?? {} } };
     record(subCall);
@@ -368,8 +368,17 @@ async function answerBatch(
       continue;
     }
     const payload = (await response.json()) as unknown;
+    // The engine reports a failed call with the bridge code beside its
+    // sentence, so the SPA can tell a gone chat from a failed read.
+    const exception = (payload as { Exception?: { Type?: string; Message?: string } } | null)?.Exception;
     results.push(
-      response.ok ? { ok: true, result: payload } : { ok: false, error: (payload as { error?: string } | null)?.error ?? 'failed' },
+      response.ok
+        ? { ok: true, result: payload }
+        : {
+            ok: false,
+            error: (payload as { error?: string } | null)?.error ?? exception?.Message ?? 'failed',
+            code: exception?.Type,
+          },
     );
   }
   return json({ results });
@@ -984,6 +993,22 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bob'));
     expect(await screen.findByText('oldest')).toBeDefined();
     expect(screen.getAllByText('see you').length).toBeGreaterThan(0);
+  });
+
+  it('shows the unavailable card and drops the chat when Telegram no longer offers it', async () => {
+    installSignedInFetch({
+      history: () => json({ Exception: { Type: 'not_found', Message: 'That chat is not reachable from this account any more.' } }, 404),
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Bob'));
+
+    // The pane says why there is no thread, instead of an empty chat with a
+    // composer whose sends could never land.
+    expect(await within(threadSection()).findByText('This Chat Is No Longer Available')).toBeDefined();
+    expect(within(threadSection()).queryByText('No Messages Yet — Say Hello.')).toBeNull();
+    // The chat leaves the sidebar; the next list read is the truth.
+    await waitFor(() => expect(within(sidebar()).queryByText('Bob')).toBeNull());
   });
 
   it('reads the account and the chat list in one batched request', async () => {

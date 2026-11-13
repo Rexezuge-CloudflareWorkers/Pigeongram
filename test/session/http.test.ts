@@ -129,6 +129,20 @@ describe('errorResponse', () => {
     });
   });
 
+  it('answers a Telegram refusal with the status it names', async () => {
+    const channel = errorResponse(Object.assign(new Error('Telegram API error 400: CHANNEL_INVALID'), { text: 'CHANNEL_INVALID' }));
+    expect(channel.status).toBe(404);
+    await expect(channel.json()).resolves.toMatchObject({ Exception: { Type: 'not_found' } });
+
+    const reactions = errorResponse(Object.assign(new Error('Telegram API error 400: REACTIONS_TOO_MANY'), { text: 'REACTIONS_TOO_MANY' }));
+    expect(reactions.status).toBe(409);
+    await expect(reactions.json()).resolves.toMatchObject({ Exception: { Type: 'conflict' } });
+
+    const flood = errorResponse(Object.assign(new Error('FLOOD_WAIT'), { text: 'FLOOD_WAIT_%d', seconds: 9 }));
+    expect(flood.status).toBe(429);
+    await expect(flood.json()).resolves.toMatchObject({ Exception: { Type: 'rate_limited' } });
+  });
+
   it('keeps the correlation id out of the body', async () => {
     const response = errorResponse(new EngineError('bad input', 400), 'correlation-1');
     const body = (await response.json()) as Record<string, unknown>;

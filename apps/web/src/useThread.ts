@@ -67,9 +67,13 @@ interface UseThreadOptions {
   reaches this hook.
   */
   onDeleted: (chatId: PeerId, removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
+  /**
+  A chat Telegram no longer offers: the chat list drops its row.
+  */
+  onUnavailable: (chatId: PeerId) => void;
 }
 
-export function useThread({ onSent, onError, onNotice, onDeleted }: UseThreadOptions): ThreadController {
+export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [keyboardSeed, setKeyboardSeed] = useState<MessageDto | null>(null);
   const [dismissedKeyboardId, setDismissedKeyboardId] = useState<number | null>(null);
@@ -82,9 +86,10 @@ export function useThread({ onSent, onError, onNotice, onDeleted }: UseThreadOpt
     loading,
     error,
     setError,
+    unavailable,
     botCommands,
     description,
-  } = useThreadOpen({ thread, setThread, positions, setKeyboardSeed });
+  } = useThreadOpen({ thread, setThread, positions, setKeyboardSeed, onUnavailable });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
@@ -360,6 +365,7 @@ export function useThread({ onSent, onError, onNotice, onDeleted }: UseThreadOpt
     loadingNewer,
     pending: outbox.pending,
     error,
+    unavailable,
     botCommands,
     description,
     replyKeyboard,

@@ -99,6 +99,23 @@ describe('rpcBatch', () => {
     }
   });
 
+  it('carries the bridge code as the status and the type', () => {
+    // A batched read that answers `not_found` is a chat Telegram no longer
+    // offers: the thread tells it apart from a read that merely failed.
+    try {
+      batchResult({ ok: false, error: 'That chat is not reachable from this account any more.', code: 'not_found' }, 'chat history');
+      expect.unreachable();
+    } catch (failure) {
+      expect(failure).toMatchObject({ status: 404, type: 'not_found' });
+    }
+    try {
+      batchResult({ ok: false, error: 'Too many reactions.', code: 'conflict' }, 'reaction');
+      expect.unreachable();
+    } catch (failure) {
+      expect(failure).toMatchObject({ status: 409, type: 'conflict' });
+    }
+  });
+
   it('returns the result of a successful outcome', () => {
     expect(batchResult<{ value: number }>({ ok: true, result: { value: 1 } }, 'chat list')).toEqual({ value: 1 });
   });

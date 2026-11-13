@@ -8,14 +8,17 @@ import { isPeerRejected, peerIdsIn, refreshPeer, withPeerRetry } from '../../pac
  * The mtcute peer cache as the heal sees it: the input peer the cache would
  * hand out, the complete entity stored beside it, and the network resolver.
  */
-function fakeClient(input: tl.TypeInputPeer | null, complete: tl.TypeUser | tl.TypeChat | null) {
+function fakeClient(input: tl.TypeInputPeer | null, complete: tl.TypeUser | tl.TypeChat | null, dialogs: number[] = []) {
   const peers = {
     getById: vi.fn(async () => input),
     getCompleteById: vi.fn(async () => complete),
     store: vi.fn(async () => {}),
   };
   const resolvePeer = vi.fn(async () => input ?? ({ _: 'inputPeerUser', userId: 0, accessHash: Long.ZERO } as tl.TypeInputPeer));
-  const client = { storage: { peers }, resolvePeer } as unknown as TelegramClient;
+  async function* iterDialogs(): AsyncGenerator<{ peer: { id: number } }> {
+    for (const id of dialogs) yield { peer: { id } };
+  }
+  const client = { storage: { peers }, resolvePeer, iterDialogs } as unknown as TelegramClient;
   return { client, peers, resolvePeer };
 }
 
@@ -29,6 +32,9 @@ const fullHash = Long.fromString('200');
 const completeUser = { _: 'user', id: 1, min: false, accessHash: fullHash } as unknown as tl.RawUser;
 const minUser = { _: 'user', id: 1, min: true, accessHash: minHash } as unknown as tl.RawUser;
 const cachedUser = { _: 'inputPeerUser', userId: 1, accessHash: minHash } as tl.TypeInputPeer;
+const fullChannel = { _: 'channel', id: 1, min: false, accessHash: fullHash } as unknown as tl.RawChannel;
+const minChannel = { _: 'channel', id: 1, min: true, accessHash: minHash } as unknown as tl.RawChannel;
+const minChannelPeer = { _: 'inputPeerChannel', channelId: 1, accessHash: minHash } as tl.TypeInputPeer;
 
 describe('peerIdsIn', () => {
   it('reads the source and destination chat of a call', () => {
@@ -124,6 +130,52 @@ describe('withPeerRetry', () => {
 
     expect(run).toHaveBeenCalledTimes(2);
   });
+
+  it('reads the dialog list for a channel whose cache only holds a min entity', async () => {
+    // A channel with no username: Telegram refuses the zero hash, so the full
+    // entity has to come back from the dialog list.
+    let complete: tl.TypeUser | tl.TypeChat | null = minChannel;
+    const peers = {
+      getById: vi.fn(async () => minChannelPeer),
+      getCompleteById: vi.fn(async () => complete),
+      store: vi.fn(async () => {}),
+    };
+    const resolvePeer = vi.fn(async () => {
+      throw new Error('Peer 1 is not found in local cache');
+    });
+    async function* iterDialogs(): AsyncGenerator<{ peer: { id: number } }> {
+      complete = fullChannel;
+      yield { peer: { id: 1 } };
+    }
+    const client = { storage: { peers }, resolvePeer, iterDialogs } as unknown as TelegramClient;
+    const run = vi.fn().mockRejectedValueOnce(rpcFailure('CHANNEL_INVALID')).mockResolvedValueOnce('opened');
+
+    await expect(withPeerRetry(client, [1], run)).resolves.toBe('opened');
+
+    expect(peers.store).toHaveBeenCalledWith(fullChannel);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up when the dialog list does not carry the chat', async () => {
+    const peers = {
+      getById: vi.fn(async () => minChannelPeer),
+      getCompleteById: vi.fn(async () => minChannel),
+      store: vi.fn(async () => {}),
+    };
+    const resolvePeer = vi.fn(async () => {
+      throw new Error('Peer 1 is not found in local cache');
+    });
+    async function* iterDialogs(): AsyncGenerator<{ peer: { id: number } }> {
+      yield { peer: { id: 9 } };
+    }
+    const client = { storage: { peers }, resolvePeer, iterDialogs } as unknown as TelegramClient;
+    const run = vi.fn().mockRejectedValue(rpcFailure('CHANNEL_INVALID'));
+
+    await expect(withPeerRetry(client, [1], run)).rejects.toThrow('CHANNEL_INVALID');
+
+    expect(peers.store).not.toHaveBeenCalled();
+    expect(run).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('refreshPeer', () => {
@@ -131,15 +183,21 @@ describe('refreshPeer', () => {
     const { client, peers, resolvePeer } = fakeClient(cachedUser, completeUser);
     peers.store.mockRejectedValueOnce(new Error('sqlite is busy'));
 
-    await expect(refreshPeer(client, 1)).resolves.toBeUndefined();
+    await expect(refreshPeer(client, 1)).resolves.toBe('resolve');
 
     expect(resolvePeer).toHaveBeenCalledWith(1, true);
   });
 
-  it('swallows a failed refresh: the retried call reports the real error', async () => {
+  it('reports the repair it used', async () => {
+    const cached = fakeClient(cachedUser, completeUser);
+    await expect(refreshPeer(cached.client, 1)).resolves.toBe('cache');
+    expect(cached.resolvePeer).not.toHaveBeenCalled();
+  });
+
+  it('reports no repair when the chat is gone from every source', async () => {
     const { client, resolvePeer } = fakeClient(null, null);
     resolvePeer.mockRejectedValueOnce(new Error('peer not found'));
 
-    await expect(refreshPeer(client, 1)).resolves.toBeUndefined();
+    await expect(refreshPeer(client, 1)).resolves.toBe('none');
   });
 });

@@ -59,6 +59,12 @@ export interface ThreadController {
   */
   error: string | null;
   /**
+  Whether the open chat is one Telegram no longer offers to this account
+  (`not_found`): the view shows the unavailable card instead of an empty thread
+  and a composer that could not send.
+  */
+  unavailable: boolean;
+  /**
   The slash-command menu of the open chat, empty for a chat without one. It
   is read together with the thread's window, so the composer has it as soon
   as the thread does.

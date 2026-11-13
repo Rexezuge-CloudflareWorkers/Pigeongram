@@ -343,14 +343,16 @@ export class TelegramDriver {
    * Reads a profile photo whole, with the version token that identifies it.
    */
   async readAvatar(chatId: number, size: AvatarSize): Promise<AvatarImage> {
-    return readAvatar(this.#ensure().client, chatId, size);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, [chatId], () => readAvatar(client, chatId, size));
   }
 
   /**
    * The version token of a profile photo, without reading its bytes.
    */
   async readAvatarVersion(chatId: number, size: AvatarSize): Promise<string | null> {
-    return readAvatarVersion(this.#ensure().client, chatId, size);
+    const { client } = this.#ensure();
+    return withPeerRetry(client, [chatId], () => readAvatarVersion(client, chatId, size));
   }
 
   async sendUpload(spec: UploadSpec, body: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<MessageDto> {

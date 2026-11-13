@@ -86,6 +86,14 @@ export interface DialogsController {
   Pins a chat in its list, or unpins it.
   */
   setPinned: (chatId: PeerId, pinned: boolean) => Promise<void>;
+  /**
+  Drops a chat from both lists without asking the server.
+  *
+  This is what a chat Telegram no longer offers to this account looks like:
+  the engine answered `not_found` for its window, so the row goes. The next
+  list read is the truth — a chat the account still holds comes back.
+  */
+  drop: (chatId: PeerId) => void;
 }
 
 interface DialogsOptions {
@@ -292,6 +300,15 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     return ref.current.find((dialog) => dialog.chat.id === chatId);
   }, []);
 
+  const drop = useCallback(
+    (chatId: PeerId): void => {
+      if (ref.current.every((dialog) => dialog.chat.id !== chatId)) return;
+      const without = (dialogs: DialogDto[]): DialogDto[] => dialogs.filter((dialog) => dialog.chat.id !== chatId);
+      commit(without(mainRef.current), without(archivedRef.current));
+    },
+    [commit],
+  );
+
   const clear = useCallback((): void => {
     commit([], []);
     setLoading(true);
@@ -317,6 +334,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     applyDeleted,
     setArchived,
     setPinned,
+    drop,
   };
 }
 

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { describeLoginFailure, failureText, rpcErrorText } from '../../packages/backend-services/src/session/rpc-errors';
+import {
+  describeLoginFailure,
+  failureText,
+  rpcErrorText,
+  rpcErrorToEngineError,
+} from '../../packages/backend-services/src/session/rpc-errors';
 import { EngineError, STORAGE_WRITE_QUOTA_MESSAGE } from '../../packages/backend-services/src/session/errors';
 
 /**
@@ -26,6 +31,56 @@ describe('failureText', () => {
     expect(failureText(new Error('Exceeded allowed rows written in Durable Objects free tier'))).toBe(STORAGE_WRITE_QUOTA_MESSAGE);
     expect(failureText(new Error('network down'))).toBe('network down');
     expect(failureText('a string')).toBe('a string');
+  });
+});
+
+describe('rpcErrorToEngineError', () => {
+  it('maps a peer Telegram refuses to a missing chat', () => {
+    for (const text of ['CHANNEL_INVALID', 'PEER_ID_INVALID', 'USER_ID_INVALID', 'CHANNEL_PRIVATE', 'CHAT_ID_INVALID']) {
+      const failure = rpcErrorToEngineError(rpcError(text));
+      expect(failure?.status).toBe(404);
+      expect(failure?.type).toBe('not_found');
+    }
+  });
+
+  it('maps a message that left the chat to not found', () => {
+    expect(rpcErrorToEngineError(rpcError('MESSAGE_ID_INVALID'))?.type).toBe('not_found');
+    expect(rpcErrorToEngineError(rpcError('MSG_ID_INVALID'))?.type).toBe('not_found');
+  });
+
+  it('maps the write refusals to access', () => {
+    for (const text of ['CHAT_WRITE_FORBIDDEN', 'CHAT_ADMIN_REQUIRED', 'CHAT_RESTRICTED', 'CHAT_SEND_MEDIA_FORBIDDEN', 'USER_IS_BLOCKED']) {
+      const failure = rpcErrorToEngineError(rpcError(text));
+      expect(failure?.status).toBe(403);
+      expect(failure?.type).toBe('access');
+    }
+  });
+
+  it('maps a message that cannot take another reaction to a conflict', () => {
+    const failure = rpcErrorToEngineError(rpcError('REACTIONS_TOO_MANY'));
+    expect(failure?.status).toBe(409);
+    expect(failure?.type).toBe('conflict');
+    expect(failure?.message).toContain('reactions');
+  });
+
+  it('maps a flood wait to a rate limit with its seconds', () => {
+    const failure = rpcErrorToEngineError(rpcError('FLOOD_WAIT_%d', { seconds: 42 }));
+    expect(failure?.status).toBe(429);
+    expect(failure?.type).toBe('rate_limited');
+    expect(failure?.message).toContain('42 seconds');
+  });
+
+  it('keeps an unmapped Telegram refusal as its own text', () => {
+    const failure = rpcErrorToEngineError(rpcError('QUERY_TOO_SHORT'));
+    expect(failure?.status).toBe(400);
+    expect(failure?.type).toBe('validation');
+    expect(failure?.message).toBe('QUERY_TOO_SHORT');
+  });
+
+  it('leaves a non-RPC failure to the boundary', () => {
+    expect(rpcErrorToEngineError(new Error('boom'))).toBeNull();
+    expect(rpcErrorToEngineError('PEER_ID_INVALID')).toBeNull();
+    expect(rpcErrorToEngineError(null)).toBeNull();
   });
 });
 

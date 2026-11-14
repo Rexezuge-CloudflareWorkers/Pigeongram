@@ -180,6 +180,10 @@ export function ThreadPane({
           await threads.jumpToLatest();
         }}
         onSend={threads.send}
+        editing={threads.editing}
+        onEdit={threads.startEdit}
+        onCancelEdit={threads.cancelEdit}
+        onSaveEdit={threads.saveEdit}
         onAttach={threads.attach}
         onRetryPending={threads.retryPending}
         onDiscardPending={threads.discardPending}

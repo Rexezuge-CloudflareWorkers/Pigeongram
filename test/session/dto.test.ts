@@ -316,6 +316,7 @@ describe('toMessageDto', () => {
       senderPhoto: null,
       outgoing: false,
       date: 1_700_000_000_000,
+      editDate: null,
       text: 'hello',
       entities: [],
       reactions: [],
@@ -510,6 +511,11 @@ describe('toMessageDto', () => {
     const dto = toMessageDto(message({}));
     expect(dto.markup).toBeNull();
     expect(dto.replyKeyboard).toBeNull();
+  });
+
+  it('maps the edit date, and leaves a never-edited message without one', () => {
+    expect(toMessageDto(message({})).editDate).toBeNull();
+    expect(toMessageDto(message({ editDate: 1_700_000_100 })).editDate).toBe(1_700_000_100_000);
   });
 
   it('carries album membership as a decimal string', () => {

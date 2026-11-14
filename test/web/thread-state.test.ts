@@ -31,6 +31,7 @@ function message(id: number, text = `message ${id}`, overrides: Partial<MessageD
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000 + id,
+    editDate: null,
     text,
     entities: [],
     reactions: [],

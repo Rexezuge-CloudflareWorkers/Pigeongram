@@ -120,6 +120,24 @@ export interface ThreadController {
    */
   jumpToLatest: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
+  /**
+  The message this chat is editing, or null while the composer is composing a
+  new message. Telegram edits one message at a time, so the view shows a single
+  target.
+  */
+  editing: MessageDto | null;
+  /**
+  Starts editing a message: the composer pre-fills its text and sends the edit
+  instead of a new message. Reply and edit are exclusive, so starting one
+  cancels the other.
+  */
+  startEdit: (message: MessageDto) => void;
+  cancelEdit: () => void;
+  /**
+  Replaces the edited message's text. The composer keeps its draft until
+  Telegram answers, so a refused edit loses nothing.
+  */
+  saveEdit: (text: string) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
   retryPending: (key: string) => void;
   discardPending: (key: string) => void;
@@ -174,4 +192,44 @@ export interface ThreadController {
   forwards every event; updates that are not the thread pass through.
   */
   applyUpdate: (update: UpdateEvent) => void;
+}
+
+/**
+What `useThread` needs from its caller. The callbacks name things the caller
+owns (the chat list, the toasts, the dropped row), so the hook can stay about
+one open thread.
+*/
+export interface UseThreadOptions {
+  /**
+  A message the caller sent was accepted: fold it into the dialogs, which
+  belong to the caller.
+  */
+  onSent: (message: MessageDto) => void;
+  /**
+  A message the caller asked to edit was edited: the returned message is the
+  server's copy, so the chat list's preview is repaired from it exactly as a
+  live edit from another device would repair it.
+  */
+  onEdited: (message: MessageDto) => void;
+  /**
+  Reports a background failure (a reaction that had to roll back) to the
+  global toast.
+  */
+  onError: (error: unknown) => void;
+  /**
+  Shows an informational message (a bot's callback answer, a clipboard
+  confirmation) in the global notice toast.
+  */
+  onNotice: (text: string) => void;
+  /**
+  Reports a deletion the open thread folded: what left the window and what it
+  still holds, so the chat list can repair its preview and badge. The list
+  belongs to the caller, and a deletion in a chat that is not open never
+  reaches this hook.
+  */
+  onDeleted: (chatId: PeerId, removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
+  /**
+  A chat Telegram no longer offers: the chat list drops its row.
+  */
+  onUnavailable: (chatId: PeerId) => void;
 }

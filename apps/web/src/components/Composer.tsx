@@ -1,11 +1,14 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { readClipboard } from '../clipboard';
+import { filterCommands, slashQuery } from '../composer-commands';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { BotCommandDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
 import type { UploadRequest } from '../upload';
+import { useEditDraft } from '../useEditDraft';
+import { CommandMenu } from './CommandMenu';
 import { Icon } from './Icon';
 import { Presence } from './Presence';
-import { ComposerReply } from './ReplyQuote';
+import { ComposerEdit, ComposerReply } from './ReplyQuote';
 import { ReplyKeyboard } from './ReplyKeyboard';
 import { UploadDialog } from './UploadDialog';
 
@@ -22,6 +25,13 @@ const NO_COMMANDS: readonly BotCommandDto[] = [];
 interface ComposerProps {
   placeholder: string;
   /**
+  The message being edited, or null when the composer is composing a new
+  message. Telegram edits one message at a time, so the target is a single DTO;
+  while it is set the composer pre-fills its text and submits the edit instead
+  of a send.
+  */
+  editTarget?: MessageDto | null;
+  /**
   The message being replied to, or null when the composer is not replying.
   */
   replyTarget: MessageDto | null;
@@ -31,6 +41,13 @@ interface ComposerProps {
   botCommands?: readonly BotCommandDto[];
   replyKeyboard?: ActiveReplyKeyboard | null;
   onCancelReply: () => void;
+  /**
+  Saves the edited message's text. The draft is kept until this resolves, so a
+  refused edit loses nothing; the caller clears the target, and the composer
+  clears its draft with it.
+  */
+  onSaveEdit?: (text: string) => Promise<void>;
+  onCancelEdit?: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onPressReplyKeyboard?: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
@@ -38,10 +55,13 @@ interface ComposerProps {
 
 export function Composer({
   placeholder,
+  editTarget = null,
   replyTarget,
   botCommands,
   replyKeyboard,
   onCancelReply,
+  onSaveEdit,
+  onCancelEdit,
   onSend,
   onAttach,
   onPressReplyKeyboard,
@@ -60,10 +80,12 @@ export function Composer({
   const listId = useId();
   const commands = botCommands ?? NO_COMMANDS;
 
+  useEditDraft(editTarget, setDraft, setMenuOpen, textareaRef);
+
   const query = menuOpen ? (slashQuery(draft) ?? '') : '';
   const matches = menuOpen ? filterCommands(commands, query) : NO_COMMANDS;
   const active = matches.length === 0 ? 0 : Math.min(activeCommand, matches.length - 1);
-  const showMenu = menuOpen && matches.length > 0;
+  const showMenu = menuOpen && matches.length > 0 && editTarget === null;
 
   // Clicking outside the composer dismisses the menu without stealing the
   // click from whatever the user aimed at. Capture phase keeps a child's
@@ -114,6 +136,15 @@ export function Composer({
   };
 
   const submit = (): void => {
+    if (editTarget !== null) {
+      const trimmed = draft.trim();
+      if (!trimmed) return;
+      setMenuOpen(false);
+      // The draft stays until the caller clears the target: a refused edit
+      // must not cost the reader their text.
+      void Promise.resolve(onSaveEdit?.(trimmed)).catch(() => {});
+      return;
+    }
     sendText(draft);
   };
 
@@ -214,7 +245,13 @@ export function Composer({
           setPendingFiles(files);
         }}
       >
-        {replyTarget ? <ComposerReply message={replyTarget} onCancel={onCancelReply} /> : null}
+        {editTarget === null ? (
+          replyTarget ? (
+            <ComposerReply message={replyTarget} onCancel={onCancelReply} />
+          ) : null
+        ) : (
+          <ComposerEdit message={editTarget} onCancel={() => onCancelEdit?.()} />
+        )}
         <input
           ref={fileRef}
           type="file"
@@ -226,7 +263,7 @@ export function Composer({
             if (files.length > 0) setPendingFiles(files);
           }}
         />
-        {commands.length > 0 ? (
+        {commands.length > 0 && editTarget === null ? (
           <button
             type="button"
             className="slash"
@@ -241,41 +278,24 @@ export function Composer({
             <Icon name="slash" size={18} />
           </button>
         ) : null}
-        <button
-          type="button"
-          className="attach"
-          data-icon-only
-          aria-label="Attach Files"
-          title="Attach Files"
-          onClick={() => fileRef.current?.click()}
-        >
-          <Icon name="attach" size={18} />
-        </button>
-        {showMenu ? (
-          <div className="command-menu" id={listId} role="listbox" aria-label="Bot Commands">
-            {matches.map((command, index) => (
-              <button
-                key={command.command}
-                id={`${listId}-${index}`}
-                type="button"
-                role="option"
-                aria-selected={index === active}
-                className={index === active ? 'active' : undefined}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setActiveCommand(index)}
-                onClick={() => pick(command)}
-              >
-                <span className="command-name">/{command.command}</span>
-                {command.description ? <span className="command-description">{command.description}</span> : null}
-              </button>
-            ))}
-          </div>
+        {editTarget === null ? (
+          <button
+            type="button"
+            className="attach"
+            data-icon-only
+            aria-label="Attach Files"
+            title="Attach Files"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Icon name="attach" size={18} />
+          </button>
         ) : null}
+        {showMenu ? <CommandMenu id={listId} commands={matches} active={active} onActive={setActiveCommand} onPick={pick} /> : null}
         <textarea
           ref={textareaRef}
           value={draft}
           rows={1}
-          placeholder={placeholder}
+          placeholder={editTarget === null ? placeholder : 'Edit Message'}
           aria-autocomplete="list"
           aria-expanded={showMenu}
           aria-controls={showMenu ? listId : undefined}
@@ -317,6 +337,11 @@ export function Composer({
                 }
               }
             }
+            if (event.key === 'Escape' && editTarget !== null) {
+              event.preventDefault();
+              onCancelEdit?.();
+              return;
+            }
             if (event.key === 'Escape' && replyTarget) {
               event.preventDefault();
               onCancelReply();
@@ -345,13 +370,13 @@ export function Composer({
         ) : null}
         <button
           type="submit"
-          aria-label="Send"
-          title="Send"
+          aria-label={editTarget === null ? 'Send' : 'Save'}
+          title={editTarget === null ? 'Send' : 'Save'}
           data-icon-only
-          className={`send-morph${draft.trim() ? '' : ' is-mic'}`}
+          className={`send-morph${editTarget === null && draft.trim().length === 0 ? ' is-mic' : ''}`}
           disabled={draft.trim().length === 0}
         >
-          <Icon name="send" size={18} className="is-send" />
+          <Icon name={editTarget === null ? 'send' : 'check'} size={18} className="is-send" />
           <Icon name="mic" size={18} className="is-mic" />
         </button>
       </form>
@@ -360,20 +385,4 @@ export function Composer({
       </Presence>
     </>
   );
-}
-
-/**
-The filter text when the draft is a bare slash prefix, or null when it is
-anything else. Commands are only recognized at the start of a message, so a
-slash in running text does not open the menu.
-*/
-function slashQuery(text: string): string | null {
-  const match = /^\/(\w*)$/.exec(text);
-  return match === null ? null : match[1];
-}
-
-function filterCommands(commands: readonly BotCommandDto[], query: string): readonly BotCommandDto[] {
-  if (query === '') return commands;
-  const needle = query.toLowerCase();
-  return commands.filter((command) => command.command.toLowerCase().startsWith(needle));
 }

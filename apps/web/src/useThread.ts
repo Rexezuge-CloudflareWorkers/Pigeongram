@@ -13,7 +13,7 @@ import {
   updateThreadPoll,
 } from './state';
 import type { PollUpdateTarget } from './state';
-import type { OpenThreadResult, ThreadController } from './thread-controller';
+import type { OpenThreadResult, ThreadController, UseThreadOptions } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
 import { applyThreadDeleted, applyThreadEdit, applyThreadNewMessage, applyThreadRestored, applyThreadSentMessages } from './thread-state';
 import type { ChatThread } from './thread-state';
@@ -31,6 +31,7 @@ import type {
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
+import { useMessageEdit } from './useMessageEdit';
 import { useMessageDelete } from './useMessageDelete';
 import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
@@ -44,36 +45,7 @@ actions and folding of live updates. A hook rather than state inside `App` so
 both stay readable (and under the god-file cap), mirroring `useComments`.
 */
 
-interface UseThreadOptions {
-  /**
-  A message the caller sent was accepted: fold it into the dialogs, which
-  belong to the caller.
-  */
-  onSent: (message: MessageDto) => void;
-  /**
-  Reports a background failure (a reaction that had to roll back) to the
-  global toast.
-  */
-  onError: (error: unknown) => void;
-  /**
-  Shows an informational message (a bot's callback answer, a clipboard
-  confirmation) in the global notice toast.
-  */
-  onNotice: (text: string) => void;
-  /**
-  Reports a deletion the open thread folded: what left the window and what it
-  still holds, so the chat list can repair its preview and badge. The list
-  belongs to the caller, and a deletion in a chat that is not open never
-  reaches this hook.
-  */
-  onDeleted: (chatId: PeerId, removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
-  /**
-  A chat Telegram no longer offers: the chat list drops its row.
-  */
-  onUnavailable: (chatId: PeerId) => void;
-}
-
-export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable }: UseThreadOptions): ThreadController {
+export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUnavailable }: UseThreadOptions): ThreadController {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [keyboardSeed, setKeyboardSeed] = useState<MessageDto | null>(null);
   const [dismissedKeyboardId, setDismissedKeyboardId] = useState<number | null>(null);
@@ -99,6 +71,8 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
     threadRef.current = thread;
   }, [thread]);
 
+  const edit = useMessageEdit({ setThread, onEdited, onError });
+
   // The socket handler is created once, so the deletion report is read through
   // a ref: the shell rebuilds its handler together with the dialogs.
   const onDeletedRef = useRef(onDeleted);
@@ -121,8 +95,9 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
     positions.forget();
     setKeyboardSeed(null);
     setDismissedKeyboardId(null);
+    edit.reset();
     setThread(null);
-  }, [positions, resetOpen]);
+  }, [edit, positions, resetOpen]);
 
   /**
   Opens a chat, forgetting which one-time keyboard the previous visit dismissed:
@@ -132,6 +107,7 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
   const openThread = useCallback(
     (dialog: DialogDto, options?: OpenThreadOptions): Promise<OpenThreadResult> => {
       setDismissedKeyboardId(null);
+      edit.reset();
       return open(dialog, options);
     },
     [open],
@@ -324,6 +300,7 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
       return;
     }
     if (update.type === 'edit_message') {
+      edit.refresh(update.message);
       setKeyboardSeed((current) => foldKeyboardSeed(current, update.message, true));
       setThread((current) => applyThreadEdit(current, update.message));
       return;
@@ -352,6 +329,8 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
       // same way; the chat list is repaired from what the fold matched.
       const report = deletionReport(threadRef.current, update.chatId, update.messageIds);
       if (report) onDeletedRef.current(report.chatId, report.removed, report.remaining);
+      // A deleted edit target has nothing left to save.
+      edit.forget(update.chatId, update.messageIds);
       setThread((current) => applyThreadDeleted(current, update.chatId, update.messageIds));
       return;
     }
@@ -379,6 +358,10 @@ export function useThread({ onSent, onError, onNotice, onDeleted, onUnavailable 
     loadNewer,
     jumpToLatest,
     send,
+    editing: edit.editing,
+    startEdit: edit.startEdit,
+    cancelEdit: edit.cancelEdit,
+    saveEdit: edit.saveEdit,
     attach,
     retryPending: outbox.retry,
     discardPending: outbox.discard,

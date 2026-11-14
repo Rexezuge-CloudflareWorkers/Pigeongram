@@ -1,8 +1,8 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
-import { groupMessages, messageRowSelector } from '../groups';
+import { groupMessages } from '../groups';
 import { readWatermark } from '../reading';
-import { isAtBottom, flashRow, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
+import { isAtBottom, jumpToMessage, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
 import type { MessageDto, MessageReplyKeyboardButtonDto, PeerId } from '../types';
@@ -56,6 +56,10 @@ export function ThreadView({
   onLoadNewer,
   onJumpToLatest,
   onSend,
+  editing,
+  onEdit,
+  onCancelEdit,
+  onSaveEdit,
   onAttach,
   onRetryPending,
   onDiscardPending,
@@ -230,20 +234,6 @@ export function ThreadView({
   // The day a pending send falls on, when it is not the loaded list's last day.
   const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;
 
-  /**
-  Scrolls the thread to a loaded message and flashes it, so a quote click
-  reads as a jump rather than a no-op. Unloaded originals stay inert.
-  */
-  const jumpToMessage = (messageId: number): void => {
-    const target = scrollRef.current?.querySelector(messageRowSelector(messageId));
-    if (!(target instanceof HTMLElement)) return;
-    // An intentional jump unpins immediately; otherwise a settling image
-    // could drag the view back to the bottom while the smooth scroll runs.
-    stickToBottom.current = false;
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    flashRow(target);
-  };
-
   const send = (text: string, replyTo?: number): Promise<void> => {
     // The outbox carries the reply preview, so the composer is free for the
     // next message before this send is acknowledged.
@@ -338,10 +328,19 @@ export function ThreadView({
               onReact={onReact}
               onVote={onVote}
               onPressButton={onPressButton}
-              onReply={(target) => setReplyingTo({ chatId: chat.id, message: target })}
+              onReply={(target) => {
+                // Reply and edit share the composer, so starting one ends the
+                // other.
+                onCancelEdit();
+                setReplyingTo({ chatId: chat.id, message: target });
+              }}
+              onEdit={(target) => {
+                setReplyingTo(null);
+                onEdit(target);
+              }}
               onForward={onForward}
               onDelete={onDelete}
-              onJump={jumpToMessage}
+              onJump={(messageId) => jumpToMessage(scrollRef.current, messageId, stickToBottom)}
               onOpenComments={openComments}
               onOpenMedia={onOpenMedia}
             />
@@ -373,9 +372,12 @@ export function ThreadView({
           preview={preview}
           onJoin={onJoin}
           replyTarget={replyTarget}
+          editTarget={editing}
           botCommands={botCommands}
           replyKeyboard={replyKeyboard}
           onCancelReply={() => setReplyingTo(null)}
+          onCancelEdit={onCancelEdit}
+          onSaveEdit={onSaveEdit}
           onSend={send}
           onAttach={attach}
           onPressReplyKeyboard={pressReplyKeyboard}

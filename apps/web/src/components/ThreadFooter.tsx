@@ -18,6 +18,13 @@ interface ThreadFooterProps {
    */
   preview: { joining: boolean; requested: boolean } | null;
   onJoin: () => void;
+  /**
+   * The message being edited, or null when the composer is composing a new
+   * message. The footer hands it to the composer with the reply target.
+   */
+  editTarget: MessageDto | null;
+  onCancelEdit: () => void;
+  onSaveEdit: (text: string) => Promise<void>;
   replyTarget: MessageDto | null;
   botCommands: readonly BotCommandDto[];
   /**
@@ -39,6 +46,9 @@ export function ThreadFooter({
   chat,
   preview,
   onJoin,
+  editTarget,
+  onCancelEdit,
+  onSaveEdit,
   replyTarget,
   botCommands,
   replyKeyboard,
@@ -74,10 +84,13 @@ export function ThreadFooter({
       <Composer
         key={chat.id}
         placeholder={replyKeyboard?.keyboard.placeholder ?? 'Message'}
+        editTarget={editTarget}
         replyTarget={replyTarget}
         botCommands={botCommands}
         replyKeyboard={replyKeyboard}
         onCancelReply={onCancelReply}
+        onCancelEdit={onCancelEdit}
+        onSaveEdit={onSaveEdit}
         onSend={onSend}
         onAttach={onAttach}
         onPressReplyKeyboard={onPressReplyKeyboard}

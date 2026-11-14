@@ -48,6 +48,13 @@ interface MessageMenuProps {
   */
   onForward?: (messages: readonly MessageDto[]) => void;
   /**
+  Starts editing this message's text; absent for views that do not edit (the
+  comments screen's post), for a display group (an album has no single body)
+  and for anything the account cannot edit. The row gates those, so a caller
+  that passes it always means it.
+  */
+  onEdit?: (message: MessageDto) => void;
+  /**
   Sets (or clears) a reaction on the anchor message; absent for views that do
   not react (a preview chat).
   */
@@ -75,6 +82,7 @@ export function MessageMenu({
   x,
   y,
   onReply,
+  onEdit,
   onForward,
   onReact,
   onDelete,
@@ -94,6 +102,7 @@ export function MessageMenu({
   });
   const message = messages[0];
   const canReply = onReply !== undefined && !message.service;
+  const canEdit = onEdit !== undefined && messages.length === 1 && !message.service;
   const canForward = onForward !== undefined && !message.service;
   const canCopy = message.text.length > 0;
   const canCopyLink = link !== null;
@@ -101,7 +110,7 @@ export function MessageMenu({
   const canDelete = onDelete !== undefined && !message.service;
   const canDownload = messages.length === 1 && isDownloadable(message);
 
-  if (!canReply && !canForward && !canCopy && !canCopyLink && !canReact && !canDelete && !canDownload) return null;
+  if (!canReply && !canEdit && !canForward && !canCopy && !canCopyLink && !canReact && !canDelete && !canDownload) return null;
 
   const pickReaction = (emoji: string): void => {
     if (!onReact) return;
@@ -111,6 +120,7 @@ export function MessageMenu({
 
   const items: Array<{ label: string; icon: IconName; run: () => void }> = [];
   if (canReply) items.push({ label: 'Reply', icon: 'reply', run: () => onReply?.(message) });
+  if (canEdit) items.push({ label: 'Edit', icon: 'edit', run: () => onEdit?.(message) });
   if (canForward) items.push({ label: 'Forward', icon: 'forward', run: () => onForward?.(messages) });
   if (canCopy) items.push({ label: 'Copy Text', icon: 'copy', run: () => void copyToClipboard(message.text) });
   if (link !== null) items.push({ label: 'Copy Link', icon: 'link', run: () => void copyToClipboard(link) });

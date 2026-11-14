@@ -199,6 +199,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                                                                  |
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                                                        |
 | `deleteMessages`      | `{chatId, messageIds: number[]}`                                                  | `{chatId, messageIds}` (the ids the delete took; the engine also echoes a `deleted` update)                                                  |
+| `editMessage`         | `{chatId, messageId, text}`                                                       | `{message}` (the server's copy, `editDate` included; the engine also echoes an `edit_message` update)                                        |
 | `readHistory`         | `{chatId, maxId?}`                                                                | `{}`                                                                                                                                         |
 | `searchMessages`      | `{chatId, query, limit?, offsetId?}`                                              | `{messages, nextOffsetId?}`                                                                                                                  |
 | `searchGlobal`        | `{query, limit?, offset?: {rate, chatId, messageId}}`                             | `{messages, chats: ChatDto[], next?: {rate, chatId, messageId}}`                                                                             |
@@ -405,6 +406,14 @@ ledger, since a deleted unread album member is never read and `pruneRead` would 
 with a quiet pts step instead of Telegram's `updateDeleteMessages`/`updateDeleteChannelMessages`, so the engine
 broadcasts the `deleted` event the call implies itself; a second tab would otherwise keep the message on screen.
 
+`editMessage` replaces the text of one of the account's own messages and answers with the message as Telegram now
+holds it, `editDate` included, so the requesting tab folds server truth rather than a guess. The bridge offers the
+text half only: a media caption, a poll and a link preview are separate slices, Telegram refuses an edit that changes
+nothing (`MESSAGE_NOT_MODIFIED`, a `409 conflict`) and one of a service message, and the SPA withholds the affordance
+from an album (the menu acts on a display group, and an album has no single body). mtcute can answer the call with a
+quiet pts step instead of the edit's own update, so the engine broadcasts the `edit_message` event the call implies
+itself; both folds are keyed by message id, which makes the repetition free.
+
 `getHistory`'s `addOffset` skips that many messages from `offsetId` (negative is towards newer), which is how a
 `t.me` post link opens a window _around_ the linked post instead of the newest messages: half the page, capped at
 twenty-five messages, lands on the newer side so the post sits mid-window. The same parameter opens a chat with unread
@@ -522,6 +531,8 @@ chat exactly. The account-level `updateDeleteMessages` carries no peer — every
 the account's pts — so the engine sends `chatId: null` and the SPA folds it by matching the ids against the open
 window; a chat's ids are its own, which makes a match proof. The engine also emits this event after its own
 `deleteMessages` RPC, because mtcute swallows the delete's own update.
+The `edit_message` update carries the full `MessageDto` (`editDate` set), and the engine emits it after its own
+`editMessage` RPC for the same reason: the chat list's preview and every other tab follow the edit.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
 `updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.

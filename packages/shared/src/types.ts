@@ -486,6 +486,11 @@ export interface MessageDto {
   */
   date: number;
   /**
+  Unix milliseconds of the last edit, or null when the message was never
+  edited. The SPA renders its "Edited" marker from this alone.
+  */
+  editDate: number | null;
+  /**
   The message's text or media caption. Service messages carry no text of
   their own; the bridge fills this with the label the UI renders (currently
   the auto-delete timer change) and leaves it empty for other actions.

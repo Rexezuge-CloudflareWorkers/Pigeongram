@@ -5,9 +5,9 @@ import type { SearchScope } from '../search';
 import { TelegramLinkProvider } from '../telegram-links';
 import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
 import { useComments } from '../useComments';
-import { useDeletionReport } from '../useDeletionReport';
 import { useDialogs } from '../useDialogs';
 import { useForwarding } from '../useForwarding';
+import { useMessageFolds } from '../useMessageFolds';
 import { useSignedInNavigation } from '../useSignedInNavigation';
 import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
@@ -74,18 +74,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     clear: clearDialogs,
   } = dialogs;
 
-  /**
-  A message the caller sent (or uploaded) was accepted: fold it into the
-  dialogs. The thread's own copy is the controller's.
-  */
-  const handleSent = useCallback(
-    (message: MessageDto): void => {
-      applyUpdate({ type: 'new_message', message }, message.chatId);
-    },
-    [applyUpdate],
-  );
-
-  const handleDeleted = useDeletionReport(applyDeleted);
+  const { onSent: handleSent, onEdited: handleEdited, onDeleted: handleDeleted } = useMessageFolds(applyUpdate, applyDeleted);
 
   /**
   A chat Telegram no longer offers to this account: its thread says so, and the
@@ -99,7 +88,14 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     [dropDialog],
   );
 
-  const threads = useThread({ onSent: handleSent, onError, onNotice: notify, onDeleted: handleDeleted, onUnavailable: handleUnavailable });
+  const threads = useThread({
+    onSent: handleSent,
+    onEdited: handleEdited,
+    onError,
+    onNotice: notify,
+    onDeleted: handleDeleted,
+    onUnavailable: handleUnavailable,
+  });
   const forwarding = useForwarding(handleSent, threads.applyUpdate, notify);
   // Stable helpers, so the callbacks that depend on them keep their identity.
   const applyThreadUpdate = threads.applyUpdate;

@@ -716,6 +716,36 @@ describe('sendMessage dispatch', () => {
   });
 });
 
+describe('editMessage dispatch', () => {
+  function fakeEditClient(): {
+    client: TelegramClient;
+    calls: Array<{ chatId: number; message: number; text: string }>;
+  } {
+    const calls: Array<{ chatId: number; message: number; text: string }> = [];
+    const client = {
+      editMessage: async (params: { chatId: number; message: number; text: string }) => {
+        calls.push(params);
+        return message(40);
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('edits the named message and answers with the server copy', async () => {
+    const { client, calls } = fakeEditClient();
+    const result = (await rpc(client, 'editMessage', { chatId: 1, messageId: 40, text: 'fixed' })) as { message: { id: number } };
+
+    expect(calls).toEqual([{ chatId: 1, message: 40, text: 'fixed' }]);
+    expect(result.message.id).toBe(40);
+  });
+
+  it('rejects a blank text before Telegram is touched', async () => {
+    const { client, calls } = fakeEditClient();
+    await expect(rpc(client, 'editMessage', { chatId: 1, messageId: 40, text: ' '.repeat(3) })).rejects.toThrow('text');
+    expect(calls).toEqual([]);
+  });
+});
+
 describe('batch dispatch', () => {
   /**
    * A fake client whose reads are answered one at a time, so a batch can be

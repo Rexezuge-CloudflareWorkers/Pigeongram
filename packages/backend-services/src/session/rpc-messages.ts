@@ -68,6 +68,18 @@ export const messagesRpcMethods = {
     },
   },
 
+  editMessage: {
+    readOnly: false,
+    run: async (context, params) => {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const text = requireText(params.text);
+      return {
+        message: toMessageDto(await context.client.editMessage({ chatId, message: messageId, text })),
+      };
+    },
+  },
+
   forwardMessages: {
     readOnly: false,
     run: async (context, params) => {

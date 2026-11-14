@@ -27,6 +27,7 @@ function message(id: number, replyKeyboard: MessageReplyKeyboardDto | null, over
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000 + id,
+    editDate: null,
     text: `message ${String(id)}`,
     entities: [],
     reactions: [],

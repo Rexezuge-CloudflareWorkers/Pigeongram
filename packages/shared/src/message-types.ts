@@ -24,6 +24,34 @@ export interface SendMessageParams {
   randomId?: string;
 }
 
+/**
+Replaces the text of one of the account's own messages.
+
+Telegram allows an edit of a text message at any age, but not of a service
+message, and it refuses an edit that changes nothing (`MESSAGE_NOT_MODIFIED`,
+mapped to `409 conflict`). The bridge offers the text half only for now: a
+media caption, a poll and a link preview's edit are separate slices.
+*/
+export interface EditMessageParams {
+  chatId: PeerId;
+  /**
+   * Id of the message to edit, in that chat.
+   */
+  messageId: number;
+  /**
+   * The message's new text. Telegram rejects a blank edit, so it must be
+   * non-empty.
+   */
+  text: string;
+}
+
+export interface EditMessageResult {
+  /**
+   * The message as Telegram now holds it, `editDate` included.
+   */
+  message: MessageDto;
+}
+
 export interface ForwardMessagesParams {
   /**
    * The source chat the messages belong to.

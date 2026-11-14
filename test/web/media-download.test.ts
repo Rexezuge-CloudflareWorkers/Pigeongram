@@ -32,6 +32,7 @@ function message(media: MessageMediaDto | null, overrides: Partial<MessageDto> =
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    editDate: null,
     text: '',
     entities: [],
     reactions: [],

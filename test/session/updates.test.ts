@@ -3,7 +3,7 @@ import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
 import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
-import { deletedEvent, mapRawUpdate } from '../../packages/backend-services/src/session/updates';
+import { deletedEvent, editedEvent, mapRawUpdate } from '../../packages/backend-services/src/session/updates';
 
 const rawUser = {
   _: 'user',
@@ -380,5 +380,18 @@ describe('deletions', () => {
     expect(deletedEvent({ chatId: 1, messageIds: [] })).toBeNull();
     expect(deletedEvent({ chatId: 'one', messageIds: [1] })).toBeNull();
     expect(deletedEvent({ chatId: 1, messageIds: ['one', 2] })).toEqual({ type: 'deleted', chatId: 1, messageIds: [2] });
+  });
+});
+
+describe('edits', () => {
+  it('turns a settled edit RPC into the event a second tab needs', () => {
+    const message = { id: 7, chatId: 1, text: 'edited', editDate: 1_700_000_100_000 } as never;
+    expect(editedEvent({ message })).toEqual({ type: 'edit_message', message });
+  });
+
+  it('derives no event from a result without a message', () => {
+    expect(editedEvent(null)).toBeNull();
+    expect(editedEvent({})).toBeNull();
+    expect(editedEvent({ message: null })).toBeNull();
   });
 });

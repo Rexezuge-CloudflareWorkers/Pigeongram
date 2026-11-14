@@ -166,6 +166,23 @@ export interface ThreadViewProps {
    */
   onJumpToLatest: () => Promise<void>;
   onSend: (text: string, replyTo?: number) => Promise<void>;
+  /**
+   * The message the composer is editing, or null when it is composing a new
+   * message.
+   */
+  editing: MessageDto | null;
+  /**
+   * Starts editing a message: the composer pre-fills its text and saves the
+   * edit instead of sending. Reply and edit are exclusive, so starting one
+   * clears the other.
+   */
+  onEdit: (message: MessageDto) => void;
+  onCancelEdit: () => void;
+  /**
+   * Saves the edited message's text; the composer keeps its draft until this
+   * resolves.
+   */
+  onSaveEdit: (text: string) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onRetryPending: (key: string) => void;
   onDiscardPending: (key: string) => void;

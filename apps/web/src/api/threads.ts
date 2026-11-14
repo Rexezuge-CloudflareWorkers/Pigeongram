@@ -1,6 +1,7 @@
 import type {
   BotCommandDto,
   DeleteMessagesResult,
+  EditMessageResult,
   ForwardMessagesResult,
   GetBotCommandsResult,
   GetCommentsResult,
@@ -125,6 +126,14 @@ export const sendMessage = (chatId: PeerId, text: string, replyTo?: number, rand
     ...(replyTo !== undefined && { replyTo }),
     ...(randomId !== undefined && { randomId }),
   });
+
+/**
+Replaces the text of one of the account's own messages. The answer is the
+message as Telegram now holds it, `editDate` included, so the caller folds the
+server truth rather than a guess.
+*/
+export const editMessage = (chatId: PeerId, messageId: number, text: string): Promise<EditMessageResult> =>
+  rpc('editMessage', { chatId, messageId, text });
 
 /**
 Forwards messages from their source chat into another chat. An album sends

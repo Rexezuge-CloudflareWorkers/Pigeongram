@@ -42,6 +42,11 @@ interface ThreadMessageRowsProps {
   onVote: (message: MessageDto, options: number[] | null) => void;
   onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   onReply: (message: MessageDto) => void;
+  /**
+  Starts editing a message's text; a preview chat withholds it, as it withholds
+  every other write.
+  */
+  onEdit: (message: MessageDto) => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onDelete: (messages: readonly MessageDto[]) => void;
   onJump: (messageId: number) => void;
@@ -64,6 +69,7 @@ export function ThreadMessageRows({
   onVote,
   onPressButton,
   onReply,
+  onEdit,
   onForward,
   onDelete,
   onJump,
@@ -100,6 +106,7 @@ export function ThreadMessageRows({
               onPressButton={preview === null ? onPressButton : undefined}
               readOutboxMaxId={readOutboxMaxId}
               onReply={preview === null ? onReply : undefined}
+              onEdit={preview === null ? onEdit : undefined}
               onForward={onForward}
               onDelete={preview === null ? onDelete : undefined}
               link={messageWebLink(chat, anchor.id)}

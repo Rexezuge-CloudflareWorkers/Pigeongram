@@ -78,3 +78,21 @@ export function ComposerReply({ message, onCancel }: { message: MessageDto; onCa
     </div>
   );
 }
+
+/**
+The composer's edit banner: the same shell as a reply, labelled for the edit it
+is, so the composer never looks like it is about to send a second message.
+*/
+export function ComposerEdit({ message, onCancel }: { message: MessageDto; onCancel: () => void }) {
+  return (
+    <div className="composer-reply">
+      <div className="composer-reply-body">
+        <span className="reply-name">Editing Message</span>
+        <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
+      </div>
+      <button type="button" className="reply-cancel" aria-label="Cancel Edit" title="Cancel Edit" onClick={onCancel}>
+        ×
+      </button>
+    </div>
+  );
+}

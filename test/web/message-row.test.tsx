@@ -39,6 +39,7 @@ function message(overrides: Partial<MessageDto> = {}): MessageDto {
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    editDate: null,
     text: '',
     entities: [],
     reactions: [],
@@ -288,5 +289,58 @@ describe('MessageRow unsupported payloads', () => {
     fireEvent.contextMenu(container.querySelector('[data-message-id="10"]') as HTMLElement, { clientX: 10, clientY: 10 });
 
     expect(screen.queryByRole('menuitem', { name: /Download/ })).toBeNull();
+  });
+});
+
+describe('MessageRow edit affordance', () => {
+  function openMenu(row: HTMLElement): void {
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+  }
+
+  it('offers Edit on the account’s own text and hands the message over', () => {
+    const onEdit = vi.fn();
+    const own = message({ id: 10, outgoing: true, media: null, text: 'First draft' });
+    const { container } = renderRow([own], { onEdit });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+    expect(onEdit).toHaveBeenCalledWith(own);
+  });
+
+  it('withholds Edit from someone else’s message', () => {
+    const { container } = renderRow([message({ outgoing: false })], { onEdit: vi.fn() });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+
+    expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull();
+  });
+
+  it('withholds Edit from a media message, an album and a service message', () => {
+    const mediaRow = renderRow([message({ outgoing: true, media: media() })], { onEdit: vi.fn() });
+    openMenu(mediaRow.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull();
+    cleanup();
+
+    const albumRow = renderRow(
+      [message({ id: 10, outgoing: true, media: null, text: 'First' }), message({ id: 11, outgoing: true, media: null, text: 'Second' })],
+      { onEdit: vi.fn() },
+    );
+    openMenu(albumRow.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull();
+    cleanup();
+
+    const serviceRow = renderRow([message({ outgoing: true, service: true, text: '' })], { onEdit: vi.fn() });
+    openMenu(serviceRow.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull();
+  });
+
+  it('marks an edited message and leaves an unedited one unmarked', () => {
+    const edited = renderRow([message({ editDate: 1_700_000_100_000 })]);
+    expect(edited.container.querySelector('.edited')?.textContent).toBe('Edited');
+    cleanup();
+
+    const fresh = renderRow([message()]);
+    expect(fresh.container.querySelector('.edited')).toBeNull();
   });
 });

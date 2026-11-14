@@ -50,6 +50,7 @@ function message(id: number, messagePoll: MessagePollDto | null = null): Message
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000 + id,
+    editDate: null,
     text: '',
     entities: [],
     reactions: [],

@@ -159,6 +159,7 @@ export function toMessageDto(message: Message): MessageDto {
     senderPhoto: sender === null ? null : photoVersion(sender),
     outgoing: message.isOutgoing,
     date: message.date.getTime(),
+    editDate: message.editDate?.getTime() ?? null,
     text: message.isService ? serviceText(message, senderName) : message.text,
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),

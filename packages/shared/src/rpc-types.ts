@@ -20,6 +20,8 @@ export type {
 export type {
   DeleteMessagesParams,
   DeleteMessagesResult,
+  EditMessageParams,
+  EditMessageResult,
   ForwardMessagesParams,
   ForwardMessagesResult,
   GetPollResultsParams,
@@ -48,6 +50,7 @@ export type RpcMethod =
   | 'getDialogs'
   | 'getHistory'
   | 'sendMessage'
+  | 'editMessage'
   | 'forwardMessages'
   | 'deleteMessages'
   | 'readHistory'

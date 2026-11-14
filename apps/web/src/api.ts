@@ -24,6 +24,7 @@ export {
 } from './api/chats';
 export {
   deleteMessages,
+  editMessage,
   fetchChatScreen,
   fetchComments,
   fetchHistory,

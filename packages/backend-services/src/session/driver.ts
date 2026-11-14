@@ -19,7 +19,7 @@ import { peerIdsIn, withPeerRetry } from './peers';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
 import { UnreadAlbumLedger } from './unread-albums';
-import { mapRawUpdate, deletedEvent } from './updates';
+import { echoEvent, mapRawUpdate } from './updates';
 
 /**
  * How the driver builds its client stack. Injectable so the lifecycle and
@@ -316,14 +316,12 @@ export class TelegramDriver {
   async rpc(method: string, params: unknown): Promise<unknown> {
     const { client } = this.#ensure();
     const result = await withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums, this.#calls));
-    // mtcute turns the delete's own update into a quiet pts step, so the raw
-    // update listener never sees it and the other tabs would keep the message.
-    // The engine broadcasts the event the call implies; the tab that asked
-    // folds its own result too, and both folds are keyed by id.
-    if (method === 'deleteMessages') {
-      const echo = deletedEvent(result);
-      if (echo) this.#publish(echo);
-    }
+    // mtcute can turn a write's own update into a quiet pts step, so the raw
+    // update listener never sees it and the other tabs would keep the old
+    // state. The engine broadcasts the event the call implies; the tab that
+    // asked folds its own result too, and both folds are keyed by id.
+    const echo = echoEvent(method, result);
+    if (echo) this.#publish(echo);
     return result;
   }
 

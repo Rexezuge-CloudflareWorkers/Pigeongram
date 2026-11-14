@@ -144,6 +144,8 @@ export function pendingAsMessage(entry: PendingMessage): MessageDto {
     senderPhoto: null,
     outgoing: true,
     date: entry.createdAt,
+    // A pending send has never been edited.
+    editDate: null,
     text: entry.text,
     entities: [],
     reactions: [],

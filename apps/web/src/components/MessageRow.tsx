@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatCount, formatTime } from '../format';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { isDownloadable } from '../media-download';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { ForwardOrigin } from './ForwardOrigin';
 import { Icon } from './Icon';
+import { MessageMeta } from './MessageMeta';
 import { MessageAlbum, MessageMedia } from './Media';
 import { MessageButtons } from './MessageButtons';
 import { MessageMenu } from './MessageMenu';
@@ -97,6 +97,13 @@ interface MessageRowProps {
   onPressButton?: (message: MessageDto, button: MessageButtonDto) => void;
   onReply?: (message: MessageDto) => void;
   /**
+  Starts editing this message's text. Absent for views that do not edit (the
+  comments screen's post); the row withholds it from everything Telegram would
+  refuse anyway — a service message, someone else's message, an album, and a
+  media or poll message.
+  */
+  onEdit?: (message: MessageDto) => void;
+  /**
   Starts forwarding this display group; an album forwards every member.
   */
   onForward?: (messages: readonly MessageDto[]) => void;
@@ -148,6 +155,7 @@ export function MessageRow({
   onPressButton,
   readOutboxMaxId = 0,
   onReply,
+  onEdit,
   onForward,
   onDelete,
   canDeleteOthers,
@@ -168,6 +176,12 @@ export function MessageRow({
   // only be deleted with the chat's moderation right.
   const canDelete = onDelete !== undefined && !message.service && (own || (canDeleteOthers ?? chat.canDeleteMessages));
   const album = group.length > 1;
+  // Only the account's own text can be edited: Telegram has no edit for a
+  // service message or an album's members, and a media caption, a poll and a
+  // link preview are separate slices. The menu also needs a single message,
+  // which is why the album gate is here rather than only in the menu.
+  const canEdit =
+    onEdit !== undefined && !message.service && own && !album && message.media === null && message.poll === null && message.text.length > 0;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
   // The caller enables avatars for group threads and comments; service messages and anonymous senders have none.
   const avatar =
@@ -242,21 +256,7 @@ export function MessageRow({
     message.webPage !== null;
   const bare = !album && message.media !== null && !unsupported && message.poll === null && !message.service && !hasCaption && !hasExtras;
 
-  const meta = (
-    <span className="meta">
-      {message.views === null ? null : (
-        <span className="views" title={`${message.views.toLocaleString()} views`}>
-          <Icon name="eye" size={12} /> {formatCount(message.views)}
-        </span>
-      )}
-      {formatTime(message.date)}
-      {showStatus ? (
-        <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
-          <Icon name={read ? 'done-all' : 'check'} size={14} />
-        </span>
-      ) : null}
-    </span>
-  );
+  const meta = <MessageMeta message={message} showStatus={showStatus} read={read} />;
 
   const bubbleStyle = swipeOffset === 0 ? undefined : { transform: `translateX(${String(swipeOffset)}px)` };
 
@@ -359,6 +359,7 @@ export function MessageRow({
           x={menu.x}
           y={menu.y}
           onReply={onReply}
+          onEdit={canEdit ? onEdit : undefined}
           onForward={onForward}
           onReact={onReact}
           onDelete={canDelete ? onDelete : undefined}

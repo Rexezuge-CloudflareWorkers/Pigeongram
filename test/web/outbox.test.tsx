@@ -37,6 +37,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    editDate: null,
     text: `message ${String(overrides.id)}`,
     entities: [],
     reactions: [],

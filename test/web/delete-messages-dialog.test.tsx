@@ -16,6 +16,7 @@ function message(id: number): MessageDto {
     senderPhoto: null,
     outgoing: true,
     date: 1_700_000_000_000,
+    editDate: null,
     text: `message ${id}`,
     entities: [],
     reactions: [],

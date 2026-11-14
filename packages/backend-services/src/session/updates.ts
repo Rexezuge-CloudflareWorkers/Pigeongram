@@ -1,6 +1,6 @@
 import { getMarkedPeerId, Message, MessageReactions, Poll } from '@mtcute/core';
 import type { RawUpdateInfo } from '@mtcute/core';
-import type { UpdateEvent } from '../types';
+import type { MessageDto, UpdateEvent } from '../types';
 import { encodeBase64 } from './base64';
 import { toCallDto } from './call-dto';
 import type { CallRegistry } from './call-registry';
@@ -170,4 +170,31 @@ export function deletedEvent(result: unknown): UpdateEvent | null {
   if (typeof chatId !== 'number' || !Array.isArray(messageIds)) return null;
   const ids = messageIds.filter((id): id is number => typeof id === 'number');
   return ids.length === 0 ? null : { type: 'deleted', chatId, messageIds: ids };
+}
+
+/**
+The `edit_message` event a successful `editMessage` RPC implies.
+
+Whether mtcute dispatches the edit's own update depends on the quiet pts path
+the call takes, so the engine does not leave it to chance: it broadcasts the
+message the call returned, and the tab that asked folds it a second time. Both
+folds are keyed by id, so the repetition is free, and the chat list's preview
+is repaired by the same event a second device sees.
+*/
+export function editedEvent(result: unknown): UpdateEvent | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const { message } = result as { message?: unknown };
+  if (typeof message !== 'object' || message === null) return null;
+  return { type: 'edit_message', message: message as MessageDto };
+}
+
+/**
+The event a successful write implies when mtcute swallowed Telegram's own
+update for it. The dispatcher names the method, so the driver does not have to
+remember which writes need the echo.
+*/
+export function echoEvent(method: string, result: unknown): UpdateEvent | null {
+  if (method === 'deleteMessages') return deletedEvent(result);
+  if (method === 'editMessage') return editedEvent(result);
+  return null;
 }

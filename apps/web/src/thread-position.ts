@@ -159,7 +159,7 @@ export function positionThread(element: HTMLElement, opening: ThreadOpening): vo
  * The class is removed after the flash keyframe finishes; the flash itself is
  * the only motion, the accent outline is the durable cue.
  */
-export function flashRow(element: HTMLElement): void {
+function flashRow(element: HTMLElement): void {
   element.classList.add('reply-flash');
   setTimeout(() => element.classList.remove('reply-flash'), 1200);
 }
@@ -189,4 +189,19 @@ export function settleToBottom(element: HTMLElement, pinned: () => boolean): () 
     element.removeEventListener('loadedmetadata', settle, true);
     observer?.disconnect();
   };
+}
+
+/**
+Scrolls the thread to a loaded message and flashes it, so a quote click reads
+as a jump rather than a no-op. Unloaded originals stay inert.
+
+An intentional jump unpins immediately: otherwise a settling image could drag
+the view back to the bottom while the smooth scroll runs.
+*/
+export function jumpToMessage(element: HTMLElement | null, messageId: number, pinned: { current: boolean }): void {
+  const target = element?.querySelector(messageRowSelector(messageId));
+  if (!(target instanceof HTMLElement)) return;
+  pinned.current = false;
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  flashRow(target);
 }

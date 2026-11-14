@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from '../../apps/web/src/components/Composer';
-import type { BotCommandDto } from '../../apps/web/src/types';
+import type { BotCommandDto, MessageDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 
@@ -10,6 +10,33 @@ const COMMANDS: BotCommandDto[] = [
   { command: 'help', description: 'Show help' },
   { command: 'hello', description: 'Say hello' },
 ];
+
+function editingMessage(text = 'First draft'): MessageDto {
+  return {
+    id: 7,
+    chatId: 1,
+    groupedId: null,
+    senderId: 1,
+    senderName: 'Ada',
+    senderPhoto: null,
+    outgoing: true,
+    date: 1_700_000_000_000,
+    editDate: null,
+    text,
+    entities: [],
+    reactions: [],
+    service: false,
+    media: null,
+    webPage: null,
+    poll: null,
+    markup: null,
+    replyKeyboard: null,
+    reply: null,
+    forward: null,
+    views: null,
+    comments: null,
+  };
+}
 
 function renderComposer(commands: readonly BotCommandDto[] = COMMANDS): { onSend: ReturnType<typeof vi.fn> } {
   const onSend = vi.fn(async () => {
@@ -107,5 +134,74 @@ describe('Composer bot commands', () => {
     cleanup();
     renderComposer([]);
     expect(screen.queryByRole('button', { name: 'Bot Commands' })).toBeNull();
+  });
+});
+
+describe('Composer edit mode', () => {
+  function renderEditing(options: { target?: MessageDto; save?: () => Promise<void> } = {}): {
+    onSaveEdit: ReturnType<typeof vi.fn>;
+    onCancelEdit: ReturnType<typeof vi.fn>;
+    onSend: ReturnType<typeof vi.fn>;
+  } {
+    const onSaveEdit = vi.fn(options.save ?? (async () => {}));
+    const onCancelEdit = vi.fn();
+    const onSend = vi.fn(async () => {});
+    render(
+      <Composer
+        placeholder="Message"
+        editTarget={options.target ?? editingMessage()}
+        replyTarget={null}
+        onCancelReply={() => {}}
+        onCancelEdit={onCancelEdit}
+        onSaveEdit={onSaveEdit}
+        onSend={onSend}
+        onAttach={async () => {}}
+      />,
+    );
+    return { onSaveEdit, onCancelEdit, onSend };
+  }
+
+  it('pre-fills the message and saves it instead of sending', async () => {
+    const { onSaveEdit, onSend } = renderEditing();
+
+    const box = screen.getByPlaceholderText('Edit Message') as HTMLTextAreaElement;
+    expect(box.value).toBe('First draft');
+    expect(box).toBe(document.activeElement);
+    expect(screen.getByText('Editing Message')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Attach Files' })).toBeNull();
+
+    fireEvent.change(box, { target: { value: 'Second draft' } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(onSaveEdit).toHaveBeenCalledWith('Second draft');
+    });
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('keeps the draft when the save is refused', async () => {
+    const { onSaveEdit } = renderEditing({
+      save: async () => {
+        throw new Error('refused');
+      },
+    });
+
+    const box = screen.getByPlaceholderText('Edit Message') as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: 'Second draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(onSaveEdit).toHaveBeenCalledWith('Second draft');
+    });
+    expect(box.value).toBe('Second draft');
+  });
+
+  it('cancels with Escape and never sends', () => {
+    const { onCancelEdit, onSend } = renderEditing();
+
+    fireEvent.keyDown(screen.getByPlaceholderText('Edit Message'), { key: 'Escape' });
+
+    expect(onCancelEdit).toHaveBeenCalledTimes(1);
+    expect(onSend).not.toHaveBeenCalled();
   });
 });

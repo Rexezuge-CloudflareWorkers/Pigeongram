@@ -21,7 +21,7 @@
     "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv"
   },
   "devDependencies": {
-    "@rexezuge/tooling": "1.9.2",
+    "@rexezuge/tooling": "1.9.4",
     "@types/node": "26.6.6",
     "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "4.1.11",

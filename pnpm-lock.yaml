@@ -205,8 +205,8 @@ importers:
         specifier: 0.32.7
         version: 0.32.7
       '@mtcute/wasm':
-        specifier: 0.32.6
-        version: 0.32.6
+        specifier: 0.32.8
+        version: 0.32.8
       '@rexezuge/errors':
         specifier: 1.9.4
         version: 1.9.4
@@ -1393,8 +1393,8 @@ packages:
   '@mtcute/tl-runtime@0.32.6':
     resolution: {integrity: sha512-5Y31HHeH3GoZAqtPulh5L12OEvpk7prf1jPWkN0lN8ifCImCo+txqM1OA0yOnkpcsfNkUI4J3r3kuIAFTrl38g==}
 
-  '@mtcute/wasm@0.32.6':
-    resolution: {integrity: sha512-vDq8YdLoaZQfDKmc/ANa3cBg0i+vkWn+LRFUPzv4dt24BNC695b1c0M8coI8+z4JcwaVFnzjBusXTe8bL0W2Qg==}
+  '@mtcute/wasm@0.32.8':
+    resolution: {integrity: sha512-nT988eIWH0qQLNDXTTpLQkqx6TRc70dS1QR51zyocr6b4uPOpJ0c1SbZPrWhAoKvxT+wZjZP39oHDaoldiKlIg==}
 
   '@napi-rs/wasm-runtime@1.2.7':
     resolution: {integrity: sha512-zJccwplOAbgfZju95IUHazLnx9RAPtPN2YGJXI6UbrgeaR9QfPjGrQL6ERkSAtnVCA4Q+83ApGyaX5zdpCaKkQ==}
@@ -5307,7 +5307,7 @@ snapshots:
       '@fuman/utils': 0.0.23
       long: 5.3.2
 
-  '@mtcute/wasm@0.32.6': {}
+  '@mtcute/wasm@0.32.8': {}
 
   '@napi-rs/wasm-runtime@1.2.7(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)':
     dependencies:

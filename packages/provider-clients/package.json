@@ -15,7 +15,7 @@
   "dependencies": {
     "@fuman/net": "0.0.23",
     "@mtcute/core": "0.32.7",
-    "@mtcute/wasm": "0.32.6",
+    "@mtcute/wasm": "0.32.8",
     "@rexezuge/errors": "1.9.4",
     "@rexezuge/runtime": "1.9.4"
   },

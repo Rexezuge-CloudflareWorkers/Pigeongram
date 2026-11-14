@@ -13,7 +13,7 @@
     "@pigeongram/backend-runtime": "workspace:*",
     "@pigeongram/backend-services": "workspace:*",
     "@rexezuge/http": "1.9.4",
-    "hono": "^4.13.16"
+    "hono": "^4.13.17"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

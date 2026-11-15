@@ -6,6 +6,7 @@ import type {
   GetBotCommandsResult,
   GetCommentsResult,
   GetHistoryResult,
+  GetPinnedMessagesResult,
   GetPollResultsResult,
   MessageDto,
   PeerId,
@@ -15,6 +16,7 @@ import type {
   SendMessageResult,
   SendReactionResult,
   SendVoteResult,
+  SetMessagePinnedResult,
 } from '../types';
 import { batchResult, rpc, rpcBatch } from './request';
 
@@ -55,6 +57,12 @@ interface ChatScreen {
   Why the comments could not be read, when they could not.
   */
   commentsError: string | null;
+  /**
+  The chat's newest pinned message, when it carries one. It rides beside the
+  window so the thread's banner needs no extra request, and a failed read
+  degrades to no banner rather than failing the thread.
+  */
+  pinned: MessageDto | null;
 }
 
 /**
@@ -88,9 +96,14 @@ export async function fetchChatScreen(
   if (postId !== null) {
     calls.push({ method: 'getComments', params: { chatId, messageId: postId, limit: commentsLimit } });
   }
+  // The banner's message is one more independent read. It travels with the
+  // window so opening a thread never pays a second round trip for it.
+  const pinnedIndex = calls.length;
+  calls.push({ method: 'getPinnedMessages', params: { chatId, limit: 1 } });
   // A window around an unread divider is not the newest page, but the chat's
   // reply keyboard is the newest message's. One more read, inside the same
   // event and over the same connection, answers which keyboard the chat shows.
+  const latestIndex = withLatest ? calls.length : undefined;
   if (withLatest) {
     calls.push({ method: 'getHistory', params: { chatId, limit: 1 } });
   }
@@ -102,7 +115,8 @@ export async function fetchChatScreen(
   const commandsOutcome = commandsIndex === undefined ? undefined : outcomes[commandsIndex];
   const menu = commandsOutcome?.ok ? (commandsOutcome.result as GetBotCommandsResult) : null;
   const commentsOutcome = commentsIndex === undefined ? undefined : outcomes[commentsIndex];
-  const latestOutcome = withLatest ? outcomes.at(-1) : undefined;
+  const pinnedOutcome = outcomes[pinnedIndex];
+  const latestOutcome = latestIndex === undefined ? undefined : outcomes[latestIndex];
   return {
     messages,
     latestMessage:
@@ -111,8 +125,25 @@ export async function fetchChatScreen(
     description: menu?.description ?? null,
     comments: commentsOutcome?.ok ? (commentsOutcome.result as GetCommentsResult) : null,
     commentsError: commentsOutcome === undefined || commentsOutcome.ok ? null : (commentsOutcome.error ?? 'The Comments Could Not Be Read'),
+    pinned: pinnedOutcome?.ok ? ((pinnedOutcome.result as GetPinnedMessagesResult).messages[0] ?? null) : null,
   };
 }
+
+/**
+Reads one page of a chat's pinned messages, newest first. The cursor is the
+oldest message the page returned, so paging moves back through the pins.
+*/
+export const fetchPinnedMessages = (
+  chatId: PeerId,
+  options: { limit?: number; offsetId?: number } = {},
+): Promise<GetPinnedMessagesResult> => rpc('getPinnedMessages', { chatId, ...options });
+
+/**
+Pins a message in its chat, or unpins it. The answer is the state the engine
+applied; the thread folds it rather than guessing ahead.
+*/
+export const setMessagePinned = (chatId: PeerId, messageId: number, pinned: boolean): Promise<SetMessagePinnedResult> =>
+  rpc('setMessagePinned', { chatId, messageId, pinned });
 
 export const fetchHistory = (
   chatId: PeerId,

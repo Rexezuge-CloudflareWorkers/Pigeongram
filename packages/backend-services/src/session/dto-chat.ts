@@ -20,13 +20,14 @@ export function toChatDto(peer: Peer): ChatDto {
     presence: presenceOfPeer(peer),
   };
   if (peer.type === 'user') {
-    return { ...base, kind: peer.isBot ? 'bot' : 'user', canSendMessages: true, canDeleteMessages: false };
+    return { ...base, kind: peer.isBot ? 'bot' : 'user', canSendMessages: true, canDeleteMessages: false, canPinMessages: true };
   }
   return {
     ...base,
     kind: chatKind(peer),
     canSendMessages: canSendMessages(peer),
     canDeleteMessages: canDeleteMessages(peer),
+    canPinMessages: canPinMessages(peer),
   };
 }
 
@@ -84,6 +85,33 @@ function canDeleteMessages(chat: Chat): boolean {
       // A basic group's administrator may always moderate; the finer
       // `delete_messages` right exists only on channels and supergroups.
       return chat.isAdmin;
+    }
+  }
+}
+
+/**
+Whether the account may pin a message in a chat.
+
+Answered conservatively where sending is answered optimistically: a chat the
+account is not in, or an incomplete (`min`) peer whose rights are unknown, says
+no. The creator may always pin. A channel, supergroup or community carries the
+right only in `adminRights`, while a basic group's members may pin unless the
+chat's own or default permissions withhold it.
+*/
+function canPinMessages(chat: Chat): boolean {
+  if (!chat.isMember || chat.isMin) return false;
+  if (chat.isCreator) return true;
+  if (chat.permissions && !chat.permissions.canPinMessages) return false;
+  switch (chat.chatType) {
+    case 'channel':
+    case 'supergroup':
+    case 'gigagroup':
+    case 'community':
+    case 'monoforum': {
+      return chat.adminRights?.pinMessages === true;
+    }
+    default: {
+      return chat.isAdmin || !chat.defaultPermissions || chat.defaultPermissions.canPinMessages;
     }
   }
 }

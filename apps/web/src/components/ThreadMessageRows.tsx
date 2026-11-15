@@ -47,6 +47,11 @@ interface ThreadMessageRowsProps {
   every other write.
   */
   onEdit: (message: MessageDto) => void;
+  /**
+  Pins or unpins a message; a preview chat withholds it, as it withholds every
+  other write.
+  */
+  onPin: (message: MessageDto, pinned: boolean) => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onDelete: (messages: readonly MessageDto[]) => void;
   onJump: (messageId: number) => void;
@@ -70,6 +75,7 @@ export function ThreadMessageRows({
   onPressButton,
   onReply,
   onEdit,
+  onPin,
   onForward,
   onDelete,
   onJump,
@@ -107,6 +113,7 @@ export function ThreadMessageRows({
               readOutboxMaxId={readOutboxMaxId}
               onReply={preview === null ? onReply : undefined}
               onEdit={preview === null ? onEdit : undefined}
+              onPin={preview === null ? onPin : undefined}
               onForward={onForward}
               onDelete={preview === null ? onDelete : undefined}
               link={messageWebLink(chat, anchor.id)}

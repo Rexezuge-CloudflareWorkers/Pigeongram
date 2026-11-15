@@ -149,9 +149,10 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
         setBotCommands(screen.commands);
         setDescription(screen.description);
         setKeyboardSeed(keyboardCandidate(screen.messages));
-        setThread((current) =>
-          current && current.chat.id === chat.id ? mergeCacheRefresh(current, screen.messages, dialog, openingReadInboxMaxId) : current,
-        );
+        setThread((current) => {
+          if (!current || current.chat.id !== chat.id) return current;
+          return { ...mergeCacheRefresh(current, screen.messages, dialog, openingReadInboxMaxId), pinnedMessage: screen.pinned };
+        });
       } catch (failure) {
         if (sequence !== ticket.current) return;
         report(failure, chat.id);
@@ -200,6 +201,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
         windowEndId: null,
         latestMessageId: dialog.lastMessage?.id ?? null,
         newMessageIds: new Set(),
+        pinnedMessage: null,
       });
       setLoading(true);
       try {
@@ -249,6 +251,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
                 // page to ask for until one comes back empty.
                 hasMoreOlder: postId === null ? screen.messages.length >= OPEN_LIMIT : screen.messages.length > 0,
                 windowEndId: reachedAtOpen ? Math.max(screenEnd ?? 0, current.latestMessageId ?? 0) : screenEnd,
+                pinnedMessage: screen.pinned,
               }
             : current,
         );

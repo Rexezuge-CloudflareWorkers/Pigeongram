@@ -37,6 +37,7 @@ import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
 import { useThreadOpen } from './useThreadOpen';
 import { useThreadPaging } from './useThreadPaging';
+import { useThreadPinned } from './useThreadPinned';
 
 /**
 The chat thread's controller: the open chat with its loaded window, the read
@@ -89,6 +90,9 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
   }, [thread?.messages, keyboardSeed, dismissedKeyboardId]);
 
   const { loadingOlder, loadingNewer, loadOlder, loadNewer, jumpToLatest } = useThreadPaging({ threadRef, setThread, setError });
+  // The banner and the pinned-list revision follow the pin updates and the
+  // write's answer; the hook owns the read that names the banner's body.
+  const pinned = useThreadPinned({ setThread, threadRef, onError });
 
   const close = useCallback((): void => {
     resetOpen();
@@ -290,52 +294,59 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
   const { votingIds, vote } = usePollVoting(applyPoll, onError);
   const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);
 
-  const applyUpdate = useCallback((update: UpdateEvent): void => {
-    if (update.type === 'new_message') {
-      // The reply keyboard belongs to the chat, not to the window: a message
-      // that carries a markup decides it even when the loaded range is behind
-      // a backlog and the message itself waits for paging.
-      setKeyboardSeed((current) => foldKeyboardSeed(current, update.message));
-      setThread((current) => applyThreadNewMessage(current, update.message));
-      return;
-    }
-    if (update.type === 'edit_message') {
-      edit.refresh(update.message);
-      setKeyboardSeed((current) => foldKeyboardSeed(current, update.message, true));
-      setThread((current) => applyThreadEdit(current, update.message));
-      return;
-    }
-    if (update.type === 'reactions') {
-      setThread((current) =>
-        updateThread(current, update.chatId, (messages) =>
-          applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
-        ),
-      );
-      return;
-    }
-    if (update.type === 'views') {
-      setThread((current) =>
-        updateThread(current, update.chatId, (messages) => applyViewsUpdate(messages, update.chatId, update.messageId, update.views)),
-      );
-      return;
-    }
-    if (update.type === 'poll') {
-      if (update.poll === null) refreshPoll(update);
-      else applyPoll(update, update.poll);
-      return;
-    }
-    if (update.type === 'deleted') {
-      // The engine echoes an accepted delete, and another device's arrives the
-      // same way; the chat list is repaired from what the fold matched.
-      const report = deletionReport(threadRef.current, update.chatId, update.messageIds);
-      if (report) onDeletedRef.current(report.chatId, report.removed, report.remaining);
-      // A deleted edit target has nothing left to save.
-      edit.forget(update.chatId, update.messageIds);
-      setThread((current) => applyThreadDeleted(current, update.chatId, update.messageIds));
-      return;
-    }
-    if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
-  }, []);
+  const applyUpdate = useCallback(
+    (update: UpdateEvent): void => {
+      if (update.type === 'new_message') {
+        // The reply keyboard belongs to the chat, not to the window: a message
+        // that carries a markup decides it even when the loaded range is behind
+        // a backlog and the message itself waits for paging.
+        setKeyboardSeed((current) => foldKeyboardSeed(current, update.message));
+        setThread((current) => applyThreadNewMessage(current, update.message));
+        return;
+      }
+      if (update.type === 'edit_message') {
+        edit.refresh(update.message);
+        setKeyboardSeed((current) => foldKeyboardSeed(current, update.message, true));
+        setThread((current) => applyThreadEdit(current, update.message));
+        return;
+      }
+      if (update.type === 'reactions') {
+        setThread((current) =>
+          updateThread(current, update.chatId, (messages) =>
+            applyReactionUpdate(messages, update.chatId, update.messageId, update.reactions),
+          ),
+        );
+        return;
+      }
+      if (update.type === 'views') {
+        setThread((current) =>
+          updateThread(current, update.chatId, (messages) => applyViewsUpdate(messages, update.chatId, update.messageId, update.views)),
+        );
+        return;
+      }
+      if (update.type === 'poll') {
+        if (update.poll === null) refreshPoll(update);
+        else applyPoll(update, update.poll);
+        return;
+      }
+      if (update.type === 'deleted') {
+        // The engine echoes an accepted delete, and another device's arrives the
+        // same way; the chat list is repaired from what the fold matched.
+        const report = deletionReport(threadRef.current, update.chatId, update.messageIds);
+        if (report) onDeletedRef.current(report.chatId, report.removed, report.remaining);
+        // A deleted edit target has nothing left to save.
+        edit.forget(update.chatId, update.messageIds);
+        setThread((current) => applyThreadDeleted(current, update.chatId, update.messageIds));
+        return;
+      }
+      if (update.type === 'message_pinned') {
+        pinned.fold(update);
+        return;
+      }
+      if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
+    },
+    [edit, pinned],
+  );
 
   return {
     thread,
@@ -350,6 +361,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     replyKeyboard,
     reactingIds,
     votingIds,
+    pinnedRevision: pinned.revision,
     pressingButtonIds,
     open: openThread,
     close,
@@ -367,6 +379,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     discardPending: outbox.discard,
     clearPending: outbox.clear,
     react,
+    setPinned: pinned.setPinned,
     deletion,
     removeMessages,
     restoreMessages,

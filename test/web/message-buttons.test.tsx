@@ -28,6 +28,7 @@ function message(): MessageDto {
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text: 'Pick one',
     entities: [],

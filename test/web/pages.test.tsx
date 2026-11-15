@@ -197,6 +197,7 @@ const dialogs: DialogDto[] = [
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     },
     lastMessage: {
@@ -228,6 +229,7 @@ const history: MessageDto[] = [
     senderPhoto: null,
     outgoing: false,
     date: 1_699_999_900_000,
+    pinned: false,
     editDate: null,
     text: 'oldest',
     entities: [],
@@ -252,6 +254,7 @@ const history: MessageDto[] = [
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text: 'see you',
     entities: [],
@@ -277,6 +280,7 @@ const carol: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 
@@ -301,6 +305,7 @@ const carolHistory: MessageDto[] = [
     senderPhoto: null,
     outgoing: false,
     date: 1_699_999_950_000,
+    pinned: false,
     editDate: null,
     text: 'carol says hi',
     entities: [],
@@ -329,6 +334,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text: `message ${overrides.id}`,
     entities: [],
@@ -443,6 +449,14 @@ function installSignedInFetch(
       }
       case 'getBotCommands': {
         return options.rpc?.(call) ?? json({ commands: [] });
+      }
+      case 'getPinnedMessages': {
+        // A thread open reads the banner beside the window. The tests that care
+        // about pins stub the method in their own fetch, so the shared helper
+        // answers the common case — a chat with none — without asking `rpc`,
+        // whose callbacks are often written as one kind of answer for every
+        // method.
+        return json({ messages: [] });
       }
       default: {
         return options.rpc?.(call) ?? json({ error: `Unknown RPC method: ${String(call.body?.method)}` }, 404);
@@ -899,6 +913,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       const post = message({
@@ -1054,6 +1069,7 @@ describe('App', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     };
     installSignedInFetch({
@@ -1081,6 +1097,7 @@ describe('App', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     };
     installSignedInFetch({
@@ -1236,6 +1253,7 @@ describe('App', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     };
     const forwarded = message({
@@ -1278,6 +1296,7 @@ describe('App', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     };
     const incoming = message({
@@ -1969,6 +1988,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       const source = message({
@@ -2011,6 +2031,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       const source = message({
@@ -2054,6 +2075,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       const source = message({
@@ -2266,6 +2288,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       const photo: MessageMediaDto = {
@@ -3536,6 +3559,7 @@ describe('App', () => {
       photo: null,
       canSendMessages: false,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     };
 
@@ -3691,6 +3715,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: true,
         canDeleteMessages: true,
+        canPinMessages: true,
         presence: null,
       };
       const groupPost = message({
@@ -4349,6 +4374,7 @@ describe('App', () => {
         photo: null,
         canSendMessages,
         canDeleteMessages: canSendMessages,
+        canPinMessages: true,
         presence: null,
       };
       return {
@@ -4396,6 +4422,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: false,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       };
       installSignedInFetch({
@@ -4614,6 +4641,7 @@ describe('App', () => {
         photo: null,
         canSendMessages: true,
         canDeleteMessages: true,
+        canPinMessages: true,
         presence: null,
       },
       lastMessage: null,

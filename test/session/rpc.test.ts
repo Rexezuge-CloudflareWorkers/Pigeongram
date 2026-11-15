@@ -746,6 +746,87 @@ describe('editMessage dispatch', () => {
   });
 });
 
+describe('getPinnedMessages dispatch', () => {
+  function fakePinnedClient(): { client: TelegramClient; calls: Array<{ chatId: number; params: unknown }> } {
+    const calls: Array<{ chatId: number; params: unknown }> = [];
+    const client = {
+      searchMessages: async (params: { chatId: number; filter: unknown; limit: number; offset?: number }) => {
+        calls.push({ chatId: params.chatId, params });
+        const found = [message(9), message(7)];
+        return Object.assign(found, { next: 7 });
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('reads the pinned search newest first and answers its cursor', async () => {
+    const { client, calls } = fakePinnedClient();
+    const result = (await rpc(client, 'getPinnedMessages', { chatId: 1 })) as {
+      messages: Array<{ id: number }>;
+      nextOffsetId?: number;
+    };
+
+    expect(result.messages.map((entry) => entry.id)).toEqual([9, 7]);
+    expect(result.nextOffsetId).toBe(7);
+    expect(calls[0]).toMatchObject({
+      chatId: 1,
+      params: { chatId: 1, filter: { _: 'inputMessagesFilterPinned' }, limit: 50 },
+    });
+  });
+
+  it('passes the paging cursor through', async () => {
+    const { client, calls } = fakePinnedClient();
+    await rpc(client, 'getPinnedMessages', { chatId: 1, limit: 20, offsetId: 7 });
+    expect(calls[0].params).toMatchObject({ limit: 20, offset: 7 });
+  });
+
+  it('rejects a chat that is not a marked peer id', async () => {
+    const { client, calls } = fakePinnedClient();
+    await expect(rpc(client, 'getPinnedMessages', { chatId: 0 })).rejects.toThrow('marked Telegram peer id');
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('setMessagePinned dispatch', () => {
+  function fakeMessagePinClient(): { client: TelegramClient; calls: unknown[] } {
+    const calls: unknown[] = [];
+    const client = {
+      pinMessage: async (params: unknown) => {
+        calls.push({ method: 'pinMessage', params });
+        return null;
+      },
+      unpinMessage: async (params: unknown) => {
+        calls.push({ method: 'unpinMessage', params });
+      },
+    } as unknown as TelegramClient;
+    return { client, calls };
+  }
+
+  it('pins a message and echoes the state it applied', async () => {
+    const { client, calls } = fakeMessagePinClient();
+    const result = (await rpc(client, 'setMessagePinned', { chatId: 1, messageId: 40, pinned: true })) as {
+      chatId: number;
+      messageId: number;
+      pinned: boolean;
+    };
+
+    expect(result).toEqual({ chatId: 1, messageId: 40, pinned: true });
+    expect(calls).toEqual([{ method: 'pinMessage', params: { chatId: 1, message: 40 } }]);
+  });
+
+  it('unpins a message', async () => {
+    const { client, calls } = fakeMessagePinClient();
+    await rpc(client, 'setMessagePinned', { chatId: 1, messageId: 40, pinned: false });
+    expect(calls).toEqual([{ method: 'unpinMessage', params: { chatId: 1, message: 40 } }]);
+  });
+
+  it('rejects a missing flag before Telegram is touched', async () => {
+    const { client, calls } = fakeMessagePinClient();
+    await expect(rpc(client, 'setMessagePinned', { chatId: 1, messageId: 40 })).rejects.toThrow('pinned must be a boolean');
+    expect(calls).toEqual([]);
+  });
+});
+
 describe('batch dispatch', () => {
   /**
    * A fake client whose reads are answered one at a time, so a batch can be

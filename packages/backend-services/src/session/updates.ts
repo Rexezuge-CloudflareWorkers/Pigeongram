@@ -128,6 +128,24 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
       if (update.peer._ !== 'dialogPeer') return null;
       return { type: 'pinned', chatId: getMarkedPeerId(update.peer.peer), pinned: update.pinned === true };
     }
+    case 'updatePinnedMessages': {
+      // The account-level pin step: private chats and basic groups share it, so
+      // the SPA folds a null chat by matching the ids against what it shows.
+      return {
+        type: 'message_pinned',
+        chatId: getMarkedPeerId(update.peer),
+        messageIds: update.messages,
+        pinned: update.pinned === true,
+      };
+    }
+    case 'updatePinnedChannelMessages': {
+      return {
+        type: 'message_pinned',
+        chatId: getMarkedPeerId(update.channelId, 'channel'),
+        messageIds: update.messages,
+        pinned: update.pinned === true,
+      };
+    }
     case 'updateUserStatus': {
       // A peer came online or went offline. The id is the user's plain id,
       // which is also the marked peer id of a user chat.
@@ -189,6 +207,22 @@ export function editedEvent(result: unknown): UpdateEvent | null {
 }
 
 /**
+The `message_pinned` event a successful `setMessagePinned` RPC implies.
+
+Telegram can answer the call with a quiet pts step instead of
+`updatePinnedMessages`, and another tab would otherwise keep the old banner, so
+the engine broadcasts the state change itself. The event names ids only, which
+is enough: a tab that shows the chat re-reads the first pinned page for the
+body.
+*/
+export function messagePinnedEvent(result: unknown): UpdateEvent | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const { chatId, messageId, pinned } = result as { chatId?: unknown; messageId?: unknown; pinned?: unknown };
+  if (typeof chatId !== 'number' || typeof messageId !== 'number' || typeof pinned !== 'boolean') return null;
+  return { type: 'message_pinned', chatId, messageIds: [messageId], pinned };
+}
+
+/**
 The event a successful write implies when mtcute swallowed Telegram's own
 update for it. The dispatcher names the method, so the driver does not have to
 remember which writes need the echo.
@@ -196,5 +230,6 @@ remember which writes need the echo.
 export function echoEvent(method: string, result: unknown): UpdateEvent | null {
   if (method === 'deleteMessages') return deletedEvent(result);
   if (method === 'editMessage') return editedEvent(result);
+  if (method === 'setMessagePinned') return messagePinnedEvent(result);
   return null;
 }

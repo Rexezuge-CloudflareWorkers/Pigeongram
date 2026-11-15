@@ -360,6 +360,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           onOpenComments={(message) => {
             if (selected) router.navigateTo({ view: 'comments', chatId: selected.id, postId: message.id });
           }}
+          onOpenPost={(messageId) => {
+            if (selected) openChat(selected, { postId: messageId });
+          }}
         />
         {viewerExit.mounted && viewer.viewer ? (
           <MediaViewer

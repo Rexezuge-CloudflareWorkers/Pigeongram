@@ -28,6 +28,7 @@ export {
   fetchChatScreen,
   fetchComments,
   fetchHistory,
+  fetchPinnedMessages,
   fetchPollResults,
   forwardMessages,
   pressCallbackButton,
@@ -36,6 +37,7 @@ export {
   sendMessage,
   sendReaction,
   sendVote,
+  setMessagePinned,
 } from './api/threads';
 export { searchGlobal, searchMessages } from './api/search';
 export { rpc } from './api/request';

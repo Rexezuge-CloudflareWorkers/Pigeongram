@@ -1,5 +1,5 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
-import { Long } from '@mtcute/core';
+import { Long, SearchFilters } from '@mtcute/core';
 import type { Message } from '@mtcute/core';
 import { readComments, resolveCommentTarget } from './comments';
 import { toMessageDto, toPollDto } from './dto';
@@ -11,6 +11,7 @@ import {
   optionalMessageId,
   optionalRandomId,
   optionalText,
+  requireBoolean,
   requireCallbackData,
   requireMessageId,
   requireMessageIds,
@@ -77,6 +78,49 @@ export const messagesRpcMethods = {
       return {
         message: toMessageDto(await context.client.editMessage({ chatId, message: messageId, text })),
       };
+    },
+  },
+
+  /**
+  Reads a page of the chat's pinned messages, newest first.
+
+  Telegram's pinned list is a search with the pinned filter, so this read
+  shares the in-chat search's cursor and ordering. It is read-only and rides
+  the chat screen's batch: the thread's banner and the pinned list open with
+  the first page.
+  */
+  getPinnedMessages: {
+    readOnly: true,
+    run: async (context, params) => {
+      const chatId = requirePeerId(params.chatId);
+      const limit = clampInt(params.limit, 1, 100, 50);
+      const offset = optionalInt(params.offsetId);
+      const found = await context.client.searchMessages({
+        chatId,
+        filter: SearchFilters.Pinned,
+        limit,
+        ...(offset !== undefined && { offset }),
+      });
+      return { messages: found.map(toMessageDto), nextOffsetId: found.next };
+    },
+  },
+
+  /**
+  Pins one message in its chat, or unpins it. Telegram enforces the right —
+  creator, `pin_messages` admin right, or the default permission — and the SPA
+  gates the menu on `ChatDto.canPinMessages` so an obvious refusal is never
+  offered. The result is folded by the requesting tab, and the engine echoes a
+  `message_pinned` update because mtcute can swallow the call's own update.
+  */
+  setMessagePinned: {
+    readOnly: false,
+    run: async (context, params) => {
+      const chatId = requirePeerId(params.chatId);
+      const messageId = requireMessageId(params.messageId);
+      const pinned = requireBoolean(params.pinned, 'pinned');
+      if (pinned) await context.client.pinMessage({ chatId, message: messageId });
+      else await context.client.unpinMessage({ chatId, message: messageId });
+      return { chatId, messageId, pinned };
     },
   },
 

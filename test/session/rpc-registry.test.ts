@@ -19,8 +19,10 @@ const CONTRACT_METHODS: readonly RpcMethod[] = [
   'getMe',
   'getDialogs',
   'getHistory',
+  'getPinnedMessages',
   'sendMessage',
   'editMessage',
+  'setMessagePinned',
   'forwardMessages',
   'deleteMessages',
   'readHistory',
@@ -54,6 +56,7 @@ const CONTRACT_BATCHABLE: readonly RpcMethod[] = [
   'getMe',
   'getDialogs',
   'getHistory',
+  'getPinnedMessages',
   'searchMessages',
   'searchGlobal',
   'getPollResults',
@@ -92,16 +95,27 @@ describe('RPC method registry', () => {
     }
   });
 
-  it('keeps the watermark read, the archive move, the pin move and the joins out of a batch', () => {
+  it('keeps the watermark read, the archive move, both pin moves and the joins out of a batch', () => {
     expect(BATCHABLE_METHODS).not.toContain('readHistory');
     expect(BATCHABLE_METHODS).not.toContain('setArchived');
     expect(BATCHABLE_METHODS).not.toContain('setPinned');
+    expect(BATCHABLE_METHODS).not.toContain('setMessagePinned');
     expect(BATCHABLE_METHODS).not.toContain('joinChat');
     expect(BATCHABLE_METHODS).not.toContain('joinInvite');
   });
 
   it('refuses a batch that carries a write', async () => {
-    for (const method of ['sendMessage', 'readHistory', 'setArchived', 'setPinned', 'joinChat', 'joinInvite', 'requestCall', 'batch']) {
+    for (const method of [
+      'sendMessage',
+      'readHistory',
+      'setArchived',
+      'setPinned',
+      'setMessagePinned',
+      'joinChat',
+      'joinInvite',
+      'requestCall',
+      'batch',
+    ]) {
       await expect(dispatch('batch', { calls: [{ method }] })).rejects.toThrow('batchable read method');
     }
   });

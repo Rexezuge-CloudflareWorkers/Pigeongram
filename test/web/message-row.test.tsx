@@ -13,6 +13,7 @@ const chat: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 
@@ -39,6 +40,7 @@ function message(overrides: Partial<MessageDto> = {}): MessageDto {
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text: '',
     entities: [],
@@ -251,6 +253,54 @@ describe('MessageRow delete affordance', () => {
     openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
 
     expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
+  });
+});
+
+describe('MessageRow pin affordance', () => {
+  function openMenu(row: HTMLElement): void {
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+  }
+
+  it('offers Pin on a message and hands the flag over', () => {
+    const onPin = vi.fn();
+    const target = message({ text: 'Pinned soon' });
+    const { container } = renderRow([target], { onPin });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
+
+    expect(onPin).toHaveBeenCalledWith(target, true);
+  });
+
+  it('labels an already pinned message Unpin', () => {
+    const onPin = vi.fn();
+    const target = message({ text: 'Already pinned', pinned: true });
+    const { container } = renderRow([target], { onPin });
+
+    openMenu(container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Pin' })).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unpin' }));
+
+    expect(onPin).toHaveBeenCalledWith(target, false);
+  });
+
+  it('withholds Pin where the chat does not allow it, on an album or a service message', () => {
+    const denied = renderRow([message({ text: 'No pin here' })], {
+      onPin: vi.fn(),
+      chat: { ...chat, canPinMessages: false },
+    });
+    openMenu(denied.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Pin' })).toBeNull();
+    cleanup();
+
+    const album = renderRow([message({ id: 10, text: 'One' }), message({ id: 11, text: 'Two' })], { onPin: vi.fn() });
+    openMenu(album.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Pin' })).toBeNull();
+    cleanup();
+
+    const service = renderRow([message({ service: true, text: '' })], { onPin: vi.fn() });
+    openMenu(service.container.querySelector('[data-message-id="10"]') as HTMLElement);
+    expect(screen.queryByRole('menuitem', { name: 'Pin' })).toBeNull();
   });
 });
 

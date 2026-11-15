@@ -31,6 +31,7 @@ const chat: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: { status: 'online', lastSeenAt: null },
 };
 

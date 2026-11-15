@@ -52,6 +52,54 @@ export interface EditMessageResult {
   message: MessageDto;
 }
 
+/**
+Reads one page of a chat's pinned messages, newest first.
+
+Telegram's own pinned list is a search with the pinned filter, so the read is
+the same one the in-chat search uses; the page's cursor is the oldest message
+it returned.
+*/
+export interface GetPinnedMessagesParams {
+  chatId: PeerId;
+  limit?: number;
+  /**
+   * Pagination cursor: return pinned messages older than this message id.
+   */
+  offsetId?: number;
+}
+
+export interface GetPinnedMessagesResult {
+  /**
+   * The page's messages, newest first (Telegram's order for a search).
+   */
+  messages: MessageDto[];
+  /**
+   * The cursor for the next older page, when one exists.
+   */
+  nextOffsetId?: number;
+}
+
+/**
+Pins one message in its chat, or unpins it.
+
+The menu opens for the account's own message or, where the chat allows it,
+for someone else's; the engine and Telegram are the backstop for the right.
+*/
+export interface SetMessagePinnedParams {
+  chatId: PeerId;
+  messageId: number;
+  /**
+   * `true` pins the message, `false` unpins it.
+   */
+  pinned: boolean;
+}
+
+export interface SetMessagePinnedResult {
+  chatId: PeerId;
+  messageId: number;
+  pinned: boolean;
+}
+
 export interface ForwardMessagesParams {
   /**
    * The source chat the messages belong to.

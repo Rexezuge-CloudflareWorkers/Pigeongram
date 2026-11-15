@@ -3,7 +3,7 @@ import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
 import { encodeBase64 } from '../../packages/backend-services/src/session/base64';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
-import { deletedEvent, editedEvent, mapRawUpdate } from '../../packages/backend-services/src/session/updates';
+import { deletedEvent, editedEvent, mapRawUpdate, messagePinnedEvent } from '../../packages/backend-services/src/session/updates';
 
 const rawUser = {
   _: 'user',
@@ -380,6 +380,56 @@ describe('deletions', () => {
     expect(deletedEvent({ chatId: 1, messageIds: [] })).toBeNull();
     expect(deletedEvent({ chatId: 'one', messageIds: [1] })).toBeNull();
     expect(deletedEvent({ chatId: 1, messageIds: ['one', 2] })).toEqual({ type: 'deleted', chatId: 1, messageIds: [2] });
+  });
+});
+
+describe('message pins', () => {
+  it('maps the account-level pin step for a private chat or basic group', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updatePinnedMessages',
+        peer: { _: 'peerUser', userId: 1 },
+        messages: [7, 9],
+        pinned: true,
+        pts: 10,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toEqual({ type: 'message_pinned', chatId: 1, messageIds: [7, 9], pinned: true });
+  });
+
+  it('maps a channel pin with the marked channel id', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updatePinnedChannelMessages',
+        channelId: 20,
+        messages: [12],
+        pinned: false,
+        pts: 11,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toEqual({
+      type: 'message_pinned',
+      chatId: getMarkedPeerId(20, 'channel'),
+      messageIds: [12],
+      pinned: false,
+    });
+  });
+
+  it('turns a settled pin RPC into the event a second tab needs', () => {
+    expect(messagePinnedEvent({ chatId: 1, messageId: 7, pinned: true })).toEqual({
+      type: 'message_pinned',
+      chatId: 1,
+      messageIds: [7],
+      pinned: true,
+    });
+  });
+
+  it('derives no event from a result without the pin state', () => {
+    expect(messagePinnedEvent(null)).toBeNull();
+    expect(messagePinnedEvent({})).toBeNull();
+    expect(messagePinnedEvent({ chatId: 1, messageId: 7 })).toBeNull();
   });
 });
 

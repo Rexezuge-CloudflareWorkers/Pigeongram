@@ -17,6 +17,7 @@ function chat(id: number, overrides: Partial<ChatDto> = {}): ChatDto {
     photo: null,
     canSendMessages: true,
     canDeleteMessages: true,
+    canPinMessages: true,
     presence: null,
     ...overrides,
   };
@@ -46,6 +47,7 @@ function message(text: string): MessageDto {
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text,
     entities: [],

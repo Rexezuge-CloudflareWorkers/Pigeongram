@@ -65,6 +65,11 @@ export interface ChatThread {
    re-mount does not replay the entrance animation.
    */
   newMessageIds: ReadonlySet<number>;
+  /**
+  The chat's newest pinned message, or null when it holds none. It is the
+  banner's whole body: the pinned list itself is read on demand.
+  */
+  pinnedMessage: MessageDto | null;
 }
 
 /**
@@ -146,10 +151,12 @@ export function applyThreadSentMessages(thread: ChatThread | null, chatId: PeerI
 Folds an edit into the thread. An edit carries the whole message, so an id the
 thread has not loaded would otherwise be appended beyond the gap by
 `replaceMessage`; while the range is behind, only edits inside the loaded
-window are taken.
+window are taken. A banner pointing at the edited message follows it, because
+the server copy is the one the reader should see.
 */
 export function applyThreadEdit(thread: ChatThread | null, message: MessageDto): ChatThread | null {
   if (!thread || thread.chat.id !== message.chatId) return thread;
+  const pinnedMessage = thread.pinnedMessage?.id === message.id ? message : thread.pinnedMessage;
   if (thread.windowEndId === null) {
     // Before the window arrives, only a message already on screen (a live one
     // that raced the open) can be edited; an unknown id must not be appended.
@@ -157,7 +164,40 @@ export function applyThreadEdit(thread: ChatThread | null, message: MessageDto):
   } else if (!threadReachesLatest(thread) && message.id > thread.windowEndId) {
     return thread;
   }
-  return { ...thread, messages: replaceMessage(thread.messages, message) };
+  const messages = replaceMessage(thread.messages, message);
+  return pinnedMessage === thread.pinnedMessage && messages === thread.messages ? thread : { ...thread, messages, pinnedMessage };
+}
+
+/**
+Folds a `message_pinned` update into the thread: the loaded rows take the new
+flag so their menu offers the right label, and the banner clears at once when
+its own message was unpinned. Pinning a message needs its body, which the ids
+alone do not carry, so the controller re-reads the first pinned page beside
+this fold.
+*/
+export function applyThreadMessagePinned(
+  thread: ChatThread | null,
+  chatId: PeerId | null,
+  messageIds: readonly number[],
+  pinned: boolean,
+): ChatThread | null {
+  if (!thread || messageIds.length === 0) return thread;
+  if (chatId !== null && chatId !== thread.chat.id) return thread;
+  const ids = new Set(messageIds);
+  const messages = thread.messages.map((message) => (ids.has(message.id) ? { ...message, pinned } : message));
+  const clearBanner = !pinned && thread.pinnedMessage !== null && ids.has(thread.pinnedMessage.id);
+  const changed = messages.some((message, index) => message !== thread.messages[index]);
+  if (!changed && !clearBanner) return thread;
+  return { ...thread, messages, pinnedMessage: clearBanner ? null : thread.pinnedMessage };
+}
+
+/**
+Replaces the banner with the newest pinned message a read returned.
+*/
+export function applyThreadPinnedMessage(thread: ChatThread | null, chatId: PeerId, message: MessageDto | null): ChatThread | null {
+  if (!thread || thread.chat.id !== chatId) return thread;
+  if (thread.pinnedMessage?.id === message?.id && thread.pinnedMessage === message) return thread;
+  return { ...thread, pinnedMessage: message };
 }
 
 /**
@@ -190,6 +230,7 @@ export function applyThreadDeleted(thread: ChatThread | null, chatId: PeerId | n
     newMessageIds,
     unreadDividerId: thread.unreadDividerId !== null && ids.has(thread.unreadDividerId) ? null : thread.unreadDividerId,
     focusMessageId: thread.focusMessageId !== null && ids.has(thread.focusMessageId) ? null : thread.focusMessageId,
+    pinnedMessage: thread.pinnedMessage !== null && ids.has(thread.pinnedMessage.id) ? null : thread.pinnedMessage,
   };
 }
 

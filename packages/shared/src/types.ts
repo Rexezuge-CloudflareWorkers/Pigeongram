@@ -81,6 +81,13 @@ export interface ChatDto {
   */
   canDeleteMessages: boolean;
   /**
+  Whether the account may pin messages in this chat: the creator, an
+  administrator with the `pin_messages` right, or a plain member the chat's
+  default rights still allow to pin. The SPA gates the message menu's
+  Pin/Unpin on it; Telegram remains the backstop.
+  */
+  canPinMessages: boolean;
+  /**
   The peer's presence, or null when it has none (a bot, a group, a channel)
   or when Telegram did not tell us.
   */
@@ -486,6 +493,11 @@ export interface MessageDto {
   */
   date: number;
   /**
+  Whether Telegram currently holds this message pinned in its chat, which is
+  what makes the menu offer Unpin instead of Pin.
+  */
+  pinned: boolean;
+  /**
   Unix milliseconds of the last edit, or null when the message was never
   edited. The SPA renders its "Edited" marker from this alone.
   */
@@ -744,6 +756,24 @@ export type UpdateEvent =
       chatId: PeerId;
       /**
       The chat's new state: `true` when it was pinned, `false` when unpinned.
+      */
+      pinned: boolean;
+    }
+  | {
+      type: 'message_pinned';
+      /**
+      Marked id of the chat whose message pins changed, or null when Telegram's
+      update names no peer (`updatePinnedMessages` is an account-level pts step
+      for every private chat and basic group). A null chat is folded by
+      matching the ids against the open window's loaded rows and its banner.
+      */
+      chatId: PeerId | null;
+      /**
+      Ids of the messages that were pinned or unpinned.
+      */
+      messageIds: number[];
+      /**
+      Whether the messages were pinned (`true`) or unpinned (`false`).
       */
       pinned: boolean;
     }

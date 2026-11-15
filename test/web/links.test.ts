@@ -25,6 +25,7 @@ function chat(id: number, username: string | null): ChatDto {
     photo: null,
     canSendMessages: true,
     canDeleteMessages: true,
+    canPinMessages: true,
     presence: null,
   };
 }
@@ -33,7 +34,17 @@ function chat(id: number, username: string | null): ChatDto {
 A peer of any kind, for the address builders that care about the kind.
 */
 function peer(id: number, username: string | null, kind: ChatDto['kind'] = 'channel'): ChatDto {
-  return { id, kind, title: `chat ${String(id)}`, username, photo: null, canSendMessages: true, canDeleteMessages: true, presence: null };
+  return {
+    id,
+    kind,
+    title: `chat ${String(id)}`,
+    username,
+    photo: null,
+    canSendMessages: true,
+    canDeleteMessages: true,
+    canPinMessages: true,
+    presence: null,
+  };
 }
 
 /**

@@ -10,6 +10,7 @@ import type { UploadRequest } from '../upload';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
+import { PinnedBanner } from './PinnedBanner';
 import { Spinner } from './Spinner';
 import { ThreadEmpty } from './ThreadEmpty';
 import { ThreadFooter } from './ThreadFooter';
@@ -58,6 +59,7 @@ export function ThreadView({
   onSend,
   editing,
   onEdit,
+  onPin,
   onCancelEdit,
   onSaveEdit,
   onAttach,
@@ -70,9 +72,11 @@ export function ThreadView({
   onPressButton,
   onPressReplyKeyboard,
   onOpenComments,
+  onOpenPinned,
   onOpenMedia,
   unreadDividerId,
   focusMessageId,
+  pinnedMessage,
   atLatest,
   positions,
   onReadThrough,
@@ -279,6 +283,7 @@ export function ThreadView({
         onCall={onCall}
         callActive={callActive}
       />
+      {unavailable || pinnedMessage === null ? null : <PinnedBanner chat={chat} message={pinnedMessage} onOpen={onOpenPinned} />}
       {unavailable ? <ThreadUnavailable onBack={onBack} /> : null}
       {unavailable ? null : (
         <div key={chat.id} className="relative flex min-h-0 flex-1 flex-col">
@@ -338,6 +343,7 @@ export function ThreadView({
                 setReplyingTo(null);
                 onEdit(target);
               }}
+              onPin={onPin}
               onForward={onForward}
               onDelete={onDelete}
               onJump={(messageId) => jumpToMessage(scrollRef.current, messageId, stickToBottom)}

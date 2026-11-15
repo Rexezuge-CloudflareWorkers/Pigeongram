@@ -21,6 +21,7 @@ function editingMessage(text = 'First draft'): MessageDto {
     senderPhoto: null,
     outgoing: true,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text,
     entities: [],

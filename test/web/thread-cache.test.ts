@@ -11,6 +11,7 @@ const CHAT: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 
@@ -24,6 +25,7 @@ function message(id: number, overrides: Partial<MessageDto> = {}): MessageDto {
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000 + id,
+    pinned: false,
     editDate: null,
     text: `message ${id}`,
     entities: [],
@@ -54,6 +56,7 @@ function thread(overrides: Partial<ChatThread> = {}): ChatThread {
     windowEndId: 20,
     latestMessageId: 20,
     newMessageIds: new Set(),
+    pinnedMessage: null,
     ...overrides,
   };
 }

@@ -104,6 +104,12 @@ interface MessageRowProps {
   */
   onEdit?: (message: MessageDto) => void;
   /**
+  Pins this message in its chat, or unpins it when it already is. The row
+  withholds it from a service message, an album, and any chat whose
+  `canPinMessages` is false: Telegram remains the backstop.
+  */
+  onPin?: (message: MessageDto, pinned: boolean) => void;
+  /**
   Starts forwarding this display group; an album forwards every member.
   */
   onForward?: (messages: readonly MessageDto[]) => void;
@@ -156,6 +162,7 @@ export function MessageRow({
   readOutboxMaxId = 0,
   onReply,
   onEdit,
+  onPin,
   onForward,
   onDelete,
   canDeleteOthers,
@@ -182,6 +189,7 @@ export function MessageRow({
   // which is why the album gate is here rather than only in the menu.
   const canEdit =
     onEdit !== undefined && !message.service && own && !album && message.media === null && message.poll === null && message.text.length > 0;
+  const canPin = onPin !== undefined && !message.service && !album && chat.canPinMessages;
   const caption = album && isVisualAlbum(group) ? albumCaption(group) : null;
   // The caller enables avatars for group threads and comments; service messages and anonymous senders have none.
   const avatar =
@@ -360,6 +368,7 @@ export function MessageRow({
           y={menu.y}
           onReply={onReply}
           onEdit={canEdit ? onEdit : undefined}
+          onPin={canPin ? onPin : undefined}
           onForward={onForward}
           onReact={onReact}
           onDelete={canDelete ? onDelete : undefined}

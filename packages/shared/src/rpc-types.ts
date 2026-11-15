@@ -24,6 +24,8 @@ export type {
   EditMessageResult,
   ForwardMessagesParams,
   ForwardMessagesResult,
+  GetPinnedMessagesParams,
+  GetPinnedMessagesResult,
   GetPollResultsParams,
   GetPollResultsResult,
   PressCallbackButtonParams,
@@ -35,6 +37,8 @@ export type {
   SendReactionResult,
   SendVoteParams,
   SendVoteResult,
+  SetMessagePinnedParams,
+  SetMessagePinnedResult,
 } from './message-types';
 
 export interface RpcRequestDto {
@@ -49,8 +53,10 @@ export type RpcMethod =
   | 'getMe'
   | 'getDialogs'
   | 'getHistory'
+  | 'getPinnedMessages'
   | 'sendMessage'
   | 'editMessage'
+  | 'setMessagePinned'
   | 'forwardMessages'
   | 'deleteMessages'
   | 'readHistory'
@@ -88,13 +94,15 @@ concurrently, so a write in it would have no defined completion order, and
 Telegram's own ordering guarantees matter more than the round trip saved.
 `readHistory` is excluded for the same reason it stays a single call — it
 mutates the account's read watermark. `setArchived` is excluded because it
-moves a chat between the chat list and the archive, and `setPinned` because it
-changes the pinned block.
+moves a chat between the chat list and the archive, `setPinned` because it
+changes the dialog's pinned block, and `setMessagePinned` because it changes
+which message a chat holds pinned.
 */
 export type BatchableRpcMethod =
   | 'getMe'
   | 'getDialogs'
   | 'getHistory'
+  | 'getPinnedMessages'
   | 'searchMessages'
   | 'searchGlobal'
   | 'getPollResults'

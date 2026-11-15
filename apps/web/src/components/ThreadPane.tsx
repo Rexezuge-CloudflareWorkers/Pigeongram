@@ -3,8 +3,10 @@ import type { ThreadController } from '../thread-controller';
 import { threadReachesLatest } from '../thread-state';
 import type { ChatDto, MessageDto, PeerId, PresenceDto } from '../types';
 import type { ChatPreview } from '../navigation-types';
+import { usePinnedMessages } from '../usePinnedMessages';
 import { CommentsView } from './CommentsView';
 import { DeleteMessagesDialog } from './DeleteMessagesDialog';
+import { PinnedMessagesDialog } from './PinnedMessagesDialog';
 import { ThreadView } from './ThreadView';
 
 /**
@@ -84,6 +86,11 @@ interface ThreadPaneProps {
    */
   onMarkAllRead: (chatId: PeerId) => void;
   onOpenComments: (message: MessageDto) => void;
+  /**
+   * Opens one of the chat's pinned messages at its post, even when it sits
+   * outside the loaded window. The shell owns the navigation.
+   */
+  onOpenPost: (messageId: number) => void;
 }
 
 export function ThreadPane({
@@ -104,7 +111,11 @@ export function ThreadPane({
   onReadThrough,
   onMarkAllRead,
   onOpenComments,
+  onOpenPost,
 }: ThreadPaneProps) {
+  // The pinned list is the pane's own overlay: it reads on demand and follows
+  // the thread's pin revision, so it is instantiated before either branch.
+  const pinned = usePinnedMessages({ chatId: threads.thread?.chat.id ?? null, revision: threads.pinnedRevision });
   if (comments.thread) {
     return (
       <>
@@ -163,6 +174,7 @@ export function ThreadPane({
         readOutboxMaxId={threads.thread?.readOutboxMaxId ?? 0}
         unreadDividerId={threads.thread?.unreadDividerId ?? null}
         focusMessageId={threads.thread?.focusMessageId ?? null}
+        pinnedMessage={threads.thread?.pinnedMessage ?? null}
         atLatest={threads.thread === null || threadReachesLatest(threads.thread)}
         positions={threads.positions}
         onBack={onBack}
@@ -182,6 +194,7 @@ export function ThreadPane({
         onSend={threads.send}
         editing={threads.editing}
         onEdit={threads.startEdit}
+        onPin={threads.setPinned}
         onCancelEdit={threads.cancelEdit}
         onSaveEdit={threads.saveEdit}
         onAttach={threads.attach}
@@ -196,8 +209,10 @@ export function ThreadPane({
         onReadThrough={onReadThrough}
         onOpenMedia={(messageId) => onOpenMedia('thread', messageId)}
         onOpenComments={onOpenComments}
+        onOpenPinned={pinned.openList}
       />
       <DeleteMessagesDialog deletion={threads.deletion} />
+      {selected === null ? null : <PinnedMessagesDialog chat={selected} controller={pinned} onOpenPost={onOpenPost} />}
     </>
   );
 }

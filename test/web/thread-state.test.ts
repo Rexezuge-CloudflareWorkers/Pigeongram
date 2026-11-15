@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applyThreadDeleted,
   applyThreadEdit,
+  applyThreadMessagePinned,
   applyThreadNewMessage,
+  applyThreadPinnedMessage,
   applyThreadRestored,
   applyThreadSentMessages,
   threadReachesLatest,
@@ -18,6 +20,7 @@ const CHAT: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 
@@ -31,6 +34,7 @@ function message(id: number, text = `message ${id}`, overrides: Partial<MessageD
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000 + id,
+    pinned: false,
     editDate: null,
     text,
     entities: [],
@@ -61,6 +65,7 @@ function thread(overrides: Partial<ChatThread> = {}): ChatThread {
     windowEndId: 3,
     latestMessageId: 3,
     newMessageIds: new Set(),
+    pinnedMessage: null,
     ...overrides,
   };
 }
@@ -156,6 +161,48 @@ describe('live thread updates', () => {
   });
 });
 
+describe('thread message pins', () => {
+  it('clears the banner when its message is unpinned and updates the loaded row', () => {
+    const banner = message(2);
+    const current = thread({ pinnedMessage: banner });
+    const next = applyThreadMessagePinned(current, 1, [2], false);
+
+    expect(next?.pinnedMessage).toBeNull();
+    expect(next?.messages.find((entry) => entry.id === 2)?.pinned).toBe(false);
+  });
+
+  it('marks a pinned row without inventing a banner body', () => {
+    const current = thread();
+    const next = applyThreadMessagePinned(current, 1, [2], true);
+
+    expect(next?.pinnedMessage).toBeNull();
+    expect(next?.messages.find((entry) => entry.id === 2)?.pinned).toBe(true);
+  });
+
+  it('replaces the banner with the newest pinned message a read returned', () => {
+    const current = thread({ pinnedMessage: message(1) });
+    const next = applyThreadPinnedMessage(current, 1, message(3));
+    expect(next?.pinnedMessage?.id).toBe(3);
+    expect(applyThreadPinnedMessage(next, 1, null)?.pinnedMessage).toBeNull();
+  });
+
+  it('follows an edit of the banner message', () => {
+    const current = thread({ pinnedMessage: message(2, 'old') });
+    const next = applyThreadEdit(current, message(2, 'edited'));
+    expect(next?.pinnedMessage?.text).toBe('edited');
+  });
+
+  it('drops the banner with its deleted message', () => {
+    const current = thread({ pinnedMessage: message(2) });
+    expect(applyThreadDeleted(current, 1, [2])?.pinnedMessage).toBeNull();
+  });
+
+  it('leaves another chat’s pin alone', () => {
+    const current = thread();
+    expect(applyThreadMessagePinned(current, 2, [2], true)).toBe(current);
+  });
+});
+
 describe('thread deletions', () => {
   it('drops the loaded rows and pulls the cursors off a deleted edge', () => {
     const current = thread({ messages: [message(1), message(2), message(3)], windowEndId: 3, latestMessageId: 3 });
@@ -195,6 +242,7 @@ describe('thread deletions', () => {
       unreadDividerId: 2,
       focusMessageId: 2,
       newMessageIds: new Set([2, 3]),
+      pinnedMessage: null,
     });
     const next = applyThreadDeleted(current, 1, [2]);
 

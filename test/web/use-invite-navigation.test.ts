@@ -25,6 +25,7 @@ function chat(id: number): ChatDto {
     photo: null,
     canSendMessages: true,
     canDeleteMessages: true,
+    canPinMessages: true,
     presence: null,
   };
 }

@@ -33,6 +33,7 @@ function chat(id: number, username: string | null = null): ChatDto {
     photo: null,
     canSendMessages: true,
     canDeleteMessages: true,
+    canPinMessages: true,
     presence: null,
   };
 }

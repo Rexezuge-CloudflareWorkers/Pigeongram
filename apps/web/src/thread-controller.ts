@@ -94,6 +94,12 @@ export interface ThreadController {
   */
   pressingButtonIds: ReadonlySet<number>;
   /**
+  How many message-pin changes the thread has seen. The pinned list watches it
+  so an open list follows another device's pin or unpin without owning the
+  socket.
+  */
+  pinnedRevision: number;
+  /**
   Opens a chat at the dialog's read watermarks, reading the first window (a
   linked-post window, the unread boundary, or the newest messages), and answers
   with what it read, so a caller chasing that post (its comments) need not look
@@ -143,6 +149,11 @@ export interface ThreadController {
   discardPending: (key: string) => void;
   clearPending: () => void;
   react: (message: MessageDto, reaction: MessageReactionDto) => void;
+  /**
+  Pins a message in its chat, or unpins it. The change is folded from the
+  server's answer and its `message_pinned` echo, never guessed ahead.
+  */
+  setPinned: (message: MessageDto, pinned: boolean) => void;
   /**
   The delete flow: the display group awaiting confirmation, and the actions
   the menu and the confirm dialog call. A delete removes the rows at once and

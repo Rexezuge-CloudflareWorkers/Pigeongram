@@ -27,6 +27,7 @@ const bob: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 const carol: ChatDto = {
@@ -37,6 +38,7 @@ const carol: ChatDto = {
   photo: null,
   canSendMessages: true,
   canDeleteMessages: true,
+  canPinMessages: true,
   presence: null,
 };
 
@@ -48,6 +50,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     senderPhoto: null,
     outgoing: false,
     date: 1_700_000_000_000,
+    pinned: false,
     editDate: null,
     text: 'a message',
     entities: [],

@@ -196,6 +196,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getMe`               | —                                                                                 | `{me}`                                                                                                                                       |
 | `getDialogs`          | `{limit?: 1..200, archived?: boolean}`                                            | `{dialogs: DialogDto[]}` (pinned first)                                                                                                      |
 | `getHistory`          | `{chatId, limit?: 1..100, offsetId?, offsetDate?, addOffset?: -50..0, anchorId?}` | `{messages: MessageDto[]}` (oldest first; the oldest album at the window edge is completed; reply originals outside the window are resolved) |
+| `getPinnedMessages`   | `{chatId, limit?: 1..100, offsetId?}`                                             | `{messages: MessageDto[], nextOffsetId?}` (newest first; reads Telegram's pinned search)                                                     |
 | `sendMessage`         | `{chatId, text, replyTo?, randomId?}`                                             | `{message}`                                                                                                                                  |
 | `forwardMessages`     | `{chatId, toChatId, messageIds: number[]}`                                        | `{messages: MessageDto[]}` (the copies in `toChatId`)                                                                                        |
 | `deleteMessages`      | `{chatId, messageIds: number[]}`                                                  | `{chatId, messageIds}` (the ids the delete took; the engine also echoes a `deleted` update)                                                  |
@@ -212,6 +213,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `getBotCommands`      | `{chatId, messageId?}`                                                            | `{commands: BotCommandDto[]}`                                                                                                                |
 | `setArchived`         | `{chatId, archived: boolean}`                                                     | `{chatId, archived}`                                                                                                                         |
 | `setPinned`           | `{chatId, pinned: boolean}`                                                       | `{chatId, pinned}`                                                                                                                           |
+| `setMessagePinned`    | `{chatId, messageId, pinned: boolean}`                                            | `{chatId, messageId, pinned}` (the engine also echoes a `message_pinned` update)                                                             |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
 | `resolveChat`         | `{username}\|{chatId}` (exactly one)                                              | `{chat: ChatDto, member: boolean}`                                                                                                           |
 | `joinChat`            | `{username}\|{chatId}` (exactly one)                                              | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
@@ -239,6 +241,20 @@ the archive each pin independently; the engine resolves the peer server-side and
 the requested `pinned` flag, which makes a retried call a set rather than a toggle. It is a write like `setArchived`, and
 the SPA folds the `pinned` update into whichever list already holds the chat.
 
+`getPinnedMessages` reads a page of a chat's pinned messages through Telegram's pinned search
+(`messages.search` with `inputMessagesFilterPinned`), newest first. The page's cursor is the oldest message it
+returned, so "Load Older Pinned Messages" is the same read with `offsetId`. It is read-only and on the batch
+whitelist: the chat screen asks for its first page (`limit: 1`) beside the window, and the thread's banner paints
+without a second round trip. `MessageDto.pinned` comes from mtcute's `message.isPinned`, which is what makes the
+message menu read Pin or Unpin. `ChatDto.canPinMessages` gates the menu conservatively — creator yes, a channel or
+supergroup admin with the `pin_messages` right, a basic group member whose chat and default rights allow it, and no
+for a chat the account left or a `min` peer — while Telegram remains the backstop.
+
+`setMessagePinned` pins or unpins one message through mtcute's `pinMessage`/`unpinMessage`, naming the
+message and the requested flag, so a retried call is a set rather than a toggle. It is a write, not on the batch
+whitelist. mtcute can answer it with a quiet pts step instead of `updatePinnedMessages`, so the engine broadcasts the
+`message_pinned` event the call implies itself; a second tab would otherwise keep the old banner.
+
 `getHistory`'s `anchorId` names the message the window has to hold: the engine reads _around_ it (with the newer
 context beside it) and, when the first read missed it — a deleted post, or one past the end of the history — reads the
 page that ends at it instead. The fallback the SPA used to spend a second round trip on now happens server-side.
@@ -250,12 +266,13 @@ the bridge — the engine resolves it back to a peer on the next page, so no acc
 cursor opaque and sends it back verbatim for "load more".
 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
-`getMe`, `getDialogs`, `getHistory`, `searchMessages`, `searchGlobal`, `getPollResults`, `getComments`, `getBotCommands`,
-`getProfile`, `resolveChat` and `resolveInvite`; a
+`getMe`, `getDialogs`, `getHistory`, `getPinnedMessages`, `searchMessages`, `searchGlobal`, `getPollResults`,
+`getComments`, `getBotCommands`, `getProfile`, `resolveChat` and `resolveInvite`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark,
-`setArchived` because it moves a chat between the chat list and the archive, `setPinned` because it changes the pinned
-block, and `joinChat`/`joinInvite` because they change the account's membership. Each call reports its own outcome, so
+`setArchived` because it moves a chat between the chat list and the archive, `setPinned` because it changes the dialog's
+pinned block, `setMessagePinned` because it changes which message a chat holds pinned, and `joinChat`/`joinInvite`
+because they change the account's membership. Each call reports its own outcome, so
 one broken read (a post without a comments section) never takes the reads beside it down with it.
 
 `chatId` is always a **marked** peer id: users positive, basic groups `-id`, channels/supergroups `-100…`.
@@ -525,7 +542,7 @@ Client → server: `{"type":"hello"}` (attach; engine goes live), `{"type":"ping
 call).
 Server → client: `{"type":"ready"}`, `{"type":"pong"}`, `{"type":"error","message":…,"code":…}` (the sentence is
 shown in the app as-is; `code` is the engine's coarse code, present when the failure carried one), and
-`{"type":"update","update":{"type":"new_message"|"edit_message"|"deleted"|"reactions"|"views"|"poll"|"read"|"user_status"|"call"|"call_signaling", …}}`.
+`{"type":"update","update":{"type":"new_message"|"edit_message"|"deleted"|"message_pinned"|"reactions"|"views"|"poll"|"read"|"user_status"|"call"|"call_signaling", …}}`.
 The `deleted` update carries `{chatId, messageIds}`. A channel's deletion (`updateDeleteChannelMessages`) names its
 chat exactly. The account-level `updateDeleteMessages` carries no peer — every private chat and basic group shares
 the account's pts — so the engine sends `chatId: null` and the SPA folds it by matching the ids against the open
@@ -533,6 +550,12 @@ window; a chat's ids are its own, which makes a match proof. The engine also emi
 `deleteMessages` RPC, because mtcute swallows the delete's own update.
 The `edit_message` update carries the full `MessageDto` (`editDate` set), and the engine emits it after its own
 `editMessage` RPC for the same reason: the chat list's preview and every other tab follow the edit.
+The `message_pinned` update carries `{chatId, messageIds, pinned}` and is the message-level pin, distinct from the
+chat-list `pinned` event above. A channel or supergroup names its chat exactly (`updatePinnedChannelMessages`); the
+account-level `updatePinnedMessages` shares the account's pts, so the engine sends its peer when Telegram provides one
+and the SPA otherwise folds by matching the ids. The event names ids only, which is enough: a tab that shows the chat
+re-reads the first pinned page for the banner's body. The engine also emits it after its own `setMessagePinned` RPC,
+because mtcute can swallow the call's own update.
 The `reactions` update carries `{chatId, messageId, reactions}` (no full message) whenever anyone reacts.
 The `views` update carries `{chatId, messageId, views}` (again no full message), mapped from Telegram's
 `updateChannelMessageViews`, so a channel post's counter ticks live for as long as the thread is loaded.

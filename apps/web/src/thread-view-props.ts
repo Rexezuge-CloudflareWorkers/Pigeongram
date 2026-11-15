@@ -127,6 +127,11 @@ export interface ThreadViewProps {
    */
   focusMessageId: number | null;
   /**
+   * The chat's newest pinned message, or null when it holds none. The view's
+   * banner names it; opening the pinned list is the reader's next tap.
+   */
+  pinnedMessage: MessageDto | null;
+  /**
    * Whether the loaded range reaches the chat's newest known message. False
    * while an unread backlog or an older linked post leaves messages beyond the
    * window: the view holds the pin back and reads the next newer page as the
@@ -177,6 +182,10 @@ export interface ThreadViewProps {
    * clears the other.
    */
   onEdit: (message: MessageDto) => void;
+  /**
+   * Pins a message in its chat, or unpins it.
+   */
+  onPin: (message: MessageDto, pinned: boolean) => void;
   onCancelEdit: () => void;
   /**
    * Saves the edited message's text; the composer keeps its draft until this
@@ -210,6 +219,10 @@ export interface ThreadViewProps {
    */
   onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
   onOpenComments: (message: MessageDto) => void;
+  /**
+   * Opens the pinned list, where every pin is a row that jumps to its post.
+   */
+  onOpenPinned: () => void;
   /**
    * Opens the full-page viewer at a message's media (an album opens at the
    * clicked member).

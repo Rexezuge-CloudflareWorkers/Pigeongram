@@ -55,6 +55,14 @@ interface MessageMenuProps {
   */
   onEdit?: (message: MessageDto) => void;
   /**
+  Pins the message in its chat, or unpins it when it already is. Absent for
+  views that do not pin (the comments screen's post), for a display group (an
+  album pins by its anchor only in Telegram's own clients) and for a chat whose
+  `canPinMessages` is false. The row gates those, so a caller that passes it
+  always means it.
+  */
+  onPin?: (message: MessageDto, pinned: boolean) => void;
+  /**
   Sets (or clears) a reaction on the anchor message; absent for views that do
   not react (a preview chat).
   */
@@ -83,6 +91,7 @@ export function MessageMenu({
   y,
   onReply,
   onEdit,
+  onPin,
   onForward,
   onReact,
   onDelete,
@@ -103,6 +112,7 @@ export function MessageMenu({
   const message = messages[0];
   const canReply = onReply !== undefined && !message.service;
   const canEdit = onEdit !== undefined && messages.length === 1 && !message.service;
+  const canPin = onPin !== undefined && messages.length === 1 && !message.service;
   const canForward = onForward !== undefined && !message.service;
   const canCopy = message.text.length > 0;
   const canCopyLink = link !== null;
@@ -110,7 +120,9 @@ export function MessageMenu({
   const canDelete = onDelete !== undefined && !message.service;
   const canDownload = messages.length === 1 && isDownloadable(message);
 
-  if (!canReply && !canEdit && !canForward && !canCopy && !canCopyLink && !canReact && !canDelete && !canDownload) return null;
+  if (!canReply && !canEdit && !canPin && !canForward && !canCopy && !canCopyLink && !canReact && !canDelete && !canDownload) {
+    return null;
+  }
 
   const pickReaction = (emoji: string): void => {
     if (!onReact) return;
@@ -121,6 +133,7 @@ export function MessageMenu({
   const items: Array<{ label: string; icon: IconName; run: () => void }> = [];
   if (canReply) items.push({ label: 'Reply', icon: 'reply', run: () => onReply?.(message) });
   if (canEdit) items.push({ label: 'Edit', icon: 'edit', run: () => onEdit?.(message) });
+  if (canPin) items.push({ label: message.pinned ? 'Unpin' : 'Pin', icon: 'pin', run: () => onPin?.(message, !message.pinned) });
   if (canForward) items.push({ label: 'Forward', icon: 'forward', run: () => onForward?.(messages) });
   if (canCopy) items.push({ label: 'Copy Text', icon: 'copy', run: () => void copyToClipboard(message.text) });
   if (link !== null) items.push({ label: 'Copy Link', icon: 'link', run: () => void copyToClipboard(link) });

@@ -82,6 +82,7 @@ function message(overrides: Partial<MessageDto> & { id: number; chatId: number }
     senderPhoto: null,
     outgoing: false,
     date: NOW,
+    pinned: false,
     editDate: null,
     text: `message ${overrides.id}`,
     entities: [],
@@ -109,6 +110,7 @@ function chat(id: number): ChatDto {
     photo: null,
     canSendMessages: true,
     canDeleteMessages: true,
+    canPinMessages: true,
     presence: null,
   };
 }
@@ -356,6 +358,7 @@ describe('thread state', () => {
       windowEndId: 1,
       latestMessageId: 1,
       newMessageIds: new Set<number>(),
+      pinnedMessage: null,
     };
     const foreign = updateThread(thread, 2, () => [message({ id: 2, chatId: 2 })]);
     expect(foreign).toBe(thread);
@@ -380,6 +383,7 @@ describe('thread state', () => {
       windowEndId: 1,
       latestMessageId: 1,
       newMessageIds: new Set<number>(),
+      pinnedMessage: null,
     };
     expect(updateThread(thread, 1, (messages) => messages)).toBe(thread);
     expect(updateThread(null, 1, (messages) => messages)).toBeNull();
@@ -472,6 +476,7 @@ describe('poll state', () => {
       windowEndId: 5,
       latestMessageId: 5,
       newMessageIds: new Set<number>(),
+      pinnedMessage: null,
     };
     const fresh = { ...POLL, totalVoters: 9 };
     const named = updateThreadPoll(thread, { chatId: 1, messageId: 5, pollId: POLL.id }, fresh);
@@ -496,6 +501,7 @@ describe('poll state', () => {
       count: 1,
       nextOffset: null,
       newMessageIds: new Set<number>(),
+      pinnedMessage: null,
     };
     const fresh = { ...POLL, totalVoters: 9 };
 
@@ -760,6 +766,7 @@ describe('read and key helpers', () => {
       windowEndId: null,
       latestMessageId: null,
       newMessageIds: new Set(),
+      pinnedMessage: null,
     };
   }
 

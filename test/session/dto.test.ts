@@ -145,6 +145,7 @@ describe('toChatDto', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     });
     expect(toChatDto(new User(rawBot))).toEqual({
@@ -155,6 +156,7 @@ describe('toChatDto', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     });
     expect(toChatDto(new Chat(rawGroup))).toEqual({
@@ -165,6 +167,7 @@ describe('toChatDto', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     });
     expect(toChatDto(new Chat(rawChannel))).toEqual({
@@ -175,6 +178,7 @@ describe('toChatDto', () => {
       photo: null,
       canSendMessages: false,
       canDeleteMessages: false,
+      canPinMessages: false,
       presence: null,
     });
     expect(toChatDto(new Chat(rawSupergroup))).toEqual({
@@ -185,6 +189,7 @@ describe('toChatDto', () => {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: false,
       presence: null,
     });
   });
@@ -267,6 +272,41 @@ describe('toChatDto', () => {
     expect(toChatDto(group).canDeleteMessages).toBe(false);
   });
 
+  it('lets the creator or a pin-messages admin pin in a channel', () => {
+    const creator = { ...rawChannel, creator: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(creator)).canPinMessages).toBe(true);
+
+    const moderator = {
+      ...rawSupergroup,
+      adminRights: { _: 'chatAdminRights', pinMessages: true },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(moderator)).canPinMessages).toBe(true);
+
+    const manager = {
+      ...rawSupergroup,
+      adminRights: { _: 'chatAdminRights', changeInfo: true },
+    } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(manager)).canPinMessages).toBe(false);
+  });
+
+  it('never offers a pin where the chat is left or incomplete', () => {
+    const left = { ...rawChannel, left: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(left)).canPinMessages).toBe(false);
+
+    const min = { ...rawChannel, min: true } as unknown as tl.RawChannel;
+    expect(toChatDto(new Chat(min)).canPinMessages).toBe(false);
+  });
+
+  it('lets a basic group member pin unless the permissions withhold it', () => {
+    expect(toChatDto(new Chat(rawGroup)).canPinMessages).toBe(true);
+
+    const banned = {
+      ...rawGroup,
+      defaultBannedRights: { _: 'chatBannedRights', pinMessages: true, untilDate: 0 },
+    } as unknown as tl.RawChat;
+    expect(toChatDto(new Chat(banned)).canPinMessages).toBe(false);
+  });
+
   it('lets a monoforum subscriber write to the channel admins', () => {
     const monoforum = { ...rawChannel, monoforum: true } as unknown as tl.RawChannel;
     expect(toChatDto(new Chat(monoforum)).canSendMessages).toBe(true);
@@ -283,6 +323,7 @@ describe('toChatDto', () => {
       photo: 'AQADRgAI',
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     });
     expect(toChatDto(new Chat(rawGroupWithPhoto))).toEqual({
@@ -293,6 +334,7 @@ describe('toChatDto', () => {
       photo: 'AQADRwAI',
       canSendMessages: true,
       canDeleteMessages: false,
+      canPinMessages: true,
       presence: null,
     });
   });
@@ -316,6 +358,7 @@ describe('toMessageDto', () => {
       senderPhoto: null,
       outgoing: false,
       date: 1_700_000_000_000,
+      pinned: false,
       editDate: null,
       text: 'hello',
       entities: [],
@@ -516,6 +559,11 @@ describe('toMessageDto', () => {
   it('maps the edit date, and leaves a never-edited message without one', () => {
     expect(toMessageDto(message({})).editDate).toBeNull();
     expect(toMessageDto(message({ editDate: 1_700_000_100 })).editDate).toBe(1_700_000_100_000);
+  });
+
+  it('carries Telegram’s pinned flag for the menu’s Pin or Unpin label', () => {
+    expect(toMessageDto(message({})).pinned).toBe(false);
+    expect(toMessageDto(message({ pinned: true })).pinned).toBe(true);
   });
 
   it('carries album membership as a decimal string', () => {
@@ -1127,6 +1175,7 @@ describe('toDialogDto', () => {
         photo: null,
         canSendMessages: true,
         canDeleteMessages: false,
+        canPinMessages: true,
         presence: null,
       },
       lastMessage: null,

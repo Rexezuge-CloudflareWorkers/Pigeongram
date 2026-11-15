@@ -21,6 +21,7 @@ function dialog(unread: number, overrides: Partial<DialogDto> = {}): DialogDto {
       photo: null,
       canSendMessages: true,
       canDeleteMessages: true,
+      canPinMessages: true,
       presence: null,
     },
     lastMessage: null,

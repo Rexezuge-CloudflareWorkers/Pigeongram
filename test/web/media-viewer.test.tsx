@@ -371,11 +371,11 @@ describe('media viewer swipe', () => {
 
     fireEvent.pointerDown(image, { pointerId: 1, pointerType: 'touch', clientX: 300, clientY: 300 });
     fireEvent.pointerMove(image, { pointerId: 1, pointerType: 'touch', clientX: 240, clientY: 306 });
-    expect(track.style.transform).toBe('translate3d(-60px, 0, 0)');
+    expect(track.style.transform).toBe('translate3d(-60px, 0px, 0px)');
     expect(track.classList.contains('is-settling')).toBe(false);
 
     fireEvent.pointerUp(image, { pointerId: 1, pointerType: 'touch', clientX: 240, clientY: 306 });
-    expect(track.style.transform).toBe('translate3d(0px, 0, 0)');
+    expect(track.style.transform).toBe('translate3d(0px, 0px, 0px)');
     expect(track.classList.contains('is-settling')).toBe(true);
     expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
   });
@@ -396,7 +396,7 @@ describe('media viewer swipe', () => {
     fireEvent.pointerDown(image, { pointerId: 1, pointerType: 'touch', clientX: 300, clientY: 300 });
     fireEvent.pointerMove(image, { pointerId: 1, pointerType: 'touch', clientX: 400, clientY: 300 });
     const track = document.querySelector<HTMLElement>('.media-viewer-track');
-    expect(track?.style.transform).toBe('translate3d(25px, 0, 0)');
+    expect(track?.style.transform).toBe('translate3d(25px, 0px, 0px)');
     fireEvent.pointerUp(image, { pointerId: 1, pointerType: 'touch', clientX: 400, clientY: 300 });
     expect(currentImageSrc()).toBe('/user/file?chatId=2&messageId=1');
 

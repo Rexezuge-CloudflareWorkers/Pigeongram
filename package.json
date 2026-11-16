@@ -23,7 +23,7 @@
   "devDependencies": {
     "@rexezuge/tooling": "1.9.4",
     "@types/node": "26.6.6",
-    "@vitejs/plugin-react": "^6.2.1",
+    "@vitejs/plugin-react": "^6.3.0",
     "@vitest/coverage-v8": "5.1.0",
     "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",

@@ -27,7 +27,12 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
   // time float on hover/focus. A caption, reply, album count, or a failed send
   // (which must keep Retry/Discard reachable) stays bubbled.
   const bare =
-    entry.media !== null && entry.text.length === 0 && message.reply === null && entry.fileCount <= 1 && entry.status !== 'failed';
+    entry.media !== null &&
+    entry.media.kind !== 'voice' &&
+    entry.text.length === 0 &&
+    message.reply === null &&
+    entry.fileCount <= 1 &&
+    entry.status !== 'failed';
   const meta = (
     <span className="meta pending-meta" role="status" aria-live="polite">
       {entry.status === 'failed' ? null : <Spinner inline size={11} color="currentColor" />}
@@ -73,7 +78,7 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
   const [failed, setFailed] = useState(false);
   const source = entry.previewUrl;
 
-  if (source === null || failed || media.kind === 'document' || media.kind === 'audio' || media.kind === 'voice') {
+  if (source === null || failed) {
     return (
       <span className="pending-file">
         <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
@@ -83,6 +88,20 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
     );
   }
   const onError = (): void => setFailed(true);
+  if (media.kind === 'voice') {
+    // The local blob plays while it uploads, exactly as the settled message
+    // will: a voice note the reader cannot hear is not a voice note.
+    return <audio className="audio" src={source} controls preload="metadata" onError={onError} />;
+  }
+  if (media.kind === 'document' || media.kind === 'audio') {
+    return (
+      <span className="pending-file">
+        <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
+        {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
+        {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} Files` : ''}
+      </span>
+    );
+  }
   if (media.kind === 'photo') {
     return <img className="photo" src={source} alt={media.fileName ?? 'Photo'} onError={onError} />;
   }

@@ -114,6 +114,9 @@ importers:
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0
+      opus-recorder:
+        specifier: 8.0.5
+        version: 8.0.5
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -3302,6 +3305,9 @@ packages:
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
+
+  opus-recorder@8.0.5:
+    resolution: {integrity: sha512-tBRXc9Btds7i3bVfA7d5rekAlyOcfsivt5vSIXHxRV1Oa+s6iXFW8omZ0Lm3ABWotVcEyKt96iIIUcgbV07YOw==}
 
   own-keys@1.0.2:
     resolution: {integrity: sha512-19YVAg7T+WTrxggPukVq7DjTv6+PJ867TmhCvBsYwmbFCsZd344rq2Ld1p0wo8f8Qrrhgp82c6FJRqdXWtSEhg==}
@@ -7152,6 +7158,8 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
       word-wrap: 1.2.5
+
+  opus-recorder@8.0.5: {}
 
   own-keys@1.0.2:
     dependencies:

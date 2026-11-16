@@ -398,6 +398,20 @@ protocol,registry}`) and the mtcute integration
   draft rides along as the caption, exactly as it does for the file picker. Only a clipboard without text is taken
   over — a cell copied from a spreadsheet arrives as text _and_ an image of the cell, and there the text is what the
   user meant to paste, so the browser keeps it.
+- **A voice note is recorded in the browser and uploaded as one file.** The composer's empty-draft send button is the
+  microphone (`pages/src/components/Composer.tsx` and `useVoiceRecorder.ts`): pressing it opens the microphone, shows a
+  live timer with Cancel/Stop And Send, and hands the finished recording to the same file path an attachment takes, with
+  `kind: 'voice'` and the measured duration forced (`pages/src/upload.ts`, `pages/src/outbox.ts`). The encoder is
+  `opus-recorder`, which produces the Ogg/Opus container Telegram's own clients use, and it is loaded lazily through
+  `pages/src/recorder-loader.ts` on the first press, so its WebAssembly bundle never rides the first paint. That one
+  worker script embeds the wasm as a data URI, so `pages/build/recorder-plugin.ts` copies only
+  `encoderWorker.min.js` into `recorder/` for the build and the dev server. The recording stops by itself at
+  `VOICE_MAX_SECONDS` (300 s), the SPA clamps the duration it reports to `1..300`, and the shared parser
+  (`session/upload-spec.ts`) refuses a `kind=voice` upload whose duration is absent or past the cap, before the body is
+  read. The engine maps it to `InputMedia.voice` (`session/upload.ts`); there is no transcode, no storage and no
+  waveform — Telegram generates the waveform. A refused microphone or an unsupported browser is an inline `role="alert"`
+  in the composer, never a silent failure or a webm note. A voice note is never grouped into an album: the parser
+  refuses it there and `sendUploadBatch` keeps it on the single-file path.
 - **Media ranges are cut in the engine, never passed to mtcute as `limit`.** `session/media-stream.ts` streams a byte
   window over `downloadAsIterable` — a 1 MB-block-aligned offset, dropped prefix, local tail cut, and `throttle`
   backpressure so one chunk is buffered — because mtcute's `limit` accepts only the whole file size (or a ≤1 MB

@@ -247,6 +247,7 @@ const KIND_ICONS: Record<UploadKind, IconName> = {
   photo: 'image',
   video: 'video',
   animation: 'gif',
+  voice: 'mic',
   document: 'document',
 };
 

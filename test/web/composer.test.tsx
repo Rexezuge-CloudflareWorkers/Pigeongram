@@ -1,7 +1,44 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from '../../apps/web/src/components/Composer';
+import type { RecordedVoice } from '../../apps/web/src/recorder';
 import type { BotCommandDto, MessageDto } from '../../apps/web/src/types';
+
+/**
+ * The microphone is replaced by a controllable stand-in: these cases pin what
+ * the composer does with the recorder's states, not how the encoder works
+ * (`test/web/recorder.test.ts` owns that).
+ */
+const microphone = vi.hoisted(() => ({
+  state: 'idle' as 'idle' | 'starting' | 'recording',
+  seconds: 0,
+  start: vi.fn(),
+  stop: vi.fn(),
+  cancel: vi.fn(),
+  options: null as { onRecorded: (voice: RecordedVoice) => void; onError: (message: string) => void } | null,
+}));
+
+vi.mock('../../apps/web/src/useVoiceRecorder', () => ({
+  useVoiceRecorder: (options: { onRecorded: (voice: RecordedVoice) => void; onError: (message: string) => void }) => {
+    microphone.options = options;
+    return {
+      state: microphone.state,
+      seconds: microphone.seconds,
+      start: microphone.start,
+      stop: microphone.stop,
+      cancel: microphone.cancel,
+    };
+  },
+}));
+
+beforeEach(() => {
+  microphone.state = 'idle';
+  microphone.seconds = 0;
+  microphone.start.mockReset();
+  microphone.stop.mockReset();
+  microphone.cancel.mockReset();
+  microphone.options = null;
+});
 
 afterEach(cleanup);
 
@@ -204,5 +241,74 @@ describe('Composer edit mode', () => {
 
     expect(onCancelEdit).toHaveBeenCalledTimes(1);
     expect(onSend).not.toHaveBeenCalled();
+  });
+});
+
+describe('Composer voice messages', () => {
+  function renderVoice(onAttach = vi.fn(async () => {})): { onAttach: ReturnType<typeof vi.fn> } {
+    render(<Composer placeholder="Message" replyTarget={null} onCancelReply={() => {}} onSend={async () => {}} onAttach={onAttach} />);
+    return { onAttach };
+  }
+
+  function voice(duration = 12): RecordedVoice {
+    return { file: new File(['ogg'], 'voice-message.ogg', { type: 'audio/ogg' }), duration };
+  }
+
+  it('turns the empty send button into the microphone', () => {
+    renderVoice();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Record Voice Message' }));
+
+    expect(microphone.start).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the recording strip with a live timer and its two ways out', () => {
+    microphone.state = 'recording';
+    microphone.seconds = 9;
+    renderVoice();
+
+    expect(screen.getByRole('group', { name: 'Voice Recording' })).toBeDefined();
+    expect(screen.getByText('0:09')).toBeDefined();
+    expect(screen.getByText('Recording Voice Message…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Attach Files' })).toBeNull();
+    expect(screen.queryByPlaceholderText('Message')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop And Send' }));
+    expect(microphone.stop).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Recording' }));
+    expect(microphone.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues the recorded file as a voice note with the draft as its caption', async () => {
+    const { onAttach } = renderVoice();
+    fireEvent.change(textarea(), { target: { value: 'Listen To This' } });
+
+    act(() => {
+      microphone.options?.onRecorded(voice(12));
+    });
+
+    await waitFor(() => {
+      expect(onAttach).toHaveBeenCalledWith({
+        files: [expect.any(File)],
+        caption: 'Listen To This',
+        replyTo: undefined,
+        grouped: false,
+        sendAsFile: false,
+        kind: 'voice',
+        duration: 12,
+      });
+    });
+    expect(textarea().value).toBe('');
+  });
+
+  it('reports a refused microphone in the composer', () => {
+    renderVoice();
+
+    act(() => {
+      microphone.options?.onError('Microphone Access Was Denied.');
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe('Microphone Access Was Denied.');
   });
 });

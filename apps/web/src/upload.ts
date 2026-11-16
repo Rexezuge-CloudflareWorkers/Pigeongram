@@ -42,6 +42,17 @@ export interface UploadRequest {
    * photo/video path compress it. Off by default, matching Telegram.
    */
   sendAsFile: boolean;
+  /**
+   * Forces the media kind instead of inferring it from the file's MIME type.
+   * The voice recorder sets `'voice'`: its Ogg container is audio, which the
+   * MIME mapping would otherwise classify as a document.
+   */
+  kind?: 'voice';
+  /**
+   * Duration in seconds, for the kinds that carry one. A voice note must
+   * declare it; the bridge refuses the upload without it.
+   */
+  duration?: number;
 }
 
 /**
@@ -107,11 +118,20 @@ export async function sendUploadBatch(
 ): Promise<void> {
   const prepared: PreparedUpload[] = [];
   for (const file of request.files) {
-    prepared.push(await prepareUpload(file, request.sendAsFile));
+    prepared.push(await prepareUpload(file, request.sendAsFile, request.kind === 'voice' ? request.duration : undefined));
   }
   if (prepared.length === 0) return;
 
-  if (request.grouped && prepared.length > 1 && prepared.length <= MAX_UPLOAD_ITEMS && groupableKinds(prepared.map((item) => item.kind))) {
+  // A voice note is one file by construction, so it never reaches the album
+  // path even if a caller asks for grouping.
+  const voice = prepared.length === 1 && prepared[0]?.kind === 'voice';
+  if (
+    !voice &&
+    request.grouped &&
+    prepared.length > 1 &&
+    prepared.length <= MAX_UPLOAD_ITEMS &&
+    groupableKinds(prepared.map((item) => item.kind))
+  ) {
     const body = new Blob(prepared.map((item) => item.body));
     const result = await uploadGroup(
       {
@@ -169,13 +189,18 @@ function groupableKinds(kinds: readonly UploadKind[]): boolean {
  * `sendAsFile` skips all of that and sends the bytes exactly as picked: the
  * kind is always `document`, so Telegram stores the original file instead of
  * transcoding it into a photo or video (the "Send As File" dialog option).
+ *
+ * `voiceDuration` forces the `voice` kind: the recorder's Ogg/Opus blob is
+ * audio by MIME, and a voice note is Telegram's `InputMedia.voice` carrying
+ * the duration the browser measured, not an uploaded document.
  */
-export async function prepareUpload(file: File, sendAsFile = false): Promise<PreparedUpload> {
+export async function prepareUpload(file: File, sendAsFile = false, voiceDuration?: number): Promise<PreparedUpload> {
   let kind = mediaKind(file);
   let body: Blob = file;
   let fileName = file.name || 'file';
   let mime = file.type || 'application/octet-stream';
 
+  if (voiceDuration !== undefined) return { kind: 'voice', body, fileName, mime, duration: voiceDuration };
   if (sendAsFile) return { kind: 'document', body, fileName, mime };
 
   if (kind === 'photo' && mime !== 'image/jpeg') {

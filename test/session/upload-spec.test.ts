@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseUploadGroupSpec, parseUploadSpec } from '../../packages/backend-services/src/session/upload-spec';
+import { VOICE_MAX_SECONDS } from '../../packages/shared/src/types';
 
 /**
  * The album manifest is the one untrusted, structured part of an upload: it
@@ -132,5 +133,44 @@ describe('parseUploadSpec random id', () => {
       const { url, request: body } = single(`chatId=1&kind=document&size=6&randomId=${randomId}`);
       expect(() => parseUploadSpec(url, body, config), randomId).toThrowError(expect.objectContaining({ status: 400 }));
     }
+  });
+});
+
+describe('parseUploadSpec voice notes', () => {
+  function upload(query: string): { url: URL; request: Request } {
+    const url = new URL(`https://session-engine.internal/user/upload?${query}`);
+    return { url, request: new Request(url, { method: 'POST', body: 'abcdef', headers: { 'content-length': '6' } }) };
+  }
+
+  it('keeps the declared duration of a voice note', () => {
+    const { url, request: body } = upload('chatId=1&kind=voice&size=6&duration=42&mime=audio%2Fogg&fileName=voice-message.ogg');
+    const spec = parseUploadSpec(url, body, config);
+
+    expect(spec).toMatchObject({ kind: 'voice', duration: 42, mime: 'audio/ogg', fileName: 'voice-message.ogg' });
+  });
+
+  it('refuses a voice note without a duration, because the bubble needs one', () => {
+    const missing = upload('chatId=1&kind=voice&size=6');
+    expect(() => parseUploadSpec(missing.url, missing.request, config)).toThrowError(
+      expect.objectContaining({ status: 400, message: expect.stringContaining('duration') }),
+    );
+
+    const unusable = upload('chatId=1&kind=voice&size=6&duration=0');
+    expect(() => parseUploadSpec(unusable.url, unusable.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
+  });
+
+  it('holds the recording to the recorder length cap', () => {
+    const longest = upload(`chatId=1&kind=voice&size=6&duration=${String(VOICE_MAX_SECONDS)}`);
+    expect(() => parseUploadSpec(longest.url, longest.request, config)).not.toThrow();
+
+    const longer = upload(`chatId=1&kind=voice&size=6&duration=${String(VOICE_MAX_SECONDS + 1)}`);
+    expect(() => parseUploadSpec(longer.url, longer.request, config)).toThrowError(expect.objectContaining({ status: 400 }));
+  });
+
+  it('keeps a voice note out of an album', () => {
+    const { url, request: body } = request(`chatId=1&manifest=${encode([item(), item({ kind: 'voice' })])}`);
+    expect(() => parseUploadGroupSpec(url, body, config)).toThrowError(
+      expect.objectContaining({ status: 400, message: expect.stringContaining('voice') }),
+    );
   });
 });

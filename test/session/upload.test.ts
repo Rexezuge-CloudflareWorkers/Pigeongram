@@ -309,3 +309,39 @@ describe('sendUploadedMediaGroup comments', () => {
     expect(messages).toEqual([{ id: 99 }]);
   });
 });
+
+describe('sendUploadedMedia voice', () => {
+  it('sends the declared duration as a voice note', async () => {
+    const captured: Array<{ type: string; duration?: number; mime?: string; bytes: number[] }> = [];
+    const client = {
+      sendMedia: vi.fn(async (_peer: unknown, media: InputMediaLike) => {
+        captured.push({
+          type: mediaInfo(media).type,
+          duration: (media as { duration?: number }).duration,
+          mime: (media as { fileMime?: string }).fileMime,
+          bytes: await readAll(mediaFile(media)),
+        });
+        return { id: 5 };
+      }),
+    } as unknown as TelegramClient;
+
+    const message = await sendUploadedMedia(
+      client,
+      {
+        chatId: 10,
+        kind: 'voice',
+        size: 4,
+        fileName: 'voice-message.ogg',
+        mime: 'audio/ogg',
+        duration: 7,
+      },
+      stream([
+        [1, 2],
+        [3, 4],
+      ]),
+    );
+
+    expect(captured).toEqual([{ type: 'voice', duration: 7, mime: 'audio/ogg', bytes: [1, 2, 3, 4] }]);
+    expect(message).toEqual({ id: 5 });
+  });
+});

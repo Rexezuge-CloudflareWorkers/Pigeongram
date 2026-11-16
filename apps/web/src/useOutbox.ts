@@ -217,7 +217,7 @@ export function useOutbox({ onError }: UseOutboxOptions): OutboxController {
         fileCount: files.length,
         replyTo: input.request.replyTo ?? null,
         replyPreview: input.replyPreview ?? null,
-        media: pendingMedia(first, input.request.sendAsFile),
+        media: pendingMedia(first, input.request.sendAsFile, input.request.kind === 'voice' ? (input.request.duration ?? 0) : null),
         previewUrl: localPreviewUrl(first),
         createdAt: Date.now(),
         status: 'preparing',

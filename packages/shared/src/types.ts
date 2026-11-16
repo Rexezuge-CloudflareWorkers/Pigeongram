@@ -688,7 +688,15 @@ export interface MessageWebPageDto {
 Media kinds `POST /user/upload` accepts. The SPA maps the file's MIME onto one
 of these; the engine never guesses from bytes.
 */
-export type UploadKind = 'photo' | 'video' | 'animation' | 'document';
+export type UploadKind = 'photo' | 'video' | 'animation' | 'voice' | 'document';
+
+/**
+The longest voice message the client records and the bridge accepts, in
+seconds. The recorder stops at it, and `parseUploadSpec` refuses a declared
+duration beyond it, so neither side can spend an upload on a note that will
+not be sent.
+*/
+export const VOICE_MAX_SECONDS = 300;
 
 export interface DialogDto {
   chat: ChatDto;

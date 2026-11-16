@@ -12,6 +12,11 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - 'dependencies'
+    # `typescript` stays on 6.x until typescript-eslint supports the TS 7 API
+    # (it declares a peer range of >=4.8.4 <6.1.0; see typescript-eslint#10940).
+    ignore:
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
       kit:
         patterns:
@@ -20,6 +25,7 @@ updates:
         patterns:
           - 'typescript'
           - 'vitest'
+          - '@vitest/coverage-v8'
           - 'vite'
           - 'eslint'
           - 'typescript-eslint'

@@ -30,7 +30,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.2.1",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vite-plugin-pwa": "^2.0.0",
     "workbox-precaching": "^7.4.1",

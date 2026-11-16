@@ -14,7 +14,7 @@ import type { MessageDto } from './types';
  * while the viewer is open is reflected in it.
  */
 
-export type ViewerSource = 'thread' | 'comments';
+type ViewerSource = 'thread' | 'comments';
 
 interface ViewerRequest {
   source: ViewerSource;

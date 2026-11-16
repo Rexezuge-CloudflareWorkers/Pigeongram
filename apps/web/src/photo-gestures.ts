@@ -21,7 +21,7 @@ import {
 export const DOUBLE_TAP_MS = 320;
 const TAP_SLOP_PX = 24;
 
-export interface PanGesture {
+interface PanGesture {
   kind: 'pan';
   startView: View;
   start: Point;

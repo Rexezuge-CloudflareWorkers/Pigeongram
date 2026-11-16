@@ -5,7 +5,6 @@ import type {
   ConfirmCallParams,
   DiscardCallParams,
   GetCallDhConfigResult,
-  RateCallParams,
   RequestCallParams,
 } from '../call-types';
 
@@ -57,8 +56,3 @@ export const confirmCall = (params: ConfirmCallParams): Promise<CallResult> => r
  * Ends a call.
  */
 export const discardCall = (params: DiscardCallParams): Promise<{ ok: true }> => rpc('discardCall', { ...params });
-
-/**
- * Rates a finished call.
- */
-export const rateCall = (params: RateCallParams): Promise<{ ok: true }> => rpc('rateCall', { ...params });

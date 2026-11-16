@@ -17,12 +17,12 @@
  * - `active` — the media flows.
  * - `ended` — the call is over; the overlay says so and then goes away.
  */
-export type CallPhase = 'ringing' | 'connecting' | 'active' | 'ended';
+type CallPhase = 'ringing' | 'connecting' | 'active' | 'ended';
 
 /**
  * Which way the call went.
  */
-export type CallDirection = 'outgoing' | 'incoming';
+type CallDirection = 'outgoing' | 'incoming';
 
 /**
  * What the UI shows.

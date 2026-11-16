@@ -259,6 +259,13 @@ describe('the outbox', () => {
     expect(pendingMedia(image, true)).toMatchObject({ kind: 'document', mime: 'image/webp', fileName: 'logo.webp' });
   });
 
+  it('describes a recording as a voice note with its measured duration', () => {
+    const voice = new File([new Uint8Array([1, 2])], 'voice-message.ogg', { type: 'audio/ogg' });
+
+    expect(pendingMedia(voice)).toMatchObject({ kind: 'document' });
+    expect(pendingMedia(voice, false, 9)).toMatchObject({ kind: 'voice', duration: 9, mime: 'audio/ogg' });
+  });
+
   it('shows a file selection at once and hands it to the delivery', async () => {
     const onSettled = vi.fn();
     let release: ((messages: MessageDto[]) => void) | undefined;

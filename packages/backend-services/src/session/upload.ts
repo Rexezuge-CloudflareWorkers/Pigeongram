@@ -129,6 +129,11 @@ function buildInputMedia(spec: UploadMediaSpec, body: ReadableStream<Uint8Array>
     case 'animation': {
       return InputMedia.animation(body, params);
     }
+    case 'voice': {
+      // The waveform is deliberately omitted: Telegram generates one, and the
+      // recorder has no amplitude data to draw it from.
+      return InputMedia.voice(body, { ...params, duration: spec.duration });
+    }
     default: {
       return InputMedia.document(body, params);
     }

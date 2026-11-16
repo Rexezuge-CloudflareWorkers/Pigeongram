@@ -7,6 +7,7 @@ import { pwaAssetLinksPlugin } from './build/pwa/assetlinks-plugin';
 import { pwaBrandingPlugin } from './build/pwa/branding-plugin';
 import { createManifest } from './build/pwa/manifest';
 import { pwaIconsPlugin } from './build/pwa/plugin';
+import { voiceRecorderPlugin } from './build/recorder-plugin';
 
 /**
  * The SPA's Vite config, on the kit's factory.
@@ -28,6 +29,8 @@ export default defineWebViteConfig({
     // The Digital Asset Links statement for this deployment's Android build.
     // It is emitted only when the deployment supplies the Android variables.
     pwaAssetLinksPlugin(),
+    // The Ogg/Opus encoder worker the voice recorder loads on demand.
+    voiceRecorderPlugin(),
     VitePWA({
       // The worker is ours (`apps/web/sw/sw.ts`), so the rules that keep the
       // Cloudflare Access gate intact are readable TypeScript with tests,

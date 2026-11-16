@@ -166,7 +166,7 @@ The two media routes are also the reason `/user/*` carries **two** per-minute bu
 so a chat-list paint followed by a media-heavy thread hit `429 RateLimited` during ordinary browsing.
 
 `POST /user/upload` takes the file as the **raw request body** (no multipart); everything else rides the query
-string: `chatId`, `kind` (`photo` | `video` | `animation` | `document`), `size` (required; must match
+string: `chatId`, `kind` (`photo` | `video` | `animation` | `voice` | `document`), `size` (required; must match
 `content-length` when set), `fileName`, `mime`, `caption`, `replyTo` (a message id in the same chat), optional
 `randomId` (the client-chosen idempotency key, see below), and
 optional `width`/`height`/`duration`. `commentTo` (a channel post id) turns the upload into a comment on that
@@ -179,6 +179,11 @@ answers without consuming the body (cloudflare/workerd#918). The kind is never g
 canvas-decodable images to JPEG (what official clients do) and falls back to `document` for anything else. The
 dialog's "Send As File" option skips that preparation entirely and sends every item as `kind=document` with its
 original bytes, name and MIME — the path that keeps a WebP a WebP instead of the JPEG a photo message would become.
+
+A voice note is `kind=voice` with the recording's **duration required** (`duration`, in whole seconds, at most
+`VOICE_MAX_SECONDS` = 300): it becomes `InputMedia.voice`, and the engine refuses a duration that is absent or past the
+cap before reading the body. The SPA records Ogg/Opus in the browser and sends the encoded file here, so no transcode
+happens on the engine; the waveform is omitted, because Telegram generates one.
 
 `POST /user/upload-group` sends an album. The body is the 2–10 files **concatenated in manifest order**, and the
 `manifest` query parameter carries the per-file metadata as base64url-encoded JSON (`kind`, `size`, `fileName`, `mime`,

@@ -96,16 +96,19 @@ export function randomMessageId(): string {
  * The media descriptor a local file shows before Telegram's prepared media
  * arrives. `prepareUpload` may turn the kind into `document` later, and a
  * send-as-file selection is a document from the start.
+ *
+ * A voice note is named by the recorder (`voiceDuration`), because its Ogg
+ * container would otherwise be read as a document.
  */
-export function pendingMedia(file: File, sendAsFile = false): MessageMediaDto {
+export function pendingMedia(file: File, sendAsFile = false, voiceDuration: number | null = null): MessageMediaDto {
   return {
-    kind: sendAsFile ? 'document' : mediaKind(file),
+    kind: voiceDuration === null ? (sendAsFile ? 'document' : mediaKind(file)) : 'voice',
     fileName: file.name || 'file',
     mime: file.type || 'application/octet-stream',
     size: file.size,
     width: null,
     height: null,
-    duration: null,
+    duration: voiceDuration,
   };
 }
 

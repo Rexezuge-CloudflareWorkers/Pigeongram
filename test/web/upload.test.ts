@@ -359,3 +359,39 @@ function useVideo(element: HTMLVideoElement): void {
   );
   vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:video'), revokeObjectURL: vi.fn() });
 }
+
+describe('voice uploads', () => {
+  const recording = (): File => new File([new Uint8Array([1, 2, 3])], 'voice-message.ogg', { type: 'audio/ogg' });
+
+  it('sends the recorded kind and duration instead of the MIME mapping', async () => {
+    const voice = recording();
+    // The Ogg container is audio, which the file mapping calls a document.
+    await expect(prepareUpload(voice)).resolves.toMatchObject({ kind: 'document' });
+
+    await expect(prepareUpload(voice, false, 9)).resolves.toMatchObject({
+      kind: 'voice',
+      duration: 9,
+      fileName: 'voice-message.ogg',
+      mime: 'audio/ogg',
+    });
+  });
+
+  it('uploads a voice request as one file, never as an album', async () => {
+    api.uploadFile.mockResolvedValue({ message: { id: 3 } });
+    const progress = vi.fn();
+    const sent: number[] = [];
+
+    await sendUploadBatch(
+      { chatId: 10 },
+      { files: [recording()], caption: '', grouped: true, sendAsFile: false, kind: 'voice', duration: 9 },
+      progress,
+      (message) => sent.push(message.id),
+    );
+
+    expect(api.uploadGroup).not.toHaveBeenCalled();
+    expect(api.uploadFile).toHaveBeenCalledTimes(1);
+    const [input] = api.uploadFile.mock.calls[0] as [UploadInput, Blob];
+    expect(input).toMatchObject({ chatId: 10, kind: 'voice', duration: 9, fileName: 'voice-message.ogg' });
+    expect(sent).toEqual([3]);
+  });
+});

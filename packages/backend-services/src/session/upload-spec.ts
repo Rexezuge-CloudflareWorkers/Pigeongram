@@ -1,4 +1,5 @@
 import { Long } from '@mtcute/core';
+import { VOICE_MAX_SECONDS } from '../types';
 import type { UploadKind } from '../types';
 import type { UploadConfig } from './config';
 import { EngineError } from './errors';
@@ -69,7 +70,7 @@ const MAX_MIME_LENGTH = 100;
 const MIN_GROUP_ITEMS = 2;
 const MAX_GROUP_ITEMS = 10;
 const MANIFEST_MAX_LENGTH = 16 * 1024;
-const UPLOAD_KINDS: ReadonlySet<UploadKind> = new Set(['photo', 'video', 'animation', 'document']);
+const UPLOAD_KINDS: ReadonlySet<UploadKind> = new Set(['photo', 'video', 'animation', 'voice', 'document']);
 
 export function parseUploadSpec(url: URL, request: Request, config: UploadConfig): UploadSpec {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
@@ -88,6 +89,7 @@ export function parseUploadSpec(url: URL, request: Request, config: UploadConfig
   const width = parseQuantity(url.searchParams.get('width'));
   const height = parseQuantity(url.searchParams.get('height'));
   const duration = parseQuantity(url.searchParams.get('duration'));
+  if (kind === 'voice') checkVoiceDuration(duration);
   const randomId = optionalRandomId(url.searchParams.get('randomId'));
 
   return {
@@ -222,7 +224,12 @@ function parseManifestItem(value: unknown, index: number): UploadItemSpec {
 
 function parseManifestKind(value: unknown, prefix: string): UploadKind {
   if (typeof value !== 'string' || !UPLOAD_KINDS.has(value as UploadKind)) {
-    throw new EngineError(`${prefix}.kind must be photo, video, animation or document`, 400);
+    throw new EngineError(`${prefix}.kind must be photo, video, animation, voice or document`, 400);
+  }
+  // Voice notes are recorded one at a time and cannot ride an album; refusing
+  // it here keeps the message clear instead of failing the media-class rule.
+  if (value === 'voice') {
+    throw new EngineError(`${prefix}.kind cannot be voice: an album holds photos, videos, GIFs or documents`, 400);
   }
   return value as UploadKind;
 }
@@ -271,9 +278,23 @@ function formatLimit(bytes: number): string {
 
 function parseKind(value: string | null): UploadKind {
   if (value === null || !UPLOAD_KINDS.has(value as UploadKind)) {
-    throw new EngineError('kind must be photo, video, animation or document', 400);
+    throw new EngineError('kind must be photo, video, animation, voice or document', 400);
   }
   return value as UploadKind;
+}
+
+/**
+ * A voice note's duration is what the bubble shows, so it is part of the
+ * message rather than a hint: absent or out-of-range values are refused
+ * before the body is read, and the bound is the same one the recorder uses.
+ */
+function checkVoiceDuration(duration: number | null): void {
+  if (duration === null) {
+    throw new EngineError('a voice note requires its duration in seconds', 400);
+  }
+  if (duration > VOICE_MAX_SECONDS) {
+    throw new EngineError(`a voice note may last at most ${String(VOICE_MAX_SECONDS)} seconds`, 400);
+  }
 }
 
 /**

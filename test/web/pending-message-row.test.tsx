@@ -178,7 +178,7 @@ describe('PendingMessageRow', () => {
   });
 
   it('describes every file-only kind without a preview', () => {
-    for (const kind of ['document', 'audio', 'voice'] as const) {
+    for (const kind of ['document', 'audio'] as const) {
       cleanup();
       const { container } = renderRow({
         media: media({ kind, fileName: `${kind}.bin`, size: 1024 }),
@@ -189,6 +189,22 @@ describe('PendingMessageRow', () => {
       expect(screen.getByText(new RegExp(String.raw`${kind}\.bin`))).not.toBeNull();
       expect(screen.getByText(/2 Files/)).not.toBeNull();
     }
+  });
+
+  it('plays a pending voice note from its local blob', () => {
+    const { container } = renderRow({
+      media: media({ kind: 'voice', fileName: 'voice-message.ogg', duration: 9 }),
+      previewUrl: 'blob:voice',
+    });
+
+    const player = container.querySelector('audio.audio') as HTMLAudioElement;
+    expect(player.getAttribute('src')).toBe('blob:voice');
+    expect(player.hasAttribute('controls')).toBe(true);
+    // A voice note keeps its bubble: the player is the message.
+    expect(container.querySelector('.message.pending')?.className).not.toContain('bare');
+
+    fireEvent.error(player);
+    expect(container.querySelector('.pending-file')).not.toBeNull();
   });
 
   it('uses a fallback name and no size when the file has neither', () => {

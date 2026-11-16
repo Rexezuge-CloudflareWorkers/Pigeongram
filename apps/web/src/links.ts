@@ -2,7 +2,7 @@ import type { ChatDto, MessageForwardDto } from './types';
 import type { TelegramChatRef, TelegramChatTarget } from './links-targets';
 import { targetAppLink } from './links-targets';
 
-export type { TelegramChatRef, TelegramChatTarget } from './links-targets';
+export type { TelegramChatTarget } from './links-targets';
 export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAppLink, usernameAppLink } from './links-targets';
 
 /**

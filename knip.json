@@ -1,8 +1,9 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["bubblewrap", "keytool", "jarsigner"],
   "workspaces": {
     "apps/web": {
-      "entry": ["sw/sw.ts", "build/**/*.ts"]
+      "entry": ["build/**/*.ts"]
     },
     "test": {
       "entry": ["**/*.test.ts", "**/*.test.tsx"],

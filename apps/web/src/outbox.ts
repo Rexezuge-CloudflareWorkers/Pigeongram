@@ -9,7 +9,7 @@ import { mediaKind } from './upload';
  * server-truth while the bridge works.
  */
 
-export type PendingStatus = 'preparing' | 'uploading' | 'sending' | 'failed';
+type PendingStatus = 'preparing' | 'uploading' | 'sending' | 'failed';
 
 /**
  * The counter behind the random id's fallback, for a runtime without Web

@@ -13,6 +13,7 @@ import type {
   MessageReactionDto,
   MessageReplyKeyboardButtonDto,
   PeerId,
+  StickerDto,
   UpdateEvent,
 } from './types';
 import type { UploadRequest } from './upload';
@@ -145,6 +146,11 @@ export interface ThreadController {
   */
   saveEdit: (text: string) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
+  /**
+   * Sends a sticker the picker offered. `set` is the pack's identity, the
+   * cold-start fallback for the engine's registry.
+   */
+  sendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   retryPending: (key: string) => void;
   discardPending: (key: string) => void;
   clearPending: () => void;

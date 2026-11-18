@@ -33,6 +33,7 @@ function chat(id: number): ChatDto {
 const inviteLink = {
   chat: null,
   invite: 'AbCd-123',
+  stickerSet: null,
   postId: null,
   commentId: null,
   deepLink: 'tg://join?invite=AbCd-123',

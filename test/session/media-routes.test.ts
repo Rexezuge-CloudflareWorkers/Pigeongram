@@ -3,7 +3,12 @@ import type { AvatarCache } from '../../packages/backend-services/src/session/av
 import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
 import { EngineError } from '../../packages/backend-services/src/session/errors';
 import type { MediaDownload } from '../../packages/backend-services/src/session/media';
-import { avatarResponse, fileResponse, uploadGroupResponse } from '../../packages/backend-services/src/session/media-routes';
+import {
+  avatarResponse,
+  fileResponse,
+  stickerResponse,
+  uploadGroupResponse,
+} from '../../packages/backend-services/src/session/media-routes';
 import type { UploadGroupSpec } from '../../packages/backend-services/src/session/upload-spec';
 
 /**
@@ -237,5 +242,46 @@ describe('avatarResponse', () => {
 
     expect(readAvatar).toHaveBeenCalledTimes(1);
     expect(cached.headers.get('content-type')).toBe('image/jpeg');
+  });
+});
+
+describe('stickerResponse', () => {
+  function stickerDriver(media: MediaDownload): {
+    driver: TelegramDriver;
+    streamSticker: ReturnType<typeof vi.fn>;
+  } {
+    const streamSticker = vi.fn(async () => media);
+    return { driver: { streamSticker } as unknown as TelegramDriver, streamSticker };
+  }
+
+  it('serves the preview bytes inline with the route cache', async () => {
+    const { driver, streamSticker } = stickerDriver(download({ mime: 'image/webp', size: null }));
+    const { url } = target('/user/sticker?documentId=42&thumb=1');
+
+    const response = await stickerResponse(driver, url);
+
+    expect(streamSticker).toHaveBeenCalledWith('42', true);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
+    expect(response.headers.get('content-disposition')).toBe('inline');
+  });
+
+  it('asks for the whole sticker when no thumbnail was requested', async () => {
+    const { driver, streamSticker } = stickerDriver(download({ mime: 'image/webp' }));
+    const { url } = target('/user/sticker?documentId=42');
+
+    await stickerResponse(driver, url);
+
+    expect(streamSticker).toHaveBeenCalledWith('42', false);
+  });
+
+  it('400s a request that names no usable document id', async () => {
+    const { driver } = stickerDriver(download());
+
+    for (const query of ['', '?documentId=', '?documentId=abc', '?documentId=1.5']) {
+      const { url } = target(`/user/sticker${query}`);
+      await expect(stickerResponse(driver, url)).rejects.toMatchObject({ status: 400 });
+    }
   });
 });

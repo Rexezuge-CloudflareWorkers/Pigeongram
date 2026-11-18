@@ -18,6 +18,15 @@ export type {
   ResolveInviteResult,
 } from './chat-link-types';
 export type {
+  GetStickerLibraryResult,
+  GetStickerSetParams,
+  GetStickerSetResult,
+  InstallStickerSetParams,
+  InstallStickerSetResult,
+  SendStickerParams,
+  SendStickerResult,
+} from './sticker-types';
+export type {
   DeleteMessagesParams,
   DeleteMessagesResult,
   EditMessageParams,
@@ -72,6 +81,10 @@ export type RpcMethod =
   | 'setArchived'
   | 'setPinned'
   | 'getProfile'
+  | 'getStickerLibrary'
+  | 'getStickerSet'
+  | 'sendSticker'
+  | 'installStickerSet'
   | 'resolveChat'
   | 'joinChat'
   | 'resolveInvite'
@@ -109,6 +122,8 @@ export type BatchableRpcMethod =
   | 'getComments'
   | 'getBotCommands'
   | 'getProfile'
+  | 'getStickerLibrary'
+  | 'getStickerSet'
   | 'resolveChat'
   | 'resolveInvite';
 

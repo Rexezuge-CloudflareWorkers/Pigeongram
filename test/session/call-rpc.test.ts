@@ -88,6 +88,7 @@ function harness(): Harness {
     client: client as unknown as TelegramClient,
     calls,
     albums: {} as never,
+    stickers: {} as never,
     dispatch: vi.fn(),
   } as DispatchContext;
   return { context, calls, client, responses };

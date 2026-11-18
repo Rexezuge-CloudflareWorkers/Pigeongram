@@ -42,7 +42,7 @@ const MEDIA_LIMIT: RateLimitHandler = rateLimit({
  * whole `/user/*` prefix before a route is matched; a new media route has to be
  * added here as well, and `test/worker.test.ts` pins the split.
  */
-const MEDIA_PATHS: ReadonlySet<string> = new Set(['/user/file', '/user/avatar']);
+const MEDIA_PATHS: ReadonlySet<string> = new Set(['/user/file', '/user/avatar', '/user/sticker']);
 
 /**
  * The `/user/*` throttle: the media routes draw on the media budget, everything

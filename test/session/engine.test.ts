@@ -253,8 +253,17 @@ describe('SessionEngine (request handling)', () => {
   });
 
   it('400s media requests with unusable coordinates', async () => {
-    // Missing messageId/chatId, and an avatar size the bridge does not serve.
-    const paths = ['/user/file', '/user/file?chatId=1', '/user/avatar', '/user/avatar?chatId=1&size=huge'];
+    // Missing messageId/chatId, an avatar size the bridge does not serve, and a
+    // sticker named by something that is not a document id.
+    const paths = [
+      '/user/file',
+      '/user/file?chatId=1',
+      '/user/avatar',
+      '/user/avatar?chatId=1&size=huge',
+      '/user/sticker',
+      '/user/sticker?documentId=abc',
+      '/user/sticker?documentId=-1',
+    ];
     for (const path of paths) {
       const { engine } = createHarness();
       const response = await engine.fetch(request('GET', path));

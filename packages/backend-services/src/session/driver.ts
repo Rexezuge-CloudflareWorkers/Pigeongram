@@ -6,7 +6,7 @@ import { readEngineConfig } from './config';
 import { toMeDto } from './dto';
 import { EngineError } from './errors';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
-import { readAvatar, readAvatarVersion, streamMessageMedia } from './media';
+import { readAvatar, readAvatarVersion, streamMessageMedia, streamSticker } from './media';
 import type { AvatarImage } from './media';
 import { CallRegistry } from './call-registry';
 import { sendCallSignaling } from './call-rpc';
@@ -18,44 +18,13 @@ import type { TransactionalStorageLike } from '@pigeongram/provider-clients/mtpr
 import { peerIdsIn, withPeerRetry } from './peers';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
+import { StickerRegistry } from './sticker-registry';
 import { UnreadAlbumLedger } from './unread-albums';
 import { echoEvent, mapRawUpdate } from './updates';
 
-/**
- * How the driver builds its client stack. Injectable so the lifecycle and
- * delegation can be tested without wasm, a network or a real credential.
- */
-export type MtBundleFactory = (env: CloudflareEnv, storage: TransactionalStorageLike) => MtBundle;
+import type { MtBundleFactory, PhoneLoginCallbacks, QrLoginCallbacks } from './driver-types';
 
-export interface QrLoginCallbacks {
-  onUrl(url: string, expiresMs: number): void;
-  onScanned(): void;
-  /**
-  Resolves with the 2FA password once the operator submits it.
-  */
-  waitForPassword(): Promise<string>;
-  onInvalidPassword(): void;
-  abortSignal: AbortSignal;
-}
-
-export interface PhoneLoginCallbacks {
-  phone: string;
-  /**
-  The confirmation code was sent (`app`, `sms`, `call`, …).
-  */
-  onCodeSent(type: string): void;
-  /**
-  Resolves with the login code once the operator submits it.
-  */
-  waitForCode(): Promise<string>;
-  onInvalidCode(): void;
-  /**
-  Resolves with the 2FA password once the operator submits it.
-  */
-  waitForPassword(): Promise<string>;
-  onInvalidPassword(): void;
-  abortSignal: AbortSignal;
-}
+export type { MtBundleFactory, PhoneLoginCallbacks, QrLoginCallbacks } from './driver-types';
 
 /**
  * Owns the mtcute client for one Telegram account: constructs it lazily (so a
@@ -81,6 +50,12 @@ export class TelegramDriver {
    * itself.
    */
   readonly #calls = new CallRegistry();
+  /**
+   * The sticker documents the picker has seen, addressed by the decimal ids
+   * the bridge minted. It is memory-only: the pack identity in a send is the
+   * cold-start fallback after a restart.
+   */
+  readonly #stickers = new StickerRegistry();
   /**
    * Whether a call is up. A call keeps the session alive: its signalling
    * rides the account's connection, so dropping it mid-call would take the
@@ -315,7 +290,9 @@ export class TelegramDriver {
 
   async rpc(method: string, params: unknown): Promise<unknown> {
     const { client } = this.#ensure();
-    const result = await withPeerRetry(client, peerIdsIn(params), () => dispatchRpc(client, method, params, this.#albums, this.#calls));
+    const result = await withPeerRetry(client, peerIdsIn(params), () =>
+      dispatchRpc(client, method, params, this.#albums, this.#calls, this.#stickers),
+    );
     // mtcute can turn a write's own update into a quiet pts step, so the raw
     // update listener never sees it and the other tabs would keep the old
     // state. The engine broadcasts the event the call implies; the tab that
@@ -335,6 +312,14 @@ export class TelegramDriver {
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
     const { client } = this.#ensure();
     return withPeerRetry(client, [chatId], () => streamMessageMedia(client, chatId, messageId, options, this.config.mediaWindowBytes));
+  }
+
+  /**
+   * Streams one sticker the picker read, by the document id the bridge minted.
+   */
+  async streamSticker(documentId: string, preview: boolean): Promise<MediaDownload> {
+    const { client } = this.#ensure();
+    return streamSticker(client, this.#stickers, documentId, preview);
   }
 
   /**
@@ -378,6 +363,7 @@ export class TelegramDriver {
       // calls it knew about.
       this.#albums.clear();
       this.#calls.clear();
+      this.#stickers.clear();
       this.#activeCall = false;
       try {
         await bundle.base.destroy();

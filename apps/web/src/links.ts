@@ -1,8 +1,8 @@
 import type { ChatDto, MessageForwardDto } from './types';
-import type { TelegramChatRef, TelegramChatTarget } from './links-targets';
-import { targetAppLink } from './links-targets';
+import type { TelegramChatRef } from './links-targets';
 
 export type { TelegramChatTarget } from './links-targets';
+export { APP_LAUNCH_TIMEOUT_MS, handOffTarget, launchTelegramApp } from './links-app';
 export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAppLink, usernameAppLink } from './links-targets';
 
 /**
@@ -31,6 +31,11 @@ export interface TelegramLink {
    */
   invite: string | null;
   /**
+   * The short name of a `t.me/addstickers` pack, or null. Installing it is the
+   * one action this client can take: a sticker set names no peer.
+   */
+  stickerSet: string | null;
+  /**
    * The post (message) id the link points at, or null.
    */
   postId: number | null;
@@ -48,11 +53,6 @@ export interface TelegramLink {
    */
   webUrl: string | null;
 }
-
-/**
- * How long the app has to take over before the browser fallback opens.
- */
-export const APP_LAUNCH_TIMEOUT_MS = 2500;
 
 const TELEGRAM_HOSTS = new Set(['t.me', 'telegram.me', 'telegram.dog']);
 
@@ -179,13 +179,22 @@ export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | nu
   const target = forward.senderId ?? forward.fromChatId;
   if (target === null) return null;
   if (target > 0) {
-    return { chat: null, invite: null, postId: null, commentId: null, deepLink: `tg://user?id=${String(target)}`, webUrl: null };
+    return {
+      chat: null,
+      invite: null,
+      stickerSet: null,
+      postId: null,
+      commentId: null,
+      deepLink: `tg://user?id=${String(target)}`,
+      webUrl: null,
+    };
   }
   if (target < -1_000_000_000_000) {
     const internalId = -target - 1_000_000_000_000;
     return {
       chat: null,
       invite: null,
+      stickerSet: null,
       postId: null,
       commentId: null,
       deepLink: `tg://privatepost?channel=${String(internalId)}`,
@@ -193,62 +202,6 @@ export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | nu
     };
   }
   return null;
-}
-
-/**
- * Opens a `tg://` link in the installed app, falling back to the canonical
- * https URL when nothing takes over.
- *
- * The deep link is loaded in a hidden iframe: a browser with a handler for the
- * scheme shows its "open in app" prompt without navigating away, and one
- * without a handler does nothing, so this page is never clobbered. The tab
- * losing focus or visibility within the timeout proves the app took over;
- * otherwise the https URL opens in a new tab (popup blockers permitting).
- */
-export function launchTelegramApp(deepLink: string, webUrl: string | null): void {
-  const frame = document.createElement('iframe');
-  frame.hidden = true;
-  frame.src = deepLink;
-  // eslint-disable-next-line unicorn/prefer-dom-node-append -- the Workers `Element.append` overload the test project's types merge in accepts no nodes, so `appendChild` is the form both projects type-check.
-  document.body.appendChild(frame);
-
-  const timer = setTimeout(() => {
-    stop();
-    if (webUrl !== null) window.open(webUrl, '_blank', 'noopener,noreferrer');
-  }, APP_LAUNCH_TIMEOUT_MS);
-
-  // Hoisted, so the timer callback and the listeners below can share it.
-  function stop(): void {
-    clearTimeout(timer);
-    window.removeEventListener('blur', stop);
-    document.removeEventListener('visibilitychange', onVisibility);
-    frame.remove();
-  }
-
-  function onVisibility(): void {
-    if (document.visibilityState === 'hidden') stop();
-  }
-
-  window.addEventListener('blur', stop);
-  document.addEventListener('visibilitychange', onVisibility);
-}
-
-/**
- * Hands a chat the bridge could not resolve to the installed app, using the
- * link's own address where there is one.
- *
- * A link that asked for the chat is the most faithful address: it may name a
- * chat this client cannot address yet. Without one, the resolved target is the
- * address, and a target that has no addressable form (a basic group known only
- * by its marked id) leaves the call with nothing to do.
- */
-export function handOffTarget(target: TelegramChatTarget, link?: TelegramLink): void {
-  if (link !== undefined) {
-    launchTelegramApp(link.deepLink, link.webUrl);
-    return;
-  }
-  const address = targetAppLink(target);
-  if (address !== null) launchTelegramApp(address.deepLink, address.webUrl);
 }
 
 function parseWebPath(url: URL): TelegramLink | null {
@@ -322,6 +275,7 @@ function chatLink(username: string, postId: number | null, commentId: number | n
   return {
     chat: { username },
     invite: null,
+    stickerSet: null,
     postId,
     commentId: comment,
     deepLink: `tg://resolve?${params.toString()}`,
@@ -335,6 +289,7 @@ function privatePost(internalId: number, postId: number | null): TelegramLink {
   return {
     chat: { internalId },
     invite: null,
+    stickerSet: null,
     postId,
     commentId: null,
     deepLink: `tg://privatepost?${params.toString()}`,
@@ -347,6 +302,7 @@ function invite(hash: string): TelegramLink | null {
   return {
     chat: null,
     invite: hash,
+    stickerSet: null,
     postId: null,
     commentId: null,
     deepLink: `tg://join?invite=${encodeURIComponent(hash)}`,
@@ -358,6 +314,7 @@ function stickerSet(name: string): TelegramLink {
   return {
     chat: null,
     invite: null,
+    stickerSet: name,
     postId: null,
     commentId: null,
     deepLink: `tg://addstickers?set=${encodeURIComponent(name)}`,
@@ -366,7 +323,7 @@ function stickerSet(name: string): TelegramLink {
 }
 
 function passthrough(raw: string): TelegramLink {
-  return { chat: null, invite: null, postId: null, commentId: null, deepLink: raw, webUrl: null };
+  return { chat: null, invite: null, stickerSet: null, postId: null, commentId: null, deepLink: raw, webUrl: null };
 }
 
 function usernameOf(value: string): string | null {

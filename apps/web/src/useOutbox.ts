@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { stickerUrl } from './api';
 import type { PendingMessage } from './outbox';
-import { localPreviewUrl, pendingMedia, randomMessageId, revokePreview } from './outbox';
-import type { MessageDto, PeerId } from './types';
+import { localPreviewUrl, pendingMedia, pendingStickerMedia, randomMessageId, revokePreview } from './outbox';
+import type { MessageDto, PeerId, StickerDto } from './types';
 import type { UploadRequest } from './upload';
 
 /**
@@ -13,7 +14,19 @@ import type { UploadRequest } from './upload';
  * uploads run independently, so a large file never delays the next text.
  */
 
-export type PendingBody = { kind: 'text'; text: string; replyTo?: number } | { kind: 'file'; request: UploadRequest };
+export type PendingBody =
+  | { kind: 'text'; text: string; replyTo?: number }
+  | { kind: 'file'; request: UploadRequest }
+  | { kind: 'sticker'; documentId: string; replyTo?: number; set?: { id: string; accessHash: string } };
+
+/**
+ * The sticker a pending entry carries: the document id the engine minted, and
+ * the pack it came from for the cold-registry fallback.
+ */
+interface PendingSticker {
+  sticker: StickerDto;
+  set: { id: string; accessHash: string } | null;
+}
 
 /**
  * Performs the bridge call for one pending entry. The outbox has already
@@ -28,6 +41,11 @@ interface PendingJob {
    * The files of an upload entry, kept for the retry.
    */
   request: UploadRequest | null;
+  /**
+   * The sticker of a sticker entry, kept for the retry. Null for every other
+   * kind.
+   */
+  sticker: PendingSticker | null;
   /**
    * The client-chosen Telegram random ids: one for a text message, one per
    * file for an upload.
@@ -54,6 +72,11 @@ interface EnqueueFileInput extends EnqueueBase {
   request: UploadRequest;
 }
 
+interface EnqueueStickerInput extends EnqueueBase {
+  sticker: StickerDto;
+  set?: { id: string; accessHash: string } | null;
+}
+
 interface UseOutboxOptions {
   /**
    * Reports a failed send to the global toast; the pending row keeps the
@@ -66,6 +89,7 @@ interface OutboxController {
   pending: readonly PendingMessage[];
   send: (input: EnqueueTextInput) => void;
   attach: (input: EnqueueFileInput) => void;
+  sendSticker: (input: EnqueueStickerInput) => void;
   retry: (key: string) => void;
   discard: (key: string) => void;
   clear: () => void;
@@ -122,7 +146,15 @@ export function useOutbox({ onError }: UseOutboxOptions): OutboxController {
       const runGeneration = generation.current;
       try {
         let body: PendingBody;
-        if (job.request === null) {
+        if (job.sticker !== null) {
+          update(key, { status: 'sending', failure: null, progress: null });
+          body = {
+            kind: 'sticker',
+            documentId: job.sticker.sticker.id,
+            ...(job.entry.replyTo !== null && { replyTo: job.entry.replyTo }),
+            ...(job.sticker.set !== null && { set: job.sticker.set }),
+          };
+        } else if (job.request === null) {
           update(key, { status: 'sending', failure: null, progress: null });
           body = {
             kind: 'text',
@@ -190,7 +222,7 @@ export function useOutbox({ onError }: UseOutboxOptions): OutboxController {
         progress: null,
         failure: null,
       };
-      add(entry, { entry, request: null, randomIds: [randomId], deliver: input.deliver, onSettled: input.onSettled }, true);
+      add(entry, { entry, request: null, sticker: null, randomIds: [randomId], deliver: input.deliver, onSettled: input.onSettled }, true);
     },
     [add],
   );
@@ -224,7 +256,47 @@ export function useOutbox({ onError }: UseOutboxOptions): OutboxController {
         progress: null,
         failure: null,
       };
-      add(entry, { entry, request: input.request, randomIds, deliver: input.deliver, onSettled: input.onSettled }, false);
+      add(entry, { entry, request: input.request, sticker: null, randomIds, deliver: input.deliver, onSettled: input.onSettled }, false);
+    },
+    [add],
+  );
+
+  const sendSticker = useCallback(
+    (input: EnqueueStickerInput): void => {
+      sequence.current += 1;
+      const randomId = randomMessageId();
+      const entry: PendingMessage = {
+        key: `pending-${String(sequence.current)}`,
+        sequence: sequence.current,
+        randomId,
+        chatId: input.chatId,
+        scope: input.scope,
+        kind: 'sticker',
+        text: '',
+        fileCount: 0,
+        replyTo: input.replyTo ?? null,
+        replyPreview: input.replyPreview ?? null,
+        media: pendingStickerMedia(input.sticker),
+        // A sticker's preview is the engine's own route, not a local blob: the
+        // document is already on Telegram, and the picker just showed it.
+        previewUrl: stickerUrl(input.sticker.id, input.sticker.version),
+        createdAt: Date.now(),
+        status: 'sending',
+        progress: null,
+        failure: null,
+      };
+      add(
+        entry,
+        {
+          entry,
+          request: null,
+          sticker: { sticker: input.sticker, set: input.set ?? null },
+          randomIds: [randomId],
+          deliver: input.deliver,
+          onSettled: input.onSettled,
+        },
+        true,
+      );
     },
     [add],
   );
@@ -268,5 +340,8 @@ export function useOutbox({ onError }: UseOutboxOptions): OutboxController {
     [],
   );
 
-  return useMemo(() => ({ pending, send, attach, retry, discard, clear }), [pending, send, attach, retry, discard, clear]);
+  return useMemo(
+    () => ({ pending, send, attach, sendSticker, retry, discard, clear }),
+    [pending, send, attach, sendSticker, retry, discard, clear],
+  );
 }

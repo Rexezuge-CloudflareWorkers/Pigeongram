@@ -5,6 +5,7 @@ import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
 import { log } from './log';
 import { windowedStream } from './media-stream';
+import type { StickerRegistry } from './sticker-registry';
 import { variantDocuments } from './video-variants';
 import { webPagePhoto } from './web-page';
 
@@ -98,8 +99,33 @@ export async function streamMessageMedia(
 }
 
 /**
-A profile photo, whole.
-*/
+ * Streams one sticker from the engine's registry, addressed by the document id
+ * the picker was given.
+ *
+ * `preview` resolves the sticker's own thumbnail, which is what a picker cell
+ * renders: a static sticker may be served whole, while an animated or video one
+ * has no still frame in its payload and must use the thumbnail. The full file is
+ * what a settled message fetches.
+ */
+export async function streamSticker(
+  client: TelegramClient,
+  registry: StickerRegistry,
+  documentId: string,
+  preview: boolean,
+): Promise<MediaDownload> {
+  const sticker = registry.get(documentId);
+  if (!sticker) throw new EngineError('Sticker not found', 404);
+  if (preview) {
+    const thumb = pickThumbnail(sticker.thumbnails);
+    if (thumb) return fullDownload(client, thumb, 'image/webp', false);
+    if (sticker.sourceType !== 'static') throw new EngineError('Sticker has no thumbnail', 404);
+  }
+  return fullDownload(client, sticker, sticker.mimeType || 'image/webp', true);
+}
+
+/**
+ * A profile photo, whole.
+ */
 export interface AvatarImage {
   mime: string;
   bytes: Uint8Array;

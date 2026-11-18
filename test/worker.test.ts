@@ -271,7 +271,11 @@ describe('worker entry', () => {
 
     // The media routes draw on their own bucket: a spent account budget must
     // not turn an avatar or a thumbnail into a 429.
-    for (const path of ['/user/file?chatId=1&messageId=1&thumb=1', '/user/avatar?chatId=1&size=small&v=1']) {
+    for (const path of [
+      '/user/file?chatId=1&messageId=1&thumb=1',
+      '/user/avatar?chatId=1&size=small&v=1',
+      '/user/sticker?documentId=1&thumb=1',
+    ]) {
       expect((await call(path, env, init)).status).toBe(503);
     }
   });

@@ -131,6 +131,7 @@ backslashes, and CR/LF are rejected) and defaults to `/`.
 | `GET /user/updates`         | WebSocket                                        | server events (below)                                       |
 | `GET /user/file`            | `?chatId=&messageId=&thumb=1&quality=` + `Range` | media bytes (see below)                                     |
 | `GET /user/avatar`          | `?chatId=&size=small\|big`                       | profile photo bytes (`image/jpeg`, cached a day)            |
+| `GET /user/sticker`         | `?documentId=&thumb=1`                           | sticker bytes, or its thumbnail (`image/webp`)              |
 | `POST /user/upload`         | query params + raw body (see below)              | `{"message": MessageDto}`; sends one file                   |
 | `POST /user/upload-group`   | `?chatId=&manifest=` + raw body                  | `{"messages": MessageDto[]}`; sends 2–10 files as one album |
 | `POST /user/wake`           | —                                                | `WakeCountersDto`; runs one wake cycle now                  |
@@ -160,8 +161,16 @@ engine is a byte bridge and never transcodes.
 the bytes in `engine_avatars`, keyed by the version token **it** resolved (never the one the caller sent), so a repeat
 request is a local read instead of another `upload.getFile` round trip.
 
-The two media routes are also the reason `/user/*` carries **two** per-minute budgets: `GET /user/file` and
-`GET /user/avatar` draw on `MEDIA_RATE_LIMIT_PER_MINUTE` (default 600), while every other route draws on
+`GET /user/sticker` serves a sticker by the **decimal document id the engine minted**, never by a file reference:
+the engine keeps every sticker it has read in `session/sticker-registry.ts` (a bounded memory map) and the picker
+names one by that id. `thumb=1` answers with the sticker's own thumbnail, which is what a picker cell renders — an
+animated or video sticker has no still frame in its payload; a static sticker without a thumbnail is served whole.
+An id the registry no longer holds is a `404` rather than a Telegram round trip, and the picker reads its library
+again. A `sendSticker` may carry the pack identity as a cold-start fallback, because the registry empties when the
+Durable Object restarts.
+
+The media routes are also the reason `/user/*` carries **two** per-minute budgets: `GET /user/file`,
+`GET /user/avatar` and `GET /user/sticker` draw on `MEDIA_RATE_LIMIT_PER_MINUTE` (default 600), while every other route draws on
 `RATE_LIMIT_PER_MINUTE` (default 120). A single budget over both counted one avatar and one byte-range as a request,
 so a chat-list paint followed by a media-heavy thread hit `429 RateLimited` during ordinary browsing.
 
@@ -220,6 +229,10 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `setPinned`           | `{chatId, pinned: boolean}`                                                       | `{chatId, pinned}`                                                                                                                           |
 | `setMessagePinned`    | `{chatId, messageId, pinned: boolean}`                                            | `{chatId, messageId, pinned}` (the engine also echoes a `message_pinned` update)                                                             |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
+| `getStickerLibrary`   | —                                                                                 | `StickerLibraryDto` (`recent`, `faved`, `sets`)                                                                                              |
+| `getStickerSet`       | `{shortName}` or `{id, accessHash}`                                               | `{set: StickerSetDto}` (a brief set carries no `stickers`)                                                                                   |
+| `sendSticker`         | `{chatId, documentId, replyTo?, randomId?, set?: {id, accessHash}}`               | `{message: MessageDto}`                                                                                                                      |
+| `installStickerSet`   | `{shortName}`                                                                     | `{set: StickerSetDto}`                                                                                                                       |
 | `resolveChat`         | `{username}\|{chatId}` (exactly one)                                              | `{chat: ChatDto, member: boolean}`                                                                                                           |
 | `joinChat`            | `{username}\|{chatId}` (exactly one)                                              | `{status: 'joined'\|'request_sent'\|'webview', chat: ChatDto \| null}`                                                                       |
 | `resolveInvite`       | `{invite}` (a hash, or the `t.me/+…` link)                                        | `{status: 'joined', chat: ChatDto}` \| `{status: 'preview', preview: ChatInvitePreviewDto}`                                                  |
@@ -272,7 +285,7 @@ cursor opaque and sends it back verbatim for "load more".
 
 `batch` runs several **read-only** methods in one request (see [Latency](#latency) below). The whitelist is
 `getMe`, `getDialogs`, `getHistory`, `getPinnedMessages`, `searchMessages`, `searchGlobal`, `getPollResults`,
-`getComments`, `getBotCommands`, `getProfile`, `resolveChat` and `resolveInvite`; a
+`getComments`, `getBotCommands`, `getProfile`, `getStickerLibrary`, `getStickerSet`, `resolveChat` and `resolveInvite`; a
 write is a 400, because a batch runs its calls concurrently and a write would have no defined completion order.
 `readHistory` is excluded for the same reason it stays a single call: it moves the account's read watermark,
 `setArchived` because it moves a chat between the chat list and the archive, `setPinned` because it changes the dialog's
@@ -307,6 +320,22 @@ group or a channel. Like the command menu, the answer is in the peer's full info
 for a positive id and the full chat for a negative one. A bot's own description stands in for its bio, which a bot
 usually leaves empty. The read is on demand — the SPA asks for it when the reader opens the profile, so a thread open
 pays for nothing. It is on the batch whitelist, because it is a read like the others.
+
+`getStickerLibrary` reads the picker's opening screen in one engine event: the account's recent stickers, its saved
+stickers and the installed packs. Telegram has no high-level recent/faved read in mtcute, so the engine makes the
+raw `messages.getRecentStickers`/`getFavedStickers` calls (with `Long.ZERO` as the cache hash) and parses each
+document into a `Sticker`; the three reads run concurrently over the one connection. Only regular packs are listed —
+an emoji or mask pack holds documents this client cannot send as a sticker yet. `getStickerSet` reads one pack,
+either by short name (the form a `t.me/addstickers` link carries) or by `{id, accessHash}`; a _brief_ set carries no
+stickers, so the DTO answers an empty `stickers` list and the picker reads the pack in full when the reader opens it.
+
+Every sticker the engine maps is remembered in `session/sticker-registry.ts`, and the DTO's `id` is its decimal
+document id — the browser never sees a file reference or an access hash. `sendSticker` resolves that id from the
+registry, or, after a restart emptied it, from the pack the SPA carried as `set: {id, accessHash}`; an id neither can
+resolve is a `404`, not a retry loop. The send reuses the request's `randomId` on a retry, exactly as a text send
+does. `installStickerSet` is the `t.me/addstickers` outcome: `messages.installStickerSet` plus the full pack, so the
+toast can name what was added. The library and the pack read are on the batch whitelist; sending and installing are
+writes.
 
 `resolveChat` turns a public username or a marked peer id into a chat DTO and says whether the account is in it. It
 is what a `t.me` link or a forward's origin goes through when the loaded dialog list does not carry the chat: a

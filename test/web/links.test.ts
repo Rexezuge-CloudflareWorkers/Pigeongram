@@ -68,6 +68,7 @@ describe('parseTelegramLink', () => {
     const expected = {
       chat: { username: 'durov' },
       invite: null,
+      stickerSet: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://resolve?domain=durov',
@@ -83,6 +84,7 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('https://t.me/durov/42?comment=7')).toEqual({
       chat: { username: 'durov' },
       invite: null,
+      stickerSet: null,
       postId: 42,
       commentId: 7,
       deepLink: 'tg://resolve?domain=durov&post=42&comment=7',
@@ -101,6 +103,7 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('https://t.me/c/1234567890/55')).toEqual({
       chat: { internalId: 1_234_567_890 },
       invite: null,
+      stickerSet: null,
       postId: 55,
       commentId: null,
       deepLink: 'tg://privatepost?channel=1234567890&post=55',
@@ -113,6 +116,7 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('https://t.me/+AbCd-123')).toEqual({
       chat: null,
       invite: 'AbCd-123',
+      stickerSet: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://join?invite=AbCd-123',
@@ -124,6 +128,7 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('https://t.me/addstickers/UtyaDuck')).toEqual({
       chat: null,
       invite: null,
+      stickerSet: 'UtyaDuck',
       postId: null,
       commentId: null,
       deepLink: 'tg://addstickers?set=UtyaDuck',
@@ -148,6 +153,7 @@ describe('parseTelegramLink', () => {
     expect(parseTelegramLink('tg://settings')).toEqual({
       chat: null,
       invite: null,
+      stickerSet: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://settings',
@@ -307,6 +313,7 @@ describe('forwardOriginLink', () => {
     expect(forwardOriginLink(forward({ senderId: 42, senderUsername: 'carol' }))).toEqual({
       chat: { username: 'carol' },
       invite: null,
+      stickerSet: null,
       postId: null,
       commentId: null,
       deepLink: 'tg://resolve?domain=carol',
@@ -379,6 +386,20 @@ describe('launchTelegramApp', () => {
     launchTelegramApp('tg://resolve?domain=durov', 'https://t.me/durov');
     globalThis.dispatchEvent(new Event('blur'));
     vi.advanceTimersByTime(APP_LAUNCH_TIMEOUT_MS * 2);
+    expect(open).not.toHaveBeenCalled();
+    expect(document.querySelector('iframe')).toBeNull();
+  });
+
+  it('cancels the fallback when the tab is hidden', () => {
+    const open = vi.spyOn(globalThis, 'open').mockReturnValue(null);
+    vi.useFakeTimers();
+
+    launchTelegramApp('tg://resolve?domain=durov', 'https://t.me/durov');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    vi.advanceTimersByTime(APP_LAUNCH_TIMEOUT_MS * 2);
+
     expect(open).not.toHaveBeenCalled();
     expect(document.querySelector('iframe')).toBeNull();
   });

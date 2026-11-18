@@ -29,6 +29,7 @@ function fakeWasm() {
     ige256Decrypt: vi.fn((_data: Uint8Array, _key: Uint8Array, _iv: Uint8Array) => new Uint8Array([0x62])),
     deflateMaxSize: vi.fn((_data: Uint8Array, _maxSize: number) => new Uint8Array([0x71])),
     gunzip: vi.fn((_data: Uint8Array) => new Uint8Array([0x72])),
+    inflate: vi.fn((_data: Uint8Array, _maxSize: number) => new Uint8Array([0x73])),
   } satisfies CryptoWasmBindings;
 }
 
@@ -83,15 +84,17 @@ describe('WorkerCryptoProvider', () => {
     expect(wasm.ige256Decrypt).toHaveBeenCalledWith(data, key, iv);
   });
 
-  it('delegates gzip and gunzip to the wasm bindings', () => {
+  it('delegates gzip, gunzip and inflate to the wasm bindings', () => {
     const wasm = fakeWasm();
     const provider = new WorkerCryptoProvider(wasm);
     const data = new Uint8Array([5]);
 
     expect(provider.gzip(data, 1024)).toEqual(new Uint8Array([0x71]));
     expect(provider.gunzip(data)).toEqual(new Uint8Array([0x72]));
+    expect(provider.inflate(data, 32_768)).toEqual(new Uint8Array([0x73]));
     expect(wasm.deflateMaxSize).toHaveBeenCalledWith(data, 1024);
     expect(wasm.gunzip).toHaveBeenCalledWith(data);
+    expect(wasm.inflate).toHaveBeenCalledWith(data, 32_768);
   });
 
   it('derives PBKDF2 bits with the hash the caller names', async () => {

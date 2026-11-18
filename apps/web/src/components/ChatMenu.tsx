@@ -66,14 +66,6 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: Cha
           <span>{dialog.pinned ? 'Unpin' : 'Pin'}</span>
         </button>
       ) : null}
-      {/* The read state is explained inline, so the disabled control is never
-          a dead end: a reader who finds it greys out learns the chat is
-          already read. */}
-      {read ? (
-        <span role="status" className="block px-3 pt-2 pb-1 text-xs text-muted">
-          Already Read
-        </span>
-      ) : null}
       <button
         type="button"
         role="menuitem"

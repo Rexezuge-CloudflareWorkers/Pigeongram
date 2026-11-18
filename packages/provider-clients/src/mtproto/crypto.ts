@@ -8,6 +8,7 @@ import {
   gunzip,
   ige256Decrypt,
   ige256Encrypt,
+  inflate,
   initSync,
   sha1,
   sha256,
@@ -49,6 +50,7 @@ export interface CryptoWasmBindings {
   ige256Decrypt(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Uint8Array;
   deflateMaxSize(data: Uint8Array, maxSize: number): Uint8Array | null;
   gunzip(data: Uint8Array): Uint8Array;
+  inflate(data: Uint8Array, maxSize: number): Uint8Array;
 }
 
 const defaultBindings: CryptoWasmBindings = {
@@ -63,6 +65,7 @@ const defaultBindings: CryptoWasmBindings = {
   ige256Decrypt,
   deflateMaxSize,
   gunzip,
+  inflate,
 };
 
 /**
@@ -117,6 +120,10 @@ export class WorkerCryptoProvider extends BaseCryptoProvider {
 
   gunzip(data: Uint8Array): Uint8Array {
     return this.wasm.gunzip(data);
+  }
+
+  inflate(data: Uint8Array, maxSize: number): Uint8Array {
+    return this.wasm.inflate(data, maxSize);
   }
 
   async pbkdf2(password: Uint8Array, salt: Uint8Array, iterations: number, keylen = 64, algo = 'sha512'): Promise<Uint8Array> {

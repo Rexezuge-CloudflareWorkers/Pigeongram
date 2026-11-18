@@ -177,8 +177,8 @@ importers:
   packages/backend-services:
     dependencies:
       '@mtcute/core':
-        specifier: 0.32.7
-        version: 0.32.7
+        specifier: 0.32.8
+        version: 0.32.8
       '@pigeongram/backend-runtime':
         specifier: workspace:*
         version: link:../backend-runtime
@@ -208,8 +208,8 @@ importers:
         specifier: 0.0.23
         version: 0.0.23
       '@mtcute/core':
-        specifier: 0.32.7
-        version: 0.32.7
+        specifier: 0.32.8
+        version: 0.32.8
       '@mtcute/wasm':
         specifier: 0.32.8
         version: 0.32.8
@@ -233,8 +233,8 @@ importers:
   test:
     dependencies:
       '@mtcute/core':
-        specifier: 0.32.7
-        version: 0.32.7
+        specifier: 0.32.8
+        version: 0.32.8
       '@pigeongram/api':
         specifier: workspace:*
         version: link:../apps/api
@@ -1355,8 +1355,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@mtcute/core@0.32.7':
-    resolution: {integrity: sha512-S2Vu0PCPo/hqWd0u0WLRK1PdXi/bnOEInViRCdURwxnY0DP2Gh0b81vL1z7enGLjWBDazgPgwelu+pqRABOIdA==}
+  '@mtcute/core@0.32.8':
+    resolution: {integrity: sha512-X/CLzn1ageA8pXsFa5E/AuIq4svba4PYUeoamy9vSU569wvNBjWKMyQ8ehV04DJ2pymyYfYXgh52rsJDWqRNUQ==}
 
   '@mtcute/file-id@0.32.6':
     resolution: {integrity: sha512-qnHRstP/aCxl7L/OG3ZuiiLYiDNALCcU8ZpeASZx+BvqRRvsJORNdG80jWy8yhdpqQmWtamoq2ywgzOvTuBmgA==}
@@ -2541,8 +2541,8 @@ packages:
   electron-to-chromium@1.5.458:
     resolution: {integrity: sha512-/hIH2gRSmxrf4/X4Nw/t/Wc8PVS22l8/3HnWjWTWsTOM5dsnMUPZF/+u+yr3LqweNuTBJE1rq6qAQzKkZVwMfA==}
 
-  electron-to-chromium@1.5.485:
-    resolution: {integrity: sha512-m3uadzR0Z+sR19HGWgfxoZcKv9hE/edVM9OZ+FJ4wNRyfuFtkwZJIDoehEty5sisYVwmge8lKV1tenWOyClVgw==}
+  electron-to-chromium@1.5.486:
+    resolution: {integrity: sha512-rpybw4Ac4ak/An6G1Me2+61xzwobowDGyuJe71QHHOVpkZv4fPVobsLl7WH6zHSKusAMpaHxGKTpOvpy7+r3dQ==}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -5296,7 +5296,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@mtcute/core@0.32.7':
+  '@mtcute/core@0.32.8':
     dependencies:
       '@fuman/io': 0.0.23
       '@fuman/net': 0.0.23
@@ -6083,7 +6083,7 @@ snapshots:
     dependencies:
       baseline-browser-mapping: 2.11.37
       caniuse-lite: 1.0.30001826
-      electron-to-chromium: 1.5.485
+      electron-to-chromium: 1.5.486
       node-releases: 2.0.64
       update-browserslist-db: 1.3.4(browserslist@4.29.5)
 
@@ -6251,7 +6251,7 @@ snapshots:
 
   electron-to-chromium@1.5.458: {}
 
-  electron-to-chromium@1.5.485: {}
+  electron-to-chromium@1.5.486: {}
 
   emoji-regex@8.0.0: {}
 

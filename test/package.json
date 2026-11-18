@@ -6,7 +6,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mtcute/core": "0.32.7",
+    "@mtcute/core": "0.32.8",
     "@pigeongram/api": "workspace:*",
     "@pigeongram/web": "workspace:*",
     "@rexezuge/errors": "1.9.4",

@@ -1,6 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
 import { dispatchRpc } from '../../packages/backend-services/src/session/rpc';
+import { StickerRegistry } from '../../packages/backend-services/src/session/sticker-registry';
 import { UnreadAlbumLedger } from '../../packages/backend-services/src/session/unread-albums';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
@@ -22,6 +23,12 @@ const albums = albumLedger();
  */
 const calls = new CallRegistry();
 
+/**
+ * The sticker documents the picker has read. A send names one by its id, so
+ * every dispatch carries the same registry the engine keeps.
+ */
+const stickers = new StickerRegistry();
+
 export function rpc(client: TelegramClient, method: string, params: unknown): Promise<unknown> {
-  return dispatchRpc(client, method, params, albums, calls);
+  return dispatchRpc(client, method, params, albums, calls, stickers);
 }

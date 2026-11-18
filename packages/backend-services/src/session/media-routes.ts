@@ -30,6 +30,15 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
   return mediaResponse(media, FILE_CACHE_SECONDS, isDownload);
 }
 
+export async function stickerResponse(driver: TelegramDriver, url: URL): Promise<Response> {
+  const documentId = url.searchParams.get('documentId');
+  if (documentId === null || !/^\d+$/.test(documentId)) {
+    throw new EngineError('documentId query parameter is required', 400);
+  }
+  const media = await driver.streamSticker(documentId, url.searchParams.get('thumb') === '1');
+  return mediaResponse(media, FILE_CACHE_SECONDS, false);
+}
+
 export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL): Promise<Response> {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const size = url.searchParams.get('size') ?? 'small';

@@ -105,6 +105,9 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
   if (media.kind === 'photo') {
     return <img className="photo" src={source} alt={media.fileName ?? 'Photo'} onError={onError} />;
   }
+  if (media.kind === 'sticker') {
+    return <img className="sticker" src={source} alt="Sticker" onError={onError} />;
+  }
   if (media.kind === 'video') {
     return <video className="video" src={source} controls preload="metadata" onError={onError} />;
   }

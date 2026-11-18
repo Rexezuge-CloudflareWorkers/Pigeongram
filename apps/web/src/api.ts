@@ -40,6 +40,7 @@ export {
   setMessagePinned,
 } from './api/threads';
 export { searchGlobal, searchMessages } from './api/search';
+export { fetchStickerLibrary, fetchStickerSet, installStickerSet, sendSticker, stickerUrl } from './api/stickers';
 export { rpc } from './api/request';
 export { avatarUrl, fileUrl, uploadFile, uploadGroup } from './api/uploads';
 export type { UploadGroupInput, UploadGroupItem, UploadInput } from './api/uploads';

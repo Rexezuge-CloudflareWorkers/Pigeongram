@@ -1,12 +1,12 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { composerSends } from '../composer-sends';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages } from '../groups';
 import { readWatermark } from '../reading';
 import { isAtBottom, jumpToMessage, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
-import type { MessageDto, MessageReplyKeyboardButtonDto, PeerId } from '../types';
-import type { UploadRequest } from '../upload';
+import type { MessageDto, PeerId } from '../types';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
@@ -63,6 +63,7 @@ export function ThreadView({
   onCancelEdit,
   onSaveEdit,
   onAttach,
+  onSendSticker,
   onRetryPending,
   onDiscardPending,
   onReact,
@@ -238,21 +239,13 @@ export function ThreadView({
   // The day a pending send falls on, when it is not the loaded list's last day.
   const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;
 
-  const send = (text: string, replyTo?: number): Promise<void> => {
-    // The outbox carries the reply preview, so the composer is free for the
-    // next message before this send is acknowledged.
-    setReplyingTo(null);
-    return onSend(text, replyTo);
-  };
-  const attach = (request: UploadRequest): Promise<void> => {
-    setReplyingTo(null);
-    return onAttach(request);
-  };
-  const pressReplyKeyboard = (button: MessageReplyKeyboardButtonDto, replyTo?: number): void => {
-    // A keyboard send consumes the reply target like any other send.
-    setReplyingTo(null);
-    onPressReplyKeyboard(button, replyTo);
-  };
+  const { send, attach, sendSticker, pressReplyKeyboard } = composerSends({
+    clearReply: () => setReplyingTo(null),
+    onSend,
+    onAttach,
+    onSendSticker,
+    onPressReplyKeyboard,
+  });
   const openComments = (message: MessageDto): void => {
     const element = scrollRef.current;
     if (element) positions.remember(readThreadPosition(element, chat.id));
@@ -386,6 +379,7 @@ export function ThreadView({
           onSaveEdit={onSaveEdit}
           onSend={send}
           onAttach={attach}
+          onSendSticker={sendSticker}
           onPressReplyKeyboard={pressReplyKeyboard}
         />
       )}

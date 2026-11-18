@@ -198,6 +198,7 @@ export function ThreadPane({
         onCancelEdit={threads.cancelEdit}
         onSaveEdit={threads.saveEdit}
         onAttach={threads.attach}
+        onSendSticker={threads.sendSticker}
         onRetryPending={threads.retryPending}
         onDiscardPending={threads.discardPending}
         onReact={threads.react}

@@ -2,16 +2,18 @@ import { useRef, useState } from 'react';
 import { readClipboard } from '../clipboard';
 import type { RecordedVoice } from '../recorder';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
-import type { BotCommandDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
+import type { BotCommandDto, MessageDto, MessageReplyKeyboardButtonDto, StickerDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { useComposerCommands } from '../useComposerCommands';
 import { useEditDraft } from '../useEditDraft';
+import { useComposerPicker } from '../useComposerPicker';
 import { useVoiceRecorder } from '../useVoiceRecorder';
 import { CommandMenu } from './CommandMenu';
 import { Icon } from './Icon';
 import { Presence } from './Presence';
 import { ComposerEdit, ComposerReply } from './ReplyQuote';
 import { ReplyKeyboard } from './ReplyKeyboard';
+import { StickerPicker } from './StickerPicker';
 import { UploadDialog } from './UploadDialog';
 import { VoiceRecordingStrip } from './VoiceRecordingStrip';
 
@@ -51,6 +53,13 @@ interface ComposerProps {
   onCancelEdit?: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  /**
+   * Sends a sticker from the picker. The composer supplies the open reply
+   * target; the picker supplies the pack identity for the engine's fallback.
+   * Absent means this composer offers no sticker tab (the comments screen posts
+   * into a discussion group through a narrower path).
+   */
+  onSendSticker?: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   onPressReplyKeyboard?: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }
 
@@ -65,6 +74,7 @@ export function Composer({
   onCancelEdit,
   onSend,
   onAttach,
+  onSendSticker,
   onPressReplyKeyboard,
 }: ComposerProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -74,7 +84,6 @@ export function Composer({
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [replyKeyboardCollapsed, setReplyKeyboardCollapsed] = useState(true);
   const [recordingError, setRecordingError] = useState<string | null>(null);
-
   const sendText = (text: string): void => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -86,6 +95,15 @@ export function Composer({
     // Retry, so restoring the draft here would duplicate the message.
     void Promise.resolve(onSend(trimmed, replyTo)).catch(() => {});
   };
+
+  const picker = useComposerPicker({
+    textareaRef,
+    draft,
+    setDraft,
+    ...(replyTarget !== null && { replyTargetId: replyTarget.id }),
+    ...(onSendSticker !== undefined && { onSendSticker }),
+    beforeSend: () => setMenuOpen(false),
+  });
 
   const commands = useComposerCommands({
     commands: botCommands ?? [],
@@ -223,6 +241,20 @@ export function Composer({
                 <Icon name="slash" size={18} />
               </button>
             ) : null}
+            {onSendSticker === undefined ? null : (
+              <button
+                type="button"
+                className="attach"
+                data-icon-only
+                aria-label="Sticker and emoji picker"
+                title="Stickers And Emoji"
+                aria-haspopup="dialog"
+                aria-expanded={picker.open}
+                onClick={picker.toggle}
+              >
+                <Icon name="emoji" size={18} />
+              </button>
+            )}
             {editTarget === null ? (
               <button
                 type="button"
@@ -345,6 +377,14 @@ export function Composer({
         ) : (
           <VoiceRecordingStrip state={voice.state} seconds={voice.seconds} onCancel={voice.cancel} onStop={voice.stop} />
         )}
+        {picker.open && onSendSticker !== undefined ? (
+          <StickerPicker
+            stickersEnabled={editTarget === null}
+            onClose={picker.close}
+            onPickEmoji={picker.insertEmoji}
+            onSendSticker={picker.sendSticker}
+          />
+        ) : null}
       </form>
       <Presence visible={pendingFiles !== null}>
         {pendingFiles ? <UploadDialog initialFiles={pendingFiles} onCancel={() => setPendingFiles(null)} onSend={attach} /> : null}

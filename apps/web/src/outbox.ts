@@ -1,5 +1,5 @@
 import { applyNewMessage } from './state';
-import type { DialogDto, MessageDto, MessageMediaDto, MessageReplyDto, PeerId } from './types';
+import type { DialogDto, MessageDto, MessageMediaDto, MessageReplyDto, PeerId, StickerDto } from './types';
 import { mediaKind } from './upload';
 
 /**
@@ -41,7 +41,7 @@ export interface PendingMessage {
    * The controller's filter: a chat id for a thread, a post key for comments.
    */
   scope: string;
-  kind: 'text' | 'file';
+  kind: 'text' | 'file' | 'sticker';
   /**
    * Message text, or the caption of a file.
    */
@@ -109,6 +109,24 @@ export function pendingMedia(file: File, sendAsFile = false, voiceDuration: numb
     width: null,
     height: null,
     duration: voiceDuration,
+  };
+}
+
+/**
+ * The media descriptor a sticker shows before it settles: the picker's grid
+ * already knows the emoji and the box, and the chat list's preview line reads
+ * the emoji exactly as it does for a sent sticker.
+ */
+export function pendingStickerMedia(sticker: StickerDto): MessageMediaDto {
+  return {
+    kind: 'sticker',
+    fileName: null,
+    mime: 'image/webp',
+    size: null,
+    width: sticker.width,
+    height: sticker.height,
+    duration: null,
+    ...(sticker.emoji !== null && { emoji: sticker.emoji }),
   };
 }
 

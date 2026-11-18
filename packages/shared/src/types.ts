@@ -751,6 +751,81 @@ export interface DialogMessageDto {
 }
 
 /**
+A sticker the picker can show and send.
+
+`id` is the decimal document id, and it is the only name the SPA uses: the
+engine keeps the document itself — access hash and file reference included — in
+a memory registry, so the browser never carries a file reference and the bytes
+route resolves server-side. `version` busts the preview cache when Telegram
+replaces the document.
+*/
+export interface StickerDto {
+  /**
+  Decimal document id of the sticker.
+  */
+  id: string;
+  /**
+  The sticker's alt emoji, or null when Telegram sent none.
+  */
+  emoji: string | null;
+  kind: 'static' | 'animated' | 'video';
+  width: number;
+  height: number;
+  /**
+  Opaque token identifying this document revision; the preview URL's cache
+  buster.
+  */
+  version: string;
+}
+
+/**
+One sticker pack.
+
+A brief set (`stickers` empty) is what the library lists; opening a pack reads
+it in full. `accessHash` is the other half of Telegram's `inputStickerSetID`,
+and it lets a send recover a document after the engine's registry went cold.
+*/
+export interface StickerSetDto {
+  /**
+  Decimal id of the sticker set.
+  */
+  id: string;
+  /**
+  Decimal access hash, as Telegram's `inputStickerSetID` expects it.
+  */
+  accessHash: string;
+  shortName: string;
+  title: string;
+  kind: 'sticker' | 'emoji' | 'mask';
+  /**
+  How many stickers the pack holds, from Telegram's own count.
+  */
+  count: number;
+  /**
+  Whether the account has the pack installed.
+  */
+  installed: boolean;
+  /**
+  The pack's cover sticker, or null when Telegram sent none.
+  */
+  thumb: StickerDto | null;
+  /**
+  The stickers themselves, in Telegram's order; empty for a brief set.
+  */
+  stickers: StickerDto[];
+}
+
+/**
+What the picker opens with: the account's recent and saved stickers, and the
+installed packs as brief sets.
+*/
+export interface StickerLibraryDto {
+  recent: StickerDto[];
+  faved: StickerDto[];
+  sets: StickerSetDto[];
+}
+
+/**
 Updates pushed over the `/user/updates` WebSocket.
 */
 export type UpdateEvent =

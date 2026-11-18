@@ -1,5 +1,5 @@
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
-import type { BotCommandDto, ChatDto, MessageDto, MessageReplyKeyboardButtonDto } from '../types';
+import type { BotCommandDto, ChatDto, MessageDto, MessageReplyKeyboardButtonDto, StickerDto } from '../types';
 import type { UploadRequest } from '../upload';
 import { Composer } from './Composer';
 
@@ -35,6 +35,7 @@ interface ThreadFooterProps {
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   /**
    * Presses a reply keyboard button. The reply target rides along, so a
    * keyboard send matches a typed one.
@@ -55,6 +56,7 @@ export function ThreadFooter({
   onCancelReply,
   onSend,
   onAttach,
+  onSendSticker,
   onPressReplyKeyboard,
 }: ThreadFooterProps) {
   if (preview !== null) {
@@ -93,6 +95,7 @@ export function ThreadFooter({
         onSaveEdit={onSaveEdit}
         onSend={onSend}
         onAttach={onAttach}
+        onSendSticker={onSendSticker}
         onPressReplyKeyboard={onPressReplyKeyboard}
       />
     </>

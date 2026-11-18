@@ -4,6 +4,7 @@ import type { RpcMethod } from '../../packages/shared/src/rpc-types';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
 import { dispatchRpc } from '../../packages/backend-services/src/session/rpc';
 import { BATCHABLE_METHODS, RPC_METHODS } from '../../packages/backend-services/src/session/rpc-methods';
+import { StickerRegistry } from '../../packages/backend-services/src/session/sticker-registry';
 import { albumLedger } from './rpc-dispatch';
 
 /**
@@ -38,6 +39,10 @@ const CONTRACT_METHODS: readonly RpcMethod[] = [
   'setArchived',
   'setPinned',
   'getProfile',
+  'getStickerLibrary',
+  'getStickerSet',
+  'sendSticker',
+  'installStickerSet',
   'resolveChat',
   'joinChat',
   'resolveInvite',
@@ -63,6 +68,8 @@ const CONTRACT_BATCHABLE: readonly RpcMethod[] = [
   'getComments',
   'getBotCommands',
   'getProfile',
+  'getStickerLibrary',
+  'getStickerSet',
   'resolveChat',
   'resolveInvite',
 ];
@@ -72,7 +79,7 @@ function fakeClient(): TelegramClient {
 }
 
 function dispatch(method: string, params: unknown): Promise<unknown> {
-  return dispatchRpc(fakeClient(), method, params, albumLedger(), new CallRegistry());
+  return dispatchRpc(fakeClient(), method, params, albumLedger(), new CallRegistry(), new StickerRegistry());
 }
 
 describe('RPC method registry', () => {

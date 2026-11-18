@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { fetchPollResults, sendMessage, sendReaction } from './api';
+import { fetchPollResults, sendReaction } from './api';
 import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
 import {
   applyCommentCountDelta,
@@ -15,7 +15,7 @@ import {
 import type { PollUpdateTarget } from './state';
 import type { OpenThreadResult, ThreadController, UseThreadOptions } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
-import { applyThreadDeleted, applyThreadEdit, applyThreadNewMessage, applyThreadRestored, applyThreadSentMessages } from './thread-state';
+import { applyThreadDeleted, applyThreadEdit, applyThreadNewMessage, applyThreadRestored } from './thread-state';
 import type { ChatThread } from './thread-state';
 import type { OpenThreadOptions } from './thread-window';
 import type {
@@ -28,8 +28,6 @@ import type {
   PeerId,
   UpdateEvent,
 } from './types';
-import { sendUploadBatch } from './upload';
-import type { UploadRequest } from './upload';
 import { useMessageButtons } from './useMessageButtons';
 import { useMessageEdit } from './useMessageEdit';
 import { useMessageDelete } from './useMessageDelete';
@@ -38,6 +36,7 @@ import { usePollVoting } from './usePollVoting';
 import { useThreadOpen } from './useThreadOpen';
 import { useThreadPaging } from './useThreadPaging';
 import { useThreadPinned } from './useThreadPinned';
+import { useThreadSends } from './useThreadSends';
 
 /**
 The chat thread's controller: the open chat with its loaded window, the read
@@ -131,66 +130,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     setThread((current) => updateThread(current, chatId, (messages) => applyCommentCountDelta(messages, postId)));
   }, []);
 
-  const send = useCallback(
-    (text: string, replyTo?: number): Promise<void> => {
-      const chat = thread?.chat;
-      if (!chat) return Promise.resolve();
-      const replyPreview = replyTo === undefined ? null : (thread.messages.find((message) => message.id === replyTo) ?? null);
-      outbox.send({
-        chatId: chat.id,
-        scope: String(chat.id),
-        text,
-        ...(replyTo !== undefined && { replyTo }),
-        replyPreview,
-        deliver: (body, randomIds) => {
-          if (body.kind !== 'text') throw new Error('The Outbox Delivered A File Body For A Text Message');
-          return sendMessage(chat.id, body.text, body.replyTo, randomIds[0]).then((result) => [result.message]);
-        },
-        onSettled: (messages) => {
-          setThread((current) => applyThreadSentMessages(current, chat.id, messages));
-          const last = messages.at(-1);
-          if (last) onSent(last);
-        },
-      });
-      return Promise.resolve();
-    },
-    [thread, outbox, onSent],
-  );
-
-  const attach = useCallback(
-    (request: UploadRequest): Promise<void> => {
-      const chat = thread?.chat;
-      if (!chat) return Promise.resolve();
-      const replyPreview =
-        request.replyTo === undefined ? null : (thread.messages.find((message) => message.id === request.replyTo) ?? null);
-      outbox.attach({
-        chatId: chat.id,
-        scope: String(chat.id),
-        request,
-        replyPreview,
-        deliver: (body, randomIds, onProgress) => {
-          if (body.kind !== 'file') throw new Error('The Outbox Delivered A Text Body For An Attachment');
-          const messages: MessageDto[] = [];
-          return sendUploadBatch(
-            { chatId: chat.id, ...(request.replyTo !== undefined && { replyTo: request.replyTo }) },
-            body.request,
-            (fraction) => onProgress(fraction ?? 0),
-            (message) => {
-              messages.push(message);
-            },
-            randomIds,
-          ).then(() => messages);
-        },
-        onSettled: (messages) => {
-          setThread((current) => applyThreadSentMessages(current, chat.id, messages));
-          const last = messages.at(-1);
-          if (last) onSent(last);
-        },
-      });
-      return Promise.resolve();
-    },
-    [thread, outbox, onSent],
-  );
+  const { send, attach, sendSticker: sendStickerMessage } = useThreadSends({ thread, outbox, setThread, onSent });
 
   /**
   Presses a reply keyboard button: a text button sends its text, exactly as
@@ -375,6 +315,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     cancelEdit: edit.cancelEdit,
     saveEdit: edit.saveEdit,
     attach,
+    sendSticker: sendStickerMessage,
     retryPending: outbox.retry,
     discardPending: outbox.discard,
     clearPending: outbox.clear,

@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   resolveChat: vi.fn(),
   resolveInvite: vi.fn(),
   joinInvite: vi.fn(),
+  installStickerSet: vi.fn(),
 }));
 const linkUtils = vi.hoisted(() => ({
   parseTelegramLink: vi.fn(),
@@ -118,7 +119,7 @@ describe('useLinkRouting', () => {
   });
 
   it('launches non-chat Telegram links in the app', () => {
-    const link = { chat: null, invite: null, postId: null, commentId: null, deepLink: 'tg://settings', webUrl: null };
+    const link = { chat: null, invite: null, stickerSet: null, postId: null, commentId: null, deepLink: 'tg://settings', webUrl: null };
     linkUtils.parseTelegramLink.mockReturnValue(link);
     const { result } = setup();
 
@@ -128,9 +129,32 @@ describe('useLinkRouting', () => {
     expect(linkUtils.launchTelegramApp).toHaveBeenCalledWith('tg://settings', null);
   });
 
+  it('installs a sticker pack a link names and reports the pack it added', async () => {
+    const link = {
+      chat: null,
+      invite: null,
+      stickerSet: 'UtyaDuck',
+      postId: null,
+      commentId: null,
+      deepLink: 'tg://addstickers?set=UtyaDuck',
+      webUrl: 'https://t.me/addstickers/UtyaDuck',
+    };
+    linkUtils.parseTelegramLink.mockReturnValue(link);
+    api.installStickerSet.mockResolvedValueOnce({ id: '10', title: 'Utya Duck' });
+    const { result, onNotice, onError } = setup();
+
+    act(() => {
+      expect(result.current.handleTelegramLink('https://t.me/addstickers/UtyaDuck')).toBe(true);
+    });
+
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith('Sticker Pack Installed: Utya Duck'));
+    expect(api.installStickerSet).toHaveBeenCalledWith('UtyaDuck');
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it('opens a known chat directly', () => {
     const known = dialog(7);
-    const link = { chat: { username: 'known' }, invite: null, postId: 5, commentId: 2, deepLink: 'd', webUrl: 'w' };
+    const link = { chat: { username: 'known' }, invite: null, stickerSet: null, postId: 5, commentId: 2, deepLink: 'd', webUrl: 'w' };
     linkUtils.parseTelegramLink.mockReturnValue(link);
     linkUtils.findLinkedChat.mockReturnValue(known.chat);
     const { result, openChat } = setup([known]);
@@ -143,7 +167,7 @@ describe('useLinkRouting', () => {
   });
 
   it('resolves unknown chats, previews non-members, and hands off 404s', async () => {
-    const link = { chat: { username: 'pub' }, invite: null, postId: 9, commentId: null, deepLink: 'd', webUrl: 'w' };
+    const link = { chat: { username: 'pub' }, invite: null, stickerSet: null, postId: 9, commentId: null, deepLink: 'd', webUrl: 'w' };
     linkUtils.parseTelegramLink.mockReturnValue(link);
     linkUtils.findLinkedChat.mockReturnValue(null);
     const { result, openChat, registerChat, setPreview, onError } = setup();

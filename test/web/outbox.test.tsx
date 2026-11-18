@@ -4,7 +4,7 @@ import type { PendingMessage } from '../../apps/web/src/outbox';
 import { pendingAsMessage, pendingMedia, withPendingDialogs } from '../../apps/web/src/outbox';
 import type { PendingBody } from '../../apps/web/src/useOutbox';
 import { useOutbox } from '../../apps/web/src/useOutbox';
-import type { ChatDto, DialogDto, DialogMessageDto, MessageDto } from '../../apps/web/src/types';
+import type { ChatDto, DialogDto, DialogMessageDto, MessageDto, StickerDto } from '../../apps/web/src/types';
 
 afterEach(cleanup);
 
@@ -338,5 +338,73 @@ describe('the outbox', () => {
     const randomIds = deliver.mock.calls[0]?.[1] ?? [];
     expect(randomIds).toHaveLength(2);
     expect(randomIds[0]).not.toBe(randomIds[1]);
+  });
+
+  it('shows a sticker at once and sends its document id with the pack identity', async () => {
+    const onSettled = vi.fn();
+    const deliver = vi.fn<(body: PendingBody, randomIds: readonly string[]) => Promise<MessageDto[]>>(async () => [
+      message({ id: 21, chatId: 2, outgoing: true, text: '' }),
+    ]);
+    const { result } = renderHook(() => useOutbox({ onError: vi.fn() }));
+    const sticker: StickerDto = { id: '42', emoji: '🙂', kind: 'static', width: 512, height: 512, version: 'v42' };
+
+    act(() => {
+      result.current.sendSticker({
+        chatId: 2,
+        scope: '2',
+        sticker,
+        set: { id: '10', accessHash: '100' },
+        deliver,
+        onSettled,
+      });
+    });
+
+    // The bubble is on screen before the bridge answers, and its media says
+    // "sticker" so the day divider and the preview line agree.
+    expect(result.current.pending[0].media?.kind).toBe('sticker');
+    expect(result.current.pending[0].media?.emoji).toBe('🙂');
+    expect(result.current.pending[0].previewUrl).toContain('documentId=42');
+
+    await waitFor(() => {
+      expect(deliver).toHaveBeenCalledTimes(1);
+    });
+    const call = deliver.mock.calls[0];
+    expect(call?.[0]).toEqual({ kind: 'sticker', documentId: '42', set: { id: '10', accessHash: '100' } });
+    expect(call?.[1]?.[0]).toMatch(/^\d+$/);
+
+    await waitFor(() => {
+      expect(result.current.pending).toHaveLength(0);
+    });
+    expect(onSettled).toHaveBeenCalledWith([expect.objectContaining({ id: 21 })]);
+  });
+
+  it('keeps a failed sticker and retries it without the pack identity', async () => {
+    const onError = vi.fn();
+    const deliver = vi
+      .fn<(body: PendingBody, randomIds: readonly string[]) => Promise<MessageDto[]>>()
+      .mockRejectedValueOnce(new Error('the bridge is offline'))
+      .mockResolvedValueOnce([message({ id: 22, chatId: 2, outgoing: true, text: '' })]);
+    const { result } = renderHook(() => useOutbox({ onError }));
+    const sticker: StickerDto = { id: '43', emoji: null, kind: 'video', width: 512, height: 512, version: 'v43' };
+
+    act(() => {
+      result.current.sendSticker({ chatId: 2, scope: '2', sticker, deliver, onSettled: vi.fn() });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pending[0]?.status).toBe('failed');
+    });
+    expect(result.current.pending[0].media?.emoji).toBeUndefined();
+
+    act(() => {
+      result.current.retry(result.current.pending[0].key);
+    });
+
+    await waitFor(() => {
+      expect(result.current.pending).toHaveLength(0);
+    });
+    // A retry reuses the entry's random id, so Telegram drops a duplicate.
+    expect(deliver.mock.calls[1]?.[1]).toEqual(deliver.mock.calls[0]?.[1]);
+    expect(deliver.mock.calls[1]?.[0]).toEqual({ kind: 'sticker', documentId: '43' });
   });
 });

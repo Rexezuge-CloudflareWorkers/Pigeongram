@@ -14,6 +14,7 @@ import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 const media = vi.hoisted(() => ({
   streamMessageMedia: vi.fn(),
+  streamSticker: vi.fn(),
   readAvatar: vi.fn(),
   readAvatarVersion: vi.fn(),
 }));
@@ -361,12 +362,14 @@ describe('TelegramDriver', () => {
     const message = { id: 7 };
     const messages = [{ id: 7 }, { id: 8 }];
     media.streamMessageMedia.mockResolvedValue(download);
+    media.streamSticker.mockResolvedValue(download);
     media.readAvatar.mockResolvedValue(avatar);
     media.readAvatarVersion.mockResolvedValue('v1');
     upload.sendUploadedMedia.mockResolvedValue(message);
     upload.sendUploadedMediaGroup.mockResolvedValue(messages);
 
     await expect(harness.driver.streamMessageMedia(2, 3, { thumb: true })).resolves.toBe(download);
+    await expect(harness.driver.streamSticker('42', true)).resolves.toBe(download);
     await expect(harness.driver.readAvatar(2, 'small')).resolves.toBe(avatar);
     await expect(harness.driver.readAvatarVersion(2, 'big')).resolves.toBe('v1');
     const spec = { chatId: 2, kind: 'document' as const, size: 4 };
@@ -376,6 +379,7 @@ describe('TelegramDriver', () => {
     await expect(harness.driver.sendUploadGroup(group, body)).resolves.toBe(messages);
 
     expect(media.streamMessageMedia).toHaveBeenCalledWith(harness.client, 2, 3, { thumb: true }, MEDIA_WINDOW_BYTES);
+    expect(media.streamSticker).toHaveBeenCalledWith(harness.client, expect.anything(), '42', true);
     expect(media.readAvatar).toHaveBeenCalledWith(harness.client, 2, 'small');
     expect(media.readAvatarVersion).toHaveBeenCalledWith(harness.client, 2, 'big');
     expect(upload.sendUploadedMedia).toHaveBeenCalledWith(harness.client, spec, body, undefined);

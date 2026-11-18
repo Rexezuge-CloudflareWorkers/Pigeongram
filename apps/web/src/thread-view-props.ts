@@ -10,6 +10,7 @@ import type {
   MessageReplyKeyboardButtonDto,
   PeerId,
   PresenceDto,
+  StickerDto,
 } from './types';
 import type { UploadRequest } from './upload';
 
@@ -193,6 +194,11 @@ export interface ThreadViewProps {
    */
   onSaveEdit: (text: string) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
+  /**
+   * Sends a sticker the composer's picker offered, with the open reply target
+   * and the pack identity the engine can fall back to.
+   */
+  onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   onRetryPending: (key: string) => void;
   onDiscardPending: (key: string) => void;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;

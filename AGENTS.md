@@ -346,6 +346,21 @@ protocol,registry}`) and the mtcute integration
   drops it at the top of the unpinned one, with the same rollback on a refused call as `setArchived`. The engine maps
   `updateDialogPinned` onto a `pinned` event and the SPA folds it into whichever list already holds the chat; the pin
   marker in the row stays a render of `DialogDto.pinned`, never a local-only flag.
+- **A sticker is named by an id the engine minted, and the picker is a popover.** The composer's emoji button opens
+  `pages/src/components/StickerPicker.tsx` (stickers) and `EmojiPicker.tsx` (emoji) above the composer — a popover,
+  not a `history.state` layer, so Back leaves the thread. The library (`getStickerLibrary`: recents, saved stickers and
+  the installed regular packs, one engine event) is read the first time the sticker tab is shown; a _brief_ pack
+  carries no stickers, so `getStickerSet` reads it in full when the reader opens it. A sticker crosses the bridge as
+  the decimal document id the engine minted (`StickerDto.id`), never as a file id or `file_reference`:
+  `session/sticker-registry.ts` keeps the documents it has read (memory-only, bounded), and `GET /user/sticker`
+  streams one from there — `thumb=1` answers the thumbnail a picker cell needs, and an id the registry lost is a `404`,
+  not a Telegram round trip. Because the registry empties on a Durable Object restart, `sendSticker` also accepts the
+  pack identity (`set: {id, accessHash}`) as the cold-start fallback. Installing a `t.me/addstickers` link is the
+  whole action that link has (`installStickerSet`); it names no peer. Emoji are content, not chrome: the composer's
+  set is `pages/src/emoji.ts` (in-repo data with keywords, recents in `localStorage`), and a pick inserts at the caret
+  and leaves the panel open, because a message is often several emoji. The picker button renders only when the composer
+  was given `onSendSticker`, and the sticker tab is withheld while a message is being edited.
+
 - **The profile popup is a self-contained overlay, not a history layer.** The nav bar of the open chat opens the
   peer's profile — from its picture, from its name, or from the ⋮ menu's "View Profile" — and the popup closes on
   Escape, a backdrop press or its close button. It is deliberately **not** a `history.state` layer (only the media

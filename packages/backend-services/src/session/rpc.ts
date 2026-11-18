@@ -4,6 +4,7 @@ import { EngineError } from './errors';
 import { requireRecord } from './params';
 import { RPC_METHODS } from './rpc-methods';
 import type { DispatchContext, MethodSpec } from './rpc-methods';
+import type { StickerRegistry } from './sticker-registry';
 import type { UnreadAlbumLedger } from './unread-albums';
 
 /**
@@ -26,6 +27,7 @@ export async function dispatchRpc(
   rawParams: unknown,
   albums: UnreadAlbumLedger,
   registry: CallRegistry,
+  stickers: StickerRegistry,
 ): Promise<unknown> {
   const params = requireRecord(rawParams);
   const spec = methodSpec(method);
@@ -33,9 +35,10 @@ export async function dispatchRpc(
     client,
     albums,
     calls: registry,
+    stickers,
     // A batch's inner call goes through the same dispatcher, so its envelope
     // is validated the same way and its own methods resolve the same way.
-    dispatch: (inner, innerParams) => dispatchRpc(client, inner, innerParams, albums, registry),
+    dispatch: (inner, innerParams) => dispatchRpc(client, inner, innerParams, albums, registry, stickers),
   };
   return spec.run(context, params);
 }

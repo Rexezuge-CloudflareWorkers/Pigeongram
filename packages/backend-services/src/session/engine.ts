@@ -10,7 +10,7 @@ import { LoginFlow } from './login-flow';
 import { SessionLifecycle } from './lifecycle';
 import { isOriginAllowed, originRejection } from './origin';
 import { log } from './log';
-import { avatarResponse, fileResponse, uploadGroupResponse, uploadResponse } from './media-routes';
+import { avatarResponse, fileResponse, stickerResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
 import { UpdatesSocketHub } from './socket-hub';
 import { EngineStore } from './stats';
@@ -41,6 +41,7 @@ const ENGINE_PATHS: ReadonlySet<string> = new Set([
   '/user/stats',
   '/user/file',
   '/user/avatar',
+  '/user/sticker',
 ]);
 
 /**
@@ -227,6 +228,11 @@ export class SessionEngine {
       }
       case 'GET /user/avatar': {
         const response = await avatarResponse(this.driver, this.avatars, url);
+        await this.lifecycle.afterActivity();
+        return response;
+      }
+      case 'GET /user/sticker': {
+        const response = await stickerResponse(this.driver, url);
         await this.lifecycle.afterActivity();
         return response;
       }

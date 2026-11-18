@@ -7,6 +7,8 @@ import { dialogsRpcMethods } from './rpc-dialogs';
 import { dispatchBatch } from './rpc-batch';
 import { messagesRpcMethods } from './rpc-messages';
 import { searchRpcMethods } from './rpc-search';
+import type { StickerRegistry } from './sticker-registry';
+import { stickerRpcMethods } from './stickers';
 import type { UnreadAlbumLedger } from './unread-albums';
 
 /**
@@ -31,6 +33,7 @@ export interface DispatchContext {
   client: TelegramClient;
   albums: UnreadAlbumLedger;
   calls: CallRegistry;
+  stickers: StickerRegistry;
   dispatch: (method: string, params: unknown) => Promise<unknown>;
 }
 
@@ -50,6 +53,7 @@ export const RPC_METHODS = {
   ...dialogsRpcMethods,
   ...messagesRpcMethods,
   ...searchRpcMethods,
+  ...stickerRpcMethods,
 
   batch: {
     // A batch is a read of many reads; the batch parser refuses every write

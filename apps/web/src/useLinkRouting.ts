@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { MutableRefObject } from 'react';
 import { ServiceError } from '@rexezuge/errors';
-import { resolveChat } from './api';
+import { installStickerSet, resolveChat } from './api';
 import { findLinkedChat, handOffTarget, launchTelegramApp, linkTarget, parseTelegramLink } from './links';
 import type { TelegramChatTarget } from './links';
 import type { ChatPreview, PendingInvite, ResolveRequest } from './navigation-types';
@@ -148,6 +148,15 @@ export function useLinkRouting({
         openInvite(link);
         return true;
       }
+      // A sticker pack names no peer: installing it is the whole action, and
+      // the toast names what was added.
+      if (link.stickerSet !== null) {
+        const shortName = link.stickerSet;
+        void installStickerSet(shortName)
+          .then((set) => onNotice(`Sticker Pack Installed: ${set.title}`))
+          .catch(onError);
+        return true;
+      }
       if (link.chat === null) {
         launchTelegramApp(link.deepLink, link.webUrl);
         return true;
@@ -168,7 +177,7 @@ export function useLinkRouting({
       });
       return true;
     },
-    [dialogs, openChat, openInvite, resolveTarget],
+    [dialogs, onError, onNotice, openChat, openInvite, resolveTarget],
   );
 
   return { openForwardOrigin, handleTelegramLink, invite, joinInvite, dismissInvite };

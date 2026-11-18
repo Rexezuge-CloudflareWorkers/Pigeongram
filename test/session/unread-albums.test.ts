@@ -4,6 +4,7 @@ import type { TelegramClient } from '@mtcute/core/client.js';
 import type { tl } from '@mtcute/core';
 import { describe, expect, it } from 'vitest';
 import { CallRegistry } from '../../packages/backend-services/src/session/call-registry';
+import { StickerRegistry } from '../../packages/backend-services/src/session/sticker-registry';
 import { dispatchRpc } from '../../packages/backend-services/src/session/rpc';
 import { albumAwareUnread, reconcileUnreadAlbums, UnreadAlbumLedger } from '../../packages/backend-services/src/session/unread-albums';
 import type { MessageDto, UpdateEvent } from '../../packages/shared/src/types';
@@ -276,7 +277,9 @@ describe('the chat list the bridge serves', () => {
     const albums = ledger();
     const { client } = fakeClient([message(12, 7), message(11, 7), message(10, 7)]);
 
-    const result = (await dispatchRpc(client, 'getDialogs', {}, albums, new CallRegistry())) as { dialogs: Array<{ unread: number }> };
+    const result = (await dispatchRpc(client, 'getDialogs', {}, albums, new CallRegistry(), new StickerRegistry())) as {
+      dialogs: Array<{ unread: number }>;
+    };
 
     expect(result.dialogs[0].unread).toBe(1);
   });
@@ -289,7 +292,9 @@ describe('the chat list the bridge serves', () => {
     // The account has read up to 10, so only the second member of the album is
     // unread and the album has no surplus left.
     const { client } = fakeClient([], { lastReadIngoing: 10 });
-    const result = (await dispatchRpc(client, 'getDialogs', {}, albums, new CallRegistry())) as { dialogs: Array<{ unread: number }> };
+    const result = (await dispatchRpc(client, 'getDialogs', {}, albums, new CallRegistry(), new StickerRegistry())) as {
+      dialogs: Array<{ unread: number }>;
+    };
 
     expect(result.dialogs[0].unread).toBe(3);
     expect(albums.excessFor(1)).toBe(0);

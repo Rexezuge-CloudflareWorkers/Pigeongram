@@ -19,6 +19,7 @@ export {
   joinInvite,
   resolveChat,
   resolveInvite,
+  searchContacts,
   setArchived,
   setPinned,
 } from './api/chats';

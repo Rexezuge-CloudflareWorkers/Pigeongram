@@ -229,6 +229,7 @@ an oversized total is rejected before the DO is touched; `UPLOAD_MAX_BYTES` caps
 | `setPinned`           | `{chatId, pinned: boolean}`                                                       | `{chatId, pinned}`                                                                                                                           |
 | `setMessagePinned`    | `{chatId, messageId, pinned: boolean}`                                            | `{chatId, messageId, pinned}` (the engine also echoes a `message_pinned` update)                                                             |
 | `getProfile`          | `{chatId}`                                                                        | `{profile: ProfileDto}`                                                                                                                      |
+| `searchContacts`      | `{query?, limit?: 1..50}`                                                         | `{people: ChatDto[], chats: ChatDto[]}` (a blank query reads the account's contacts)                                                         |
 | `getStickerLibrary`   | —                                                                                 | `StickerLibraryDto` (`recent`, `faved`, `sets`)                                                                                              |
 | `getStickerSet`       | `{shortName}` or `{id, accessHash}`                                               | `{set: StickerSetDto}` (a brief set carries no `stickers`)                                                                                   |
 | `sendSticker`         | `{chatId, documentId, replyTo?, randomId?, set?: {id, accessHash}}`               | `{message: MessageDto}`                                                                                                                      |
@@ -568,6 +569,21 @@ move is confirmed in a modal — and the outcome is announced in a toast. The si
 of its chats is open; bringing that chat back out of the archive hands the sidebar to the chat list, where it now lives.
 The archive bar's back leaves the archive for the chat list on the same rule: while a chat is open it only changes the
 sidebar, and the open thread stays.
+
+### Starting a new chat
+
+The sidebar's new-message button opens a picker whose read is `searchContacts`. A blank query reads the account's
+address book (`contacts.getContacts`, one call, mapped to `ChatDto` and sorted case-insensitively by name); a query
+asks Telegram's own `contacts.search` and splits the answer into `people` (users) and `chats` (the public groups and
+channels it matched). Deleted accounts, the account's own row and `min` chats are dropped: none of them can be opened
+from the picker. It is a read-only method, so it is batchable, and it writes nothing.
+
+Choosing a person opens the thread directly — the search answer already stored the peer in the engine's cache, and a
+person is always a member. A group or a channel with a username is resolved the way a Telegram link is, so one the
+account has not joined opens as a preview with Join where the composer would be. Nothing durable exists for a chat
+outside the list until the first message creates the dialog: that thread is memory-only exactly like a link preview,
+which is why the SPA reads the chat list once when a send lands in a chat the list does not carry. A reload in that
+narrow window shows the chat unavailable; after the send the list is the truth and the row is there.
 
 ### Updates socket protocol
 

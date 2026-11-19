@@ -6,6 +6,7 @@
 
 import type { BotCommandDto, DialogDto, MeDto, MessageDto, PeerId, ProfileDto } from './types';
 
+export type { SearchContactsParams, SearchContactsResult } from './contact-types';
 export type {
   ChatInvitePreviewDto,
   JoinChatParams,
@@ -81,6 +82,7 @@ export type RpcMethod =
   | 'setArchived'
   | 'setPinned'
   | 'getProfile'
+  | 'searchContacts'
   | 'getStickerLibrary'
   | 'getStickerSet'
   | 'sendSticker'
@@ -122,6 +124,7 @@ export type BatchableRpcMethod =
   | 'getComments'
   | 'getBotCommands'
   | 'getProfile'
+  | 'searchContacts'
   | 'getStickerLibrary'
   | 'getStickerSet'
   | 'resolveChat'

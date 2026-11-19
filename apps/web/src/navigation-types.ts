@@ -108,6 +108,12 @@ export interface SignedInNavigation {
    */
   openSearchResult: (chat: ChatDto, message: MessageDto) => void;
   openForwardOrigin: (forward: MessageForwardDto) => void;
+  /**
+   * Opens a chat the new-message picker found. A chat outside the loaded list
+   * is resolved like a Telegram link, so a public chat the account has not
+   * joined opens as its preview.
+   */
+  openFoundChat: (chat: ChatDto) => void;
   openArchive: () => void;
   leaveArchive: () => void;
   handleTelegramLink: (url: string) => boolean;

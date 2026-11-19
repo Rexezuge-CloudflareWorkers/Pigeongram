@@ -7,6 +7,7 @@ import { resolveDiscussion } from './comments';
 import { toDialogDto, toMeDto } from './dto';
 import { clampInt, optionalBoolean, optionalMessageId, requireBoolean, requirePeerId } from './params';
 import { joinInviteTarget, resolveInviteTarget } from './invites';
+import { searchContacts } from './contacts';
 import { setChatPinned } from './pin';
 import { readContactPresences } from './presence';
 import { readProfile } from './profile';
@@ -92,6 +93,13 @@ export const dialogsRpcMethods = {
       const chatId = requirePeerId(params.chatId);
       return { profile: await readProfile(context.client, chatId) };
     },
+  },
+
+  searchContacts: {
+    // The picker's read: the address book on a blank query, Telegram's own
+    // search otherwise. It touches no account state, so it may ride a batch.
+    readOnly: true,
+    run: async (context, params) => searchContacts(context.client, params),
   },
 
   resolveChat: {

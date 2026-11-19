@@ -3,6 +3,7 @@ import type { PendingInvite } from '../navigation-types';
 import type { ChatDto, DialogDto, MessageDto } from '../types';
 import { ForwardPicker } from './ForwardPicker';
 import { InviteDialog } from './InviteDialog';
+import { NewChatDialog } from './NewChatDialog';
 import { Presence } from './Presence';
 import { SearchOverlay } from './SearchOverlay';
 
@@ -28,6 +29,12 @@ interface ShellOverlaysProps {
   onOpenResult: (message: MessageDto, chat: ChatDto) => void;
   onCloseSearch: () => void;
   /**
+  Whether the new-message picker is open, and what its choice and dismissal do.
+  */
+  newChat: boolean;
+  onSelectNewChat: (chat: ChatDto) => void;
+  onCloseNewChat: () => void;
+  /**
   The private invite card, or null when none is open.
   */
   invite: PendingInvite | null;
@@ -49,6 +56,9 @@ export function ShellOverlays({
   search,
   onOpenResult,
   onCloseSearch,
+  newChat,
+  onSelectNewChat,
+  onCloseNewChat,
   invite,
   onJoinInvite,
   onCloseInvite,
@@ -71,6 +81,7 @@ export function ShellOverlays({
           />
         )}
       </Presence>
+      <Presence visible={newChat}>{newChat ? <NewChatDialog onSelect={onSelectNewChat} onClose={onCloseNewChat} /> : null}</Presence>
       <Presence visible={invite !== null}>
         {invite === null ? null : (
           <InviteDialog

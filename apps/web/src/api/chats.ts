@@ -13,6 +13,8 @@ import type {
   ResolveChatResult,
   ResolveInviteParams,
   ResolveInviteResult,
+  SearchContactsParams,
+  SearchContactsResult,
   SetArchivedResult,
   SetPinnedResult,
 } from '../types';
@@ -70,6 +72,12 @@ Resolves the chat a link or a forward names. The engine turns the username or
 marked id into a peer and answers its DTO with whether this account is in it.
 */
 export const resolveChat = (params: ResolveChatParams): Promise<ResolveChatResult> => rpc('resolveChat', { ...params });
+
+/**
+Reads the account's contacts, or searches Telegram for people and public
+chats. A blank query is the address book the new-message picker opens with.
+*/
+export const searchContacts = (params: SearchContactsParams = {}): Promise<SearchContactsResult> => rpc('searchContacts', { ...params });
 
 /**
 Joins a resolved public chat, or reports that an admin must approve the

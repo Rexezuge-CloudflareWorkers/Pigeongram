@@ -63,29 +63,29 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe('useLinkRouting', () => {
-  function setup(dialogs: DialogDto[] = []) {
-    const openChat = vi.fn();
-    const registerChat = vi.fn();
-    const setPreview = vi.fn();
-    const reload = vi.fn(async () => {});
-    const onError = vi.fn();
-    const onNotice = vi.fn();
-    const hook = renderHook(() =>
-      useLinkRouting({
-        dialogs,
-        resolutionRef: { current: 0 },
-        openChat,
-        registerChat,
-        setPreview,
-        reload,
-        onError,
-        onNotice,
-      }),
-    );
-    return { ...hook, openChat, registerChat, setPreview, reload, onError, onNotice };
-  }
+function setup(dialogs: DialogDto[] = []) {
+  const openChat = vi.fn();
+  const registerChat = vi.fn();
+  const setPreview = vi.fn();
+  const reload = vi.fn(async () => {});
+  const onError = vi.fn();
+  const onNotice = vi.fn();
+  const hook = renderHook(() =>
+    useLinkRouting({
+      dialogs,
+      resolutionRef: { current: 0 },
+      openChat,
+      registerChat,
+      setPreview,
+      reload,
+      onError,
+      onNotice,
+    }),
+  );
+  return { ...hook, openChat, registerChat, setPreview, reload, onError, onNotice };
+}
 
+describe('useLinkRouting', () => {
   it('returns false for non-Telegram links', () => {
     linkUtils.parseTelegramLink.mockReturnValue(null);
     const { result } = setup();
@@ -205,5 +205,70 @@ describe('useLinkRouting', () => {
       result.current.handleTelegramLink('https://t.me/pub/9');
     });
     await waitFor(() => expect(onError).toHaveBeenCalled());
+  });
+});
+
+/**
+ * The new-message picker's choice: a chat the account already has opens at
+ * once, a person the picker found is already addressable, and a public chat
+ * the account has not joined keeps the preview its join card needs.
+ */
+describe('useLinkRouting openFoundChat', () => {
+  function person(id: number): ChatDto {
+    return { ...chat(id), kind: 'user' };
+  }
+
+  it('opens a chat already in the list without a round trip', () => {
+    const known = dialog(7);
+    const { result, openChat } = setup([known]);
+
+    act(() => {
+      result.current.openFoundChat(known.chat);
+    });
+
+    expect(openChat).toHaveBeenCalledWith(known.chat);
+    expect(api.resolveChat).not.toHaveBeenCalled();
+  });
+
+  it('opens a person the picker found directly', () => {
+    const found = person(5);
+    const { result, openChat, registerChat } = setup();
+
+    act(() => {
+      result.current.openFoundChat(found);
+    });
+
+    expect(registerChat).toHaveBeenCalledWith(found);
+    expect(openChat).toHaveBeenCalledWith(found);
+    expect(api.resolveChat).not.toHaveBeenCalled();
+  });
+
+  it('resolves a public chat and keeps a non-member as a preview', async () => {
+    const found = chat(10, 'pub');
+    const resolved = chat(10, 'pub');
+    api.resolveChat.mockResolvedValueOnce({ chat: resolved, member: false });
+    const { result, openChat, registerChat, setPreview, onError } = setup();
+
+    act(() => {
+      result.current.openFoundChat(found);
+    });
+
+    await waitFor(() => expect(openChat).toHaveBeenCalledWith(resolved, {}));
+    expect(api.resolveChat).toHaveBeenCalledWith({ username: 'pub' });
+    expect(registerChat).toHaveBeenCalledWith(resolved);
+    expect(setPreview).toHaveBeenCalledWith(expect.objectContaining({ chatId: 10, joining: false }));
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed resolution', async () => {
+    api.resolveChat.mockRejectedValueOnce(new Error('boom'));
+    const { result, openChat, onError } = setup();
+
+    act(() => {
+      result.current.openFoundChat(chat(10, 'pub'));
+    });
+
+    await waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(openChat).not.toHaveBeenCalled();
   });
 });

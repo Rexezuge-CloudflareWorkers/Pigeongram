@@ -79,7 +79,8 @@ protocol,registry}`) and the mtcute integration
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, whose domain calls live in `api/`
   and are re-exported from the barrel, `state.ts` the chat-list
   reducers, `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
-  and the archive move — `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
+  and the archive move — `useNewChat.ts` the new-message picker's contacts and Telegram-wide search,
+  `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is
   `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send
   layer, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread

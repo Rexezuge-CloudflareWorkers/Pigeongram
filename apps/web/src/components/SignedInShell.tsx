@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchBootstrap, logout } from '../api';
 import { useCallHost } from '../calls/host';
-import type { SearchScope } from '../search';
 import { TelegramLinkProvider } from '../telegram-links';
-import type { ChatDto, MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
+import type { MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
 import { useComments } from '../useComments';
 import { useDialogs } from '../useDialogs';
 import { useForwarding } from '../useForwarding';
 import { useMessageFolds } from '../useMessageFolds';
+import { useShellOverlays } from '../useShellOverlays';
 import { useSignedInNavigation } from '../useSignedInNavigation';
 import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
@@ -44,11 +44,6 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
   is the chat's, so reading one of its chats does not leave it behind.
   */
   const [archiveContext, setArchiveContext] = useState(false);
-  /**
-  What the search overlay was opened for: the scope it starts in and, for a
-  hashtag, the query it carries. Null while the overlay is closed.
-  */
-  const [search, setSearch] = useState<{ scope: SearchScope; query?: string } | null>(null);
 
   /**
   The chat list: the main chats and the archive, in one list. The controller
@@ -74,7 +69,21 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     clear: clearDialogs,
   } = dialogs;
 
-  const { onSent: handleSent, onEdited: handleEdited, onDeleted: handleDeleted } = useMessageFolds(applyUpdate, applyDeleted);
+  const { onSent: handleSentFold, onEdited: handleEdited, onDeleted: handleDeleted } = useMessageFolds(applyUpdate, applyDeleted);
+  /**
+  A send that created a chat rather than continuing one: the new-message
+  picker opens a transient thread for a chat the account has never messaged,
+  and the list stays the truth about which chats exist. The first message is
+  what makes the dialog, so the list is read once when it lands — a chat that
+  was already there needs nothing, which keeps this off the ordinary send path.
+  */
+  const handleSent = useCallback(
+    (message: MessageDto): void => {
+      handleSentFold(message);
+      if (findDialog(message.chatId) === undefined) void loadDialogs();
+    },
+    [handleSentFold, findDialog, loadDialogs],
+  );
 
   /**
   A chat Telegram no longer offers to this account: its thread says so, and the
@@ -139,20 +148,6 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
   // does), and moving a chat in or out of the archive follows it.
   const showArchive = archiveContext;
 
-  /**
-  The search overlay's entry points: the sidebar searches every chat, the
-  thread header searches the open one, and a tapped hashtag searches every chat
-  for the tag. A result opens at its message; the navigation hook registers a
-  chat outside the list as transient so the route can find it.
-  */
-  const openGlobalSearch = useCallback((): void => setSearch({ scope: { kind: 'all' } }), []);
-  const openThreadSearch = useCallback((): void => {
-    if (selected !== null) setSearch({ scope: { kind: 'chat', chatId: selected.id } });
-  }, [selected]);
-  const handleHashtag = useCallback((hashtag: string): void => {
-    setSearch({ scope: { kind: 'all' }, query: hashtag });
-  }, []);
-
   const {
     router: { boot: bootRouter, route: currentRoute, reset: resetRouter },
     router,
@@ -164,6 +159,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     openChat,
     openSearchResult,
     openForwardOrigin,
+    openFoundChat,
     openArchive,
     leaveArchive,
     handleTelegramLink,
@@ -178,13 +174,8 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
 
   const selectedPreview = selected !== null && preview?.chatId === selected.id ? preview : null;
 
-  const handleSearchResult = useCallback(
-    (message: MessageDto, chat: ChatDto): void => {
-      setSearch(null);
-      openSearchResult(chat, message);
-    },
-    [openSearchResult],
-  );
+  // The search sheet and the new-message picker, and the actions that settle them.
+  const overlays = useShellOverlays({ openSearchResult, openFoundChat });
 
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest selection. A layout effect runs with the commit, so
@@ -315,7 +306,15 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            onClick={openGlobalSearch}
+            onClick={overlays.openNewChat}
+            aria-label="New Message"
+          >
+            <Icon name="edit" />
+          </button>
+          <button
+            type="button"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={overlays.openGlobalSearch}
             aria-label="Search Messages"
           >
             <Icon name="search" />
@@ -333,7 +332,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           emptyLabel={showArchive ? 'No Archived Chats.' : undefined}
         />
       </aside>
-      <TelegramLinkProvider handler={handleTelegramLink} onHashtag={handleHashtag} onOpenForward={openForwardOrigin}>
+      <TelegramLinkProvider handler={handleTelegramLink} onHashtag={overlays.searchHashtag} onOpenForward={openForwardOrigin}>
         <ThreadPane
           threads={threads}
           comments={comments}
@@ -352,7 +351,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           }}
           onBack={router.back}
           calls={calls}
-          onSearch={openThreadSearch}
+          onSearch={() => overlays.openThreadSearch(selected)}
           onForward={forwarding.open}
           onOpenMedia={openViewer}
           onReadThrough={markRead}
@@ -379,9 +378,12 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
         forwardTarget={forwarding.target}
         onForward={forwarding.forward}
         onCloseForward={forwarding.close}
-        search={search}
-        onOpenResult={handleSearchResult}
-        onCloseSearch={() => setSearch(null)}
+        search={overlays.search}
+        onOpenResult={overlays.openSearchResult}
+        onCloseSearch={overlays.closeSearch}
+        newChat={overlays.newChat}
+        onSelectNewChat={overlays.selectNewChat}
+        onCloseNewChat={overlays.closeNewChat}
         invite={invite}
         onJoinInvite={joinInvite}
         onCloseInvite={dismissInvite}

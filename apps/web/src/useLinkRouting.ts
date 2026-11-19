@@ -52,6 +52,12 @@ interface UseLinkRoutingOptions {
 interface LinkRouting {
   openForwardOrigin: (forward: MessageForwardDto) => void;
   handleTelegramLink: (url: string) => boolean;
+  /**
+   * Opens a chat the new-message picker found. A chat already in the list is
+   * that chat; anyone else is opened the way a Telegram link resolves one,
+   * including the preview the account has not joined yet.
+   */
+  openFoundChat: (chat: ChatDto) => void;
   invite: PendingInvite | null;
   joinInvite: () => void;
   dismissInvite: () => void;
@@ -132,6 +138,41 @@ export function useLinkRouting({
   const openForwardOrigin = useForwardOrigin(dialogs, openChat, resolveTarget);
 
   /**
+   * Opens a chat the new-message picker found.
+   *
+   * A person is a member by definition, and the picker's read already stored
+   * the peer in the engine's cache, so opening the thread is one route change.
+   * A group or a channel may be one the account has not joined: its public
+   * username goes through the same resolution a link takes, so the thread
+   * shows Join where a composer would fail. A chat whose marked id the list
+   * does not carry and whose username Telegram withheld keeps the picker's own
+   * DTO, exactly as a transient search hit does.
+   */
+  const openFoundChat = useCallback(
+    (chat: ChatDto): void => {
+      const known = dialogs.find((dialog) => dialog.chat.id === chat.id);
+      if (known !== undefined) {
+        openChat(known.chat);
+        return;
+      }
+      if (chat.kind === 'user' || chat.kind === 'bot' || chat.username === null) {
+        registerChat(chat);
+        openChat(chat);
+        return;
+      }
+      const username = chat.username;
+      const ticket = ++resolutionRef.current;
+      void resolveChat({ username })
+        .then((result) => {
+          if (ticket !== resolutionRef.current) return;
+          showResolved(result.chat, result.member, { username }, {});
+        })
+        .catch(onError);
+    },
+    [dialogs, onError, openChat, registerChat, resolutionRef, showResolved],
+  );
+
+  /**
    * Routes a click on a link inside a message: a chat this client already knows
    * opens in the thread (a linked post lands on that post), any other Telegram
    * chat is resolved and opened or previewed, a private invite opens its card,
@@ -180,5 +221,5 @@ export function useLinkRouting({
     [dialogs, onError, onNotice, openChat, openInvite, resolveTarget],
   );
 
-  return { openForwardOrigin, handleTelegramLink, invite, joinInvite, dismissInvite };
+  return { openForwardOrigin, handleTelegramLink, openFoundChat, invite, joinInvite, dismissInvite };
 }

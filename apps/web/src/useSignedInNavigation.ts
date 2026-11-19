@@ -164,7 +164,7 @@ export function useSignedInNavigation({
     [openChat, registerTransient],
   );
 
-  const { openForwardOrigin, handleTelegramLink, invite, joinInvite, dismissInvite } = useLinkRouting({
+  const { openForwardOrigin, handleTelegramLink, openFoundChat, invite, joinInvite, dismissInvite } = useLinkRouting({
     dialogs: dialogs.all,
     resolutionRef: resolution,
     openChat,
@@ -289,6 +289,7 @@ export function useSignedInNavigation({
     openChat,
     openSearchResult,
     openForwardOrigin,
+    openFoundChat,
     openArchive,
     leaveArchive,
     handleTelegramLink,

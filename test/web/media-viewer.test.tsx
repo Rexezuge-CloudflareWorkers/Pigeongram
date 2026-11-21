@@ -70,14 +70,14 @@ function video(id: number, kind: 'video' | 'animation' = 'video'): MessageDto {
 }
 
 /**
- * A touch drag across `target`, from a fixed point. The viewer's stage owns
- * the handlers, so any element in it can start the gesture.
- */
-function swipe(target: Element, dx: number, dy = 0, startX = 300, startY = 300): void {
-  const init = { pointerId: 1, pointerType: 'touch', clientX: startX, clientY: startY };
+A touch drag across `target`, from a fixed point. The viewer's stage owns
+the handlers, so any element in it can start the gesture.
+*/
+function swipe(target: Element, dx: number, dy = 0): void {
+  const init = { pointerId: 1, pointerType: 'touch', clientX: 300, clientY: 300 };
   fireEvent.pointerDown(target, init);
-  fireEvent.pointerMove(target, { ...init, clientX: startX + dx, clientY: startY + dy });
-  fireEvent.pointerUp(target, { ...init, clientX: startX + dx, clientY: startY + dy });
+  fireEvent.pointerMove(target, { ...init, clientX: 300 + dx, clientY: 300 + dy });
+  fireEvent.pointerUp(target, { ...init, clientX: 300 + dx, clientY: 300 + dy });
 }
 
 function currentImageSrc(): string | null {

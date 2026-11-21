@@ -5,10 +5,10 @@ import type { ActiveReplyKeyboard } from '../../apps/web/src/reply-keyboard';
 import type { MessageReplyKeyboardButtonDto } from '../../apps/web/src/types';
 
 /**
- * The chat's reply keyboard, the custom keyboard a bot shows above the
- * composer. Text buttons send their text; web-view buttons are Mini Apps; the
- * kinds only the native app can honour are shown disabled with a reason.
- */
+The chat's reply keyboard, the custom keyboard a bot shows above the
+composer. Text buttons send their text; web-view buttons are Mini Apps; the
+kinds only the native app can honour are shown disabled with a reason.
+*/
 
 afterEach(() => {
   cleanup();
@@ -19,7 +19,8 @@ function keyboard(rows: MessageReplyKeyboardButtonDto[][]): ActiveReplyKeyboard 
   return { messageId: 1, keyboard: { kind: 'keyboard', rows, oneTime: false, placeholder: null } };
 }
 
-function renderKeyboard(rows: MessageReplyKeyboardButtonDto[][], onPress = vi.fn()): ReturnType<typeof vi.fn> {
+function renderKeyboard(rows: MessageReplyKeyboardButtonDto[][]): ReturnType<typeof vi.fn> {
+  const onPress = vi.fn();
   render(<ReplyKeyboard keyboard={keyboard(rows)} onPress={onPress} />);
   return onPress;
 }

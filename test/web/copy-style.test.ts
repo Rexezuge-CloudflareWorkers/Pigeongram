@@ -7,16 +7,16 @@ import { formatListStamp, formatPresence, mediaPreview, pollPreview, previewOf }
 import type { MessagePollDto, PresenceDto } from '../../apps/web/src/types';
 
 /**
- * The visible-copy style: every word of authored, user-visible text is
- * capitalised, including articles, prepositions and conjunctions. Accessible
- * only copy (`aria-label`, `title`, `alt`, `sr-only`) keeps sentence case,
- * because it is not visible text.
- *
- * The guard parses the SPA's TSX with the TypeScript AST: JSX text nodes, the
- * static half of a template, and `placeholder` values are all checked. Dynamic
- * values (chat titles, dates, counters, units) belong to their own casing and
- * are skipped token by token.
- */
+The visible-copy style: every word of authored, user-visible text is
+capitalised, including articles, prepositions and conjunctions. Accessible
+only copy (`aria-label`, `title`, `alt`, `sr-only`) keeps sentence case,
+because it is not visible text.
+
+The guard parses the SPA's TSX with the TypeScript AST: JSX text nodes, the
+static half of a template, and `placeholder` values are all checked. Dynamic
+values (chat titles, dates, counters, units) belong to their own casing and
+are skipped token by token.
+*/
 
 // The suite's working directory is the repository root (Vitest's `root`), and
 // an `import.meta.url` under the test transform is not a file URL.
@@ -34,8 +34,7 @@ function isTitleCased(text: string): boolean {
     const token = rawToken.slice(start);
     // A counter or a unit (`5m`, `30s`, `1.2K`) starts with a digit and is
     // data, not authored copy.
-    if (/^\p{N}/u.test(token)) continue;
-    if (UNIT_SUFFIXES.has(token)) continue;
+    if (/^\p{N}/u.test(token) || UNIT_SUFFIXES.has(token)) continue;
     // A hyphenated compound is one word, so every segment is capitalised
     // (`Diffie-Hellman`, `Single-Account`); a contraction only needs its first
     // letter (`You'll`).

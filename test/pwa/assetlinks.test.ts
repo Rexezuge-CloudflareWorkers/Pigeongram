@@ -29,7 +29,7 @@ function runAssetLinksPlugin(): EmittedAsset[] {
   return emitted;
 }
 
-function withAndroidEnv<T>(env: Record<string, string>, run: () => T): T {
+function withAndroidEnv(env: Record<string, string>): EmittedAsset[] {
   const keys = ['ANDROID_PACKAGE_ID', 'ANDROID_CERT_SHA256', 'ANDROID_PLAY_CERT_SHA256'];
   const previous = keys.map((key) => [key, process.env[key]] as const);
 
@@ -39,7 +39,7 @@ function withAndroidEnv<T>(env: Record<string, string>, run: () => T): T {
   Object.assign(process.env, env);
 
   try {
-    return run();
+    return runAssetLinksPlugin();
   } finally {
     for (const [key, value] of previous) {
       if (value === undefined) {
@@ -52,11 +52,11 @@ function withAndroidEnv<T>(env: Record<string, string>, run: () => T): T {
 }
 
 /**
- * The statement Chrome's Digital Asset Links verifier reads.
- *
- * It is deployment-specific and generated into the Pages build, so a regression
- * here silently brings the URL bar back in every installed Android app.
- */
+The statement Chrome's Digital Asset Links verifier reads.
+
+It is deployment-specific and generated into the Pages build, so a regression
+here silently brings the URL bar back in every installed Android app.
+*/
 describe('the Android asset links', () => {
   it('is absent when the deployment has no Android configuration', () => {
     expect(readAssetLinksConfig({})).toBeNull();
@@ -135,7 +135,7 @@ describe('the Android asset links', () => {
   });
 
   it('writes the file at the well-known path during a build', () => {
-    const emitted = withAndroidEnv({ ANDROID_PACKAGE_ID: PACKAGE_ID, ANDROID_CERT_SHA256: RELEASE_FINGERPRINT }, runAssetLinksPlugin);
+    const emitted = withAndroidEnv({ ANDROID_PACKAGE_ID: PACKAGE_ID, ANDROID_CERT_SHA256: RELEASE_FINGERPRINT });
 
     expect(emitted).toHaveLength(1);
     const [file] = emitted;
@@ -147,6 +147,6 @@ describe('the Android asset links', () => {
   });
 
   it('writes nothing when the deployment has no Android configuration', () => {
-    expect(withAndroidEnv({}, runAssetLinksPlugin)).toEqual([]);
+    expect(withAndroidEnv({})).toEqual([]);
   });
 });

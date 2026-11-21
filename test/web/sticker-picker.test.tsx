@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StickerDto, StickerLibraryDto, StickerSetDto } from '../../apps/web/src/types';
 
 /**
- * The composer's sticker and emoji picker.
- *
- * The popover reads its library once, opens a brief pack by reading it in full,
- * and names a sticker by the decimal document id the engine minted. These cases
- * pin that read flow, the emoji insert that leaves the panel open, and the
- * Escape/outside-press close.
- */
+The composer's sticker and emoji picker.
+
+The popover reads its library once, opens a brief pack by reading it in full,
+and names a sticker by the decimal document id the engine minted. These cases
+pin that read flow, the emoji insert that leaves the panel open, and the
+Escape/outside-press close.
+*/
 
 const bridge = vi.hoisted(() => ({
   fetchStickerLibrary: vi.fn(),
@@ -181,9 +181,8 @@ describe('the sticker picker', () => {
 });
 
 describe('the composer picker button', () => {
-  function renderComposer(
-    onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null) => Promise<void> = vi.fn(async () => {}),
-  ) {
+  function renderComposer() {
+    const onSendSticker = vi.fn(async () => {});
     render(
       <Composer
         placeholder="Message"

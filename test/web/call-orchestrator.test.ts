@@ -6,15 +6,15 @@ import type { CallPeerPort, CallRpcPort } from '../../apps/web/src/calls/orchest
 import type { CallPeerSession } from '../../apps/web/src/calls/peer';
 
 /**
- * The call ordering rules without React.
- *
- * A call has three awaits before it exists (the DH config, the key pair and
- * the request), and two simultaneously — a double tap, or two updates that
- * arrive in the same batch — must not start or answer it twice. Each case here
- * is one of those windows, with a deferred promise standing where the network
- * is. A hang-up inside a window must not resurrect the call when the window
- * closes.
- */
+The call ordering rules without React.
+
+A call has three awaits before it exists (the DH config, the key pair and
+the request), and two simultaneously — a double tap, or two updates that
+arrive in the same batch — must not start or answer it twice. Each case here
+is one of those windows, with a deferred promise standing where the network
+is. A hang-up inside a window must not resurrect the call when the window
+closes.
+*/
 
 const rpc = vi.hoisted(() => ({
   fetchCallDhConfig: vi.fn(),
@@ -83,7 +83,7 @@ function callDto(overrides: Partial<CallDto> = {}): CallDto {
   };
 }
 
-function mount(overrides: { now?: () => number } = {}) {
+function mount() {
   const dispatch = vi.fn();
   const setRemoteStream = vi.fn();
   const onError = vi.fn();
@@ -100,7 +100,7 @@ function mount(overrides: { now?: () => number } = {}) {
       peers.push(peer);
       return peer as unknown as CallPeerSession;
     },
-    now: overrides.now ?? (() => 1000),
+    now: () => 1000,
   });
   return { orchestrator, dispatch, setRemoteStream, onError, send, peers };
 }

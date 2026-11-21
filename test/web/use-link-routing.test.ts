@@ -39,9 +39,9 @@ function chat(id: number, username: string | null = null): ChatDto {
   };
 }
 
-function dialog(id: number): DialogDto {
+function dialog(): DialogDto {
   return {
-    chat: chat(id),
+    chat: chat(7),
     lastMessage: null,
     unread: 0,
     readInboxMaxId: 0,
@@ -153,7 +153,7 @@ describe('useLinkRouting', () => {
   });
 
   it('opens a known chat directly', () => {
-    const known = dialog(7);
+    const known = dialog();
     const link = { chat: { username: 'known' }, invite: null, stickerSet: null, postId: 5, commentId: 2, deepLink: 'd', webUrl: 'w' };
     linkUtils.parseTelegramLink.mockReturnValue(link);
     linkUtils.findLinkedChat.mockReturnValue(known.chat);
@@ -209,17 +209,17 @@ describe('useLinkRouting', () => {
 });
 
 /**
- * The new-message picker's choice: a chat the account already has opens at
- * once, a person the picker found is already addressable, and a public chat
- * the account has not joined keeps the preview its join card needs.
- */
+The new-message picker's choice: a chat the account already has opens at
+once, a person the picker found is already addressable, and a public chat
+the account has not joined keeps the preview its join card needs.
+*/
 describe('useLinkRouting openFoundChat', () => {
   function person(id: number): ChatDto {
     return { ...chat(id), kind: 'user' };
   }
 
   it('opens a chat already in the list without a round trip', () => {
-    const known = dialog(7);
+    const known = dialog();
     const { result, openChat } = setup([known]);
 
     act(() => {

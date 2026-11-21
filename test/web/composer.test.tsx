@@ -5,10 +5,10 @@ import type { RecordedVoice } from '../../apps/web/src/recorder';
 import type { BotCommandDto, MessageDto } from '../../apps/web/src/types';
 
 /**
- * The microphone is replaced by a controllable stand-in: these cases pin what
- * the composer does with the recorder's states, not how the encoder works
- * (`test/web/recorder.test.ts` owns that).
- */
+The microphone is replaced by a controllable stand-in: these cases pin what
+the composer does with the recorder's states, not how the encoder works
+(`test/web/recorder.test.ts` owns that).
+*/
 const microphone = vi.hoisted(() => ({
   state: 'idle' as 'idle' | 'starting' | 'recording',
   seconds: 0,
@@ -245,7 +245,8 @@ describe('Composer edit mode', () => {
 });
 
 describe('Composer voice messages', () => {
-  function renderVoice(onAttach = vi.fn(async () => {})): { onAttach: ReturnType<typeof vi.fn> } {
+  function renderVoice(): { onAttach: ReturnType<typeof vi.fn> } {
+    const onAttach = vi.fn(async () => {});
     render(<Composer placeholder="Message" replyTarget={null} onCancelReply={() => {}} onSend={async () => {}} onAttach={onAttach} />);
     return { onAttach };
   }

@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatDto } from '../../apps/web/src/types';
 
 /**
- * The new-message picker: the contacts read on open, the debounced Telegram
- * search while typing, and the row the reader chooses.
- *
- * The bridge call is replaced so the test drives the answers; the timing rule
- * (a late answer must not replace a newer query) is asserted with one answer
- * held open across a second search.
- */
+The new-message picker: the contacts read on open, the debounced Telegram
+search while typing, and the row the reader chooses.
+
+The bridge call is replaced so the test drives the answers; the timing rule
+(a late answer must not replace a newer query) is asserted with one answer
+held open across a second search.
+*/
 const bridge = vi.hoisted(() => ({ searchContacts: vi.fn() }));
 
 vi.mock('../../apps/web/src/api', () => bridge);
@@ -39,12 +39,12 @@ const bob = chat({ id: 2, title: 'Bob', username: 'bob' });
 const carol = chat({ id: 3, title: 'Carol', username: 'carol' });
 const announce = chat({ id: 20, title: 'Announcements', username: 'announce', kind: 'channel' });
 
-function renderDialog(overrides: { onSelect?: (chat: ChatDto) => void; onClose?: () => void } = {}): {
+function renderDialog(): {
   onSelect: ReturnType<typeof vi.fn>;
   onClose: ReturnType<typeof vi.fn>;
 } {
-  const onSelect = vi.fn(overrides.onSelect);
-  const onClose = vi.fn(overrides.onClose);
+  const onSelect = vi.fn();
+  const onClose = vi.fn();
   render(<NewChatDialog onSelect={onSelect} onClose={onClose} />);
   return { onSelect, onClose };
 }

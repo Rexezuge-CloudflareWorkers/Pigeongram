@@ -1,25 +1,25 @@
 /**
- * The composer's emoji set.
- *
- * An in-repo list rather than a dependency: the picker needs characters, a
- * name and a few search words, and a full Unicode table is tens of thousands of
- * entries the bundle would carry for a search box. The set below is the common
- * conversational emoji, grouped the way the platform keyboards group them.
- *
- * Emoji are content, not chrome: the icon set in `components/Icon.tsx` still
- * owns every affordance `svg`, and these characters only ever appear inside a
- * message or this picker's grid.
- */
+The composer's emoji set.
+
+An in-repo list rather than a dependency: the picker needs characters, a
+name and a few search words, and a full Unicode table is tens of thousands of
+entries the bundle would carry for a search box. The set below is the common
+conversational emoji, grouped the way the platform keyboards group them.
+
+Emoji are content, not chrome: the icon set in `components/Icon.tsx` still
+owns every affordance `svg`, and these characters only ever appear inside a
+message or this picker's grid.
+*/
 
 export interface EmojiEntry {
   char: string;
   /**
-   * The lowercase name the search matches.
-   */
+  The lowercase name the search matches.
+  */
   name: string;
   /**
-   * Extra lowercase words the search matches.
-   */
+  Extra lowercase words the search matches.
+  */
   keywords: string;
 }
 
@@ -29,9 +29,9 @@ export interface EmojiCategory {
 }
 
 /**
- * `char|name|keywords` entries, one category per row. Kept as text so the data
- * reads as data rather than as a wall of object literals.
- */
+`char|name|keywords` entries, one category per row. Kept as text so the data
+reads as data rather than as a wall of object literals.
+*/
 const RAW_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
   [
     'Smileys',
@@ -75,9 +75,9 @@ function parseCategory(name: string, raw: string): EmojiCategory {
   const emoji: EmojiEntry[] = [];
   for (const chunk of raw.split(';')) {
     if (chunk.trim() === '') continue;
-    const [char, entryName, keywords] = chunk.split('|', 3);
+    const [char, entryName, keywords = ''] = chunk.split('|', 3);
     if (char === undefined || entryName === undefined) continue;
-    emoji.push({ char, name: entryName, keywords: keywords ?? '' });
+    emoji.push({ char, name: entryName, keywords });
   }
   return { name, emoji };
 }
@@ -87,9 +87,9 @@ export const EMOJI_CATEGORIES: readonly EmojiCategory[] = RAW_CATEGORIES.map(([n
 const ALL_EMOJI: readonly EmojiEntry[] = EMOJI_CATEGORIES.flatMap((category) => category.emoji);
 
 /**
- * Searches names and keywords. Empty input matches nothing: the picker shows
- * its categories and recents instead of a search result list.
- */
+Searches names and keywords. Empty input matches nothing: the picker shows
+its categories and recents instead of a search result list.
+*/
 export function searchEmoji(query: string): EmojiEntry[] {
   const needle = query.trim().toLowerCase();
   if (needle === '') return [];
@@ -100,9 +100,9 @@ const RECENT_KEY = 'pigeongram-recent-emoji';
 const RECENT_LIMIT = 24;
 
 /**
- * The emoji the reader picked recently, newest first. Storage can be absent or
- * refuse the read (a locked-down browser), which simply means no recents row.
- */
+The emoji the reader picked recently, newest first. Storage can be absent or
+refuse the read (a locked-down browser), which simply means no recents row.
+*/
 export function readRecentEmoji(): string[] {
   try {
     const raw = globalThis.localStorage?.getItem(RECENT_KEY);

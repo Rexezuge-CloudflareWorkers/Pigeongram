@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileDto } from '../../apps/web/src/types';
 
 /**
- * The on-demand profile read: a cached answer is free, a read in flight is not
- * repeated, and an answer for a peer the reader has left is dropped.
- */
+The on-demand profile read: a cached answer is free, a read in flight is not
+repeated, and an answer for a peer the reader has left is dropped.
+*/
 
 const api = vi.hoisted(() => ({ fetchProfile: vi.fn() }));
 vi.mock('../../apps/web/src/api', () => api);
@@ -18,8 +18,8 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-function profile(id: number, title = `Peer ${String(id)}`): ProfileDto {
-  return { id, kind: 'user', title, username: null, about: null, photo: null, membersCount: null };
+function profile(id: number): ProfileDto {
+  return { id, kind: 'user', title: `Peer ${String(id)}`, username: null, about: null, photo: null, membersCount: null };
 }
 
 describe('useProfile', () => {

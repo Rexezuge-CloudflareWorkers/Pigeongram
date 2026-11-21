@@ -5,9 +5,9 @@ import type { PendingMessage } from '../../apps/web/src/outbox';
 import type { MessageDto, MessageMediaDto } from '../../apps/web/src/types';
 
 /**
- * The optimistic bubble: one row per send in flight, reading its status and
- * its local preview from the outbox entry rather than from Telegram.
- */
+The optimistic bubble: one row per send in flight, reading its status and
+its local preview from the outbox entry rather than from Telegram.
+*/
 
 function entry(overrides: Partial<PendingMessage> = {}): PendingMessage {
   return {
@@ -72,12 +72,9 @@ function preview(text = 'Earlier'): MessageDto {
   };
 }
 
-function renderRow(
-  overrides: Partial<PendingMessage> = {},
-  handlers: { retry?: (key: string) => void; discard?: (key: string) => void } = {},
-) {
-  const onRetry = vi.fn(handlers.retry);
-  const onDiscard = vi.fn(handlers.discard);
+function renderRow(overrides: Partial<PendingMessage> = {}) {
+  const onRetry = vi.fn();
+  const onDiscard = vi.fn();
   const view = render(<PendingMessageRow entry={entry(overrides)} onRetry={onRetry} onDiscard={onDiscard} />);
   return { ...view, onRetry, onDiscard };
 }

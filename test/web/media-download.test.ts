@@ -22,7 +22,7 @@ const video: MessageMediaDto = {
   duration: 12,
 };
 
-function message(media: MessageMediaDto | null, overrides: Partial<MessageDto> = {}): MessageDto {
+function message(media: MessageMediaDto | null): MessageDto {
   return {
     id: 10,
     chatId: 2,
@@ -47,7 +47,6 @@ function message(media: MessageMediaDto | null, overrides: Partial<MessageDto> =
     forward: null,
     views: null,
     comments: null,
-    ...overrides,
   };
 }
 

@@ -3,17 +3,18 @@ import { parseUploadGroupSpec, parseUploadSpec } from '../../packages/backend-se
 import { VOICE_MAX_SECONDS } from '../../packages/shared/src/types';
 
 /**
- * The album manifest is the one untrusted, structured part of an upload: it
- * decides how the concatenated body is split and what mtcute sends. These
- * cases pin the decode, the shape limits and the media-class rule.
- */
+The album manifest is the one untrusted, structured part of an upload: it
+decides how the concatenated body is split and what mtcute sends. These
+cases pin the decode, the shape limits and the media-class rule.
+*/
 
 function encode(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
-function request(query: string, body = 'abcdef', headers: Record<string, string> = {}): { url: URL; request: Request } {
+function request(query: string, headers: Record<string, string> = {}): { url: URL; request: Request } {
   const url = new URL(`https://session-engine.internal/user/upload-group?${query}`);
+  const body = 'abcdef';
   const merged: Record<string, string> = { ...headers };
   if (merged['content-length'] === undefined && merged['Content-Length'] === undefined) {
     merged['content-length'] = String(Buffer.byteLength(body));
@@ -56,7 +57,7 @@ describe('parseUploadGroupSpec', () => {
 
   it('accepts visual media together but not a document mixed with one', () => {
     const visualMedia = [item({ kind: 'photo' }), item({ kind: 'video' }), item({ kind: 'animation' })];
-    const visual = request(`chatId=1&manifest=${encode(visualMedia)}`, 'abcdef', { 'content-length': '9' });
+    const visual = request(`chatId=1&manifest=${encode(visualMedia)}`, { 'content-length': '9' });
     expect(() => parseUploadGroupSpec(visual.url, visual.request, config)).not.toThrow();
 
     const mixedMedia = [item({ kind: 'document' }), item({ kind: 'photo' })];
@@ -100,7 +101,7 @@ describe('parseUploadGroupSpec', () => {
   });
 
   it('rejects a body whose content-length disagrees with the manifest total', () => {
-    const { url, request: body } = request(`chatId=1&manifest=${encode([item(), item()])}`, 'abcdef', {
+    const { url, request: body } = request(`chatId=1&manifest=${encode([item(), item()])}`, {
       'content-length': '5',
     });
     expect(() => parseUploadGroupSpec(url, body, config)).toThrowError(expect.objectContaining({ status: 400 }));

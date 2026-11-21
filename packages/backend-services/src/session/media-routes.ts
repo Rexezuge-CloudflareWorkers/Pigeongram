@@ -8,10 +8,10 @@ import { requirePeerId } from './params';
 import { parseUploadGroupSpec, parseUploadSpec } from './upload-spec';
 
 /**
- * HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
- * `/user/upload`, `/user/upload-group`). Kept out of the engine class so it
- * stays about the session, not about query strings and headers.
- */
+HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
+`/user/upload`, `/user/upload-group`). Kept out of the engine class so it
+stays about the session, not about query strings and headers.
+*/
 
 const FILE_CACHE_SECONDS = 3600;
 const AVATAR_CACHE_SECONDS = 86_400;
@@ -27,7 +27,7 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
     ...(range && { range }),
     ...(quality !== null && { quality }),
   });
-  return mediaResponse(media, FILE_CACHE_SECONDS, isDownload);
+  return mediaResponse(media, isDownload);
 }
 
 export async function stickerResponse(driver: TelegramDriver, url: URL): Promise<Response> {
@@ -36,7 +36,7 @@ export async function stickerResponse(driver: TelegramDriver, url: URL): Promise
     throw new EngineError('documentId query parameter is required', 400);
   }
   const media = await driver.streamSticker(documentId, url.searchParams.get('thumb') === '1');
-  return mediaResponse(media, FILE_CACHE_SECONDS, false);
+  return mediaResponse(media, false);
 }
 
 export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL): Promise<Response> {
@@ -130,9 +130,9 @@ function countedUploadBody(request: Request, declared: number, cap: number): Rea
 }
 
 /**
- * Cancels the request body, ignoring the many ways a stream can already be
- * gone (client abort, driver failure, a locked reader).
- */
+Cancels the request body, ignoring the many ways a stream can already be
+gone (client abort, driver failure, a locked reader).
+*/
 async function discardBody(request: Request): Promise<void> {
   try {
     await request.body?.cancel();
@@ -147,10 +147,10 @@ function isImageMime(mime: string): boolean {
   return lower.startsWith('image/');
 }
 
-function mediaResponse(download: MediaDownload, cacheSeconds: number, isDownload: boolean): Response {
+function mediaResponse(download: MediaDownload, isDownload: boolean): Response {
   const headers: Record<string, string> = {
     'content-type': download.mime,
-    'cache-control': `private, max-age=${cacheSeconds}`,
+    'cache-control': `private, max-age=${FILE_CACHE_SECONDS}`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
     'cross-origin-resource-policy': 'same-origin',
@@ -163,9 +163,9 @@ function mediaResponse(download: MediaDownload, cacheSeconds: number, isDownload
 }
 
 /**
- * A cached avatar, served whole. The bytes are the ones Telegram sent, so the
- * browser's own cache can hold them for a day like any other profile photo.
- */
+A cached avatar, served whole. The bytes are the ones Telegram sent, so the
+browser's own cache can hold them for a day like any other profile photo.
+*/
 function avatarBytes(mime: string, bytes: Uint8Array): Response {
   // Copied into a plain buffer: the storage may hand back a view over a
   // shared buffer, which the response body does not take.
@@ -186,10 +186,10 @@ function avatarBytes(mime: string, bytes: Uint8Array): Response {
 }
 
 /**
- * Single-range `bytes=a-b` / `bytes=a-` parsing; anything more elaborate (or
- * malformed) is ignored and answered with the full file, which is always a
- * legal response.
- */
+Single-range `bytes=a-b` / `bytes=a-` parsing; anything more elaborate (or
+malformed) is ignored and answered with the full file, which is always a
+legal response.
+*/
 function parseRange(header: string | null): { start: number; end: number | null } | null {
   if (!header) return null;
   const match = /^bytes=(\d+)-(\d*)$/.exec(header.trim());

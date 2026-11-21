@@ -8,17 +8,17 @@ afterEach(() => {
 });
 
 /**
- * jsdom does not implement `document.execCommand`, so the fallback needs the
- * method defined before it can be spied on.
- */
+jsdom does not implement `document.execCommand`, so the fallback needs the
+method defined before it can be spied on.
+*/
 function installExecCommand(copy: () => boolean): ReturnType<typeof vi.fn> {
   const spy = vi.fn(copy);
   Object.defineProperty(document, 'execCommand', { value: spy, configurable: true });
   return spy;
 }
 
-function image(name = 'image.png'): File {
-  return new File(['bytes'], name, { type: 'image/png' });
+function image(): File {
+  return new File(['bytes'], 'image.png', { type: 'image/png' });
 }
 
 function clipboard(files: File[], text = ''): DataTransfer {

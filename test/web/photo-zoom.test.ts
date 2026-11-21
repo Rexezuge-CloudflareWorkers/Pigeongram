@@ -15,10 +15,10 @@ import {
 } from '../../apps/web/src/photo-zoom';
 
 /**
- * The viewer's zoom arithmetic. A wrong clamp drags a photo off its box; a
- * wrong step strands the toolbar between stops, so each bound is checked on
- * its own.
- */
+The viewer's zoom arithmetic. A wrong clamp drags a photo off its box; a
+wrong step strands the toolbar between stops, so each bound is checked on
+its own.
+*/
 
 function image(options: { width?: number; height?: number; naturalWidth?: number; naturalHeight?: number } = {}): HTMLImageElement {
   return {
@@ -30,8 +30,8 @@ function image(options: { width?: number; height?: number; naturalWidth?: number
   } as unknown as HTMLImageElement;
 }
 
-function stage(left: number, top: number, width: number, height: number): HTMLElement {
-  return { getBoundingClientRect: () => ({ left, top, width, height }) } as unknown as HTMLElement;
+function stage(): HTMLElement {
+  return { getBoundingClientRect: () => ({ left: 10, top: 20, width: 100, height: 50 }) } as unknown as HTMLElement;
 }
 
 describe('nextZoomStep', () => {
@@ -107,9 +107,9 @@ describe('zoomAround', () => {
 describe('screen geometry', () => {
   it('anchors a point to the stage centre', () => {
     expect(stageCenter(null)).toEqual({ x: 0, y: 0 });
-    expect(stageCenter(stage(10, 20, 100, 50))).toEqual({ x: 60, y: 45 });
-    expect(anchorPoint(60, 45, stage(10, 20, 100, 50))).toEqual({ x: 0, y: 0 });
-    expect(anchorPoint(70, 25, stage(10, 20, 100, 50))).toEqual({ x: 10, y: -20 });
+    expect(stageCenter(stage())).toEqual({ x: 60, y: 45 });
+    expect(anchorPoint(60, 45, stage())).toEqual({ x: 0, y: 0 });
+    expect(anchorPoint(70, 25, stage())).toEqual({ x: 10, y: -20 });
   });
 
   it('measures the midpoint and the distance between two pointers', () => {

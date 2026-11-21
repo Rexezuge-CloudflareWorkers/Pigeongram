@@ -13,11 +13,11 @@ import {
 } from '../../packages/backend-services/src/session/stickers';
 
 /**
- * The sticker bridge: which documents count as stickers, how a pack is mapped,
- * and how a send finds the document the picker named. The registry is the
- * id-to-document map the browser never sees, so these cases pin both the ids it
- * mints and the cold-start fallback that reads the pack again.
- */
+The sticker bridge: which documents count as stickers, how a pack is mapped,
+and how a send finds the document the picker named. The registry is the
+id-to-document map the browser never sees, so these cases pin both the ids it
+mints and the cold-start fallback that reads the pack again.
+*/
 
 function document(id: number, attributes: tl.TypeDocumentAttribute[] = []): tl.RawDocument {
   return {
@@ -54,15 +54,15 @@ function briefSet(id: number, shortName: string, options: { emojis?: boolean; in
   });
 }
 
-function fullSet(id: number, shortName: string, documents: tl.RawDocument[]): StickerSet {
+function fullSet(documents: tl.RawDocument[]): StickerSet {
   return new StickerSet({
     _: 'messages.stickerSet',
     set: {
       _: 'stickerSet',
-      id: Long.fromNumber(id),
-      accessHash: Long.fromNumber(id * 10),
-      title: `Pack ${String(id)}`,
-      shortName,
+      id: Long.fromNumber(10),
+      accessHash: Long.fromNumber(100),
+      title: 'Pack 10',
+      shortName: 'cats',
       count: documents.length,
       hash: 0,
     },
@@ -111,7 +111,7 @@ describe('sticker library', () => {
 
 describe('sticker packs', () => {
   it('reads a pack by short name and maps every sticker', async () => {
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(1), stickerDocument(2, '😺')]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(1), stickerDocument(2, '😺')]));
     const registry = new StickerRegistry();
     const set = await readStickerSet(client({ getStickerSet }), registry, { shortName: 'cats' });
     expect(getStickerSet).toHaveBeenCalledWith('cats');
@@ -122,7 +122,7 @@ describe('sticker packs', () => {
   });
 
   it('reads a pack by its Telegram identity', async () => {
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(1)]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(1)]));
     await readStickerSet(client({ getStickerSet }), new StickerRegistry(), { id: '10', accessHash: '100' });
     expect(getStickerSet).toHaveBeenCalledWith({
       _: 'inputStickerSetID',
@@ -133,7 +133,7 @@ describe('sticker packs', () => {
 
   it('installs a pack through the short name and answers the mapped pack', async () => {
     const call = vi.fn(async () => true);
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(1)]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(1)]));
     const set = await installStickerSet(client({ call, getStickerSet }), new StickerRegistry(), { shortName: 'cats' });
     expect(call).toHaveBeenCalledWith({
       _: 'messages.installStickerSet',
@@ -166,7 +166,7 @@ describe('sticker resolution', () => {
   });
 
   it('falls back to the pack after a restart emptied the registry', async () => {
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(7)]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(7)]));
     const registry = new StickerRegistry();
     const sticker = await resolveSticker(client({ getStickerSet }), registry, '7', { id: '10', accessHash: '100' });
     expect(getStickerSet).toHaveBeenCalledOnce();
@@ -181,7 +181,7 @@ describe('sticker resolution', () => {
 
 describe('reading a pack identity', () => {
   it('reads a pack by id and access hash', async () => {
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(1)]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(1)]));
 
     await expect(readStickerSet(client({ getStickerSet }), new StickerRegistry(), { id: '10', accessHash: '100' })).resolves.toMatchObject({
       shortName: 'cats',
@@ -292,7 +292,7 @@ describe('the sticker method table', () => {
   });
 
   it('reads a pack, sends and installs through the method wrappers', async () => {
-    const getStickerSet = vi.fn(async () => fullSet(10, 'cats', [stickerDocument(1)]));
+    const getStickerSet = vi.fn(async () => fullSet([stickerDocument(1)]));
     const readContext = context({ getStickerSet });
     const read = (await stickerRpcMethods.getStickerSet.run(readContext, { shortName: 'cats' })) as { set: { shortName: string } };
     expect(read.set.shortName).toBe('cats');

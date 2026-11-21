@@ -103,7 +103,7 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
 The indexes of the answers this account picked.
 */
 function chosenIndexes(poll: MessagePollDto): number[] {
-  return poll.answers.flatMap((answer, index) => (answer.chosen ? [index] : []));
+  return poll.answers.flatMap((answer, index) => (answer.chosen ? index : []));
 }
 
 /**

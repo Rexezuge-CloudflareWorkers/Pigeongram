@@ -6,45 +6,45 @@ import { MAX_SIGNALING_BYTES } from './call-params';
 import { log } from './log';
 
 /**
- * The largest client frame the hub will parse. Signalling packets are capped
- * much lower; this is the outer guard for a frame that claims to be one.
- */
+The largest client frame the hub will parse. Signalling packets are capped
+much lower; this is the outer guard for a frame that claims to be one.
+*/
 export const MAX_SOCKET_FRAME_BYTES = 128 * 1024;
 
 /**
- * What the hub needs from the engine: the live-session lifecycle and the
- * call relay.
- */
+What the hub needs from the engine: the live-session lifecycle and the
+call relay.
+*/
 export interface SocketHubHost {
   /**
-   * Connects (or joins) the live session; called when a client says hello.
-   */
+  Connects (or joins) the live session; called when a client says hello.
+  */
   ensureLive(): Promise<void>;
   /**
-   * Releases the live session once the last socket detaches.
-   */
+  Releases the live session once the last socket detaches.
+  */
   stopLive(): Promise<void>;
   /**
-   * Relays one signalling packet to the other peer of a call.
-   */
+  Relays one signalling packet to the other peer of a call.
+  */
   sendCallSignaling(callId: string, data: Uint8Array): Promise<void>;
 }
 
 /**
- * The `/user/updates` fan-out.
- *
- * Sockets are accepted with the hibernation API, so the engine is woken by
- * `webSocketMessage`/`webSocketClose` rather than by live listeners. The
- * protocol is intentionally tiny: `hello` (client attached, go live) and
- * `ping` (keepalive), answered by `ready` and `pong`; engine events ride on
- * `update`, and state failures are broadcast as `error`.
- *
- * The one addition is `call_signaling`: the client sends an opaque packet on
- * its way to the other peer, and the engine relays it. It rides the socket
- * rather than `POST /user/rpc` because a WebSocket message is not a Worker
- * request — the packets of a call setup would otherwise spend the Free
- * plan's daily request allowance, and the round trip would be longer.
- */
+The `/user/updates` fan-out.
+
+Sockets are accepted with the hibernation API, so the engine is woken by
+`webSocketMessage`/`webSocketClose` rather than by live listeners. The
+protocol is intentionally tiny: `hello` (client attached, go live) and
+`ping` (keepalive), answered by `ready` and `pong`; engine events ride on
+`update`, and state failures are broadcast as `error`.
+
+The one addition is `call_signaling`: the client sends an opaque packet on
+its way to the other peer, and the engine relays it. It rides the socket
+rather than `POST /user/rpc` because a WebSocket message is not a Worker
+request — the packets of a call setup would otherwise spend the Free
+plan's daily request allowance, and the round trip would be longer.
+*/
 export class UpdatesSocketHub {
   constructor(
     private readonly state: DurableObjectState,
@@ -52,10 +52,10 @@ export class UpdatesSocketHub {
   ) {}
 
   /**
-   * Accepts a socket. The live session is started by `hello`, not by the accept
-   * itself: a socket that never speaks the protocol must not open a connection
-   * (and must not consume a broadcast of the engine's answer).
-   */
+  Accepts a socket. The live session is started by `hello`, not by the accept
+  itself: a socket that never speaks the protocol must not open a connection
+  (and must not consume a broadcast of the engine's answer).
+  */
   accept(request?: Request, env: OriginEnv = {}): Response {
     // The engine already checked this request with the deployment's configured
     // origins; the hub repeats it with the same environment so a direct call
@@ -66,6 +66,9 @@ export class UpdatesSocketHub {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.state.acceptWebSocket(server);
+    // A WebSocket upgrade answers 101, which unicorn's Response check does not
+    // model.
+    // eslint-disable-next-line unicorn/no-invalid-response-options
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -119,14 +122,14 @@ export class UpdatesSocketHub {
   }
 
   /**
-   * Hands a signalling packet to Telegram, outside the input gate.
-   *
-   * The relay is a round trip to Telegram's server, and a call setup sends a
-   * burst of packets: holding the gate for each of them would queue every
-   * other bridge call behind the burst. The work still finishes — the
-   * Durable Object waits for a promise passed to `waitUntil` before it may be
-   * evicted — it just no longer holds the object hostage while it runs.
-   */
+  Hands a signalling packet to Telegram, outside the input gate.
+  
+  The relay is a round trip to Telegram's server, and a call setup sends a
+  burst of packets: holding the gate for each of them would queue every
+  other bridge call behind the burst. The work still finishes — the
+  Durable Object waits for a promise passed to `waitUntil` before it may be
+  evicted — it just no longer holds the object hostage while it runs.
+  */
   private relaySignaling(callId: string, data: string): void {
     const bytes = decodeBase64(data);
     if (bytes === null || bytes.length === 0 || bytes.length > MAX_SIGNALING_BYTES) {

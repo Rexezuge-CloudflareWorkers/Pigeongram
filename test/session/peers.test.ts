@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { isPeerRejected, peerIdsIn, refreshPeer, withPeerRetry } from '../../packages/backend-services/src/session/peers';
 
 /**
- * The mtcute peer cache as the heal sees it: the input peer the cache would
- * hand out, the complete entity stored beside it, and the network resolver.
- */
-function fakeClient(input: tl.TypeInputPeer | null, complete: tl.TypeUser | tl.TypeChat | null, dialogs: number[] = []) {
+The mtcute peer cache as the heal sees it: the input peer the cache would
+hand out, the complete entity stored beside it, and the network resolver.
+*/
+function fakeClient(input: tl.TypeInputPeer | null, complete: tl.TypeUser | tl.TypeChat | null) {
   const peers = {
     getById: vi.fn(async () => input),
     getCompleteById: vi.fn(async () => complete),
@@ -16,7 +16,7 @@ function fakeClient(input: tl.TypeInputPeer | null, complete: tl.TypeUser | tl.T
   };
   const resolvePeer = vi.fn(async () => input ?? ({ _: 'inputPeerUser', userId: 0, accessHash: Long.ZERO } as tl.TypeInputPeer));
   async function* iterDialogs(): AsyncGenerator<{ peer: { id: number } }> {
-    for (const id of dialogs) yield { peer: { id } };
+    // The account's dialog scan yields nothing in these cases.
   }
   const client = { storage: { peers }, resolvePeer, iterDialogs } as unknown as TelegramClient;
   return { client, peers, resolvePeer };

@@ -8,9 +8,9 @@ afterEach(() => {
 });
 
 /**
- * jsdom has no object URLs, so the preview needs a stand-in. The stub keeps
- * the real constructor, so `new URL(...)` still behaves.
- */
+jsdom has no object URLs, so the preview needs a stand-in. The stub keeps
+the real constructor, so `new URL(...)` still behaves.
+*/
 class StubbedUrl extends URL {
   static createObjectURL(): string {
     return 'blob:preview';
@@ -21,8 +21,8 @@ class StubbedUrl extends URL {
   }
 }
 
-function file(name: string, type = 'application/pdf', body = 'content'): File {
-  return new File([body], name, { type });
+function file(name: string, type = 'application/pdf'): File {
+  return new File(['content'], name, { type });
 }
 
 function renderComposer(): { onAttach: ReturnType<typeof vi.fn>; container: HTMLElement } {

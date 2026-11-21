@@ -8,13 +8,13 @@ import { CallPeer, iceServersFor } from '../../apps/web/src/calls/webrtc';
 import type { CallPeerDeps } from '../../apps/web/src/calls/webrtc';
 
 /**
- * The connection's lifecycle.
- *
- * The failures worth pinning are the ones a browser cannot replay on demand:
- * the microphone resolving after the call ended, a track without a stream,
- * and a malformed session description. Each one leaks the microphone or
- * leaves a call that never reports failure.
- */
+The connection's lifecycle.
+
+The failures worth pinning are the ones a browser cannot replay on demand:
+the microphone resolving after the call ended, a track without a stream,
+and a malformed session description. Each one leaks the microphone or
+leaves a call that never reports failure.
+*/
 
 interface FakeTrack {
   enabled: boolean;
@@ -222,7 +222,7 @@ describe('CallPeer', () => {
   });
 });
 
-function callDto(overrides: Partial<CallDto> = {}): CallDto {
+function callDto(): CallDto {
   return {
     id: '1',
     date: 0,
@@ -234,7 +234,6 @@ function callDto(overrides: Partial<CallDto> = {}): CallDto {
     state: 'active',
     protocol: { udpP2p: true, udpReflector: false, minLayer: 65, maxLayer: 92, libraryVersions: ['1.0.0'] },
     connections: [],
-    ...overrides,
   };
 }
 

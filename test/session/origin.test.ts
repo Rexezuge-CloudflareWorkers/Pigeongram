@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { allowedOrigins, isOriginAllowed, originRejection, requestOrigin } from '../../packages/backend-services/src/session/origin';
 
 /**
- * The bridge's CSRF boundary.
- *
- * The allowlist is the request's own URL, the https form of `Host`, and the
- * deployment's configured origins. Nothing else may pass: a client controls
- * `Origin`, `Referer`, `Host` and `Sec-Fetch-Site`, so a rule that trusts any
- * of them on its own is a bypass rather than a defense.
- */
+The bridge's CSRF boundary.
 
-function request(url: string, headers: Record<string, string> = {}, method = 'POST'): Request {
-  return new Request(url, { method, headers });
+The allowlist is the request's own URL, the https form of `Host`, and the
+deployment's configured origins. Nothing else may pass: a client controls
+`Origin`, `Referer`, `Host` and `Sec-Fetch-Site`, so a rule that trusts any
+of them on its own is a bypass rather than a defense.
+*/
+
+function request(url: string, headers: Record<string, string> = {}): Request {
+  return new Request(url, { method: 'POST', headers });
 }
 
 describe('requestOrigin', () => {

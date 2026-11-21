@@ -9,13 +9,13 @@ import { EngineError } from '../../packages/backend-services/src/session/errors'
 import type { DispatchContext } from '../../packages/backend-services/src/session/rpc-methods';
 
 /**
- * The calls surface of the bridge, one entry per method.
- *
- * The media never crosses this seam: the engine carries the handshake and the
- * signalling packets, and the access hash stays in its registry. These tests
- * pin the Telegram request each method sends and the registry bookkeeping the
- * engine does around it.
- */
+The calls surface of the bridge, one entry per method.
+
+The media never crosses this seam: the engine carries the handshake and the
+signalling packets, and the access hash stays in its registry. These tests
+pin the Telegram request each method sends and the registry bookkeeping the
+engine does around it.
+*/
 
 const protocol: tl.TypePhoneCallProtocol = {
   _: 'phoneCallProtocol',
@@ -26,11 +26,11 @@ const protocol: tl.TypePhoneCallProtocol = {
   libraryVersions: ['13.0.0'],
 };
 
-function call(id: number, accessHash = 555): tl.RawPhoneCallWaiting {
+function call(): tl.RawPhoneCallWaiting {
   return {
     _: 'phoneCallWaiting',
-    id: Long.fromNumber(id),
-    accessHash: Long.fromNumber(accessHash),
+    id: Long.fromNumber(1000),
+    accessHash: Long.fromNumber(555),
     date: 1_700_000_000,
     adminId: 1,
     participantId: 2,
@@ -38,10 +38,10 @@ function call(id: number, accessHash = 555): tl.RawPhoneCallWaiting {
   };
 }
 
-function accepted(id: number): tl.RawPhoneCallAccepted {
+function accepted(): tl.RawPhoneCallAccepted {
   return {
     _: 'phoneCallAccepted',
-    id: Long.fromNumber(id),
+    id: Long.fromNumber(2000),
     accessHash: Long.fromNumber(555),
     date: 1_700_000_000,
     adminId: 1,
@@ -121,7 +121,7 @@ describe('the call RPC methods', () => {
 
   it('places a call and remembers the access hash it came back with', async () => {
     const { context, calls, client, responses } = harness();
-    responses.set('phone.requestCall', { phoneCall: call(1000) });
+    responses.set('phone.requestCall', { phoneCall: call() });
 
     const result = await callRpcMethods.requestCall.run(context, { chatId: 2, gAHash, randomId: '7' });
 
@@ -140,7 +140,7 @@ describe('the call RPC methods', () => {
 
   it('acknowledges a received call by its id and the remembered hash', async () => {
     const { context, calls, client } = harness();
-    calls.remember(call(1000));
+    calls.remember(call());
 
     const result = await callRpcMethods.receivedCall.run(context, { callId: '1000' });
 
@@ -153,8 +153,8 @@ describe('the call RPC methods', () => {
 
   it('accepts a call with the callee Diffie-Hellman value', async () => {
     const { context, calls, client, responses } = harness();
-    calls.remember(call(1000));
-    responses.set('phone.acceptCall', { phoneCall: accepted(2000) });
+    calls.remember(call());
+    responses.set('phone.acceptCall', { phoneCall: accepted() });
 
     const result = await callRpcMethods.acceptCall.run(context, { callId: '1000', gB });
 
@@ -170,7 +170,7 @@ describe('the call RPC methods', () => {
 
   it('confirms a call with the caller value and the key fingerprint', async () => {
     const { context, calls, client, responses } = harness();
-    calls.remember(accepted(2000));
+    calls.remember(accepted());
     responses.set('phone.confirmCall', { phoneCall: active(3000) });
 
     const result = await callRpcMethods.confirmCall.run(context, {
@@ -231,7 +231,7 @@ describe('the call RPC methods', () => {
 
   it('relays a signalling packet to a known call', async () => {
     const { context, calls, client } = harness();
-    calls.remember(call(1000));
+    calls.remember(call());
     const data = new Uint8Array([1, 2, 3]);
 
     await sendCallSignaling(context.client, calls, '1000', data);

@@ -3,9 +3,9 @@ import { activeReplyKeyboard, foldKeyboardSeed } from '../../apps/web/src/reply-
 import type { MessageDto, MessageReplyKeyboardDto } from '../../apps/web/src/types';
 
 /**
- * The reply-keyboard derivation: which message's markup the chat is showing,
- * and how the seed a read or a live message leaves behind advances.
- */
+The reply-keyboard derivation: which message's markup the chat is showing,
+and how the seed a read or a live message leaves behind advances.
+*/
 
 function keyboard(overrides: Partial<Extract<MessageReplyKeyboardDto, { kind: 'keyboard' }>> = {}): MessageReplyKeyboardDto {
   return {
@@ -17,7 +17,7 @@ function keyboard(overrides: Partial<Extract<MessageReplyKeyboardDto, { kind: 'k
   };
 }
 
-function message(id: number, replyKeyboard: MessageReplyKeyboardDto | null, overrides: Partial<MessageDto> = {}): MessageDto {
+function message(id: number, replyKeyboard: MessageReplyKeyboardDto | null): MessageDto {
   return {
     id,
     chatId: 1,
@@ -42,7 +42,6 @@ function message(id: number, replyKeyboard: MessageReplyKeyboardDto | null, over
     forward: null,
     views: null,
     comments: null,
-    ...overrides,
   };
 }
 

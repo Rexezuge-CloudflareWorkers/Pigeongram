@@ -34,13 +34,12 @@ function message(id: number): MessageDto {
   };
 }
 
-function deletion(messages: readonly MessageDto[] | null, overrides: Partial<MessageDeletion> = {}): MessageDeletion {
+function deletion(messages: readonly MessageDto[] | null): MessageDeletion {
   return {
     messages,
     request: vi.fn(),
     cancel: vi.fn(),
     confirm: vi.fn(),
-    ...overrides,
   };
 }
 

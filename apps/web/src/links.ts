@@ -6,75 +6,75 @@ export { APP_LAUNCH_TIMEOUT_MS, handOffTarget, launchTelegramApp } from './links
 export { findLinkedChat, forwardOriginTarget, linkTarget, markedChatId, targetAppLink, usernameAppLink } from './links-targets';
 
 /**
- * Telegram links and the handoff to the installed app.
- *
- * A `t.me/...` URL and a `tg://...` deep link describe the same things — a
- * chat, one of its posts, an invite, a sticker set — so both are normalized
- * here into one target: what the link names (if this client could already know
- * it), the `tg://` URL that opens it in the native app, and the canonical
- * https URL a browser can fall back to. Pure, so the grammar and the handoff
- * can be tested without a browser.
- *
- * An unknown `tg://` operation passes through untouched: the app is the only
- * thing that can make sense of it.
- */
+Telegram links and the handoff to the installed app.
+
+A `t.me/...` URL and a `tg://...` deep link describe the same things — a
+chat, one of its posts, an invite, a sticker set — so both are normalized
+here into one target: what the link names (if this client could already know
+it), the `tg://` URL that opens it in the native app, and the canonical
+https URL a browser can fall back to. Pure, so the grammar and the handoff
+can be tested without a browser.
+
+An unknown `tg://` operation passes through untouched: the app is the only
+thing that can make sense of it.
+*/
 
 export interface TelegramLink {
   /**
-   * The chat the link names, or null for link kinds that name no peer (an
-   * invite, a sticker set, an unknown `tg://` operation).
-   */
+  The chat the link names, or null for link kinds that name no peer (an
+  invite, a sticker set, an unknown `tg://` operation).
+  */
   chat: TelegramChatRef | null;
   /**
-   * The hash of a private invite link (`t.me/+hash`), or null. Telegram is the
-   * only side that can turn it into a chat, so the bridge resolves it.
-   */
+  The hash of a private invite link (`t.me/+hash`), or null. Telegram is the
+  only side that can turn it into a chat, so the bridge resolves it.
+  */
   invite: string | null;
   /**
-   * The short name of a `t.me/addstickers` pack, or null. Installing it is the
-   * one action this client can take: a sticker set names no peer.
-   */
+  The short name of a `t.me/addstickers` pack, or null. Installing it is the
+  one action this client can take: a sticker set names no peer.
+  */
   stickerSet: string | null;
   /**
-   * The post (message) id the link points at, or null.
-   */
+  The post (message) id the link points at, or null.
+  */
   postId: number | null;
   /**
-   * The comment id inside the linked post's discussion thread, or null.
-   */
+  The comment id inside the linked post's discussion thread, or null.
+  */
   commentId: number | null;
   /**
-   * The `tg://` URL that opens the link in the installed app.
-   */
+  The `tg://` URL that opens the link in the installed app.
+  */
   deepLink: string;
   /**
-   * The canonical https URL, when the link has one; the no-app fallback.
-   * Private-channel and unknown links have no https equivalent.
-   */
+  The canonical https URL, when the link has one; the no-app fallback.
+  Private-channel and unknown links have no https equivalent.
+  */
   webUrl: string | null;
 }
 
 const TELEGRAM_HOSTS = new Set(['t.me', 'telegram.me', 'telegram.dog']);
 
 /**
- * Paths that are Telegram operations rather than usernames, so a stray
- * `t.me/share` never resolves to an account.
- */
+Paths that are Telegram operations rather than usernames, so a stray
+`t.me/share` never resolves to an account.
+*/
 const RESERVED = new Set(['c', 's', 'share', 'proxy', 'socks', 'joinchat', 'addstickers', 'addemoji', 'iv', 'bg', 'setlanguage']);
 
 const USERNAME = /^[a-z][a-z0-9_]{2,31}$/;
 
 /**
- * The part of a private invite link after the `+` or `joinchat/`. Telegram's
- * own regex is `[\w-]+`; the cap only keeps a pasted document from becoming a
- * request.
- */
+The part of a private invite link after the `+` or `joinchat/`. Telegram's
+own regex is `[\w-]+`; the cap only keeps a pasted document from becoming a
+request.
+*/
 const INVITE_HASH = /^[\w-]{1,128}$/;
 
 /**
- * Parses a `t.me` URL or a `tg://` deep link into one target. Returns null for
- * anything else — the link is not Telegram's, so the browser keeps it.
- */
+Parses a `t.me` URL or a `tg://` deep link into one target. Returns null for
+anything else — the link is not Telegram's, so the browser keeps it.
+*/
 export function parseTelegramLink(raw: string): TelegramLink | null {
   const trimmed = raw.trim();
   if (trimmed === '') return null;
@@ -93,15 +93,15 @@ export function parseTelegramLink(raw: string): TelegramLink | null {
 }
 
 /**
- * Converts a Telegram Mini App web link (`t.me/<bot>?startapp…` or
- * `t.me/<bot>/<short_name>…`) into the `tg://resolve` deep link the installed
- * app understands. Returns null for every other URL, including a plain bot
- * chat link without `startapp`.
- *
- * Inline web-view buttons cannot work in this browser client: a Mini App needs
- * Telegram's signed `initData`, which only Telegram itself can inject. Handing
- * the link to the installed app is the one path that keeps the app functional.
- */
+Converts a Telegram Mini App web link (`t.me/<bot>?startapp…` or
+`t.me/<bot>/<short_name>…`) into the `tg://resolve` deep link the installed
+app understands. Returns null for every other URL, including a plain bot
+chat link without `startapp`.
+
+Inline web-view buttons cannot work in this browser client: a Mini App needs
+Telegram's signed `initData`, which only Telegram itself can inject. Handing
+the link to the installed app is the one path that keeps the app functional.
+*/
 export function miniAppDeepLink(raw: string): string | null {
   let url: URL;
   try {
@@ -125,8 +125,7 @@ export function miniAppDeepLink(raw: string): string | null {
   if (second !== undefined) {
     // A direct Mini App link names the app in the path; a numeric segment is a
     // post rather than an app.
-    if (third !== undefined || /^\d+$/.test(second)) return null;
-    if (!/^\w{1,64}$/i.test(second)) return null;
+    if (third !== undefined || /^\d+$/.test(second) || !/^\w{1,64}$/i.test(second)) return null;
     params.push(`appname=${encodeURIComponent(second)}`);
   } else if (!url.searchParams.has('startapp')) {
     // Without `startapp`, `t.me/<bot>` is an ordinary chat link, not a Main
@@ -144,11 +143,11 @@ export function miniAppDeepLink(raw: string): string | null {
 }
 
 /**
- * The shareable address of one message, or null when Telegram has none: a
- * user chat and a basic group cannot be addressed at a message. A public
- * supergroup or channel links by username; a private one by its raw id, the
- * `t.me/c` form the official clients copy.
- */
+The shareable address of one message, or null when Telegram has none: a
+user chat and a basic group cannot be addressed at a message. A public
+supergroup or channel links by username; a private one by its raw id, the
+`t.me/c` form the official clients copy.
+*/
 export function messageWebLink(chat: ChatDto, messageId: number): string | null {
   if (chat.kind !== 'supergroup' && chat.kind !== 'channel') return null;
   if (chat.username !== null) return `https://t.me/${chat.username}/${String(messageId)}`;
@@ -158,22 +157,22 @@ export function messageWebLink(chat: ChatDto, messageId: number): string | null 
 }
 
 /**
- * The address of one comment: the channel post it hangs under, with the
- * discussion-group message named in the `comment` query.
- */
+The address of one comment: the channel post it hangs under, with the
+discussion-group message named in the `comment` query.
+*/
 export function commentWebLink(chat: ChatDto, postId: number, commentId: number): string | null {
   const post = messageWebLink(chat, postId);
   return post === null ? null : `${post}?comment=${String(commentId)}`;
 }
 
 /**
- * The deep link that opens a forwarded message's origin in the installed app.
- *
- * A public username is the most reliable target; otherwise the marked id is
- * enough for a user or a private channel. A hidden forward, or a basic group
- * whose only identity is its marked id, has no addressable link and answers
- * `null`.
- */
+The deep link that opens a forwarded message's origin in the installed app.
+
+A public username is the most reliable target; otherwise the marked id is
+enough for a user or a private channel. A hidden forward, or a basic group
+whose only identity is its marked id, has no addressable link and answers
+`null`.
+*/
 export function forwardOriginLink(forward: MessageForwardDto): TelegramLink | null {
   if (forward.senderUsername !== null) return chatLink(forward.senderUsername, null, null);
   const target = forward.senderId ?? forward.fromChatId;
@@ -267,7 +266,7 @@ function parseDeepLink(raw: string): TelegramLink {
 
 function chatLink(username: string, postId: number | null, commentId: number | null): TelegramLink {
   const params = new URLSearchParams({ domain: username });
-  const comment = postId !== null && commentId !== null ? commentId : null;
+  const comment = postId === null || commentId === null ? null : commentId;
   if (postId !== null) params.set('post', String(postId));
   if (comment !== null) params.set('comment', String(comment));
   const path = postId === null ? '' : `/${String(postId)}`;

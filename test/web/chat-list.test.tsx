@@ -163,34 +163,34 @@ describe('ChatList presence', () => {
 });
 
 describe('ChatList pin marker', () => {
-  function pinIn(name: string): Element | null {
-    return rowIn(name).querySelector('[data-pin]');
+  function pinIn(): Element | null {
+    return rowIn('Bob').querySelector('[data-pin]');
   }
 
-  function countIn(name: string): Element | null {
-    return rowIn(name).querySelector('[data-badge]');
+  function countIn(): Element | null {
+    return rowIn('Bob').querySelector('[data-badge]');
   }
 
   it('puts the pin in the count slot of a chat with nothing unread', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 
-    expect(pinIn('Bob')).not.toBeNull();
-    expect(pinIn('Bob')?.querySelector('svg[data-icon="pin"]')).not.toBeNull();
-    expect(countIn('Bob')).toBeNull();
+    expect(pinIn()).not.toBeNull();
+    expect(pinIn()?.querySelector('svg[data-icon="pin"]')).not.toBeNull();
+    expect(countIn()).toBeNull();
   });
 
   it('drops the pin when a message arrives: the count has priority', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true, unread: 3 })]);
 
-    expect(countIn('Bob')?.textContent).toBe('3');
-    expect(pinIn('Bob')).toBeNull();
+    expect(countIn()?.textContent).toBe('3');
+    expect(pinIn()).toBeNull();
   });
 
   it('leaves an unpinned chat with neither the pin nor a count', () => {
     renderList([dialog(chat(1, { title: 'Bob' }))]);
 
-    expect(pinIn('Bob')).toBeNull();
-    expect(countIn('Bob')).toBeNull();
+    expect(pinIn()).toBeNull();
+    expect(countIn()).toBeNull();
   });
 
   it('keeps the pin out of the preview text', () => {
@@ -220,7 +220,7 @@ describe('ChatList pin marker', () => {
   it('marks the pin as decorative, so the preview carries no stray glyph', () => {
     renderList([dialog(chat(1, { title: 'Bob' }), { pinned: true })]);
 
-    expect(pinIn('Bob')?.getAttribute('aria-hidden')).toBe('true');
+    expect(pinIn()?.getAttribute('aria-hidden')).toBe('true');
   });
 });
 

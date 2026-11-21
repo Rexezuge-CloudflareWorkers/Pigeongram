@@ -10,10 +10,10 @@ import { ChatMenu } from './ChatMenu';
 import { Icon } from './Icon';
 
 /**
- * How long a touch must hold a chat row before its context menu opens, and how
- * far it may drift first: the slop is what lets a press that turns into a
- * scroll keep scrolling instead of opening the menu.
- */
+How long a touch must hold a chat row before its context menu opens, and how
+far it may drift first: the slop is what lets a press that turns into a
+scroll keep scrolling instead of opening the menu.
+*/
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
 /**
@@ -26,24 +26,24 @@ interface ChatListProps {
   activeChatId: PeerId | null;
   loading: boolean;
   /**
-   * Sends still in flight, folded over the server dialogs for the preview and
-   * ordering only. Dropping one from the outbox is the rollback.
-   */
+  Sends still in flight, folded over the server dialogs for the preview and
+  ordering only. Dropping one from the outbox is the rollback.
+  */
   pending?: readonly PendingMessage[];
   onSelect: (chat: ChatDto) => void;
   /**
-   * Marks a chat read from its context menu, including an unread backlog no
-   * thread has loaded.
-   */
+  Marks a chat read from its context menu, including an unread backlog no
+  thread has loaded.
+  */
   onMarkRead?: (chatId: PeerId) => void;
   /**
-   * Pins the chat in this list, or unpins it.
-   */
+  Pins the chat in this list, or unpins it.
+  */
   onSetPinned?: (chatId: PeerId, pinned: boolean) => void;
   /**
-   * What an empty list says. The archive has its own wording: an empty
-   * archive is not an account without chats.
-   */
+  What an empty list says. The archive has its own wording: an empty
+  archive is not an account without chats.
+  */
   emptyLabel?: string;
 }
 
@@ -70,20 +70,29 @@ function ChatPreviewBody({ message }: { message: DialogMessageDto }) {
   );
 }
 
-export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, onMarkRead, onSetPinned, emptyLabel }: ChatListProps) {
+export function ChatList({
+  dialogs,
+  activeChatId,
+  loading,
+  pending = [],
+  onSelect,
+  onMarkRead,
+  onSetPinned,
+  emptyLabel = 'No Chats Yet.',
+}: ChatListProps) {
   /**
-   * The open context menu, named by chat rather than by dialog: a live update
-   * can replace the row's DTO while the menu is open, and the disabled state
-   * should follow the current one.
-   */
+  The open context menu, named by chat rather than by dialog: a live update
+  can replace the row's DTO while the menu is open, and the disabled state
+  should follow the current one.
+  */
   const [menu, setMenu] = useState<ChatMenuState | null>(null);
   const [swipedId, setSwipedId] = useState<PeerId | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   /**
-   * A long press that matured already opened the menu; the click the browser
-   * dispatches when the finger lifts must not also open the chat.
-   */
+  A long press that matured already opened the menu; the click the browser
+  dispatches when the finger lifts must not also open the chat.
+  */
   const suppressClick = useRef(false);
 
   // A long press must not outlive the list (a live update can unmount a row).
@@ -119,7 +128,7 @@ export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelec
   }
   const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
   if (rows.length === 0) {
-    return <p className="muted pad">{emptyLabel ?? 'No Chats Yet.'}</p>;
+    return <p className="muted pad">{emptyLabel}</p>;
   }
   const menuDialog = menu === null ? null : (rows.find((dialog) => dialog.chat.id === menu.chatId) ?? null);
   const cancelPress = (): void => {

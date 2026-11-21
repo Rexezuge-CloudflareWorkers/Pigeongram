@@ -14,15 +14,15 @@ import type { CallOrchestratorOptions, CallRpcPort, CreateCallPeer } from './orc
 export type { CallPeerPort, CallRpcPort } from './orchestrator-ports';
 
 /**
- * The order of a call.
- *
- * The key exchange comes first, the media connection second, and the
- * signalling in between. Everything the bridge does goes through `CallRpcPort`
- * and everything the media does through `CreateCallPeer`; this class only
- * decides *when*. It keeps the live record and the guard flags that close the
- * windows between the awaits — the parts that must not live in React state or
- * in a render.
- */
+The order of a call.
+
+The key exchange comes first, the media connection second, and the
+signalling in between. Everything the bridge does goes through `CallRpcPort`
+and everything the media does through `CreateCallPeer`; this class only
+decides *when*. It keeps the live record and the guard flags that close the
+windows between the awaits — the parts that must not live in React state or
+in a render.
+*/
 export class CallOrchestrator {
   readonly #dispatch: CallOrchestratorOptions['dispatch'];
   readonly #setRemoteStream: CallOrchestratorOptions['setRemoteStream'];
@@ -37,16 +37,16 @@ export class CallOrchestrator {
   #disposed = false;
 
   /**
-   * A call is being requested. The live record only exists after three awaits,
-   * so a double tap lands inside that window; this flag closes it.
-   */
+  A call is being requested. The live record only exists after three awaits,
+  so a double tap lands inside that window; this flag closes it.
+  */
   #starting = false;
 
   /**
-   * The call id whose accept is in flight. Two taps would send two accept RPCs
-   * with different gB values, and the second would replace the key the first
-   * already used. Scoped by id so a late `finally` cannot unlock a newer call.
-   */
+  The call id whose accept is in flight. Two taps would send two accept RPCs
+  with different gB values, and the second would replace the key the first
+  already used. Scoped by id so a late `finally` cannot unlock a newer call.
+  */
   #accepting: string | null = null;
 
   constructor(options: CallOrchestratorOptions) {
@@ -60,10 +60,10 @@ export class CallOrchestrator {
   }
 
   /**
-   * Starts a call to a chat. A second call is refused: the overlay is a
-   * singleton, and the live record belongs to the conversation that started
-   * first.
-   */
+  Starts a call to a chat. A second call is refused: the overlay is a
+  singleton, and the live record belongs to the conversation that started
+  first.
+  */
   readonly startCall = (chatId: number): void => {
     if (this.#disposed || this.#live) return;
     if (this.#starting) {
@@ -111,8 +111,8 @@ export class CallOrchestrator {
   };
 
   /**
-   * Answers an incoming call.
-   */
+  Answers an incoming call.
+  */
   readonly accept = (): void => {
     if (this.#disposed || this.#accepting !== null) return;
     const current = this.#live;
@@ -140,8 +140,8 @@ export class CallOrchestrator {
   };
 
   /**
-   * Turns an incoming call down.
-   */
+  Turns an incoming call down.
+  */
   readonly decline = (): void => {
     const current = this.#live;
     if (!current) return;
@@ -151,8 +151,8 @@ export class CallOrchestrator {
   };
 
   /**
-   * Ends the call the reader is in.
-   */
+  Ends the call the reader is in.
+  */
   readonly hangUp = (): void => {
     const current = this.#live;
     if (!current) return;
@@ -163,8 +163,8 @@ export class CallOrchestrator {
   };
 
   /**
-   * Mutes or unmutes the microphone.
-   */
+  Mutes or unmutes the microphone.
+  */
   readonly toggleMute = (): void => {
     const current = this.#live;
     if (!current) return;
@@ -174,8 +174,8 @@ export class CallOrchestrator {
   };
 
   /**
-   * Folds a bridge event into the call.
-   */
+  Folds a bridge event into the call.
+  */
   readonly handleUpdate = (update: UpdateEvent): void => {
     if (this.#disposed) return;
     if (update.type === 'call') {
@@ -188,31 +188,31 @@ export class CallOrchestrator {
   };
 
   /**
-   * Keeps the bridge callbacks current without rebuilding the live call: the
-   * socket's send function and the app's error banner can both change while a
-   * call is up.
-   */
+  Keeps the bridge callbacks current without rebuilding the live call: the
+  socket's send function and the app's error banner can both change while a
+  call is up.
+  */
   setHandlers(handlers: { send: CallOrchestratorOptions['send']; onError: CallOrchestratorOptions['onError'] }): void {
     this.#send = handlers.send;
     this.#onError = handlers.onError;
   }
 
   /**
-   * Releases the media plane without moving the view. The hook calls this
-   * when the page unmounts; a call still up is not ended on the server, which
-   * matches the old unmount behaviour.
-   */
+  Releases the media plane without moving the view. The hook calls this
+  when the page unmounts; a call still up is not ended on the server, which
+  matches the old unmount behaviour.
+  */
   dispose(): void {
     this.#disposed = true;
     this.#teardown();
   }
 
   /**
-   * The public parameters of the key exchange.
-   *
-   * They hardly ever change, so they are kept for the session: every call
-   * after the first one skips the round trip and the checks.
-   */
+  The public parameters of the key exchange.
+  
+  They hardly ever change, so they are kept for the session: every call
+  after the first one skips the round trip and the checks.
+  */
   async #dhConfig(): Promise<DhConfig> {
     if (this.#config) return this.#config;
     const raw = await this.#rpc.fetchCallDhConfig();
@@ -224,8 +224,8 @@ export class CallOrchestrator {
   }
 
   /**
-   * Builds the live record and its media plane for one call.
-   */
+  Builds the live record and its media plane for one call.
+  */
   #newLive(input: Omit<LiveCall, 'peer' | 'deriving' | 'confirmed'>): LiveCall {
     const { callId, direction } = input;
     const peer = this.#createPeer({
@@ -243,8 +243,8 @@ export class CallOrchestrator {
   }
 
   /**
-   * Forgets the call and puts the microphone down.
-   */
+  Forgets the call and puts the microphone down.
+  */
   #teardown(): void {
     this.#live?.peer.close();
     this.#live = null;
@@ -253,9 +253,9 @@ export class CallOrchestrator {
   }
 
   /**
-   * Ends a call on the server, best effort: a call that is already gone is
-   * not an error the reader needs to see.
-   */
+  Ends a call on the server, best effort: a call that is already gone is
+  not an error the reader needs to see.
+  */
   async #discard(callId: string, reason: 'hangup' | 'missed', duration: number): Promise<void> {
     try {
       await this.#rpc.discardCall({ callId, reason, duration });
@@ -265,8 +265,8 @@ export class CallOrchestrator {
   }
 
   /**
-   * A call of the account moved on.
-   */
+  A call of the account moved on.
+  */
   async #onCall(call: CallDto): Promise<void> {
     if (call.state === 'requested') {
       if (this.#disposed || this.#live) return;
@@ -313,13 +313,12 @@ export class CallOrchestrator {
   }
 
   /**
-   * The other side accepted: the caller's half of the exchange is over.
-   */
+  The other side accepted: the caller's half of the exchange is over.
+  */
   async #onAccepted(call: CallDto, current: LiveCall): Promise<void> {
-    if (!current.keyPair || !current.config || !call.gB) return;
     // The key is derived once: a second "accepted" update must not make the
     // caller confirm the same call twice. Claim it before the await.
-    if (current.peer.ready || current.confirmed) return;
+    if (!current.keyPair || !current.config || !call.gB || current.peer.ready || current.confirmed) return;
     current.confirmed = true;
     const peerValue = fromBase64(call.gB);
     if (peerValue === null) throw new Error("The Callee's Key Exchange Value Did Not Arrive Intact");
@@ -341,13 +340,13 @@ export class CallOrchestrator {
   }
 
   /**
-   * The call is up: the key is known on both sides and the media connection
-   * can be set up.
-   *
-   * Only the callee derives its key here. The caller's half of the exchange
-   * is over when the callee accepts, and the final call carries the caller's
-   * *own* public value — deriving from it would compute the wrong key.
-   */
+  The call is up: the key is known on both sides and the media connection
+  can be set up.
+  
+  Only the callee derives its key here. The caller's half of the exchange
+  is over when the callee accepts, and the final call carries the caller's
+  *own* public value — deriving from it would compute the wrong key.
+  */
   async #onActive(call: CallDto, current: LiveCall): Promise<void> {
     if (this.#live !== current) return;
     if (current.direction === 'incoming' && !current.peer.ready && !current.deriving) {

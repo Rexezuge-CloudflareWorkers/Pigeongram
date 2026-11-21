@@ -1,19 +1,19 @@
 /**
- * The ringtone of an incoming call.
- *
- * It is synthesised rather than shipped as a file: a ringtone is two tones
- * and a pause, and a page that carries a sound file for it pays for the file
- * on every load — and for the offline cache with it.
- *
- * The browser's autoplay policy applies: a context that was not started by a
- * gesture stays silent. The ringtone therefore listens for the reader's
- * first click anywhere and resumes itself then.
- */
+The ringtone of an incoming call.
+
+It is synthesised rather than shipped as a file: a ringtone is two tones
+and a pause, and a page that carries a sound file for it pays for the file
+on every load — and for the offline cache with it.
+
+The browser's autoplay policy applies: a context that was not started by a
+gesture stays silent. The ringtone therefore listens for the reader's
+first click anywhere and resumes itself then.
+*/
 
 /**
- * Makes the audio context. Injectable so the ringtone's lifecycle can be
- * tested without a real sound device.
- */
+Makes the audio context. Injectable so the ringtone's lifecycle can be
+tested without a real sound device.
+*/
 type AudioContextFactory = () => AudioContext;
 
 export class Ringtone {
@@ -24,8 +24,8 @@ export class Ringtone {
   constructor(private readonly createContext: AudioContextFactory = () => new AudioContext()) {}
 
   /**
-   * Starts ringing, or does nothing when it is already ringing.
-   */
+  Starts ringing, or does nothing when it is already ringing.
+  */
   start(): void {
     if (this.#running) return;
     this.#running = true;
@@ -34,13 +34,13 @@ export class Ringtone {
   }
 
   /**
-   * Stops ringing and releases the audio context.
-   *
-   * A context is a limited resource: a page that suspends one per call and
-   * never closes it runs out after a handful of calls, and audio stops
-   * working for the whole page. Closing also drops the context's audio
-   * thread, which a suspend leaves running.
-   */
+  Stops ringing and releases the audio context.
+  
+  A context is a limited resource: a page that suspends one per call and
+  never closes it runs out after a handful of calls, and audio stops
+  working for the whole page. Closing also drops the context's audio
+  thread, which a suspend leaves running.
+  */
   async stop(): Promise<void> {
     if (!this.#running && !this.#context) return;
     this.#running = false;
@@ -55,8 +55,8 @@ export class Ringtone {
   }
 
   /**
-   * The ringtone's voice: a short burst of two tones.
-   */
+  The ringtone's voice: a short burst of two tones.
+  */
   async #ring(): Promise<void> {
     if (!this.#running) return;
     const context = this.context;
@@ -64,8 +64,7 @@ export class Ringtone {
       await context.resume().catch(() => {});
     }
     // The call may have ended while the context was resuming.
-    if (!this.#running || this.#context !== context) return;
-    if (context.state !== 'running') return;
+    if (!this.#running || this.#context !== context || context.state !== 'running') return;
     const now = context.currentTime;
     for (const [frequency, offset] of [
       [440, 0],
@@ -85,8 +84,8 @@ export class Ringtone {
   }
 
   /**
-   * The next burst.
-   */
+  The next burst.
+  */
   #schedule(): void {
     if (!this.#running) return;
     void this.#ring();
@@ -94,16 +93,16 @@ export class Ringtone {
   }
 
   /**
-   * The reader's first click lets the context sound.
-   */
+  The reader's first click lets the context sound.
+  */
   #resume = (): void => {
     if (!this.#running) return;
     void this.#context?.resume().catch(() => {});
   };
 
   /**
-   * The audio context, made on the first ring.
-   */
+  The audio context, made on the first ring.
+  */
   get context(): AudioContext {
     if (!this.#context) {
       this.#context = this.createContext();

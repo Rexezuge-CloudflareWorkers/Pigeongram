@@ -16,18 +16,18 @@ export interface LoginSnapshot {
 }
 
 /**
- * The login state machine, wrapping mtcute's `signInQr` and the phone-code
- * flow (`sendCode` → `signIn` → optional 2FA).
- *
- * Both are single long-running promises (connect → exchange the credential →
- * authorize). The flow holds the running one in a background task and exposes
- * a snapshot the SPA polls. The code and password legs are bridged with
- * deferred promises the matching `submit*` methods resolve.
- *
- * The flow lives in memory only: a DO eviction mid-login simply resets to
- * `unauthorized`. The SPA restarts the QR code on its next poll; the phone
- * flow waits for the operator to enter the number again.
- */
+The login state machine, wrapping mtcute's `signInQr` and the phone-code
+flow (`sendCode` → `signIn` → optional 2FA).
+
+Both are single long-running promises (connect → exchange the credential →
+authorize). The flow holds the running one in a background task and exposes
+a snapshot the SPA polls. The code and password legs are bridged with
+deferred promises the matching `submit*` methods resolve.
+
+The flow lives in memory only: a DO eviction mid-login simply resets to
+`unauthorized`. The SPA restarts the QR code on its next poll; the phone
+flow waits for the operator to enter the number again.
+*/
 export class LoginFlow {
   #mode: 'qr' | 'phone' | null = null;
   #phase: LoginPhase = 'unauthorized';
@@ -77,7 +77,7 @@ export class LoginFlow {
     this.#reset();
     this.#phase = 'qr';
     this.#begin('qr', (signal) => this.#runQr(signal));
-    await waitFor(() => this.#qrUrl !== undefined || this.#phase === 'error', 10_000);
+    await waitFor(() => this.#qrUrl !== undefined || this.#phase === 'error');
     return this.snapshot();
   }
 
@@ -95,7 +95,7 @@ export class LoginFlow {
     this.#reset();
     this.#phone = phone;
     this.#begin('phone', (signal) => this.#runPhone(phone, signal));
-    await waitFor(() => this.#phase === 'code' || this.#phase === 'error', 10_000);
+    await waitFor(() => this.#phase === 'code' || this.#phase === 'error');
     return this.snapshot();
   }
 
@@ -228,10 +228,10 @@ export class LoginFlow {
   }
 
   /**
-   * A promise the operator settles through `submitCode`/`submitPassword`, which
-   * rejects on cancellation — otherwise a cancel during a wait would leave the
-   * login task pending forever and `running` stuck true.
-   */
+  A promise the operator settles through `submitCode`/`submitPassword`, which
+  rejects on cancellation — otherwise a cancel during a wait would leave the
+  login task pending forever and `running` stuck true.
+  */
   #waitForValue<T>(signal: AbortSignal, assign: (resolve: (value: T) => void) => void): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       assign(resolve);
@@ -250,8 +250,10 @@ export class LoginFlow {
   }
 }
 
-async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
+const LOGIN_WAIT_TIMEOUT_MS = 10_000;
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  const deadline = Date.now() + LOGIN_WAIT_TIMEOUT_MS;
   while (!predicate() && Date.now() < deadline) {
     await new Promise((resolve) => {
       setTimeout(resolve, 200);

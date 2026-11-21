@@ -137,9 +137,9 @@ function fireResize(target: Element): void {
 }
 
 /**
- * A stand-in for the browser's upload request: the bridge answers on the next
- * tick with a message, so a test can watch the pending bubble meanwhile.
- */
+A stand-in for the browser's upload request: the bridge answers on the next
+tick with a message, so a test can watch the pending bubble meanwhile.
+*/
 class FakeXhr {
   static readonly instances: FakeXhr[] = [];
 
@@ -398,12 +398,9 @@ async function answerBatch(
 A fetch callback for the signed-in bridge: it answers the engine's surface and
 expands a batch into the calls it carries, the way the engine does.
 */
-function bridgeFetch(
-  answer: (call: FetchCall) => Response | undefined,
-  state: () => Response = () => json({ phase: 'authorized', authorized: true, me }),
-): (call: FetchCall) => Response | Promise<Response> | undefined {
+function bridgeFetch(answer: (call: FetchCall) => Response | undefined): (call: FetchCall) => Response | Promise<Response> | undefined {
   return (call) => {
-    if (call.path === '/user/state') return state();
+    if (call.path === '/user/state') return json({ phase: 'authorized', authorized: true, me });
     if (call.path !== '/user/rpc') return;
     if (call.body?.method === 'batch') return answerBatch(call, answer, () => {});
     return answer(call);
@@ -3222,7 +3219,7 @@ describe('App', () => {
       expect(await within(threadSection()).findByText('message 10')).toBeDefined();
 
       const img = threadSection().querySelector('img.photo');
-      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      if (!(img instanceof HTMLImageElement)) throw new TypeError('The photo is not rendered');
       expect(img.getAttribute('width')).toBe('320');
       expect(img.getAttribute('height')).toBe('240');
     });
@@ -3242,7 +3239,7 @@ describe('App', () => {
 
       // The image settling grows the list; the pinned view follows it.
       const img = threadSection().querySelector('img.photo');
-      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      if (!(img instanceof HTMLImageElement)) throw new TypeError('The photo is not rendered');
       box.listHeight = 600;
       fireEvent.load(img);
       expect(scrollContainer().scrollTop).toBe(600);
@@ -3273,7 +3270,7 @@ describe('App', () => {
       expect(scrollContainer().scrollTop).toBe(0);
 
       const img = threadSection().querySelector('img.photo');
-      if (!(img instanceof HTMLImageElement)) throw new Error('The photo is not rendered');
+      if (!(img instanceof HTMLImageElement)) throw new TypeError('The photo is not rendered');
       box.listHeight = 600;
       fireEvent.load(img);
       expect(scrollContainer().scrollTop).toBe(0);
@@ -4027,7 +4024,7 @@ describe('App', () => {
       // Opened at the bottom, before the image loaded.
       expect(scrollContainer().scrollTop).toBe(300);
       const img = threadSection().querySelector('img.photo');
-      if (!(img instanceof HTMLImageElement)) throw new Error('The comment photo is not rendered');
+      if (!(img instanceof HTMLImageElement)) throw new TypeError('The comment photo is not rendered');
       box.listHeight = 600;
       fireEvent.load(img);
       expect(scrollContainer().scrollTop).toBe(600);

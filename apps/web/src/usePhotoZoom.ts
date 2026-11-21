@@ -28,19 +28,19 @@ import {
 } from './photo-zoom';
 
 /**
- * Zoom and pan for one photo in the full-page viewer.
- *
- * The hook owns a single view (`scale`, `x`, `y`). Photos are the only media
- * that opt in: the wheel, pinch and drag handlers are attached by the viewer
- * to the `<img>`, and `touch-action: none` on that element keeps the browser's
- * own page zoom out of the gesture. The math and the pointer bookkeeping live
- * in `photo-zoom.ts` and `photo-gestures.ts`.
- *
- * A media id is stored with the view rather than reset by an effect: when the
- * album moves to another message the old view is simply no longer current, and
- * the next gesture starts again from 1x. That keeps a navigation render pure
- * and avoids a reset-then-paint flash.
- */
+Zoom and pan for one photo in the full-page viewer.
+
+The hook owns a single view (`scale`, `x`, `y`). Photos are the only media
+that opt in: the wheel, pinch and drag handlers are attached by the viewer
+to the `<img>`, and `touch-action: none` on that element keeps the browser's
+own page zoom out of the gesture. The math and the pointer bookkeeping live
+in `photo-zoom.ts` and `photo-gestures.ts`.
+
+A media id is stored with the view rather than reset by an effect: when the
+album moves to another message the old view is simply no longer current, and
+the next gesture starts again from 1x. That keeps a navigation render pure
+and avoids a reset-then-paint flash.
+*/
 
 const WHEEL_RATE = 0.0018;
 const WHEEL_LINE_PX = 16;
@@ -65,10 +65,10 @@ interface UsePhotoZoomOptions {
 
 export interface PhotoZoom {
   /**
-   * A callback ref, rather than the ref object itself: the React compiler's
-   * lint treats member access on an object that carries a `RefObject` as a
-   * render-time ref read.
-   */
+  A callback ref, rather than the ref object itself: the React compiler's
+  lint treats member access on an object that carries a `RefObject` as a
+  render-time ref read.
+  */
   attachImage: (node: HTMLImageElement | null) => void;
   style: CSSProperties;
   zoomed: boolean;
@@ -80,9 +80,9 @@ export interface PhotoZoom {
   zoomOut: () => void;
   reset: () => void;
   /**
-   * Whether the last pointer sequence moved the photo. The viewer's backdrop
-   * click uses this so releasing a pan never closes the dialog.
-   */
+  Whether the last pointer sequence moved the photo. The viewer's backdrop
+  click uses this so releasing a pan never closes the dialog.
+  */
   consumeDrag: () => boolean;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -270,10 +270,9 @@ export function usePhotoZoom({ enabled, mediaId, stageRef }: UsePhotoZoomOptions
 
   const onDoubleClick = useCallback(
     (event: ReactMouseEvent<HTMLElement>): void => {
-      if (!enabled || isControl(event.target)) return;
       // A touch double-tap already handled this pair; ignore the synthetic
       // dblclick some mobile browsers add afterwards.
-      if (Date.now() - taps.current.lastTouchAt <= DOUBLE_TAP_MS) return;
+      if (!enabled || isControl(event.target) || Date.now() - taps.current.lastTouchAt <= DOUBLE_TAP_MS) return;
       event.preventDefault();
       event.stopPropagation();
       toggleAt(event.clientX, event.clientY);

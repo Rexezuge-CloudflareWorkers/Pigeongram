@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUpdatesSocket } from '../../apps/web/src/hooks';
 
 /**
- * The updates socket's failure paths.
- *
- * An error frame used to be parsed and dropped, so a dead session looked like
- * an idle one. The reconnect cadence matters for the same reason: each retry
- * is a Worker request, and a socket that opens and immediately closes must
- * not retry in a tight loop.
- */
+The updates socket's failure paths.
+
+An error frame used to be parsed and dropped, so a dead session looked like
+an idle one. The reconnect cadence matters for the same reason: each retry
+is a Worker request, and a socket that opens and immediately closes must
+not retry in a tight loop.
+*/
 
 class FakeWebSocket {
   static readonly CONNECTING = 0;
@@ -55,10 +55,10 @@ class FakeWebSocket {
   }
 }
 
-function mount(overrides: { onError?: (message: string) => void } = {}) {
+function mount() {
   const onUpdate = vi.fn();
   const onReady = vi.fn();
-  const onError = overrides.onError ?? vi.fn();
+  const onError = vi.fn();
   const hook = renderHook(() => useUpdatesSocket(true, onUpdate, onReady, onError));
   return { ...hook, onUpdate, onReady, onError };
 }

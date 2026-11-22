@@ -22,23 +22,23 @@ interface CommentsViewProps {
   loading: boolean;
   loadingOlder: boolean;
   /**
-   * Comments still on their way to Telegram, in submission order.
-   */
+  Comments still on their way to Telegram, in submission order.
+  */
   pending: readonly PendingMessage[];
   error: string | null;
   /**
-   * Comment (or pinned post) ids with a reaction request in flight; their chips
-   * are disabled.
-   */
+  Comment (or pinned post) ids with a reaction request in flight; their chips
+  are disabled.
+  */
   reactingIds: ReadonlySet<number>;
   /**
-   * Comment (or pinned post) ids with a vote in flight; their poll's answers are
-   * disabled.
-   */
+  Comment (or pinned post) ids with a vote in flight; their poll's answers are
+  disabled.
+  */
   votingIds: ReadonlySet<number>;
   /**
-   * Comment (or pinned post) ids with a callback button press in flight.
-   */
+  Comment (or pinned post) ids with a callback button press in flight.
+  */
   pressingButtonIds: ReadonlySet<number>;
   onBack: () => void;
   onLoadOlder: () => void;
@@ -48,36 +48,36 @@ interface CommentsViewProps {
   onDiscardPending: (key: string) => void;
   onReact: (message: MessageDto, reaction: MessageReactionDto) => void;
   /**
-   * Starts forwarding a display group; an album forwards every member.
-   */
+  Starts forwarding a display group; an album forwards every member.
+  */
   onForward: (messages: readonly MessageDto[]) => void;
   /**
-   * Asks to delete a comment for everyone. The confirmation is the shell's,
-   * shared with the thread; only the account's own comments are offered,
-   * because this screen does not carry the discussion group's rights.
-   */
+  Asks to delete a comment for everyone. The confirmation is the shell's,
+  shared with the thread; only the account's own comments are offered,
+  because this screen does not carry the discussion group's rights.
+  */
   onDelete: (messages: readonly MessageDto[]) => void;
   /**
-   * Casts a vote in a poll comment, or retracts it with `null`.
-   */
+  Casts a vote in a poll comment, or retracts it with `null`.
+  */
   onVote: (message: MessageDto, options: number[] | null) => void;
   /**
-   * Presses an inline callback or copy button on the post or a comment.
-   */
+  Presses an inline callback or copy button on the post or a comment.
+  */
   onPressButton: (message: MessageDto, button: MessageButtonDto) => void;
   /**
-   * The discussion group's active reply keyboard, or null when it shows none.
-   */
+  The discussion group's active reply keyboard, or null when it shows none.
+  */
   replyKeyboard: ActiveReplyKeyboard | null;
   /**
-   * Presses a reply keyboard button. The reply target rides along, so a
-   * keyboard send matches a typed one.
-   */
+  Presses a reply keyboard button. The reply target rides along, so a
+  keyboard send matches a typed one.
+  */
   onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
   /**
-   * Opens the full-page viewer at a message's media (an album opens at the
-   * clicked member).
-   */
+  Opens the full-page viewer at a message's media (an album opens at the
+  clicked member).
+  */
   onOpenMedia: (messageId: number) => void;
 }
 

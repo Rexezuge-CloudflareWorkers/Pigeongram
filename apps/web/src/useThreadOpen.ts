@@ -14,14 +14,14 @@ import type { OpenThreadOptions } from './thread-window';
 import type { BotCommandDto, ChatDto, DialogDto, MessageDto, PeerId } from './types';
 
 /**
- * The opening half of the thread controller: the first read of a chat, the
- * cache a reopen paints from, and the read that revalidates it.
- *
- * Split from `useThread` so the controller keeps the send and update half while
- * this one owns the opening state the view renders — the spinner, the failure,
- * the command menu. The cache is memory only and paints before the server
- * answers; the server stays the truth.
- */
+The opening half of the thread controller: the first read of a chat, the
+cache a reopen paints from, and the read that revalidates it.
+
+Split from `useThread` so the controller keeps the send and update half while
+this one owns the opening state the view renders — the spinner, the failure,
+the command menu. The cache is memory only and paints before the server
+answers; the server stays the truth.
+*/
 
 interface UseThreadOpenOptions {
   thread: ChatThread | null;
@@ -44,18 +44,18 @@ interface UseThreadOpenOptions {
 interface ThreadOpening {
   open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<OpenThreadResult>;
   /**
-   * Cancels an open in flight and clears the chat-specific answers, so a close
-   * or a newer open cannot be overwritten by a stale read.
-   */
+  Cancels an open in flight and clears the chat-specific answers, so a close
+  or a newer open cannot be overwritten by a stale read.
+  */
   reset: () => void;
   loading: boolean;
   error: string | null;
   setError: (message: string | null) => void;
   /**
-   * Whether the open chat answered `not_found`: Telegram does not offer it to
-   * this account any more (deleted, or the account left it). The view shows the
-   * unavailable card rather than an empty thread and a working composer.
-   */
+  Whether the open chat answered `not_found`: Telegram does not offer it to
+  this account any more (deleted, or the account left it). The view shows the
+  unavailable card rather than an empty thread and a working composer.
+  */
   unavailable: boolean;
   botCommands: readonly BotCommandDto[];
   description: string | null;
@@ -100,10 +100,10 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
   const ticket = useRef(0);
 
   /**
-   * Files a failed read: a chat Telegram no longer offers is not an error to
-   * retry, so it reports itself to the caller once and leaves the error slot
-   * empty for the card to explain.
-   */
+  Files a failed read: a chat Telegram no longer offers is not an error to
+  retry, so it reports itself to the caller once and leaves the error slot
+  empty for the card to explain.
+  */
   const report = useCallback(
     (failure: unknown, chatId: PeerId): void => {
       if (!isUnavailable(failure)) {

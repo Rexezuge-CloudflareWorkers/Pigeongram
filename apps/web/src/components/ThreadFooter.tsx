@@ -4,42 +4,42 @@ import type { UploadRequest } from '../upload';
 import { Composer } from './Composer';
 
 /**
- * The bottom of the thread: the composer, the Join action for a preview, or
- * the notice that explains why the account cannot post here.
- *
- * Split from `ThreadView.tsx` so the view keeps the scroll and read logic
- * while this one decides which of the three takes the composer's place.
- */
+The bottom of the thread: the composer, the Join action for a preview, or
+the notice that explains why the account cannot post here.
+
+Split from `ThreadView.tsx` so the view keeps the scroll and read logic
+while this one decides which of the three takes the composer's place.
+*/
 
 interface ThreadFooterProps {
   chat: ChatDto;
   /**
-   * The open chat as a public preview, when the account has not joined it.
-   */
+  The open chat as a public preview, when the account has not joined it.
+  */
   preview: { joining: boolean; requested: boolean } | null;
   onJoin: () => void;
   /**
-   * The message being edited, or null when the composer is composing a new
-   * message. The footer hands it to the composer with the reply target.
-   */
+  The message being edited, or null when the composer is composing a new
+  message. The footer hands it to the composer with the reply target.
+  */
   editTarget: MessageDto | null;
   onCancelEdit: () => void;
   onSaveEdit: (text: string) => Promise<void>;
   replyTarget: MessageDto | null;
   botCommands: readonly BotCommandDto[];
   /**
-   * The chat's active reply keyboard, or null when it shows none. A keyboard
-   * only makes sense where the composer does, so it rides here.
-   */
+  The chat's active reply keyboard, or null when it shows none. A keyboard
+  only makes sense where the composer does, so it rides here.
+  */
   replyKeyboard: ActiveReplyKeyboard | null;
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   /**
-   * Presses a reply keyboard button. The reply target rides along, so a
-   * keyboard send matches a typed one.
-   */
+  Presses a reply keyboard button. The reply target rides along, so a
+  keyboard send matches a typed one.
+  */
   onPressReplyKeyboard: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }
 

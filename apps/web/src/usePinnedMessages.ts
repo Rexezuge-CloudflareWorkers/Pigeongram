@@ -3,14 +3,14 @@ import { fetchPinnedMessages } from './api';
 import type { MessageDto, PeerId } from './types';
 
 /**
- * The pinned list of the open chat: the page the overlay shows and the read
- * that keeps it current while it is open.
- *
- * The thread's banner is owned by the thread controller; this controller is
- * only the overlay's list, read on demand when the reader asks for it. It
- * watches the thread's pin revision so another device's pin or unpin moves the
- * open list too, without owning a socket of its own.
- */
+The pinned list of the open chat: the page the overlay shows and the read
+that keeps it current while it is open.
+
+The thread's banner is owned by the thread controller; this controller is
+only the overlay's list, read on demand when the reader asks for it. It
+watches the thread's pin revision so another device's pin or unpin moves the
+open list too, without owning a socket of its own.
+*/
 
 /**
 How many pinned messages one page reads. Telegram serves the list newest first,
@@ -20,12 +20,12 @@ const PINNED_PAGE_LIMIT = 50;
 
 interface UsePinnedMessagesOptions {
   /**
-   * The open chat's id, or null while no thread is open.
-   */
+  The open chat's id, or null while no thread is open.
+  */
   chatId: PeerId | null;
   /**
-   * Moves on every `message_pinned` the thread folded.
-   */
+  Moves on every `message_pinned` the thread folded.
+  */
   revision: number;
 }
 
@@ -35,12 +35,12 @@ export interface PinnedMessagesController {
   loading: boolean;
   loadingOlder: boolean;
   /**
-   * Why the page could not be read, when it could not.
-   */
+  Why the page could not be read, when it could not.
+  */
   error: string | null;
   /**
-   * Whether a page older than the loaded one may exist.
-   */
+  Whether a page older than the loaded one may exist.
+  */
   hasMore: boolean;
   openList: () => void;
   close: () => void;

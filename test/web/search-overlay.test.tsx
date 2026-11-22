@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatDto, MessageDto } from '../../apps/web/src/types';
 
 /**
- * The bridge calls the overlay makes, replaced so the test drives the answers.
- * `vi.hoisted` keeps them available to the module factory, which Vitest lifts
- * above the imports.
- */
+The bridge calls the overlay makes, replaced so the test drives the answers.
+`vi.hoisted` keeps them available to the module factory, which Vitest lifts
+above the imports.
+*/
 const bridge = vi.hoisted(() => ({ searchGlobal: vi.fn(), searchMessages: vi.fn() }));
 
 vi.mock('../../apps/web/src/api', () => bridge);

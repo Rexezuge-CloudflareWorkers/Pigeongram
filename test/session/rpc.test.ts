@@ -106,10 +106,10 @@ function replyMessage(id: number, replyTo: number): Message {
 }
 
 /**
- * The read path against a fake `TelegramClient`: what the SPA depends on is
- * that a scroll watermark travels through untouched, and that omitting one
- * stays a full read.
- */
+The read path against a fake `TelegramClient`: what the SPA depends on is
+that a scroll watermark travels through untouched, and that omitting one
+stays a full read.
+*/
 
 function fakeClient(): { client: TelegramClient; reads: Array<{ chatId: number; maxId?: number }> } {
   const reads: Array<{ chatId: number; maxId?: number }> = [];
@@ -474,10 +474,10 @@ describe('forwardMessages dispatch', () => {
 });
 
 /**
- * Voting: the bridge takes answer indexes, resolves them against the live
- * message so a stale list can never send another answer's bytes, and answers
- * with the poll Telegram returned.
- */
+Voting: the bridge takes answer indexes, resolves them against the live
+message so a stale list can never send another answer's bytes, and answers
+with the poll Telegram returned.
+*/
 describe('sendVote dispatch', () => {
   function fakeVoteClient(): { client: TelegramClient; votes: Array<{ chatId: number; message: number; options: number[] | null }> } {
     const votes: Array<{ chatId: number; message: number; options: number[] | null }> = [];
@@ -829,9 +829,9 @@ describe('setMessagePinned dispatch', () => {
 
 describe('batch dispatch', () => {
   /**
-   * A fake client whose reads are answered one at a time, so a batch can be
-   * observed to run its calls together.
-   */
+  A fake client whose reads are answered one at a time, so a batch can be
+  observed to run its calls together.
+  */
   function fakeBatchClient(): { client: TelegramClient; calls: string[] } {
     const calls: string[] = [];
     const client = {

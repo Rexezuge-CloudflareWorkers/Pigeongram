@@ -12,17 +12,17 @@ import { useMediaViewer } from './useMediaViewer';
 import { useRouter } from './useRouter';
 
 /**
- * The signed-in screen's navigation: the route the URL names, the archive as a
- * screen of its own, the media viewer's history layer, and the actions that
- * move the reader between chats — a chat-list click, a Telegram link, a
- * forward's origin, and a read receipt.
- *
- * It composes the existing hooks (`useRouter`, `useChatNavigation`,
- * `useMediaViewer`) so the shell above it only wires the data plane and paints
- * the screen. The link and preview half is the reason a chat outside the
- * loaded list can be opened at all; a preview is memory-only, because Telegram
- * is the only source that can resolve it again.
- */
+The signed-in screen's navigation: the route the URL names, the archive as a
+screen of its own, the media viewer's history layer, and the actions that
+move the reader between chats — a chat-list click, a Telegram link, a
+forward's origin, and a read receipt.
+
+It composes the existing hooks (`useRouter`, `useChatNavigation`,
+`useMediaViewer`) so the shell above it only wires the data plane and paints
+the screen. The link and preview half is the reason a chat outside the
+loaded list can be opened at all; a preview is memory-only, because Telegram
+is the only source that can resolve it again.
+*/
 
 export function useSignedInNavigation({
   dialogs,
@@ -35,16 +35,16 @@ export function useSignedInNavigation({
   const { find: findDialog, applyRead, applyReadAll, load, loadArchive } = dialogs;
   const viewer = useMediaViewer({ thread: threads.thread, comments: comments.thread });
   /**
-   * The chats a search found outside the loaded list, as dialogs good enough
-   * for the thread to open. They are memory-only: the route they are on cannot
-   * survive a reload, because the list would have to be read to resolve them
-   * again, and Telegram is the only source for that.
-   */
+  The chats a search found outside the loaded list, as dialogs good enough
+  for the thread to open. They are memory-only: the route they are on cannot
+  survive a reload, because the list would have to be read to resolve them
+  again, and Telegram is the only source for that.
+  */
   const transientDialogs = useRef(new Map<PeerId, DialogDto>());
   /**
-   * The latest link or forward resolution. A slower answer must not take the
-   * reader away from a screen they moved to after the click.
-   */
+  The latest link or forward resolution. A slower answer must not take the
+  reader away from a screen they moved to after the click.
+  */
   const resolution = useRef(0);
   const resolveDialog = useCallback(
     (chatId: PeerId): DialogDto | undefined => findDialog(chatId) ?? transientDialogs.current.get(chatId),
@@ -53,19 +53,19 @@ export function useSignedInNavigation({
   const navigate = useChatNavigation({ findDialog: resolveDialog, threads, comments });
 
   /**
-   * The preview chat the thread is showing, if any. It sits outside the list,
-   * so it is shown only while its chat is the open one — a route away from it
-   * hides the mark without forgetting which chat was resolved.
-   */
+  The preview chat the thread is showing, if any. It sits outside the list,
+  so it is shown only while its chat is the open one — a route away from it
+  hides the mark without forgetting which chat was resolved.
+  */
   const [preview, setPreview] = useState<ChatPreview | null>(null);
   const openChatId = threads.thread?.chat.id ?? null;
   const activePreview = preview !== null && preview.chatId === openChatId ? preview : null;
 
   /**
-   * The route drives the screen, and the archive is a screen of its own: the
-   * sidebar shows the archived chats while the route names it or while the open
-   * chat came from it.
-   */
+  The route drives the screen, and the archive is a screen of its own: the
+  sidebar shows the archived chats while the route names it or while the open
+  chat came from it.
+  */
   const applyRoute = useCallback(
     (route: Route, options: RouteApplyOptions): Promise<void> => {
       resolution.current += 1;
@@ -103,9 +103,9 @@ export function useSignedInNavigation({
   }, [router, viewer]);
 
   /**
-   * Keeps a chat outside the loaded list addressable: the route, the thread and
-   * the read receipts all look a chat up in one place.
-   */
+  Keeps a chat outside the loaded list addressable: the route, the thread and
+  the read receipts all look a chat up in one place.
+  */
   const registerTransient = useCallback(
     (chat: ChatDto): void => {
       if (findDialog(chat.id) === undefined) {
@@ -152,10 +152,10 @@ export function useSignedInNavigation({
   );
 
   /**
-   * Opens a search hit at its message. The transient dialog is registered
-   * before the route applies, so `canOpen` and the thread's own lookup find it
-   * in the same tick.
-   */
+  Opens a search hit at its message. The transient dialog is registered
+  before the route applies, so `canOpen` and the thread's own lookup find it
+  in the same tick.
+  */
   const openSearchResult = useCallback(
     (chat: ChatDto, message: MessageDto): void => {
       registerTransient(chat);
@@ -176,12 +176,12 @@ export function useSignedInNavigation({
   });
 
   /**
-   * Opens the archive: the screen of the chats the account archived.
-   *
-   * A thread that is already open stays open: switching to the archive only
-   * changes the sidebar, the same way "Back To Chats" leaves an open archived
-   * chat in place. Without an open thread the archive is its own screen.
-   */
+  Opens the archive: the screen of the chats the account archived.
+  
+  A thread that is already open stays open: switching to the archive only
+  changes the sidebar, the same way "Back To Chats" leaves an open archived
+  chat in place. Without an open thread the archive is its own screen.
+  */
   const openArchive = useCallback((): void => {
     if (openChatId !== null) {
       onArchiveContext(true);
@@ -197,10 +197,10 @@ export function useSignedInNavigation({
   );
 
   /**
-   * Joins the open preview chat. The resolved DTO is folded into the thread in
-   * place, so the composer appears without re-reading the window; the chat list
-   * is read again because the chat now belongs there.
-   */
+  Joins the open preview chat. The resolved DTO is folded into the thread in
+  place, so the composer appears without re-reading the window; the chat list
+  is read again because the chat now belongs there.
+  */
   const joinPreview = useCallback((): void => {
     const current = activePreview;
     if (current === null || current.joining || current.requested) return;
@@ -233,13 +233,13 @@ export function useSignedInNavigation({
   }, [activePreview, threads, load, onNotice, onError]);
 
   /**
-   * Persists what the user read, as reported by the thread's scroll position:
-   * the dialog's badge and watermark move immediately, the receipt is
-   * best-effort, and the server's own `read` update settles the exact count.
-   *
-   * A preview is not in the account's chat list and its messages were not sent
-   * to this account, so nothing is marked read there.
-   */
+  Persists what the user read, as reported by the thread's scroll position:
+  the dialog's badge and watermark move immediately, the receipt is
+  best-effort, and the server's own `read` update settles the exact count.
+  
+  A preview is not in the account's chat list and its messages were not sent
+  to this account, so nothing is marked read there.
+  */
   const markRead = useCallback(
     (chatId: PeerId, maxId: number): void => {
       if (activePreview?.chatId === chatId) return;
@@ -256,11 +256,11 @@ export function useSignedInNavigation({
   );
 
   /**
-   * Marks the whole chat read: a chat-list action, or the thread's jump to the
-   * bottom. The unread backlog is not necessarily loaded, so the receipt is sent
-   * with no max id — the bridge marks everything to Telegram's own newest message
-   * — while the lists and the open thread move to the newest id the client knows.
-   */
+  Marks the whole chat read: a chat-list action, or the thread's jump to the
+  bottom. The unread backlog is not necessarily loaded, so the receipt is sent
+  with no max id — the bridge marks everything to Telegram's own newest message
+  — while the lists and the open thread move to the newest id the client knows.
+  */
   const markAllRead = useCallback(
     (chatId: PeerId): void => {
       if (activePreview?.chatId === chatId) return;

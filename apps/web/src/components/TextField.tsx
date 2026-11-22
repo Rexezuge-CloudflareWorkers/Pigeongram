@@ -2,19 +2,19 @@ import { forwardRef } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 /**
- * The app's text field, in the Material 3 outlined shape: a 56px field with
- * an extra-small corner, `outline` border that becomes the primary colour on
- * focus, and `on-surface` text. Built for the single-line controls the app
- * actually has — search, phone, code, password — so the composer textarea
- * stays its own beast (auto-growing, listbox-driven).
- *
- * The accessible name always comes from the call site (`aria-label` when
- * there is no visible label), which the MD3 label slot does not replace
- * here: the app's chrome uses placeholder + aria-label throughout.
- *
- * Font size is 16px (`text-base`): a sub-16px input triggers iOS Safari
- * auto-zoom on focus and shifts the layout. Do not shrink it to 15px.
- */
+The app's text field, in the Material 3 outlined shape: a 56px field with
+an extra-small corner, `outline` border that becomes the primary colour on
+focus, and `on-surface` text. Built for the single-line controls the app
+actually has — search, phone, code, password — so the composer textarea
+stays its own beast (auto-growing, listbox-driven).
+
+The accessible name always comes from the call site (`aria-label` when
+there is no visible label), which the MD3 label slot does not replace
+here: the app's chrome uses placeholder + aria-label throughout.
+
+Font size is 16px (`text-base`): a sub-16px input triggers iOS Safari
+auto-zoom on focus and shifts the layout. Do not shrink it to 15px.
+*/
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   className?: string;

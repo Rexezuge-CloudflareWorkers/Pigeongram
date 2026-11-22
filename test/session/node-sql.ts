@@ -4,10 +4,10 @@ import type { SqlCursorLike, SqlStorageLike, TransactionalStorageLike } from '..
 type SqlBinding = null | number | bigint | string | Uint8Array;
 
 /**
- * `node:sqlite` fakes for the engine's storage adapter. The Durable Object's
- * `SqlStorage` is the real thing in production; these mirror its shape so the
- * adapter can be exercised under Vitest's node runtime.
- */
+`node:sqlite` fakes for the engine's storage adapter. The Durable Object's
+`SqlStorage` is the real thing in production; these mirror its shape so the
+adapter can be exercised under Vitest's node runtime.
+*/
 
 /**
 A `SqlStorageLike` over `node:sqlite` (`exec` with and without bindings).

@@ -3,18 +3,18 @@ import type { UploadGroupItem } from './api';
 import type { MessageDto, PeerId, UploadKind } from './types';
 
 /**
- * Browser-side upload preparation and batching: choosing the Telegram media
- * kind from the file's MIME type, normalising images into the JPEG the photo
- * path expects, and sending a reviewed selection either as one album or as
- * sequential messages.
- */
+Browser-side upload preparation and batching: choosing the Telegram media
+kind from the file's MIME type, normalising images into the JPEG the photo
+path expects, and sending a reviewed selection either as one album or as
+sequential messages.
+*/
 
 const JPEG_QUALITY = 0.9;
 
 /**
- * Telegram albums hold at most 10 items; the upload dialog enforces the same
- * bound before the manifest is built.
- */
+Telegram albums hold at most 10 items; the upload dialog enforces the same
+bound before the manifest is built.
+*/
 export const MAX_UPLOAD_ITEMS = 10;
 
 interface PreparedUpload {
@@ -28,36 +28,36 @@ interface PreparedUpload {
 }
 
 /**
- * What the composer's upload dialog hands to a controller: the reviewed files,
- * the caption that was in the box, the reply target, the group choice and
- * whether the files should keep their original bytes.
- */
+What the composer's upload dialog hands to a controller: the reviewed files,
+the caption that was in the box, the reply target, the group choice and
+whether the files should keep their original bytes.
+*/
 export interface UploadRequest {
   files: File[];
   caption: string;
   replyTo?: number;
   grouped: boolean;
   /**
-   * Send every file untouched as a Telegram document instead of letting the
-   * photo/video path compress it. Off by default, matching Telegram.
-   */
+  Send every file untouched as a Telegram document instead of letting the
+  photo/video path compress it. Off by default, matching Telegram.
+  */
   sendAsFile: boolean;
   /**
-   * Forces the media kind instead of inferring it from the file's MIME type.
-   * The voice recorder sets `'voice'`: its Ogg container is audio, which the
-   * MIME mapping would otherwise classify as a document.
-   */
+  Forces the media kind instead of inferring it from the file's MIME type.
+  The voice recorder sets `'voice'`: its Ogg container is audio, which the
+  MIME mapping would otherwise classify as a document.
+  */
   kind?: 'voice';
   /**
-   * Duration in seconds, for the kinds that carry one. A voice note must
-   * declare it; the bridge refuses the upload without it.
-   */
+  Duration in seconds, for the kinds that carry one. A voice note must
+  declare it; the bridge refuses the upload without it.
+  */
   duration?: number;
 }
 
 /**
- * The bridge coordinates shared by one file and by an album.
- */
+The bridge coordinates shared by one file and by an album.
+*/
 interface UploadDestination {
   chatId: PeerId;
   commentTo?: number;
@@ -73,11 +73,11 @@ export function mediaKind(file: File): UploadKind {
 }
 
 /**
- * The MIME type a file may be previewed with, or `null` when it must not be
- * rendered: only raster images get a thumbnail, and SVG is out because it can
- * carry script. The preview blob is built with this type, so the object URL
- * it backs can never be read as a document.
- */
+The MIME type a file may be previewed with, or `null` when it must not be
+rendered: only raster images get a thumbnail, and SVG is out because it can
+carry script. The preview blob is built with this type, so the object URL
+it backs can never be read as a document.
+*/
 export function previewMime(file: File): string | null {
   const mime = file.type.toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') return null;
@@ -85,30 +85,30 @@ export function previewMime(file: File): string | null {
 }
 
 /**
- * Whether a selection can be one Telegram album: 2–10 items of one class.
- * Photos, videos and GIFs mix; documents only group with documents. Telegram
- * rejects other combinations, so the dialog disables the option instead of
- * letting the upload fail.
- *
- * A send-as-file selection turns every item into a document, so any mix groups
- * there.
- */
+Whether a selection can be one Telegram album: 2–10 items of one class.
+Photos, videos and GIFs mix; documents only group with documents. Telegram
+rejects other combinations, so the dialog disables the option instead of
+letting the upload fail.
+
+A send-as-file selection turns every item into a document, so any mix groups
+there.
+*/
 export function canGroupUploads(files: readonly File[], sendAsFile = false): boolean {
   if (files.length < 2 || files.length > MAX_UPLOAD_ITEMS) return false;
   return sendAsFile || groupableKinds(files.map(mediaKind));
 }
 
 /**
- * Prepares and sends a reviewed selection. Grouped selections become one album
- * when the prepared kinds still agree; everything else is sent message by
- * message, with the caption riding the first item only. `onSent` is called as
- * each message lands, so a later failure keeps the successes in the UI.
- *
- * `randomIds` are the client-chosen Telegram ids, one per file: a retry of a
- * single-file send reuses the id, so Telegram drops the duplicate if the first
- * attempt actually landed. An album has no client-chosen id (Telegram picks
- * the group's), so the ids are ignored there.
- */
+Prepares and sends a reviewed selection. Grouped selections become one album
+when the prepared kinds still agree; everything else is sent message by
+message, with the caption riding the first item only. `onSent` is called as
+each message lands, so a later failure keeps the successes in the UI.
+
+`randomIds` are the client-chosen Telegram ids, one per file: a retry of a
+single-file send reuses the id, so Telegram drops the duplicate if the first
+attempt actually landed. An album has no client-chosen id (Telegram picks
+the group's), so the ids are ignored there.
+*/
 export async function sendUploadBatch(
   destination: UploadDestination,
   request: UploadRequest,
@@ -181,19 +181,19 @@ function groupableKinds(kinds: readonly UploadKind[]): boolean {
 }
 
 /**
- * Picks the media kind and prepares the bytes for it: non-JPEG images that
- * the canvas can decode are converted to JPEG (`inputMediaUploadedPhoto`
- * expects photo formats), everything undecodable falls back to a document.
- * Videos gain their intrinsic size/duration when the browser can read it.
- *
- * `sendAsFile` skips all of that and sends the bytes exactly as picked: the
- * kind is always `document`, so Telegram stores the original file instead of
- * transcoding it into a photo or video (the "Send As File" dialog option).
- *
- * `voiceDuration` forces the `voice` kind: the recorder's Ogg/Opus blob is
- * audio by MIME, and a voice note is Telegram's `InputMedia.voice` carrying
- * the duration the browser measured, not an uploaded document.
- */
+Picks the media kind and prepares the bytes for it: non-JPEG images that
+the canvas can decode are converted to JPEG (`inputMediaUploadedPhoto`
+expects photo formats), everything undecodable falls back to a document.
+Videos gain their intrinsic size/duration when the browser can read it.
+
+`sendAsFile` skips all of that and sends the bytes exactly as picked: the
+kind is always `document`, so Telegram stores the original file instead of
+transcoding it into a photo or video (the "Send As File" dialog option).
+
+`voiceDuration` forces the `voice` kind: the recorder's Ogg/Opus blob is
+audio by MIME, and a voice note is Telegram's `InputMedia.voice` carrying
+the duration the browser measured, not an uploaded document.
+*/
 export async function prepareUpload(file: File, sendAsFile = false, voiceDuration?: number): Promise<PreparedUpload> {
   let kind = mediaKind(file);
   let body: Blob = file;

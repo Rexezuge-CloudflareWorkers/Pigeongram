@@ -2,16 +2,16 @@ import { fileUrl } from './api';
 import type { MessageDto, MessageMediaDto } from './types';
 
 /**
- * The file a downloaded message's media saves under, and the action that
- * starts it.
- *
- * Telegram names documents, videos, audio and stickers itself, so the DTO's
- * `fileName` is used when it exists. A photo's DTO carries neither a name nor
- * a MIME type; the bridge serves every photo message as JPEG, so its name is
- * derived from the message id. The URL is always `/user/file` without
- * `thumb=1`: the bubble may show a thumbnail (an album cell, a video poster),
- * but a download is the original bytes.
- */
+The file a downloaded message's media saves under, and the action that
+starts it.
+
+Telegram names documents, videos, audio and stickers itself, so the DTO's
+`fileName` is used when it exists. A photo's DTO carries neither a name nor
+a MIME type; the bridge serves every photo message as JPEG, so its name is
+derived from the message id. The URL is always `/user/file` without
+`thumb=1`: the bubble may show a thumbnail (an album cell, a video poster),
+but a download is the original bytes.
+*/
 
 const EXTENSIONS: Record<string, string> = {
   'image/gif': 'gif',
@@ -33,20 +33,20 @@ export function downloadFileName(message: MessageDto): string {
 }
 
 /**
- * Whether `/user/file` can serve this message's bytes. Polls, geo points and
- * other non-file media have no media DTO, and an `unsupported` payload has no
- * bytes the engine can ask Telegram for.
- */
+Whether `/user/file` can serve this message's bytes. Polls, geo points and
+other non-file media have no media DTO, and an `unsupported` payload has no
+bytes the engine can ask Telegram for.
+*/
 export function isDownloadable(message: MessageDto): boolean {
   return message.media !== null && message.media.kind !== 'unsupported';
 }
 
 /**
- * Starts the download through a temporary same-origin anchor, inside the
- * caller's user gesture. The `/user/file` request carries the Access session
- * cookie like every other bridge request, so no worker change is needed. A
- * download always asks for the maximum-quality variant.
- */
+Starts the download through a temporary same-origin anchor, inside the
+caller's user gesture. The `/user/file` request carries the Access session
+cookie like every other bridge request, so no worker change is needed. A
+download always asks for the maximum-quality variant.
+*/
 export function downloadMedia(message: MessageDto): void {
   const anchor = document.createElement('a');
   anchor.href = fileUrl(message.chatId, message.id, { quality: 'max', download: true });

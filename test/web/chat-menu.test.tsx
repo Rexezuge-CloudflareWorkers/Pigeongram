@@ -4,10 +4,10 @@ import { ChatMenu } from '../../apps/web/src/components/ChatMenu';
 import type { DialogDto } from '../../apps/web/src/types';
 
 /**
- * The chat list's context menu. Mark As Read clears an unread badge; an
- * already-read chat greys it out. A right-click inside the open menu must not
- * reopen it through the row's own handler.
- */
+The chat list's context menu. Mark As Read clears an unread badge; an
+already-read chat greys it out. A right-click inside the open menu must not
+reopen it through the row's own handler.
+*/
 
 afterEach(cleanup);
 

@@ -5,20 +5,20 @@ import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { SHELL_URL, isPassthroughPath } from './routes';
 
 /**
- * The app's service worker.
- *
- * It does two things, and deliberately nothing else:
- *
- * 1. It precaches the build's own assets — the hashed scripts and stylesheets,
- *    the shell, the icons — so the app can boot without a network.
- * 2. It answers navigations from the network, and falls back to the precached
- *    shell when the network is gone.
- *
- * It never caches the account API. The engine's data is read live through
- * Cloudflare Access, and a cached `/user/*` response would put one account's
- * chats in a cache the next reader could reach. The rules live in
- * `./routes.ts`, where the tests can assert them.
- */
+The app's service worker.
+
+It does two things, and deliberately nothing else:
+
+1. It precaches the build's own assets — the hashed scripts and stylesheets,
+   the shell, the icons — so the app can boot without a network.
+2. It answers navigations from the network, and falls back to the precached
+   shell when the network is gone.
+
+It never caches the account API. The engine's data is read live through
+Cloudflare Access, and a cached `/user/*` response would put one account's
+chats in a cache the next reader could reach. The rules live in
+`./routes.ts`, where the tests can assert them.
+*/
 
 interface ManifestEntry {
   readonly url: string;
@@ -32,8 +32,8 @@ declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: ManifestEntry[] };
 precacheAndRoute(self.__WB_MANIFEST);
 
 /**
- * The precached shell, bound to the URL the build precached it under.
- */
+The precached shell, bound to the URL the build precached it under.
+*/
 const shell = createHandlerBoundToURL(SHELL_URL);
 
 registerRoute(

@@ -2,10 +2,10 @@ import { HttpStatusError } from '@rexezuge/web/api';
 import type { PeerId, SendMessageResult, SendUploadGroupResult, UploadKind } from './types';
 
 /**
- * The raw-body upload routes: one file (`POST /user/upload`) and an album
- * (`POST /user/upload-group`). They live apart from the JSON client because
- * they stream their body and report progress, which `fetch` cannot do.
- */
+The raw-body upload routes: one file (`POST /user/upload`) and an album
+(`POST /user/upload-group`). They live apart from the JSON client because
+they stream their body and report progress, which `fetch` cannot do.
+*/
 
 export interface UploadInput {
   chatId: PeerId;
@@ -27,9 +27,9 @@ export interface UploadInput {
   height?: number;
   duration?: number;
   /**
-   * Stable Telegram `random_id` for this attempt; a retry reuses it so an
-   * answer lost after Telegram accepted the send cannot duplicate the file.
-   */
+  Stable Telegram `random_id` for this attempt; a retry reuses it so an
+  answer lost after Telegram accepted the send cannot duplicate the file.
+  */
   randomId?: string;
 }
 

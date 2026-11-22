@@ -560,6 +560,89 @@ describe('media viewer quality labels', () => {
       '/user/file?chatId=2&messageId=1',
     );
   });
+
+  it('auto-picks the variant that covers the displayed height', () => {
+    render(
+      <MediaViewer
+        messages={[
+          message(1, {
+            kind: 'video',
+            fileName: 'clip.mp4',
+            mime: 'video/mp4',
+            size: 4096,
+            width: 1280,
+            height: 720,
+            duration: 4,
+            qualities: [
+              { index: 0, width: 854, height: 480, size: 1024, codec: 'avc1' },
+              { index: 1, width: 1280, height: 720, size: 2048, codec: 'avc1' },
+              { index: 2, width: 1920, height: 1080, size: 4096, codec: 'avc1' },
+            ],
+          }),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+
+    // The jsdom viewport fits the clip at 576 rows, so 720p is the smallest
+    // variant that covers it — not the 480p primary and not the 1080p copy.
+    expect(document.querySelector<HTMLVideoElement>('video.media-viewer-media')?.getAttribute('src')).toBe(
+      '/user/file?chatId=2&messageId=1&quality=1',
+    );
+    expect((screen.getByRole('combobox', { name: 'Video quality' }) as unknown as HTMLSelectElement).value).toBe('auto');
+  });
+
+  it('keeps the play position across a quality switch', () => {
+    render(
+      <MediaViewer
+        messages={[
+          videoWith([
+            { index: 0, width: 1280, height: 720 },
+            { index: 1, width: 854, height: 480 },
+          ]),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+    const before = document.querySelector<HTMLVideoElement>('video.media-viewer-media') as HTMLVideoElement;
+    before.currentTime = 12;
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Video quality' }), { target: { value: '1' } });
+
+    const after = document.querySelector<HTMLVideoElement>('video.media-viewer-media') as HTMLVideoElement;
+    expect(after).not.toBe(before);
+    fireEvent.loadedMetadata(after);
+    expect(after.currentTime).toBe(12);
+  });
+
+  it('retries once before falling back to the download link', () => {
+    render(
+      <MediaViewer
+        messages={[
+          videoWith([
+            { index: 0, width: 1280, height: 720 },
+            { index: 1, width: 854, height: 480 },
+          ]),
+        ]}
+        initialMessageId={1}
+        onClose={() => {}}
+      />,
+    );
+    const first = document.querySelector<HTMLVideoElement>('video.media-viewer-media') as HTMLVideoElement;
+
+    fireEvent.error(first);
+
+    const second = document.querySelector<HTMLVideoElement>('video.media-viewer-media') as HTMLVideoElement;
+    expect(second).not.toBe(first);
+    expect(second.getAttribute('src')).toBe('/user/file?chatId=2&messageId=1');
+
+    fireEvent.error(second);
+
+    expect(document.querySelector<HTMLVideoElement>('video.media-viewer-media')).toBeNull();
+    expect(document.querySelector('.media-viewer-fallback')).not.toBeNull();
+  });
 });
 
 describe('media viewer portal guards', () => {

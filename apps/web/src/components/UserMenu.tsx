@@ -25,13 +25,13 @@ interface UserMenuProps {
   me: MeDto | null;
   connected: boolean;
   /**
-   The install offer, when the browser raised one.
-   */
+  The install offer, when the browser raised one.
+  */
   pwa: PwaState;
   onSignOut: () => Promise<void> | void;
   /**
-   Opens the archive: the chats the account archived.
-   */
+  Opens the archive: the chats the account archived.
+  */
   onOpenArchive: () => void;
   onToggleTheme?: () => void;
   theme?: 'dark' | 'light';

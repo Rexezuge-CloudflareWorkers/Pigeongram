@@ -4,11 +4,11 @@ import type { ChatDto, MessageDto } from '../../apps/web/src/types';
 import { useShellOverlays } from '../../apps/web/src/useShellOverlays';
 
 /**
- * The shell's overlay state: the search sheet and the new-message picker.
- *
- * The hook owns only when each is open and what a choice does; the choice
- * itself belongs to navigation, which is why both callbacks are handed out.
- */
+The shell's overlay state: the search sheet and the new-message picker.
+
+The hook owns only when each is open and what a choice does; the choice
+itself belongs to navigation, which is why both callbacks are handed out.
+*/
 
 afterEach(cleanup);
 

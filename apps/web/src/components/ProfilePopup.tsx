@@ -7,42 +7,42 @@ import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
 /**
- * The profile of the open chat, in a card in the middle of the screen.
- *
- * The chat the reader opened already carries the peer's name, its handle and
- * its photo, so those are on screen from the first paint; the profile read
- * fills in what the chat list has no room for — a person's bio, a group's
- * description and member count.
- *
- * The card owns the modal behaviours the rest of the SPA expects: focus moves
- * into it, Tab stays inside, Escape and a press on the scrim close it, and the
- * element that opened it gets focus back.
- */
+The profile of the open chat, in a card in the middle of the screen.
+
+The chat the reader opened already carries the peer's name, its handle and
+its photo, so those are on screen from the first paint; the profile read
+fills in what the chat list has no room for — a person's bio, a group's
+description and member count.
+
+The card owns the modal behaviours the rest of the SPA expects: focus moves
+into it, Tab stays inside, Escape and a press on the scrim close it, and the
+element that opened it gets focus back.
+*/
 
 interface ProfilePopupProps {
   chat: ChatDto;
   /**
-   * The profile, once it has been read; null while it is on its way.
-   */
+  The profile, once it has been read; null while it is on its way.
+  */
   profile: ProfileDto | null;
   /**
-   * Whether the read is in flight.
-   */
+  Whether the read is in flight.
+  */
   loading: boolean;
   /**
-   * Why the profile could not be read, when it could not.
-   */
+  Why the profile could not be read, when it could not.
+  */
   error: string | null;
   onClose: () => void;
   /**
-   * Focuses this callback's target when the popup unmounts. Defaults to the
-   * element focused at mount, which is the one that opened the popup.
-   */
+  Focuses this callback's target when the popup unmounts. Defaults to the
+  element focused at mount, which is the one that opened the popup.
+  */
   returnFocus?: () => void;
   /**
-   * Whether the popup is animating out; the parent keeps it mounted for the
-   * exit beat.
-   */
+  Whether the popup is animating out; the parent keeps it mounted for the
+  exit beat.
+  */
   exiting?: boolean;
 }
 
@@ -137,7 +137,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
           {loading ? <Spinner inline size={16} label="Loading The Profile…" /> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {!loading && !error && profile?.about ? <p className="max-w-[46ch] text-[15px] text-muted">{profile.about}</p> : null}
-          {!loading && !error && members !== null ? <p className="text-sm text-muted">{members.toLocaleString()} Members</p> : null}
+          {loading || error || members === null ? null : <p className="text-sm text-muted">{members.toLocaleString()} Members</p>}
         </div>
       </div>
     </div>,

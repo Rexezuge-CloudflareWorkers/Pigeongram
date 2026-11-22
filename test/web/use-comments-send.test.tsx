@@ -5,10 +5,10 @@ import type { CommentsThread } from '../../apps/web/src/state';
 import type { MessageDto, MessageReactionDto } from '../../apps/web/src/types';
 
 /**
- * The comments screen's write half: the optimistic outbox behind sends and
- * attachments, and the reaction toggle. The outbox itself is faked here so the
- * test sees exactly the delivery and settlement it hands back.
- */
+The comments screen's write half: the optimistic outbox behind sends and
+attachments, and the reaction toggle. The outbox itself is faked here so the
+test sees exactly the delivery and settlement it hands back.
+*/
 
 const api = vi.hoisted(() => ({ sendComment: vi.fn(), sendReaction: vi.fn() }));
 const upload = vi.hoisted(() => ({ sendUploadBatch: vi.fn() }));

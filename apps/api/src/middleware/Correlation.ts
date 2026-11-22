@@ -3,13 +3,13 @@ import type { Next } from 'hono';
 import type { ApiContext } from '../types';
 
 /**
- * Resolve one correlation id per request and return it on the response.
- *
- * An inbound id is reused so a caller can follow its own request through the
- * worker and the Durable Object; otherwise the edge mints one. The id travels
- * as a header only — the bridge body is the caller's contract, and a transport
- * concern in it would make every error shape carry it.
- */
+Resolve one correlation id per request and return it on the response.
+
+An inbound id is reused so a caller can follow its own request through the
+worker and the Durable Object; otherwise the edge mints one. The id travels
+as a header only — the bridge body is the caller's contract, and a transport
+concern in it would make every error shape carry it.
+*/
 export async function correlationMiddleware(c: ApiContext, next: Next): Promise<void> {
   const correlationId = c.req.header(CORRELATION_ID_HEADER) ?? crypto.randomUUID();
   c.set('correlationId', correlationId);

@@ -3,14 +3,14 @@ import type { ReactNode } from 'react';
 import type { MessageEntityDto } from './types';
 
 /**
- * Rich-text rendering for message bodies.
- *
- * Telegram describes formatting and links as UTF-16 spans of the plain text
- * (`MessageEntityDto.offset`/`length`), so rendering means slicing `text` and
- * wrapping the entity segments. The walk is a stack pass: properly nested
- * entities (a link inside bold inside a quote) nest naturally, and malformed
- * or overlapping spans degrade to plain text instead of throwing.
- */
+Rich-text rendering for message bodies.
+
+Telegram describes formatting and links as UTF-16 spans of the plain text
+(`MessageEntityDto.offset`/`length`), so rendering means slicing `text` and
+wrapping the entity segments. The walk is a stack pass: properly nested
+entities (a link inside bold inside a quote) nest naturally, and malformed
+or overlapping spans degrade to plain text instead of throwing.
+*/
 
 interface Span {
   entity: MessageEntityDto;

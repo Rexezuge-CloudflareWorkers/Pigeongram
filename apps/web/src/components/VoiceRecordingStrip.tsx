@@ -12,8 +12,8 @@ not compete with it.
 interface VoiceRecordingStripProps {
   state: VoiceRecorderState;
   /**
-   * Whole seconds captured so far.
-   */
+  Whole seconds captured so far.
+  */
   seconds: number;
   onCancel: () => void;
   onStop: () => void;

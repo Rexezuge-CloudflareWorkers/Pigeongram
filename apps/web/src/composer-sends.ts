@@ -2,12 +2,12 @@ import type { MessageReplyKeyboardButtonDto, StickerDto } from './types';
 import type { UploadRequest } from './upload';
 
 /**
- * The view's send wrappers: every one clears the open reply target first, so a
- * second send never carries the previous reply.
- *
- * Split from `ThreadView.tsx` so the screen stays under the god-file cap. The
- * outbox carries the reply preview, so clearing here costs nothing.
- */
+The view's send wrappers: every one clears the open reply target first, so a
+second send never carries the previous reply.
+
+Split from `ThreadView.tsx` so the screen stays under the god-file cap. The
+outbox carries the reply preview, so clearing here costs nothing.
+*/
 interface ComposerSendsOptions {
   clearReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;

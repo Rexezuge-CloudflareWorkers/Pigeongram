@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Ringtone } from '../../apps/web/src/calls/ringtone';
 
 /**
- * The ringtone's voice is a resource, not just a sound: every call that rings
- * makes an AudioContext, and a page only gets a handful of them. The tests
- * pin that a stopped ringtone closes its context, keeps one context per
- * instance while it rings, and stays silent after it stops.
- */
+The ringtone's voice is a resource, not just a sound: every call that rings
+makes an AudioContext, and a page only gets a handful of them. The tests
+pin that a stopped ringtone closes its context, keeps one context per
+instance while it rings, and stays silent after it stops.
+*/
 
 interface FakeOscillator {
   type: string;

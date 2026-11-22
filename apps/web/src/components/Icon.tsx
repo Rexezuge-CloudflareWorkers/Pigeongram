@@ -1,18 +1,18 @@
 /**
- * The SPA's one icon set.
- *
- * Every chrome affordance in the app draws from here: the same 24-unit box,
- * the same filled geometry, and `currentColor` so an icon inherits the colour
- * of the control around it. Department-store emoji and font glyphs are not
- * icons — their size, colour and baseline come from the platform — so they are
- * deliberately absent from the chrome. Emoji that are *content* (Telegram
- * reaction emoji, emoji inside a message) stay in the message stream.
- *
- * The geometry is the filled Material Icons set the header and the menus
- * already used (Apache-2.0, https://github.com/google/material-design-icons).
- * Keeping one family is the point: a new surface adds a name here rather than
- * another inline `<svg>` or a glyph.
- */
+The SPA's one icon set.
+
+Every chrome affordance in the app draws from here: the same 24-unit box,
+the same filled geometry, and `currentColor` so an icon inherits the colour
+of the control around it. Department-store emoji and font glyphs are not
+icons — their size, colour and baseline come from the platform — so they are
+deliberately absent from the chrome. Emoji that are *content* (Telegram
+reaction emoji, emoji inside a message) stay in the message stream.
+
+The geometry is the filled Material Icons set the header and the menus
+already used (Apache-2.0, https://github.com/google/material-design-icons).
+Keeping one family is the point: a new surface adds a name here rather than
+another inline `<svg>` or a glyph.
+*/
 
 export type IconName =
   | 'more-vertical'
@@ -131,29 +131,29 @@ const PATHS: Record<IconName, string> = {
 
 interface IconProps {
   /**
-   * Which drawing to render.
-   */
+  Which drawing to render.
+  */
   name: IconName;
   /**
-   * Edge length in pixels; the drawings live in a 24-unit box.
-   */
+  Edge length in pixels; the drawings live in a 24-unit box.
+  */
   size?: number;
   /**
-   * Extra utilities (colour, rotation, spacing). The shared `.icon` rule owns
-   * the flow so an icon beside text lines up with it.
-   */
+  Extra utilities (colour, rotation, spacing). The shared `.icon` rule owns
+  the flow so an icon beside text lines up with it.
+  */
   className?: string;
   /**
-   * Accessible name. Without it the icon is decorative and hidden from
-   * assistive tech, which is what a labelled control wants.
-   */
+  Accessible name. Without it the icon is decorative and hidden from
+  assistive tech, which is what a labelled control wants.
+  */
   label?: string;
 }
 
 /**
- * One icon, drawn from the shared set. The `data-icon` name keeps tests and
- * debugging honest without leaning on a glyph's text content.
- */
+One icon, drawn from the shared set. The `data-icon` name keeps tests and
+debugging honest without leaning on a glyph's text content.
+*/
 export function Icon({ name, size = 20, className, label }: IconProps) {
   const classes = className === undefined ? 'icon' : `icon ${className}`;
   return (

@@ -54,11 +54,11 @@ interface ComposerProps {
   onSend: (text: string, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   /**
-   * Sends a sticker from the picker. The composer supplies the open reply
-   * target; the picker supplies the pack identity for the engine's fallback.
-   * Absent means this composer offers no sticker tab (the comments screen posts
-   * into a discussion group through a narrower path).
-   */
+  Sends a sticker from the picker. The composer supplies the open reply
+  target; the picker supplies the pack identity for the engine's fallback.
+  Absent means this composer offers no sticker tab (the comments screen posts
+  into a discussion group through a narrower path).
+  */
   onSendSticker?: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   onPressReplyKeyboard?: (button: MessageReplyKeyboardButtonDto, replyTo?: number) => void;
 }

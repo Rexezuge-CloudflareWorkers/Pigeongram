@@ -5,13 +5,13 @@ import { SessionLifecycle, STOP_CATCH_UP_TIMEOUT_MS } from '../../packages/backe
 import type { LifecycleHost } from '../../packages/backend-services/src/session/lifecycle';
 
 /**
- * The live session's exit.
- *
- * `stopLive` runs on the socket-close event, which holds the Durable Object's
- * input gate: it must not wait for a `getDifference` replay that may take 25
- * seconds, and a `webSocketError` followed by `webSocketClose` must not tear
- * the connection down twice.
- */
+The live session's exit.
+
+`stopLive` runs on the socket-close event, which holds the Durable Object's
+input gate: it must not wait for a `getDifference` replay that may take 25
+seconds, and a `webSocketError` followed by `webSocketClose` must not tear
+the connection down twice.
+*/
 
 interface Harness {
   lifecycle: SessionLifecycle;

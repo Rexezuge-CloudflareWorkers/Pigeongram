@@ -21,12 +21,12 @@ import { encodeBase64 } from '../../packages/backend-services/src/session/base64
 import { rpc } from './rpc-dispatch';
 
 /**
- * The calls half of the bridge.
- *
- * A call is addressed by its id and an access hash, and the hash never
- * crosses the bridge — so the DTO carries neither, and the engine's registry
- * is what turns an id into something addressable.
- */
+The calls half of the bridge.
+
+A call is addressed by its id and an access hash, and the hash never
+crosses the bridge — so the DTO carries neither, and the engine's registry
+is what turns an id into something addressable.
+*/
 
 const protocol: tl.TypePhoneCallProtocol = {
   _: 'phoneCallProtocol',

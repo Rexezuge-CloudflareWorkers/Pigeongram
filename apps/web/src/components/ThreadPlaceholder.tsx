@@ -1,11 +1,11 @@
 import { Icon } from './Icon';
 
 /**
- * The reading pane before a chat is picked.
- *
- * The official desktop clients leave a quiet, branded placeholder instead of a
- * bare sentence: the send mark in a medallion, then the hint.
- */
+The reading pane before a chat is picked.
+
+The official desktop clients leave a quiet, branded placeholder instead of a
+bare sentence: the send mark in a medallion, then the hint.
+*/
 export function ThreadPlaceholder() {
   return (
     <section className="thread empty">

@@ -3,13 +3,13 @@ import type { ChatDto, MessageDto } from '../types';
 import { Icon } from './Icon';
 
 /**
- * The bar under the thread header that names the chat's newest pinned message.
- *
- * Telegram's own clients keep the pin above the messages and make it a door to
- * the pinned list. This one does the same: the bar is one button, and the list
- * is read only when the reader asks for it. The message body comes from the
- * thread controller, so a pin made on another device moves the bar live.
- */
+The bar under the thread header that names the chat's newest pinned message.
+
+Telegram's own clients keep the pin above the messages and make it a door to
+the pinned list. This one does the same: the bar is one button, and the list
+is read only when the reader asks for it. The message body comes from the
+thread controller, so a pin made on another device moves the bar live.
+*/
 
 interface PinnedBannerProps {
   chat: ChatDto;

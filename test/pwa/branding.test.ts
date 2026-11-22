@@ -13,9 +13,9 @@ function brandedTitle(name: string): string {
 }
 
 /**
- * The product name is a build-time input; the defaults are the repository's
- * own brand, and a fork can change both values from the environment.
- */
+The product name is a build-time input; the defaults are the repository's
+own brand, and a fork can change both values from the environment.
+*/
 describe('the app branding', () => {
   it('defaults to Pigeongram', () => {
     expect(readBranding({})).toEqual({ name: DEFAULT_APP_NAME, shortName: DEFAULT_APP_SHORT_NAME });

@@ -3,47 +3,47 @@ import { fetchProfile } from './api';
 import type { PeerId, ProfileDto } from './types';
 
 /**
- * The profile of the peer a reader opened.
- *
- * The profile is read on demand: the reader asks for it by opening the
- * profile, and a thread open pays for nothing. A profile that has been read
- * is kept, so opening it again is free — the engine hands out one event at a
- * time, and a second read would be a second round trip for the same answer.
- */
+The profile of the peer a reader opened.
+
+The profile is read on demand: the reader asks for it by opening the
+profile, and a thread open pays for nothing. A profile that has been read
+is kept, so opening it again is free — the engine hands out one event at a
+time, and a second read would be a second round trip for the same answer.
+*/
 
 /**
- * How many profiles are kept. A reader walks through chats, and a profile
- * they looked at once is worth seeing again; the oldest falls out.
- */
+How many profiles are kept. A reader walks through chats, and a profile
+they looked at once is worth seeing again; the oldest falls out.
+*/
 const CACHE_LIMIT = 8;
 
 interface ProfileController {
   /**
-   * The profile of the peer that was asked for, once it has been read.
-   */
+  The profile of the peer that was asked for, once it has been read.
+  */
   profile: ProfileDto | null;
   /**
-   * Whether a read is in flight.
-   */
+  Whether a read is in flight.
+  */
   loading: boolean;
   /**
-   * Why the profile could not be read, when it could not.
-   */
+  Why the profile could not be read, when it could not.
+  */
   error: string | null;
   /**
-   * Reads a peer's profile, unless it is already known.
-   */
+  Reads a peer's profile, unless it is already known.
+  */
   read: (chatId: PeerId) => void;
 }
 
 /**
- * The profile of the peer the reader is looking at.
- *
- * `peer` is the chat the profile is about, and everything the hook hands
- * back belongs to it: a profile never describes another peer. A reader who
- * moves on while a read is in flight must not be shown the answer to the chat
- * they left.
- */
+The profile of the peer the reader is looking at.
+
+`peer` is the chat the profile is about, and everything the hook hands
+back belongs to it: a profile never describes another peer. A reader who
+moves on while a read is in flight must not be shown the answer to the chat
+they left.
+*/
 export function useProfile(peer: PeerId | null): ProfileController {
   const [read, setRead] = useState<{ chatId: PeerId; profile: ProfileDto } | null>(null);
   const [loadingFor, setLoadingFor] = useState<PeerId | null>(null);
@@ -92,8 +92,8 @@ export function useProfile(peer: PeerId | null): ProfileController {
 }
 
 /**
- * Keeps the cache to its size: the oldest profile is the one that fell out.
- */
+Keeps the cache to its size: the oldest profile is the one that fell out.
+*/
 function remember(cache: Map<PeerId, ProfileDto>): void {
   if (cache.size <= CACHE_LIMIT) return;
   const oldest = cache.keys().next();

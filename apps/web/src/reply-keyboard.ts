@@ -1,18 +1,18 @@
 import type { MessageDto, MessageReplyKeyboardDto } from './types';
 
 /**
- * The chat's active reply keyboard: the keyboard a bot showed, and the id of
- * the message whose markup decided it.
- *
- * Telegram keeps a keyboard until a newer message replaces or removes it, so
- * the newest message with a reply markup is the one that counts — not the
- * newest message. The chat's window is not guaranteed to contain that message,
- * which is why a seed may stand in for it.
- */
+The chat's active reply keyboard: the keyboard a bot showed, and the id of
+the message whose markup decided it.
+
+Telegram keeps a keyboard until a newer message replaces or removes it, so
+the newest message with a reply markup is the one that counts — not the
+newest message. The chat's window is not guaranteed to contain that message,
+which is why a seed may stand in for it.
+*/
 export interface ActiveReplyKeyboard {
   /**
-   * Id of the message whose markup decides the keyboard.
-   */
+  Id of the message whose markup decides the keyboard.
+  */
   messageId: number;
   keyboard: Extract<MessageReplyKeyboardDto, { kind: 'keyboard' }>;
 }

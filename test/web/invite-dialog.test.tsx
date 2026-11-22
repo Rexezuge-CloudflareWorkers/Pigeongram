@@ -4,10 +4,10 @@ import { InviteDialog } from '../../apps/web/src/components/InviteDialog';
 import type { ChatInvitePreviewDto } from '../../apps/web/src/types';
 
 /**
- * The card a private invite link opens. It is the only place the account
- * decides to join a chat whose id Telegram has not named yet, so both actions
- * and the busy/requested states are the contract.
- */
+The card a private invite link opens. It is the only place the account
+decides to join a chat whose id Telegram has not named yet, so both actions
+and the busy/requested states are the contract.
+*/
 
 const preview: ChatInvitePreviewDto = {
   title: 'Announcements',

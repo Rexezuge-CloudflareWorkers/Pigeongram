@@ -4,15 +4,15 @@ import { peerIdsIn, withPeerRetry } from './peers';
 import { failureCode, failureText } from './rpc-errors';
 
 /**
- * The `batch` method: several reads in one request.
- *
- * The calls run concurrently over the one Telegram connection: a batch is the
- * only way to overlap them, because the Durable Object hands out one event at
- * a time and separate requests would queue behind each other instead.
- *
- * A failed call is reported on its own, so one broken read never takes the
- * reads beside it down with it.
- */
+The `batch` method: several reads in one request.
+
+The calls run concurrently over the one Telegram connection: a batch is the
+only way to overlap them, because the Durable Object hands out one event at
+a time and separate requests would queue behind each other instead.
+
+A failed call is reported on its own, so one broken read never takes the
+reads beside it down with it.
+*/
 export async function dispatchBatch(
   client: TelegramClient,
   calls: readonly RpcBatchCall[],

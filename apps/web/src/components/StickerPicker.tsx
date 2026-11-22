@@ -6,27 +6,27 @@ import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
 /**
- * The composer's sticker and emoji picker.
- *
- * A popover, not a history layer: Back leaves the thread, exactly as it does
- * for the profile popup. The library is read the first time the sticker tab is
- * shown, one bridge request for the recents, the saved stickers and the
- * installed packs; a pack's stickers are read when the reader opens it.
- *
- * A sticker is sent by its decimal document id. The pack identity rides along
- * so the engine can recover the document after a restart emptied its registry.
- */
+The composer's sticker and emoji picker.
+
+A popover, not a history layer: Back leaves the thread, exactly as it does
+for the profile popup. The library is read the first time the sticker tab is
+shown, one bridge request for the recents, the saved stickers and the
+installed packs; a pack's stickers are read when the reader opens it.
+
+A sticker is sent by its decimal document id. The pack identity rides along
+so the engine can recover the document after a restart emptied its registry.
+*/
 
 interface StickerPickerProps {
   /**
-   * Whether the sticker tab is offered. It is hidden while the composer edits
-   * a message: an edit changes text, not the conversation.
-   */
+  Whether the sticker tab is offered. It is hidden while the composer edits
+  a message: an edit changes text, not the conversation.
+  */
   stickersEnabled: boolean;
   onClose: () => void;
   /**
-   * Inserts one emoji at the composer's caret. The panel stays open.
-   */
+  Inserts one emoji at the composer's caret. The panel stays open.
+  */
   onPickEmoji: (char: string) => void;
   onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null) => void;
 }

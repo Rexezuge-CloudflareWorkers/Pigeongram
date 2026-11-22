@@ -8,19 +8,19 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
 /**
- * The reader's settings, in a modal window.
- *
- * Only the choices that belong to this device live here: the theme, the accent
- * seed, the contrast level and the data-saving switches. The account menu keeps
- * the actions that act on the account or navigate the app (the archive,
- * installing the app, signing out), so this window is the one place appearance
- * and media loading are changed.
- *
- * The shared `Dialog` carries the modal behaviour — focus, the focus trap,
- * Escape and scrim dismissal — and the settings rows are plain controls inside
- * it. The choices persist through `useTheme`/`useDynamicColor` and
- * `useDataSaverPreferences`, so the controls only report the next value.
- */
+The reader's settings, in a modal window.
+
+Only the choices that belong to this device live here: the theme, the accent
+seed, the contrast level and the data-saving switches. The account menu keeps
+the actions that act on the account or navigate the app (the archive,
+installing the app, signing out), so this window is the one place appearance
+and media loading are changed.
+
+The shared `Dialog` carries the modal behaviour — focus, the focus trap,
+Escape and scrim dismissal — and the settings rows are plain controls inside
+it. The choices persist through `useTheme`/`useDynamicColor` and
+`useDataSaverPreferences`, so the controls only report the next value.
+*/
 
 interface SettingsPopupProps {
   theme: 'dark' | 'light';
@@ -31,14 +31,14 @@ interface SettingsPopupProps {
   onSetContrast?: (contrast: Contrast) => void;
   onClose: () => void;
   /**
-   * Focuses this callback's target when the popup unmounts. Defaults to the
-   * element focused at mount, which can already be gone when the popup opens
-   * from a menu item.
-   */
+  Focuses this callback's target when the popup unmounts. Defaults to the
+  element focused at mount, which can already be gone when the popup opens
+  from a menu item.
+  */
   returnFocus?: () => void;
   /**
-   * Whether the popup is animating out; forwarded to the shared Dialog.
-   */
+  Whether the popup is animating out; forwarded to the shared Dialog.
+  */
   exiting?: boolean;
 }
 

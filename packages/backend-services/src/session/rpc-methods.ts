@@ -12,23 +12,23 @@ import { stickerRpcMethods } from './stickers';
 import type { UnreadAlbumLedger } from './unread-albums';
 
 /**
- * What one bridge method is, and how to run it.
- *
- * The read-only flag is the batch whitelist: a batch runs its calls
- * concurrently, so a write would have no defined completion order. The table
- * below is the one place that classification lives — the dispatcher, the
- * batch parser and the calls half all read it here.
- */
+What one bridge method is, and how to run it.
+
+The read-only flag is the batch whitelist: a batch runs its calls
+concurrently, so a write would have no defined completion order. The table
+below is the one place that classification lives — the dispatcher, the
+batch parser and the calls half all read it here.
+*/
 export interface MethodSpec {
   readOnly: boolean;
   run(context: DispatchContext, params: Record<string, unknown>): Promise<unknown>;
 }
 
 /**
- * Everything a method may touch. The batch's own dispatch is supplied by the
- * dispatcher, so a nested method goes through exactly the same path as a
- * top-level one.
- */
+Everything a method may touch. The batch's own dispatch is supplied by the
+dispatcher, so a nested method goes through exactly the same path as a
+top-level one.
+*/
 export interface DispatchContext {
   client: TelegramClient;
   albums: UnreadAlbumLedger;
@@ -41,13 +41,13 @@ export type MethodTable<M extends RpcMethod = RpcMethod> = { readonly [K in M]: 
 export type PartialMethodTable<M extends RpcMethod = RpcMethod> = Partial<MethodTable<M>>;
 
 /**
- * The bridge's method surface, one entry per contract method.
- *
- * The mapped type is deliberate: adding a method to `RpcMethod` is a compile
- * error until it is classified here, and the calls surface is no longer a
- * parallel switch with a `null` "not a call" answer — every `call.*` method is
- * an ordinary entry with `readOnly: false`.
- */
+The bridge's method surface, one entry per contract method.
+
+The mapped type is deliberate: adding a method to `RpcMethod` is a compile
+error until it is classified here, and the calls surface is no longer a
+parallel switch with a `null` "not a call" answer — every `call.*` method is
+an ordinary entry with `readOnly: false`.
+*/
 export const RPC_METHODS = {
   ...callRpcMethods,
   ...dialogsRpcMethods,
@@ -64,12 +64,12 @@ export const RPC_METHODS = {
 } as const satisfies MethodTable;
 
 /**
- * The methods a batch may carry, derived from the classified surface.
- *
- * The union is a type-level filter over the table, so a method that is marked
- * read-only is batchable by construction; the check below proves the derived
- * set still equals the contract's `BatchableRpcMethod` in both directions.
- */
+The methods a batch may carry, derived from the classified surface.
+
+The union is a type-level filter over the table, so a method that is marked
+read-only is batchable by construction; the check below proves the derived
+set still equals the contract's `BatchableRpcMethod` in both directions.
+*/
 type ReadOnlyRpcMethod = {
   [M in RpcMethod]: (typeof RPC_METHODS)[M]['readOnly'] extends true ? M : never;
 }[RpcMethod];

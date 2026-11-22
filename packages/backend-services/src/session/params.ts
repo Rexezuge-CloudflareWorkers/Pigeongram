@@ -3,10 +3,10 @@ import type { RpcBatchCall } from '../rpc-types';
 import { EngineError } from './errors';
 
 /**
- * Validation for the bridge's JSON parameters. The bridge is single-user and
- * behind a gate, but malformed input should still fail loudly with a 400
- * instead of being smuggled into mtcute.
- */
+Validation for the bridge's JSON parameters. The bridge is single-user and
+behind a gate, but malformed input should still fail loudly with a 400
+instead of being smuggled into mtcute.
+*/
 
 /**
 How many calls one `batch` may carry.
@@ -14,11 +14,11 @@ How many calls one `batch` may carry.
 const MAX_BATCH_CALLS = 8;
 
 /**
- * A JSON object. An absent value means "no parameters" and becomes `{}`; any
- * other non-object — a string, a number, an array — is a 400. The old
- * coercion turned `params: "garbage"` into an empty object and let the call
- * through.
- */
+A JSON object. An absent value means "no parameters" and becomes `{}`; any
+other non-object — a string, a number, an array — is a 400. The old
+coercion turned `params: "garbage"` into an empty object and let the call
+through.
+*/
 export function requireRecord(value: unknown): Record<string, unknown> {
   if (value === undefined || value === null) return {};
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -141,16 +141,16 @@ export function requireBoolean(value: unknown, name: string): boolean {
 }
 
 /**
- * A client-chosen Telegram `random_id`, as a positive decimal 64-bit integer.
- * Reusing it on a retry is what makes the retry idempotent: Telegram drops a
- * duplicate send whose random id it has already accepted.
- */
+A client-chosen Telegram `random_id`, as a positive decimal 64-bit integer.
+Reusing it on a retry is what makes the retry idempotent: Telegram drops a
+duplicate send whose random id it has already accepted.
+*/
 /**
- * Parses a decimal 64-bit integer into a `Long`, throwing an `EngineError`
- * with the given message on any failure. The single implementation behind
- * `optionalRandomId`, `requireCallId` and `requireFingerprint`, so the
- * try/catch shape lives in one place.
- */
+Parses a decimal 64-bit integer into a `Long`, throwing an `EngineError`
+with the given message on any failure. The single implementation behind
+`optionalRandomId`, `requireCallId` and `requireFingerprint`, so the
+try/catch shape lives in one place.
+*/
 export function parseLong(value: string, errorMessage: string): Long {
   try {
     const parsed = Long.fromString(value);

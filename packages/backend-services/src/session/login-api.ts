@@ -4,10 +4,10 @@ import type { LoginFlow } from './login-flow';
 import { requirePhone, requireText } from './params';
 
 /**
- * The login surface of the bridge: start (or join) a sign-in, feed it the code
- * and password it asks for, drop it. Kept out of `engine.ts` so the wake/live
- * lifecycle there stays readable.
- */
+The login surface of the bridge: start (or join) a sign-in, feed it the code
+and password it asks for, drop it. Kept out of `engine.ts` so the wake/live
+lifecycle there stays readable.
+*/
 export class LoginApi {
   constructor(
     private readonly login: LoginFlow,

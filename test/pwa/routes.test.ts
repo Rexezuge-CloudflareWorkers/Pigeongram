@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { SHELL_URL, isPassthroughPath } from '../../apps/web/sw/routes';
 
 /**
- * The service worker's routing rules.
- *
- * These are the rules that keep the Cloudflare Access gate intact, so they
- * are asserted here rather than trusted to a comment.
- */
+The service worker's routing rules.
+
+These are the rules that keep the Cloudflare Access gate intact, so they
+are asserted here rather than trusted to a comment.
+*/
 describe('the service worker routes', () => {
   it('keeps the account plane out of the shell', () => {
     expect(isPassthroughPath('/user')).toBe(true);

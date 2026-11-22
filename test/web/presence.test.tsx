@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Presence } from '../../apps/web/src/components/Presence';
 
 /**
- * The wrapper that keeps an overlay mounted for its exit keyframe after its
- * visibility has already flipped off.
- */
+The wrapper that keeps an overlay mounted for its exit keyframe after its
+visibility has already flipped off.
+*/
 
 interface OverlayProps {
   exiting?: boolean;

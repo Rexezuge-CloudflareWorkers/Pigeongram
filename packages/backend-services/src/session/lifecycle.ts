@@ -70,38 +70,38 @@ export interface LifecycleHost {
   state: DurableObjectState;
   store: EngineStore;
   /**
-   * The parsed cadence and bounds. Read once by the engine, so a malformed var
-   * cannot change the cadence between two alarms.
-   */
+  The parsed cadence and bounds. Read once by the engine, so a malformed var
+  cannot change the cadence between two alarms.
+  */
   config: EngineConfig;
   /**
-   * The clock the alarm cadence and the wake log read. Defaults to
-   * `Date.now`, so the host stays as it was; a test passes a clock it owns.
-   */
+  The clock the alarm cadence and the wake log read. Defaults to
+  `Date.now`, so the host stays as it was; a test passes a clock it owns.
+  */
   now?: () => number;
 }
 
 /**
 The session engine's wake and live lifecycle.
- *
- * Two modes drive the mtcute client:
- *
- * - **Wake** — the alarm connects, replays `getDifference` through mtcute's
- *   updates manager, records a row in `engine_wakes`, disconnects and re-arms.
- *   This is the always-reachable baseline (no presence).
- * - **Live** — while at least one browser socket is attached, the client stays
- *   connected, updates are broadcast as they arrive, and RPCs ride the same
- *   connection. When the last socket closes the client disconnects and the
- *   wake cadence resumes.
- *
- * A short idle alarm keeps a session around for a burst of bridge calls, then
- * runs a wake so the connection is released promptly.
- *
- * The Durable Object hands out one event at a time, so how long a piece of
- * this work holds the object decides how long every bridge call waits behind
- * it. The replay of the missed updates is the longest piece, and it runs
- * outside the gate for exactly that reason.
- */
+
+Two modes drive the mtcute client:
+
+- **Wake** — the alarm connects, replays `getDifference` through mtcute's
+  updates manager, records a row in `engine_wakes`, disconnects and re-arms.
+  This is the always-reachable baseline (no presence).
+- **Live** — while at least one browser socket is attached, the client stays
+  connected, updates are broadcast as they arrive, and RPCs ride the same
+  connection. When the last socket closes the client disconnects and the
+  wake cadence resumes.
+
+A short idle alarm keeps a session around for a burst of bridge calls, then
+runs a wake so the connection is released promptly.
+
+The Durable Object hands out one event at a time, so how long a piece of
+this work holds the object decides how long every bridge call waits behind
+it. The replay of the missed updates is the longest piece, and it runs
+outside the gate for exactly that reason.
+*/
 export class SessionLifecycle {
   private live = false;
   private liveTask: Promise<void> | null = null;
@@ -280,12 +280,12 @@ export class SessionLifecycle {
   }
 
   /**
-   * Runs work outside the input gate.
-   *
-   * The Durable Object waits for a promise passed to `waitUntil` before it
-   * may be evicted, so the work still finishes — it just no longer holds the
-   * object hostage while it runs.
-   */
+  Runs work outside the input gate.
+  
+  The Durable Object waits for a promise passed to `waitUntil` before it
+  may be evicted, so the work still finishes — it just no longer holds the
+  object hostage while it runs.
+  */
   private background(work: Promise<unknown>): void {
     const settled = work.catch((error) => {
       log.error('background.failed', { error });

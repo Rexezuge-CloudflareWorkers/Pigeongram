@@ -3,24 +3,24 @@ import { followOffset, swipeAxis, swipeDirection, type SwipeAxis } from './galle
 import { capturePointer, isControl, releasePointer } from './pointer';
 
 /**
- * Horizontal swipe navigation for the media viewer's gallery.
- *
- * The track follows the finger while the gesture is horizontal and at the
- * photo's 1x view; releasing past the threshold asks for the neighbour and
- * anything shorter settles back to rest. The offset is stored with the media
- * id, as the zoom view is, so when the gallery commits to another item the new
- * media mounts at rest without a reset render.
- *
- * A second pointer (a pinch) and a mostly-vertical drag end the gesture, and a
- * press on a control never starts one. The panning photo keeps its own
- * gestures: the viewer disables this hook while the photo is zoomed.
- */
+Horizontal swipe navigation for the media viewer's gallery.
+
+The track follows the finger while the gesture is horizontal and at the
+photo's 1x view; releasing past the threshold asks for the neighbour and
+anything shorter settles back to rest. The offset is stored with the media
+id, as the zoom view is, so when the gallery commits to another item the new
+media mounts at rest without a reset render.
+
+A second pointer (a pinch) and a mostly-vertical drag end the gesture, and a
+press on a control never starts one. The panning photo keeps its own
+gestures: the viewer disables this hook while the photo is zoomed.
+*/
 
 interface UseGallerySwipeOptions {
   enabled: boolean;
   /**
-   * The current message id; changing it discards the previous offset.
-   */
+  The current message id; changing it discards the previous offset.
+  */
   mediaId: number | null;
   canPrev: boolean;
   canNext: boolean;
@@ -50,9 +50,9 @@ export interface GallerySwipe {
   */
   settling: boolean;
   /**
-   * Whether the last pointer sequence moved the media. The viewer's backdrop
-   * click uses this so a short swipe never closes the dialog.
-   */
+  Whether the last pointer sequence moved the media. The viewer's backdrop
+  click uses this so a short swipe never closes the dialog.
+  */
   consumeDrag: () => boolean;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;

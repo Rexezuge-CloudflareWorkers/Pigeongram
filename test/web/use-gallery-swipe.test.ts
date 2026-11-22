@@ -5,10 +5,10 @@ import { useGallerySwipe } from '../../apps/web/src/useGallerySwipe';
 import type { GallerySwipe } from '../../apps/web/src/useGallerySwipe';
 
 /**
- * The viewer's swipe hook. The geometry is tested in `gallery-swipe.test.ts`;
- * here the pointer bookkeeping and the React state are driven directly, since
- * jsdom has no gesture recogniser.
- */
+The viewer's swipe hook. The geometry is tested in `gallery-swipe.test.ts`;
+here the pointer bookkeeping and the React state are driven directly, since
+jsdom has no gesture recogniser.
+*/
 
 interface HookProps {
   enabled: boolean;

@@ -7,39 +7,39 @@ import { EngineError } from './errors';
 import { rpcErrorText } from './rpc-errors';
 
 /**
- * Channel-post comments.
- *
- * Announcement channels keep the replies to a post in the channel's linked
- * discussion group: the post is mirrored as a root message there and every
- * comment replies into that thread. mtcute only exposes the dialogue
- * (`getDiscussionMessage`) and the send side (`commentText`), so the thread
- * itself is read through the raw `messages.getReplies` call — the same shape
- * mtcute's own `getHistory` parses.
- */
+Channel-post comments.
+
+Announcement channels keep the replies to a post in the channel's linked
+discussion group: the post is mirrored as a root message there and every
+comment replies into that thread. mtcute only exposes the dialogue
+(`getDiscussionMessage`) and the send side (`commentText`), so the thread
+itself is read through the raw `messages.getReplies` call — the same shape
+mtcute's own `getHistory` parses.
+*/
 
 export interface Discussion {
   /**
-   * Input peer of the linked discussion group.
-   */
+  Input peer of the linked discussion group.
+  */
   peer: tl.TypeInputPeer;
   /**
-   * Marked id of the linked discussion group.
-   */
+  Marked id of the linked discussion group.
+  */
   chatId: number;
   /**
-   * Id of the thread's root message in the group.
-   */
+  Id of the thread's root message in the group.
+  */
   rootId: number;
 }
 
 /**
- * Resolves the discussion thread a channel post's comments live in.
- *
- * Returns null when the thread does not exist yet (a post whose comments
- * section was never used has no root message). Telegram can reject the lookup
- * with `FLOOD_WAIT` while the discussion message is being created; that is the
- * documented "not yet created" answer, so it is read as null too.
- */
+Resolves the discussion thread a channel post's comments live in.
+
+Returns null when the thread does not exist yet (a post whose comments
+section was never used has no root message). Telegram can reject the lookup
+with `FLOOD_WAIT` while the discussion message is being created; that is the
+documented "not yet created" answer, so it is read as null too.
+*/
 export async function resolveDiscussion(client: TelegramClient, chatId: number, messageId: number): Promise<Discussion | null> {
   const peer = await client.resolvePeer(chatId);
   let res: tl.messages.TypeDiscussionMessage;
@@ -71,9 +71,9 @@ export async function resolveDiscussion(client: TelegramClient, chatId: number, 
 }
 
 /**
- * Like `resolveDiscussion`, but for operations that need a thread that
- * already exists (replying to a comment, which implies one).
- */
+Like `resolveDiscussion`, but for operations that need a thread that
+already exists (replying to a comment, which implies one).
+*/
 export async function requireDiscussion(client: TelegramClient, chatId: number, messageId: number): Promise<Discussion> {
   const discussion = await resolveDiscussion(client, chatId, messageId);
   if (!discussion) throw new EngineError('This post does not have a comment thread yet', 404);
@@ -81,16 +81,16 @@ export async function requireDiscussion(client: TelegramClient, chatId: number, 
 }
 
 /**
- * Fetches and validates the post being commented on. Telegram only allows
- * comments when the post carries the `comments` flag, and the SPA can only
- * show the button for such posts, but the bridge never trusts the caller.
- */
+Fetches and validates the post being commented on. Telegram only allows
+comments when the post carries the `comments` flag, and the SPA can only
+show the button for such posts, but the bridge never trusts the caller.
+*/
 /**
- * Resolves everything a comment send needs: the post being commented on and,
- * when the comment is a reply to an existing comment, the discussion thread it
- * lives in. A top-level comment (no `replyTo`) may have no thread yet, so the
- * discussion is resolved lazily and may be null.
- */
+Resolves everything a comment send needs: the post being commented on and,
+when the comment is a reply to an existing comment, the discussion thread it
+lives in. A top-level comment (no `replyTo`) may have no thread yet, so the
+discussion is resolved lazily and may be null.
+*/
 export async function resolveCommentTarget(
   client: TelegramClient,
   chatId: number,
@@ -116,16 +116,16 @@ export async function requireCommentPost(client: TelegramClient, chatId: number,
 
 export interface CommentPage {
   /**
-   * One window of the thread, oldest first.
-   */
+  One window of the thread, oldest first.
+  */
   comments: Message[];
   /**
-   * Total number of comments in the thread.
-   */
+  Total number of comments in the thread.
+  */
   count: number;
   /**
-   * Cursor for the next (older) page, or null when the thread start is loaded.
-   */
+  Cursor for the next (older) page, or null when the thread start is loaded.
+  */
   nextOffset: { id: number; date: number } | null;
 }
 
@@ -138,13 +138,13 @@ export interface ReadCommentsParams {
 }
 
 /**
- * Reads one window of a post's comments, newest window first: `offsetId` is
- * the oldest loaded comment and pages backwards through the thread.
- *
- * The discussion group's slash commands ride along: the comments composer
- * posts into that group, so its menu is the group's. The two reads run
- * concurrently over the one connection.
- */
+Reads one window of a post's comments, newest window first: `offsetId` is
+the oldest loaded comment and pages backwards through the thread.
+
+The discussion group's slash commands ride along: the comments composer
+posts into that group, so its menu is the group's. The two reads run
+concurrently over the one connection.
+*/
 export async function readComments(
   client: TelegramClient,
   params: ReadCommentsParams,
@@ -171,11 +171,11 @@ export async function readComments(
 }
 
 /**
- * Normalizes a raw `messages.getReplies` answer: the thread root is dropped
- * (Telegram can include it as the first message) and the window is re-ordered
- * oldest first, matching `getHistory`'s contract. The cursor is the oldest
- * comment of a page that may still have older ones behind it.
- */
+Normalizes a raw `messages.getReplies` answer: the thread root is dropped
+(Telegram can include it as the first message) and the window is re-ordered
+oldest first, matching `getHistory`'s contract. The cursor is the oldest
+comment of a page that may still have older ones behind it.
+*/
 export function normalizeReplies(res: tl.messages.TypeMessages, rootId: number, limit: number): CommentPage {
   if (res._ === 'messages.messagesNotModified') {
     return { comments: [], count: res.count, nextOffset: null };

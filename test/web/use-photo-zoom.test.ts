@@ -5,10 +5,10 @@ import { usePhotoZoom } from '../../apps/web/src/usePhotoZoom';
 import type { PhotoZoom } from '../../apps/web/src/usePhotoZoom';
 
 /**
- * The viewer's zoom hook. The math is tested in `photo-zoom.test.ts`; here the
- * pointer, wheel and resize bookkeeping is driven directly, because jsdom has
- * no gesture recogniser and every branch is a gesture window.
- */
+The viewer's zoom hook. The math is tested in `photo-zoom.test.ts`; here the
+pointer, wheel and resize bookkeeping is driven directly, because jsdom has
+no gesture recogniser and every branch is a gesture window.
+*/
 
 interface FakeStage extends HTMLElement {
   wheel: Array<(event: WheelEvent) => void>;

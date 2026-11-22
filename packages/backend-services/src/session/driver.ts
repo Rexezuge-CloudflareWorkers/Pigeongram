@@ -8,6 +8,7 @@ import { EngineError } from './errors';
 import type { AvatarSize, MediaDownload, MessageMediaOptions } from './media';
 import { readAvatar, readAvatarVersion, streamMessageMedia, streamSticker } from './media';
 import type { AvatarImage } from './media';
+import { MediaTargetCache } from './media-targets';
 import { CallRegistry } from './call-registry';
 import { sendCallSignaling } from './call-rpc';
 import type { UploadGroupSpec, UploadSpec } from './upload-spec';
@@ -27,40 +28,45 @@ import type { MtBundleFactory, PhoneLoginCallbacks, QrLoginCallbacks } from './d
 export type { MtBundleFactory, PhoneLoginCallbacks, QrLoginCallbacks } from './driver-types';
 
 /**
- * Owns the mtcute client for one Telegram account: constructs it lazily (so a
- * missing credential surfaces as a typed error, not a boot failure), exposes
- * the connect/disconnect lifecycle the wake cycle and the live session drive,
- * and turns raw updates into bridge events.
- *
- * The bundle survives across `connect`/`disconnect` cycles; `logout` drops it
- * so the next login starts from an empty session.
- */
+Owns the mtcute client for one Telegram account: constructs it lazily (so a
+missing credential surfaces as a typed error, not a boot failure), exposes
+the connect/disconnect lifecycle the wake cycle and the live session drive,
+and turns raw updates into bridge events.
+
+The bundle survives across `connect`/`disconnect` cycles; `logout` drops it
+so the next login starts from an empty session.
+*/
 export class TelegramDriver {
   #bundle: MtBundle | null = null;
   readonly #listeners = new Set<(event: UpdateEvent | null) => void>();
   /**
-   * The album ledger: the unread album members the update stream delivered.
-   * It lives here because the driver sees every update and answers every
-   * bridge call, and the two ends have to agree on the unread counts.
-   */
+  The album ledger: the unread album members the update stream delivered.
+  It lives here because the driver sees every update and answers every
+  bridge call, and the two ends have to agree on the unread counts.
+  */
   readonly #albums: UnreadAlbumLedger;
   /**
-   * The calls the engine knows about. It holds the access hash of each one,
-   * so the browser can answer a call by its id and never carries the hash
-   * itself.
-   */
+  The calls the engine knows about. It holds the access hash of each one,
+  so the browser can answer a call by its id and never carries the hash
+  itself.
+  */
   readonly #calls = new CallRegistry();
   /**
-   * The sticker documents the picker has seen, addressed by the decimal ids
-   * the bridge minted. It is memory-only: the pack identity in a send is the
-   * cold-start fallback after a restart.
-   */
+  The sticker documents the picker has seen, addressed by the decimal ids
+  the bridge minted. It is memory-only: the pack identity in a send is the
+  cold-start fallback after a restart.
+  */
   readonly #stickers = new StickerRegistry();
   /**
-   * Whether a call is up. A call keeps the session alive: its signalling
-   * rides the account's connection, so dropping it mid-call would take the
-   * call with it.
-   */
+  The media locations recently streamed, so the many range requests of one
+  video do not each pay a `getMessages` round trip.
+  */
+  readonly #mediaTargets = new MediaTargetCache();
+  /**
+  Whether a call is up. A call keeps the session alive: its signalling
+  rides the account's connection, so dropping it mid-call would take the
+  call with it.
+  */
   #activeCall = false;
 
   constructor(
@@ -73,16 +79,16 @@ export class TelegramDriver {
   }
 
   /**
-   * Whether a call is up.
-   */
+  Whether a call is up.
+  */
   get hasActiveCall(): boolean {
     return this.#activeCall;
   }
 
   /**
-   * Subscribes to mapped updates. `null` marks a raw update the bridge has no
-   * event for — the soak counters still want to see it.
-   */
+  Subscribes to mapped updates. `null` marks a raw update the bridge has no
+  event for — the soak counters still want to see it.
+  */
   onEvent(listener: (event: UpdateEvent | null) => void): () => void {
     this.#listeners.add(listener);
     return () => {
@@ -114,12 +120,12 @@ export class TelegramDriver {
   }
 
   /**
-   * Hands one event to the ledger and then to every listener.
-   *
-   * The ledger learns the albums from the stream and corrects the counts the
-   * bridge serves. Its failures stay as isolated as the listeners': an update
-   * must always reach the browser.
-   */
+  Hands one event to the ledger and then to every listener.
+  
+  The ledger learns the albums from the stream and corrects the counts the
+  bridge serves. Its failures stay as isolated as the listeners': an update
+  must always reach the browser.
+  */
   #publish(event: UpdateEvent | null): void {
     let corrected = event;
     if (corrected) {
@@ -167,10 +173,10 @@ export class TelegramDriver {
   }
 
   /**
-   * The phone-number path: `auth.sendCode`, then the operator's code, with the
-   * 2FA leg folded in exactly the way the QR path handles it. The code loop is
-   * deliberate — a mistyped code keeps the flow alive instead of ending it.
-   */
+  The phone-number path: `auth.sendCode`, then the operator's code, with the
+  2FA leg folded in exactly the way the QR path handles it. The code loop is
+  deliberate — a mistyped code keeps the flow alive instead of ending it.
+  */
   async signInPhone(callbacks: PhoneLoginCallbacks): Promise<MeDto> {
     const { client } = this.#ensure();
     const sent = await client.sendCode({ phone: callbacks.phone, abortSignal: callbacks.abortSignal });
@@ -220,15 +226,15 @@ export class TelegramDriver {
   }
 
   /**
-   * Ends the connection and, if the updates manager never managed to establish
-   * a state, drops the bundle entirely.
-   *
-   * The second part is not optional: mtcute's updates loop restarts without
-   * backoff when the initial state fetch fails, and a client that was
-   * disconnected mid-fetch would keep failing it forever. A bundle that never
-   * caught up has nothing worth keeping — auth keys are written through, so the
-   * next connect rebuilds it from storage.
-   */
+  Ends the connection and, if the updates manager never managed to establish
+  a state, drops the bundle entirely.
+  
+  The second part is not optional: mtcute's updates loop restarts without
+  backoff when the initial state fetch fails, and a client that was
+  disconnected mid-fetch would keep failing it forever. A bundle that never
+  caught up has nothing worth keeping — auth keys are written through, so the
+  next connect rebuilds it from storage.
+  */
   async disconnect(): Promise<void> {
     const bundle = this.#bundle;
     if (!bundle) return;
@@ -248,18 +254,18 @@ export class TelegramDriver {
   }
 
   /**
-   * Replays missed updates: starts the updates loop (idempotent) and waits for
-   * the manager's catch-up to settle — `updating` → `connected` — with a
-   * timeout so a wake can never hang forever.
-   *
-   * Refuses to start on a disconnected client: mtcute's updates loop restarts
-   * without backoff when it cannot fetch the initial state, so the engine must
-   * never hand it a dead connection.
-   *
-   * The message mirrors mtcute's own wording so one search finds both throws,
-   * and the code marks the failure as retryable. It is diagnostic text only:
-   * the app-facing sentence is chosen where the failure is broadcast.
-   */
+  Replays missed updates: starts the updates loop (idempotent) and waits for
+  the manager's catch-up to settle — `updating` → `connected` — with a
+  timeout so a wake can never hang forever.
+  
+  Refuses to start on a disconnected client: mtcute's updates loop restarts
+  without backoff when it cannot fetch the initial state, so the engine must
+  never hand it a dead connection.
+  
+  The message mirrors mtcute's own wording so one search finds both throws,
+  and the code marks the failure as retryable. It is diagnostic text only:
+  the app-facing sentence is chosen where the failure is broadcast.
+  */
   async catchUp(timeoutMs = 25_000): Promise<void> {
     const { base } = this.#ensure();
     if (!base.isConnected) {
@@ -303,36 +309,38 @@ export class TelegramDriver {
   }
 
   /**
-   * Relays one signalling packet to the other peer of a call.
-   */
+  Relays one signalling packet to the other peer of a call.
+  */
   async sendCallSignaling(callId: string, data: Uint8Array): Promise<void> {
     await sendCallSignaling(this.#ensure().client, this.#calls, callId, data);
   }
 
   async streamMessageMedia(chatId: number, messageId: number, options: MessageMediaOptions = {}): Promise<MediaDownload> {
     const { client } = this.#ensure();
-    return withPeerRetry(client, [chatId], () => streamMessageMedia(client, chatId, messageId, options, this.config.mediaWindowBytes));
+    return withPeerRetry(client, [chatId], () =>
+      streamMessageMedia(client, chatId, messageId, options, this.config.mediaWindowBytes, this.#mediaTargets),
+    );
   }
 
   /**
-   * Streams one sticker the picker read, by the document id the bridge minted.
-   */
+  Streams one sticker the picker read, by the document id the bridge minted.
+  */
   async streamSticker(documentId: string, preview: boolean): Promise<MediaDownload> {
     const { client } = this.#ensure();
     return streamSticker(client, this.#stickers, documentId, preview);
   }
 
   /**
-   * Reads a profile photo whole, with the version token that identifies it.
-   */
+  Reads a profile photo whole, with the version token that identifies it.
+  */
   async readAvatar(chatId: number, size: AvatarSize): Promise<AvatarImage> {
     const { client } = this.#ensure();
     return withPeerRetry(client, [chatId], () => readAvatar(client, chatId, size));
   }
 
   /**
-   * The version token of a profile photo, without reading its bytes.
-   */
+  The version token of a profile photo, without reading its bytes.
+  */
   async readAvatarVersion(chatId: number, size: AvatarSize): Promise<string | null> {
     const { client } = this.#ensure();
     return withPeerRetry(client, [chatId], () => readAvatarVersion(client, chatId, size));
@@ -364,6 +372,7 @@ export class TelegramDriver {
       this.#albums.clear();
       this.#calls.clear();
       this.#stickers.clear();
+      this.#mediaTargets.clear();
       this.#activeCall = false;
       try {
         await bundle.base.destroy();

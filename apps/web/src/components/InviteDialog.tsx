@@ -4,31 +4,31 @@ import { Button } from './Button';
 import { Dialog } from './Dialog';
 
 /**
- * The card a private invite link opens: what Telegram knows about a chat the
- * account is not in yet, and the one write that changes that.
- *
- * Telegram's `chatInvite` carries a title, a kind, a member count and an
- * approval flag, but no peer — so there is nothing to open until the join
- * succeeds. The card is the reader's decision, and the shared `Dialog` owns the
- * modal behaviours; this adds only the chat's face and the two actions.
- */
+The card a private invite link opens: what Telegram knows about a chat the
+account is not in yet, and the one write that changes that.
+
+Telegram's `chatInvite` carries a title, a kind, a member count and an
+approval flag, but no peer — so there is nothing to open until the join
+succeeds. The card is the reader's decision, and the shared `Dialog` owns the
+modal behaviours; this adds only the chat's face and the two actions.
+*/
 
 interface InviteDialogProps {
   preview: ChatInvitePreviewDto;
   /**
-   * A join is in flight; both actions are disabled while it runs.
-   */
+  A join is in flight; both actions are disabled while it runs.
+  */
   joining: boolean;
   /**
-   * Telegram took the join request and an admin has to approve it. The card
-   * stays up so the reader can see why Join will not move.
-   */
+  Telegram took the join request and an admin has to approve it. The card
+  stays up so the reader can see why Join will not move.
+  */
   requested: boolean;
   onJoin: () => void;
   onClose: () => void;
   /**
-   * Whether the card is animating out; forwarded to the shared Dialog.
-   */
+  Whether the card is animating out; forwarded to the shared Dialog.
+  */
   exiting?: boolean;
 }
 

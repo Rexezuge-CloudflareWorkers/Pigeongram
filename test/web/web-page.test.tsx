@@ -6,10 +6,10 @@ import { TelegramLinkProvider } from '../../apps/web/src/telegram-links';
 import type { MessageDto, MessageWebPageDto } from '../../apps/web/src/types';
 
 /**
- * The link preview card: Telegram's copy of the page, linked whole. The photo
- * comes from `/user/file` with the preview's id as a cache-buster, so an edit
- * that changes the image never serves a stale one from the browser cache.
- */
+The link preview card: Telegram's copy of the page, linked whole. The photo
+comes from `/user/file` with the preview's id as a cache-buster, so an edit
+that changes the image never serves a stale one from the browser cache.
+*/
 
 afterEach(cleanup);
 

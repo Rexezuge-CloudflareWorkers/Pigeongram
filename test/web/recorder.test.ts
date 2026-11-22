@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { elapsedLabel, startVoiceRecording } from '../../apps/web/src/recorder';
 
 /**
- * The recorder is a thin wrapper over `opus-recorder`: what belongs to this app
- * is the file it hands back, the duration it reports and the release of the
- * microphone on every exit. The library itself is faked here.
- */
+The recorder is a thin wrapper over `opus-recorder`: what belongs to this app
+is the file it hands back, the duration it reports and the release of the
+microphone on every exit. The library itself is faked here.
+*/
 
 interface FakeOptions {
   encoderPath?: string;
@@ -75,9 +75,9 @@ afterEach(() => {
 });
 
 /**
- * A browser capture failure is an `Error` whose `name` is the spec's code; the
- * recorder reads the name and nothing else.
- */
+A browser capture failure is an `Error` whose `name` is the spec's code; the
+recorder reads the name and nothing else.
+*/
 function captureError(name: string): Error {
   const error = new Error(name);
   Object.defineProperty(error, 'name', { value: name });

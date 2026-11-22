@@ -5,13 +5,13 @@ import { AnchoredMenu, useAnchoredMenu } from '../../apps/web/src/components/use
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * The menu hook's shared rules.
- *
- * The three menus used to carry a copy of this behaviour each; these tests
- * pin the rules themselves — the portal, the clamp, the first-item focus, the
- * focus return and the three ways a menu goes away — so a later menu gets the
- * same behaviour by using the hook rather than by copying it again.
- */
+The menu hook's shared rules.
+
+The three menus used to carry a copy of this behaviour each; these tests
+pin the rules themselves — the portal, the clamp, the first-item focus, the
+focus return and the three ways a menu goes away — so a later menu gets the
+same behaviour by using the hook rather than by copying it again.
+*/
 
 interface HarnessProps {
   initialOpen?: boolean;

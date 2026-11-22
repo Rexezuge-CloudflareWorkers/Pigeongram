@@ -8,49 +8,49 @@ import { Icon } from './Icon';
 import { Spinner } from './Spinner';
 
 /**
- * The call in progress.
- *
- * The overlay covers the app while a call is up: the reader is in a call, and
- * the chat behind it is not what they are doing. It is deliberately **not** a
- * history layer — the media viewer is the only one of those — so Back leaves
- * the call rather than closing it, exactly as it leaves the forward picker.
- *
- * The audio of the other side is played by an `<audio>` element the overlay
- * owns; the stream comes from the peer connection and the element never
- * appears.
- */
+The call in progress.
+
+The overlay covers the app while a call is up: the reader is in a call, and
+the chat behind it is not what they are doing. It is deliberately **not** a
+history layer — the media viewer is the only one of those — so Back leaves
+the call rather than closing it, exactly as it leaves the forward picker.
+
+The audio of the other side is played by an `<audio>` element the overlay
+owns; the stream comes from the peer connection and the element never
+appears.
+*/
 
 interface CallOverlayProps {
   /**
-   * The call the overlay shows.
-   */
+  The call the overlay shows.
+  */
   view: CallView;
   /**
-   * The chat the call belongs to, when the chat list knows it.
-   */
+  The chat the call belongs to, when the chat list knows it.
+  */
   chat: ChatDto | null;
   /**
-   * The other side's audio, once it arrives.
-   */
+  The other side's audio, once it arrives.
+  */
   remoteStream: MediaStream | null;
   onAccept: () => void;
   onDecline: () => void;
   onHangUp: () => void;
   onToggleMute: () => void;
   /**
-   * Takes the overlay away after the call ended.
-   */
+  Takes the overlay away after the call ended.
+  */
   onDismiss: () => void;
   /**
-   * Whether the overlay is leaving: runs the exit keyframe while the host
-   * keeps it mounted for one beat.
-   */
+  Whether the overlay is leaving: runs the exit keyframe while the host
+  keeps it mounted for one beat.
+  */
   exiting?: boolean;
 }
 
 /**
- * How long the finished-call notice stays before it goes away.
- */
+How long the finished-call notice stays before it goes away.
+*/
 const ENDED_TIMEOUT_MS = 4000;
 
 export function CallOverlay({
@@ -69,8 +69,8 @@ export function CallOverlay({
   const [seconds, setSeconds] = useState(0);
 
   /**
-   * The clock of a call that is up.
-   */
+  The clock of a call that is up.
+  */
   useEffect(() => {
     if (view.phase !== 'active') return;
     const tick = (): void => setSeconds(Math.floor((Date.now() - view.startedAt) / 1000));
@@ -80,9 +80,9 @@ export function CallOverlay({
   }, [view.phase, view.startedAt]);
 
   /**
-   * The ringtone follows the call's state: it rings while nobody has picked
-   * up, and it is silent once the media flows.
-   */
+  The ringtone follows the call's state: it rings while nobody has picked
+  up, and it is silent once the media flows.
+  */
   useEffect(() => {
     if (view.phase !== 'ringing') {
       void ringtone.current?.stop();
@@ -98,8 +98,8 @@ export function CallOverlay({
   }, [view.phase]);
 
   /**
-   * The other side's audio goes into an element that is never seen.
-   */
+  The other side's audio goes into an element that is never seen.
+  */
   useEffect(() => {
     const element = audioRef.current;
     if (!element) return;
@@ -108,8 +108,8 @@ export function CallOverlay({
   }, [remoteStream]);
 
   /**
-   * A finished call says so for a moment and then goes away.
-   */
+  A finished call says so for a moment and then goes away.
+  */
   useEffect(() => {
     if (view.phase !== 'ended') return;
     const timer = setTimeout(onDismiss, ENDED_TIMEOUT_MS);
@@ -210,8 +210,8 @@ export function CallOverlay({
 }
 
 /**
- * The line under the peer's name.
- */
+The line under the peer's name.
+*/
 function statusOf(view: CallView, incoming: boolean, seconds: number): string {
   if (view.phase === 'ended') return 'The Call Ended';
   if (view.phase === 'connecting') return 'Connecting…';
@@ -220,8 +220,8 @@ function statusOf(view: CallView, incoming: boolean, seconds: number): string {
 }
 
 /**
- * The length of a call, in the way a phone writes it.
- */
+The length of a call, in the way a phone writes it.
+*/
 function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;

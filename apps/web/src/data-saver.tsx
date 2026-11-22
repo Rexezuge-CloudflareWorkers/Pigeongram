@@ -2,21 +2,21 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react';
 
 /**
- * The reader's data-saving choices: which media the app may download and play
- * without being asked.
- *
- * Every switch is per device, like the theme and the dynamic-color choices, so
- * it lives in `localStorage` under one key and never reaches the engine. The
- * switches are read through a context because the components that own the
- * loads — `Avatar`, `Media`, `Sticker`, `WebPagePreview` — sit deep in the
- * thread and the chat list, and threading a prop through every screen would
- * couple all of them to a preference only four of them use.
- *
- * When nothing is stored yet, the browser's own hint decides: `saveData` (the
- * Data Saver flag, which the user may have set system-wide) or a slow
- * `effectiveType` starts every switch off. The first explicit choice is then
- * stored and wins from the next visit on.
- */
+The reader's data-saving choices: which media the app may download and play
+without being asked.
+
+Every switch is per device, like the theme and the dynamic-color choices, so
+it lives in `localStorage` under one key and never reaches the engine. The
+switches are read through a context because the components that own the
+loads — `Avatar`, `Media`, `Sticker`, `WebPagePreview` — sit deep in the
+thread and the chat list, and threading a prop through every screen would
+couple all of them to a preference only four of them use.
+
+When nothing is stored yet, the browser's own hint decides: `saveData` (the
+Data Saver flag, which the user may have set system-wide) or a slow
+`effectiveType` starts every switch off. The first explicit choice is then
+stored and wins from the next visit on.
+*/
 
 interface DataSaverSettings {
   /**
@@ -64,10 +64,10 @@ interface NetworkHints {
 }
 
 /**
- * Whether the browser asks apps to economise. Both Chromium's Data Saver flag
- * and a connection reported as slow count; a browser that exposes neither
- * (Safari, Firefox) starts with everything loading.
- */
+Whether the browser asks apps to economise. Both Chromium's Data Saver flag
+and a connection reported as slow count; a browser that exposes neither
+(Safari, Firefox) starts with everything loading.
+*/
 function browserRequestsDataSaver(): boolean {
   if (typeof navigator === 'undefined') return false;
   const connection = (navigator as Navigator & { connection?: NetworkHints }).connection;
@@ -92,10 +92,10 @@ function parseSettings(raw: string): DataSaverSettings {
 }
 
 /**
- * The data-saver state and the setter the settings window reports to. The
- * stored value is read once (falling back to the browser's hint when there is
- * none) and written back on every change.
- */
+The data-saver state and the setter the settings window reports to. The
+stored value is read once (falling back to the browser's hint when there is
+none) and written back on every change.
+*/
 export function useDataSaverPreferences(): DataSaverControls {
   const [settings, setSettings] = useState<DataSaverSettings>(() => {
     try {
@@ -143,10 +143,10 @@ const NO_CONTROLS: DataSaverControls = {
 const DataSaverContext = createContext<DataSaverControls>(NO_CONTROLS);
 
 /**
- * Hands the current choices and their setter to the app. The default value is
- * "everything loads", so a component rendered on its own (a test, a screen
- * outside the signed-in shell) behaves as it did before the switch.
- */
+Hands the current choices and their setter to the app. The default value is
+"everything loads", so a component rendered on its own (a test, a screen
+outside the signed-in shell) behaves as it did before the switch.
+*/
 export function DataSaverProvider({ value, children }: { value: DataSaverControls; children: ReactNode }) {
   return <DataSaverContext.Provider value={value}>{children}</DataSaverContext.Provider>;
 }

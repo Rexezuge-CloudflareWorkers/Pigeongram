@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useExitAnimation } from '../../apps/web/src/components/useExitAnimation';
 
 /**
- * The exit beat an overlay spends after its visibility flips off, so a
- * dialog, toast or viewer can fade out instead of vanishing.
- */
+The exit beat an overlay spends after its visibility flips off, so a
+dialog, toast or viewer can fade out instead of vanishing.
+*/
 
 beforeEach(() => {
   vi.useFakeTimers();

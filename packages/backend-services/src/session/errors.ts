@@ -1,13 +1,13 @@
 import { ServiceError } from '@rexezuge/errors';
 
 /**
- * The machine-readable half of a bridge failure.
- *
- * The codes are deliberately coarse: a caller needs to know whether an
- * attempt was malformed, addressed something that does not exist, conflicted
- * with the account's state, was refused by access control, or is worth
- * retrying — not which of a hundred messages was printed.
- */
+The machine-readable half of a bridge failure.
+
+The codes are deliberately coarse: a caller needs to know whether an
+attempt was malformed, addressed something that does not exist, conflicted
+with the account's state, was refused by access control, or is worth
+retrying — not which of a hundred messages was printed.
+*/
 export type EngineErrorCode =
   | 'validation'
   | 'not_found'
@@ -40,21 +40,21 @@ export class EngineError extends ServiceError {
   }
 
   /**
-   * The bridge code as its narrowed type.
-   *
-   * `ServiceError.type` is a plain string so a subclass can name any stable
-   * code; this getter gives the engine's own callers the union back without a
-   * cast at every `failure.code` read.
-   */
+  The bridge code as its narrowed type.
+  
+  `ServiceError.type` is a plain string so a subclass can name any stable
+  code; this getter gives the engine's own callers the union back without a
+  cast at every `failure.code` read.
+  */
   get code(): EngineErrorCode {
     return this.type as EngineErrorCode;
   }
 }
 
 /**
- * The default code for a status, so existing `new EngineError(message, status)`
- * call sites get a useful classification without repeating it.
- */
+The default code for a status, so existing `new EngineError(message, status)`
+call sites get a useful classification without repeating it.
+*/
 function codeForStatus(status: number): EngineErrorCode {
   switch (status) {
     case 401:
@@ -84,6 +84,18 @@ function codeForStatus(status: number): EngineErrorCode {
 The readable form of the Free plan's daily row-write failure.
 */
 export const STORAGE_WRITE_QUOTA_MESSAGE = 'Durable Object storage write quota exhausted; it resets at 00:00 UTC. Reads still work.';
+
+/**
+The error a media range that starts past the file raises. It carries the file
+size because an HTTP `416` must answer with a `bytes *` content range, and
+only the download resolution knows it.
+*/
+export class RangeNotSatisfiableError extends EngineError {
+  constructor(readonly size: number) {
+    super('Requested range is outside the file', 416);
+    this.name = 'RangeNotSatisfiableError';
+  }
+}
 
 /**
 The runtime's own wording for the exhausted daily row budget.

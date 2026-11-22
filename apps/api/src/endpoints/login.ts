@@ -1,13 +1,13 @@
 import type { ApiContext } from '../types';
 
 /**
- * Cloudflare Access entry point.
- *
- * Access sends the browser here after its login flow. The redirect target is a
- * same-origin pathname carried in `next`, so a bookmarked chat survives the
- * round trip; anything else falls back to `/` rather than turning the entry
- * point into an open redirect.
- */
+Cloudflare Access entry point.
+
+Access sends the browser here after its login flow. The redirect target is a
+same-origin pathname carried in `next`, so a bookmarked chat survives the
+round trip; anything else falls back to `/` rather than turning the entry
+point into an open redirect.
+*/
 export function loginHandler(c: ApiContext): Response {
   return c.redirect(safeReturnPath(c.req.raw));
 }

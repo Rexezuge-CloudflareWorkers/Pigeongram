@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
 /**
- * The `data-theme` value for the app root. Dark is the default (and the
- * only theme the loader line ships); light mirrors Telegram's official
- * light palette and persists across reloads. Kept in a hook so the shell
- * stays under the god-file cap.
- */
+The `data-theme` value for the app root. Dark is the default (and the
+only theme the loader line ships); light mirrors Telegram's official
+light palette and persists across reloads. Kept in a hook so the shell
+stays under the god-file cap.
+*/
 type AppTheme = 'dark' | 'light';
 
 export function useTheme(): { theme: AppTheme; setTheme: React.Dispatch<React.SetStateAction<AppTheme>> } {

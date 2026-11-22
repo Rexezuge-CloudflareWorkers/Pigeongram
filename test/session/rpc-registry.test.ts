@@ -8,14 +8,14 @@ import { StickerRegistry } from '../../packages/backend-services/src/session/sti
 import { albumLedger } from './rpc-dispatch';
 
 /**
- * The method table is the one place the bridge's surface is classified.
- *
- * The list below is the contract, written out on purpose: it is what a reader
- * of `rpc-types.ts` sees, and comparing the table against it is what catches a
- * method added to one side and forgotten on the other. The read-only split is
- * the batch whitelist, and a write that slipped into it would run with no
- * defined completion order.
- */
+The method table is the one place the bridge's surface is classified.
+
+The list below is the contract, written out on purpose: it is what a reader
+of `rpc-types.ts` sees, and comparing the table against it is what catches a
+method added to one side and forgotten on the other. The read-only split is
+the batch whitelist, and a write that slipped into it would run with no
+defined completion order.
+*/
 const CONTRACT_METHODS: readonly RpcMethod[] = [
   'getMe',
   'getDialogs',

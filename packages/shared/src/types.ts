@@ -1,12 +1,12 @@
 /**
- * The JSON contract shared by the worker, the Pages proxy function and the SPA:
- * the DTOs the bridge carries. The RPC method shapes — `RpcMethod`, each
- * method's parameters and results — live in `rpc-types.ts`.
- *
- * The SPA keeps its own copy of these types (`apps/web/src/types.ts`) because it
- * is a separate build with its own tsconfig; keep the two in sync when the
- * contract changes.
- */
+The JSON contract shared by the worker, the Pages proxy function and the SPA:
+the DTOs the bridge carries. The RPC method shapes — `RpcMethod`, each
+method's parameters and results — live in `rpc-types.ts`.
+
+The SPA keeps its own copy of these types (`apps/web/src/types.ts`) because it
+is a separate build with its own tsconfig; keep the two in sync when the
+contract changes.
+*/
 
 import type { CallDto } from './call-types';
 
@@ -715,10 +715,10 @@ export interface DialogDto {
   pinned: boolean;
   muted: boolean;
   /**
-   * Whether the chat sits in the account's archive — Telegram's peer folder 1.
-   * The main list holds the chats in folder 0, and the archive the ones in
-   * folder 1; a chat is in exactly one of them.
-   */
+  Whether the chat sits in the account's archive — Telegram's peer folder 1.
+  The main list holds the chats in folder 0, and the archive the ones in
+  folder 1; a chat is in exactly one of them.
+  */
   archived: boolean;
 }
 
@@ -743,10 +743,10 @@ export interface DialogMessageDto {
   outgoing: boolean;
   service: boolean;
   /**
-   * Album membership: messages sharing a non-null `groupedId` are one album
-   * and count once towards the unread badge. Decimal string of Telegram's
-   * 64-bit group id.
-   */
+  Album membership: messages sharing a non-null `groupedId` are one album
+  and count once towards the unread badge. Decimal string of Telegram's
+  64-bit group id.
+  */
   groupedId: string | null;
 }
 
@@ -983,12 +983,12 @@ export type ServerSocketMessage =
   | { type: 'update'; update: UpdateEvent };
 
 /**
- * Login phases of the session engine.
- *
- * `scanned` is the window between the phone approving the QR code and the
- * server either completing the login or asking for the 2FA password.
- * `code` is the phone-number flow: a login code was sent and is awaited.
- */
+Login phases of the session engine.
+
+`scanned` is the window between the phone approving the QR code and the
+server either completing the login or asking for the 2FA password.
+`code` is the phone-number flow: a login code was sent and is awaited.
+*/
 export type LoginPhase = 'unauthorized' | 'qr' | 'scanned' | 'code' | 'password' | 'authorized' | 'error';
 
 export interface EngineStateDto {

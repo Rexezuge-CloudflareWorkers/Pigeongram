@@ -22,22 +22,22 @@ const ALGO_TO_SUBTLE: Record<string, string> = {
 };
 
 /**
- * TS's `BufferSource` is `ArrayBuffer`-backed while mtcute's provider contract
- * uses plain `Uint8Array`; both are the same bytes at runtime.
- */
+TS's `BufferSource` is `ArrayBuffer`-backed while mtcute's provider contract
+uses plain `Uint8Array`; both are the same bytes at runtime.
+*/
 const asBufferSource = (data: Uint8Array): BufferSource => data as unknown as BufferSource;
 const asRandomTarget = (buf: Uint8Array): Uint8Array<ArrayBuffer> => buf as unknown as Uint8Array<ArrayBuffer>;
 
 /**
- * The wasm surface the provider delegates to.
- *
- * Node has no `CompiledWasm` module rule, so the test suite cannot exercise the
- * real bindings: a `.wasm` import is an already-instantiated namespace there,
- * not the buffer `initSync` expects. The provider therefore takes them as a
- * constructor argument, defaulting to the bundled module — production keeps
- * the static import (Wrangler's rule depends on it) while the suite drives the
- * routing over a fake.
- */
+The wasm surface the provider delegates to.
+
+Node has no `CompiledWasm` module rule, so the test suite cannot exercise the
+real bindings: a `.wasm` import is an already-instantiated namespace there,
+not the buffer `initSync` expects. The provider therefore takes them as a
+constructor argument, defaulting to the bundled module — production keeps
+the static import (Wrangler's rule depends on it) while the suite drives the
+routing over a fake.
+*/
 export interface CryptoWasmBindings {
   readonly module: WebAssembly.Module;
   initSync(module: WebAssembly.Module): void;
@@ -69,15 +69,15 @@ const defaultBindings: CryptoWasmBindings = {
 };
 
 /**
- * Crypto provider for workerd, adapted from `@mtcute/web`'s `WebCryptoProvider`
- * (mtcute 0.32.5, MIT licence).
- *
- * The difference is WASM loading: instead of fetching the module over HTTP at
- * `initialize()` time, Wrangler compiles the bundled `.wasm` import into a
- * `WebAssembly.Module` and `initSync` instantiates it synchronously. SHA-1,
- * AES-CTR/IGE and gzip all come from that module; only PBKDF2, HMAC and
- * DRBG delegate to WebCrypto (`crypto.subtle`, available in workerd).
- */
+Crypto provider for workerd, adapted from `@mtcute/web`'s `WebCryptoProvider`
+(mtcute 0.32.5, MIT licence).
+
+The difference is WASM loading: instead of fetching the module over HTTP at
+`initialize()` time, Wrangler compiles the bundled `.wasm` import into a
+`WebAssembly.Module` and `initSync` instantiates it synchronously. SHA-1,
+AES-CTR/IGE and gzip all come from that module; only PBKDF2, HMAC and
+DRBG delegate to WebCrypto (`crypto.subtle`, available in workerd).
+*/
 export class WorkerCryptoProvider extends BaseCryptoProvider {
   #initialized = false;
 

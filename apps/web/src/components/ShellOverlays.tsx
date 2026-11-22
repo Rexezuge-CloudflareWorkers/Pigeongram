@@ -43,10 +43,10 @@ interface ShellOverlaysProps {
 }
 
 /**
- * The shell's page-level overlays, kept out of `SignedInShell` so that file
- * stays under the god-file cap. All three close through `Presence`, which holds
- * them for the exit beat after their state has already been cleared.
- */
+The shell's page-level overlays, kept out of `SignedInShell` so that file
+stays under the god-file cap. All three close through `Presence`, which holds
+them for the exit beat after their state has already been cleared.
+*/
 export function ShellOverlays({
   chat,
   dialogs,

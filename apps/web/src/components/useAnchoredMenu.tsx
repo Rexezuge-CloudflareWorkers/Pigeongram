@@ -3,72 +3,72 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent as 
 import { createPortal } from 'react-dom';
 
 /**
- * The shared behaviour of the app's menus, in the Material 3 menu shape:
- * a small (8px) `surface-container` surface at MD3 elevation 2 with tonal
- * pairing (no shadow needed beyond it), above the app.
- *
- * Each menu used to carry its own copy of the same six jobs: portal to the
- * body, measure and clamp into the viewport, focus the first item, restore the
- * trigger's focus, close on Escape and on a scroll outside the menu, and close
- * on a press outside it. The copies drifted — the account menu could not close
- * on a sidebar scroll, and the message menu could not restore focus — so the
- * rules live here once and the menus describe only what is inside them.
- *
- * Focus is architecture: the first item is focused on open, arrow keys move
- * within the menu (TAB is reserved for leaving the widget), Escape closes and
- * returns focus to the trigger, and a press outside dismisses without
- * stealing focus. The background is inert while the menu is open if a caller
- * passes `inertBackground`; by default the menu is a non-modal popover, so
- * the background stays interactive and the menu closes on scroll instead.
- */
+The shared behaviour of the app's menus, in the Material 3 menu shape:
+a small (8px) `surface-container` surface at MD3 elevation 2 with tonal
+pairing (no shadow needed beyond it), above the app.
+
+Each menu used to carry its own copy of the same six jobs: portal to the
+body, measure and clamp into the viewport, focus the first item, restore the
+trigger's focus, close on Escape and on a scroll outside the menu, and close
+on a press outside it. The copies drifted — the account menu could not close
+on a sidebar scroll, and the message menu could not restore focus — so the
+rules live here once and the menus describe only what is inside them.
+
+Focus is architecture: the first item is focused on open, arrow keys move
+within the menu (TAB is reserved for leaving the widget), Escape closes and
+returns focus to the trigger, and a press outside dismisses without
+stealing focus. The background is inert while the menu is open if a caller
+passes `inertBackground`; by default the menu is a non-modal popover, so
+the background stays interactive and the menu closes on scroll instead.
+*/
 
 const MARGIN = 8;
 const DEFAULT_ITEM = '[role="menuitem"]:not(:disabled)';
 
 /**
- * Where an open menu wants to sit, before it is clamped into the viewport.
- *
- * A point is the gesture's coordinates (the message menu); a trigger is the
- * control that opened it (the account and thread menus).
- */
+Where an open menu wants to sit, before it is clamped into the viewport.
+
+A point is the gesture's coordinates (the message menu); a trigger is the
+control that opened it (the account and thread menus).
+*/
 export type MenuAnchor = { kind: 'point'; x: number; y: number } | { kind: 'trigger'; rect: DOMRect };
 
 export interface UseAnchoredMenuOptions {
   /**
-   * Whether the menu is mounted. Bindings only exist while it is.
-   */
+  Whether the menu is mounted. Bindings only exist while it is.
+  */
   open: boolean;
   /**
-   * Closes the menu. A dismiss (Escape, outside press, outside scroll, resize)
-   * also returns focus through `returnFocus`.
-   */
+  Closes the menu. A dismiss (Escape, outside press, outside scroll, resize)
+  also returns focus through `returnFocus`.
+  */
   onClose: () => void;
   /**
-   * Read after every measure: the trigger's rect, or the gesture's point.
-   */
+  Read after every measure: the trigger's rect, or the gesture's point.
+  */
   anchor: () => MenuAnchor | null;
   /**
-   * Which edge of the trigger the menu lines up with. A point ignores it.
-   */
+  Which edge of the trigger the menu lines up with. A point ignores it.
+  */
   align?: 'start' | 'end';
   /**
-   * The control that opened the menu. A press on it is not "outside": the
-   * trigger's own click handler decides whether to close.
-   */
+  The control that opened the menu. A press on it is not "outside": the
+  trigger's own click handler decides whether to close.
+  */
   trigger?: RefObject<HTMLElement | null>;
   /**
-   * Where focus goes after a dismiss. Menus opened from a gesture leave it
-   * unset; menus opened from a button point it at the button.
-   */
+  Where focus goes after a dismiss. Menus opened from a gesture leave it
+  unset; menus opened from a button point it at the button.
+  */
   returnFocus?: () => void;
   /**
-   * What counts as a focusable item, and what the arrow keys cycle.
-   */
+  What counts as a focusable item, and what the arrow keys cycle.
+  */
   itemSelector?: string;
   /**
-   * Re-measures when it changes — the reaction picker expanding is the one
-   * case. Focus is still only claimed on opening.
-   */
+  Re-measures when it changes — the reaction picker expanding is the one
+  case. Focus is still only claimed on opening.
+  */
   remeasureOn?: unknown;
 }
 
@@ -84,11 +84,11 @@ export function useAnchoredMenu(options: UseAnchoredMenuOptions): AnchoredMenuSt
   const focused = useRef(false);
 
   /**
-   * The latest props, read by the listeners and the measure. They are refs so
-   * an inline `anchor`/`onClose` cannot re-run the layout effect (and feed a
-   * fresh position back into a render loop), and so the listeners bind once
-   * per open instead of once per render.
-   */
+  The latest props, read by the listeners and the measure. They are refs so
+  an inline `anchor`/`onClose` cannot re-run the layout effect (and feed a
+  fresh position back into a render loop), and so the listeners bind once
+  per open instead of once per render.
+  */
   const latest = useRef(options);
   useLayoutEffect(() => {
     latest.current = options;
@@ -183,25 +183,25 @@ interface AnchoredMenuProps {
   id?: string;
   children: ReactNode;
   /**
-   * The message menu keeps a right-click inside itself from reaching the
-   * bubble's own handler.
-   */
+  The message menu keeps a right-click inside itself from reaching the
+  bubble's own handler.
+  */
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
   /**
-   * Whether the menu is leaving: runs the exit keyframe while the parent
-   * keeps it mounted for one beat.
-   */
+  Whether the menu is leaving: runs the exit keyframe while the parent
+  keeps it mounted for one beat.
+  */
   exiting?: boolean;
 }
 
 /**
- * The portal half: a fixed menu at the hook's clamped position, on the body so
- * no scroll container can clip it. The surface is MD3 menu tone:
- * `surface-container` with the menu corner, no border needed for separation.
- * Motion is opt-in: it only moves under `prefers-reduced-motion:
- * no-preference` via the `.anchored-menu` animation; reduced motion gets a
- * plain swap. The exit beat runs when `exiting` is set.
- */
+The portal half: a fixed menu at the hook's clamped position, on the body so
+no scroll container can clip it. The surface is MD3 menu tone:
+`surface-container` with the menu corner, no border needed for separation.
+Motion is opt-in: it only moves under `prefers-reduced-motion:
+no-preference` via the `.anchored-menu` animation; reduced motion gets a
+plain swap. The exit beat runs when `exiting` is set.
+*/
 export function AnchoredMenu({
   menuRef,
   position,
@@ -231,9 +231,9 @@ export function AnchoredMenu({
 }
 
 /**
- * Cycles focus through the menu's items; the index is taken from the focused
- * item, so opening (first item focused) and tabbing in both wrap sensibly.
- */
+Cycles focus through the menu's items; the index is taken from the focused
+item, so opening (first item focused) and tabbing in both wrap sensibly.
+*/
 function moveFocus(container: HTMLElement, step: number, itemSelector: string): void {
   const items = [...container.querySelectorAll<HTMLElement>(itemSelector)];
   if (items.length === 0) return;

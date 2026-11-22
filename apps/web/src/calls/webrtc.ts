@@ -1,45 +1,45 @@
 /**
- * The media plane of a call: the peer connection and the microphone.
- *
- * The media never comes near the worker. Telegram's server hands the two
- * peers the addresses of the relays they may use, and from there the audio
- * travels directly between the two browsers — over the relay when a direct
- * route cannot be found, and over the peer connection's own encryption
- * either way.
- *
- * The handshake that sets the peer connection up travels through the
- * signalling channel instead, which is encrypted with the call's shared key.
- * That is what authenticates the peer connection: the session description
- * arrives inside a channel only the two peers can read, so the DTLS
- * fingerprint it carries cannot have been swapped on the way.
- */
+The media plane of a call: the peer connection and the microphone.
+
+The media never comes near the worker. Telegram's server hands the two
+peers the addresses of the relays they may use, and from there the audio
+travels directly between the two browsers — over the relay when a direct
+route cannot be found, and over the peer connection's own encryption
+either way.
+
+The handshake that sets the peer connection up travels through the
+signalling channel instead, which is encrypted with the call's shared key.
+That is what authenticates the peer connection: the session description
+arrives inside a channel only the two peers can read, so the DTLS
+fingerprint it carries cannot have been swapped on the way.
+*/
 
 import type { CallConnectionDto } from '../call-types';
 
 /**
- * The browser pieces a peer needs, injectable so the lifecycle can be tested
- * without a real RTCPeerConnection or a real microphone.
- */
+The browser pieces a peer needs, injectable so the lifecycle can be tested
+without a real RTCPeerConnection or a real microphone.
+*/
 export interface CallPeerDeps {
   /**
-   * Makes the peer connection. Defaults to the browser's constructor.
-   */
+  Makes the peer connection. Defaults to the browser's constructor.
+  */
   createConnection?: (configuration: RTCConfiguration) => RTCPeerConnection;
   /**
-   * Asks for the microphone. Defaults to `navigator.mediaDevices`.
-   */
+  Asks for the microphone. Defaults to `navigator.mediaDevices`.
+  */
   mediaDevices?: Pick<MediaDevices, 'getUserMedia'>;
 }
 
 /**
- * The relays the call may use.
- *
- * Telegram's call carries a list of endpoints, and the WebRTC ones are the
- * only ones a browser can speak to: a page cannot open the raw UDP socket
- * the older transport needs. The endpoint is either a TURN relay — which
- * authenticates with a username and a password — or a STUN server, which
- * only helps with discovering the address.
- */
+The relays the call may use.
+
+Telegram's call carries a list of endpoints, and the WebRTC ones are the
+only ones a browser can speak to: a page cannot open the raw UDP socket
+the older transport needs. The endpoint is either a TURN relay — which
+authenticates with a username and a password — or a STUN server, which
+only helps with discovering the address.
+*/
 export function iceServersFor(connections: CallConnectionDto[]): RTCIceServer[] {
   const servers: RTCIceServer[] = [];
   for (const connection of connections) {
@@ -60,26 +60,26 @@ export function iceServersFor(connections: CallConnectionDto[]): RTCIceServer[] 
 }
 
 /**
- * The events a caller of the peer needs to hear about.
- */
+The events a caller of the peer needs to hear about.
+*/
 interface CallPeerHandlers {
   /**
-   * A local ICE candidate, ready to be sent to the other peer.
-   */
+  A local ICE candidate, ready to be sent to the other peer.
+  */
   onCandidate(candidate: RTCIceCandidateInit): void;
   /**
-   * The other peer's audio arrived.
-   */
+  The other peer's audio arrived.
+  */
   onTrack(stream: MediaStream): void;
   /**
-   * The peer connection's state changed.
-   */
+  The peer connection's state changed.
+  */
   onState(state: RTCPeerConnectionState): void;
 }
 
 /**
- * One side of a call's peer connection.
- */
+One side of a call's peer connection.
+*/
 export class CallPeer {
   readonly #connection: RTCPeerConnection;
   readonly #mediaDevices: Pick<MediaDevices, 'getUserMedia'>;
@@ -110,18 +110,18 @@ export class CallPeer {
   }
 
   /**
-   * The state of the peer connection.
-   */
+  The state of the peer connection.
+  */
   get state(): RTCPeerConnectionState {
     return this.#connection.connectionState;
   }
 
   /**
-   * Asks for the microphone and puts it on the connection.
-   *
-   * The browser does the encoding — Opus over DTLS-SRTP — so nothing about
-   * the audio itself is bespoke.
-   */
+  Asks for the microphone and puts it on the connection.
+  
+  The browser does the encoding — Opus over DTLS-SRTP — so nothing about
+  the audio itself is bespoke.
+  */
   async openMicrophone(): Promise<void> {
     const stream = await this.#mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -141,8 +141,8 @@ export class CallPeer {
   }
 
   /**
-   * Makes the offer that starts the handshake.
-   */
+  Makes the offer that starts the handshake.
+  */
   async createOffer(): Promise<RTCSessionDescriptionInit> {
     const offer = await this.#connection.createOffer();
     await this.#connection.setLocalDescription(offer);
@@ -150,8 +150,8 @@ export class CallPeer {
   }
 
   /**
-   * Answers the other peer's offer.
-   */
+  Answers the other peer's offer.
+  */
   async acceptOffer(description: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     await this.#connection.setRemoteDescription(description);
     const answer = await this.#connection.createAnswer();
@@ -160,15 +160,15 @@ export class CallPeer {
   }
 
   /**
-   * Takes the other peer's answer.
-   */
+  Takes the other peer's answer.
+  */
   async acceptAnswer(description: RTCSessionDescriptionInit): Promise<void> {
     await this.#connection.setRemoteDescription(description);
   }
 
   /**
-   * Adds the other peer's candidate.
-   */
+  Adds the other peer's candidate.
+  */
   async addCandidate(candidate: RTCIceCandidateInit): Promise<void> {
     if (!candidate.candidate) return;
     try {
@@ -180,8 +180,8 @@ export class CallPeer {
   }
 
   /**
-   * Mutes or unmutes the microphone.
-   */
+  Mutes or unmutes the microphone.
+  */
   setMuted(muted: boolean): void {
     for (const track of this.#localStream?.getAudioTracks() ?? []) {
       track.enabled = !muted;
@@ -189,16 +189,16 @@ export class CallPeer {
   }
 
   /**
-   * Whether the microphone is muted.
-   */
+  Whether the microphone is muted.
+  */
   get muted(): boolean {
     const tracks = this.#localStream?.getAudioTracks() ?? [];
     return tracks.length > 0 && tracks.every((track) => !track.enabled);
   }
 
   /**
-   * Tears the peer connection down and releases the microphone.
-   */
+  Tears the peer connection down and releases the microphone.
+  */
   close(): void {
     if (this.#closed) return;
     this.#closed = true;

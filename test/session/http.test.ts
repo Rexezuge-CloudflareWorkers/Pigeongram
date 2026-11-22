@@ -5,9 +5,9 @@ import { EngineError, STORAGE_WRITE_QUOTA_MESSAGE } from '../../packages/backend
 import { errorResponse, MAX_JSON_BODY_BYTES, readJsonBody } from '../../packages/backend-services/src/session/http';
 
 /**
- * The bridge's request boundary: a body larger than the CPU budget is worth
- * is refused before it is parsed, and every failure keeps its JSON shape.
- */
+The bridge's request boundary: a body larger than the CPU budget is worth
+is refused before it is parsed, and every failure keeps its JSON shape.
+*/
 
 const URL = 'https://session-engine.internal/user/rpc';
 

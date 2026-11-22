@@ -1,21 +1,21 @@
 /**
- * One structured log line per event.
- *
- * Workers Logs indexes JSON fields, so `{ level, event, …fields }` is
- * queryable by event name and its values. Tests can assert the same fields by
- * parsing the line, without matching a prose message. Failures always go to
- * the console method that matches their level, so the platform's own level
- * filters keep working.
- */
+One structured log line per event.
+
+Workers Logs indexes JSON fields, so `{ level, event, …fields }` is
+queryable by event name and its values. Tests can assert the same fields by
+parsing the line, without matching a prose message. Failures always go to
+the console method that matches their level, so the platform's own level
+filters keep working.
+*/
 
 type LogLevel = 'info' | 'warn' | 'error';
 
 type LogFields = Record<string, unknown>;
 
 /**
- * The bridge's logger. `event` names what happened (`wake.skipped`,
- * `login.failed`); `fields` carries the structured context beside it.
- */
+The bridge's logger. `event` names what happened (`wake.skipped`,
+`login.failed`); `fields` carries the structured context beside it.
+*/
 export const log = {
   info(event: string, fields: LogFields = {}): void {
     write('info', event, fields);

@@ -6,10 +6,10 @@ import { WorkersWsTransport } from '../../packages/provider-clients/src/mtproto/
 import type { WebSocketConnect } from '../../packages/provider-clients/src/mtproto/transport';
 
 /**
- * The transport's URL grammar. The network is the seam: the URL the engine
- * asks a browser to open is the one thing this class decides, so the fake
- * connect records it instead of dialling Telegram.
- */
+The transport's URL grammar. The network is the seam: the URL the engine
+asks a browser to open is the one thing this class decides, so the fake
+connect records it instead of dialling Telegram.
+*/
 
 function dc(overrides: Partial<BasicDcOption> = {}): BasicDcOption {
   return { id: 1, ipAddress: '149.154.175.50', port: 443, ...overrides };

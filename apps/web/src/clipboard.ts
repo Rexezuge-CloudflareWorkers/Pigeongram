@@ -1,43 +1,43 @@
 /**
- * The clipboard.
- *
- * Reading is the upload path the user never made explicit: the browser hands
- * over whatever the source app put on the clipboard. Two halves matter — the
- * files become the upload, and the text decides whether the paste was meant as
- * an upload at all. A cell copied from a spreadsheet arrives as text *and* an
- * image of the cell; there the text is what the user meant to paste.
- *
- * Writing is the other half of the same clipboard: a handle the reader wants
- * to paste somewhere else.
- */
+The clipboard.
+
+Reading is the upload path the user never made explicit: the browser hands
+over whatever the source app put on the clipboard. Two halves matter — the
+files become the upload, and the text decides whether the paste was meant as
+an upload at all. A cell copied from a spreadsheet arrives as text *and* an
+image of the cell; there the text is what the user meant to paste.
+
+Writing is the other half of the same clipboard: a handle the reader wants
+to paste somewhere else.
+*/
 
 /**
- * What a paste carries: the files on the clipboard and the text with them.
- */
+What a paste carries: the files on the clipboard and the text with them.
+*/
 interface PastedContent {
   /**
-   * The files the clipboard holds, in the order the source app put them there.
-   */
+  The files the clipboard holds, in the order the source app put them there.
+  */
   files: File[];
   /**
-   * The plain text the clipboard carries alongside the files.
-   */
+  The plain text the clipboard carries alongside the files.
+  */
   text: string;
 }
 
 /**
- * Reads a paste. A missing or unreadable clipboard is an empty paste, never an
- * error: the composer then leaves the paste to the browser.
- */
+Reads a paste. A missing or unreadable clipboard is an empty paste, never an
+error: the composer then leaves the paste to the browser.
+*/
 export function readClipboard(data: DataTransfer | null): PastedContent {
   if (!data) return { files: [], text: '' };
   return { files: clipboardFiles(data), text: clipboardText(data) };
 }
 
 /**
- * The clipboard's files, taken from the item list. A browser that does not
- * fill the list still exposes the files themselves.
- */
+The clipboard's files, taken from the item list. A browser that does not
+fill the list still exposes the files themselves.
+*/
 function clipboardFiles(data: DataTransfer): File[] {
   const files: File[] = [];
   for (const item of Array.from(data.items ?? [])) {
@@ -59,13 +59,13 @@ function clipboardText(data: DataTransfer): string {
 }
 
 /**
- * Writes text to the clipboard.
- *
- * The asynchronous clipboard API is the way to write, but it is refused
- * outside a secure context and by some browsers when the page is not focused,
- * so a selection the browser can copy stands in for it. A clipboard that takes
- * neither is a failure the caller has to hear about.
- */
+Writes text to the clipboard.
+
+The asynchronous clipboard API is the way to write, but it is refused
+outside a secure context and by some browsers when the page is not focused,
+so a selection the browser can copy stands in for it. A clipboard that takes
+neither is a failure the caller has to hear about.
+*/
 export async function writeClipboard(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
@@ -78,10 +78,10 @@ export async function writeClipboard(text: string): Promise<void> {
 }
 
 /**
- * Copies text by selecting it in a hidden element and asking the browser to
- * copy the selection; the old way, and the only one that works without a
- * secure context.
- */
+Copies text by selecting it in a hidden element and asking the browser to
+copy the selection; the old way, and the only one that works without a
+secure context.
+*/
 function copyBySelection(text: string): boolean {
   const holder = document.createElement('textarea');
   holder.value = text;

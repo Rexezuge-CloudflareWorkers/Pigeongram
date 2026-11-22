@@ -1,13 +1,13 @@
 /**
- * The pointer helpers the viewer's gesture hooks share. Kept apart from
- * `photo-gestures.ts` so the zoom and swipe hooks can both use them without
- * either owning the other's bookkeeping.
- */
+The pointer helpers the viewer's gesture hooks share. Kept apart from
+`photo-gestures.ts` so the zoom and swipe hooks can both use them without
+either owning the other's bookkeeping.
+*/
 
 /**
- * Whether a press landed on a button or a link, which keeps its own click and
- * must not start a gesture.
- */
+Whether a press landed on a button or a link, which keeps its own click and
+must not start a gesture.
+*/
 export function isControl(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('button, a') !== null;
 }

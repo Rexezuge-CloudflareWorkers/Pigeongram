@@ -2,12 +2,12 @@ import { mergeMessages, replaceMessage } from './state';
 import type { ChatDto, MessageDto, PeerId } from './types';
 
 /**
- * The open thread's state and the folds a live update or a send applies to it.
- *
- * Kept apart from `state.ts` so that module stays under the god-file cap, and
- * because the thread's two cursors — the contiguous loaded range and the
- * chat's newest known message — are what forward paging is built on.
- */
+The open thread's state and the folds a live update or a send applies to it.
+
+Kept apart from `state.ts` so that module stays under the god-file cap, and
+because the thread's two cursors — the contiguous loaded range and the
+chat's newest known message — are what forward paging is built on.
+*/
 
 /**
 The open chat and its loaded messages, held as one value so the two can never
@@ -53,17 +53,17 @@ export interface ChatThread {
   */
   windowEndId: number | null;
   /**
-   The newest message known to exist in the chat: the dialog's last message,
-   advanced by live messages and sends. Comparing it with `windowEndId` is what
-   tells the view whether the loaded range reaches the newest message.
-   */
+  The newest message known to exist in the chat: the dialog's last message,
+  advanced by live messages and sends. Comparing it with `windowEndId` is what
+  tells the view whether the loaded range reaches the newest message.
+  */
   latestMessageId: number | null;
   /**
-   Ids of messages that arrived after the window landed — a live message, or
-   one the caller just sent — and that the view should animate in. History
-   reads and paging never add to it, and it is cleared on every open, so a
-   re-mount does not replay the entrance animation.
-   */
+  Ids of messages that arrived after the window landed — a live message, or
+  one the caller just sent — and that the view should animate in. History
+  reads and paging never add to it, and it is cleared on every open, so a
+  re-mount does not replay the entrance animation.
+  */
   newMessageIds: ReadonlySet<number>;
   /**
   The chat's newest pinned message, or null when it holds none. It is the

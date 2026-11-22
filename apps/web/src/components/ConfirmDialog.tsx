@@ -3,20 +3,20 @@ import { Button } from './Button';
 import { Dialog } from './Dialog';
 
 /**
- A modal confirmation in the Material dialog shape: a scrim, a compact elevated
- surface and two text actions. It owns the modal behaviours the rest of the SPA
- expects — focus moves to Cancel (the non-destructive choice), Tab stays inside
- the dialog, Escape and a press on the scrim cancel, and the element that opened
- the dialog gets focus back when it closes.
+A modal confirmation in the Material dialog shape: a scrim, a compact elevated
+surface and two text actions. It owns the modal behaviours the rest of the SPA
+expects — focus moves to Cancel (the non-destructive choice), Tab stays inside
+the dialog, Escape and a press on the scrim cancel, and the element that opened
+the dialog gets focus back when it closes.
 
- The parent owns the open/closed state and the busy state; `onConfirm` starts the
- work, and the buttons stay disabled with `busyLabel` while it runs. The confirm
- action wears the `danger` tone by default and the `accent` one when the action
- puts something back rather than taking it away.
+The parent owns the open/closed state and the busy state; `onConfirm` starts the
+work, and the buttons stay disabled with `busyLabel` while it runs. The confirm
+action wears the `danger` tone by default and the `accent` one when the action
+puts something back rather than taking it away.
 
- The shared `Dialog` carries the focus-trap and dismiss behaviour; this adds
- only the message content and the two actions.
- */
+The shared `Dialog` carries the focus-trap and dismiss behaviour; this adds
+only the message content and the two actions.
+*/
 
 interface ConfirmDialogProps {
   title: string;

@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fileUrl } from '../api';
+import { useDataSaver } from '../data-saver';
 import { formatBytes, mediaPreview } from '../format';
 import { downloadFileName } from '../media-download';
 import type { MessageDto, VideoQualityDto } from '../types';
 import { useGallerySwipe } from '../useGallerySwipe';
 import { usePhotoZoom } from '../usePhotoZoom';
+import { useVideoPlayback } from '../useVideoPlayback';
+import { autoQualityIndex, targetVideoHeight } from '../video-quality';
 import { Icon } from './Icon';
 import { isPhotoLike, isViewableMedia } from './Media';
 import { MessageText } from './MessageText';
@@ -37,9 +40,9 @@ chosen variant, while a download always fetches the maximum-quality variant.
 
 interface MediaViewerProps {
   /**
-   The clicked message's display group: a single message, or an album. Only the
-   visual members are navigable.
-   */
+  The clicked message's display group: a single message, or an album. Only the
+  visual members are navigable.
+  */
   messages: readonly MessageDto[];
   initialMessageId: number;
   exiting?: boolean;
@@ -56,8 +59,10 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   const [index, setIndex] = useState(initialIndex);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [streamQuality, setStreamQuality] = useState<number | 'auto'>('auto');
+  const { playerRef, attempt, remember, restore, retry } = useVideoPlayback();
   const closeRef = useRef<HTMLButtonElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const settings = useDataSaver();
   const current = items[index];
   const media = current?.media ?? null;
   const animated = media?.kind === 'animation';
@@ -65,7 +70,18 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   const showQuality = qualities.length >= 2;
   const selectedQuality =
     showQuality && streamQuality !== 'auto' && qualities.some((quality) => quality.index === streamQuality) ? streamQuality : 'auto';
-  const streamSrc = current ? fileUrl(current.chatId, current.id, selectedQuality === 'auto' ? {} : { quality: selectedQuality }) : '';
+  const automaticQuality =
+    showQuality && media !== null
+      ? autoQualityIndex(
+          qualities,
+          targetVideoHeight(media, { width: window.innerWidth, height: window.innerHeight }, window.devicePixelRatio),
+          !settings.loadMedia,
+        )
+      : null;
+  const effectiveQuality = selectedQuality === 'auto' ? automaticQuality : selectedQuality;
+  const streamSrc = current
+    ? fileUrl(current.chatId, current.id, effectiveQuality !== null && effectiveQuality > 0 ? { quality: effectiveQuality } : {})
+    : '';
   const downloadSrc = current ? fileUrl(current.chatId, current.id, { quality: 'max', download: true }) : '';
   const failed = failedSrc === streamSrc;
   const photo = isPhotoLike(media) && !failed;
@@ -95,6 +111,29 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
     },
     [itemCount],
   );
+
+  /**
+  Remembers where the player was before the source changes: a quality switch
+  remounts `<video>`, and without this it would restart at 0:00.
+  */
+  const changeQuality = (value: string): void => {
+    if (current) remember(current.id);
+    if (value === 'auto') {
+      setStreamQuality('auto');
+      return;
+    }
+    const quality = Number(value);
+    if (Number.isSafeInteger(quality)) setStreamQuality(quality);
+  };
+
+  /**
+  A media element fires `error` for a refused connection exactly as it does
+  for a codec it cannot decode. One retry tells them apart; the fallback link
+  is for the file this browser cannot play.
+  */
+  const onPlayerError = (): void => {
+    if (retry(streamSrc)) setFailedSrc(streamSrc);
+  };
 
   // Photos and animations swipe; a video keeps its native player gestures, so
   // its timeline can still be scrubbed. A zoomed photo pans instead.
@@ -197,15 +236,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
               <Select
                 aria-label="Video quality"
                 value={selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  if (value === 'auto') {
-                    setStreamQuality('auto');
-                    return;
-                  }
-                  const index = Number(value);
-                  if (Number.isSafeInteger(index)) setStreamQuality(index);
-                }}
+                onChange={(event) => changeQuality(event.currentTarget.value)}
               >
                 <option value="auto">Auto</option>
                 {qualities.map((quality) => (
@@ -282,7 +313,8 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
             />
           ) : (
             <video
-              key={`${current.id}:${selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}`}
+              key={`${current.id}:${effectiveQuality ?? 'auto'}:${attempt}`}
+              ref={playerRef}
               className="media-viewer-media"
               src={streamSrc}
               poster={fileUrl(current.chatId, current.id, { thumb: true })}
@@ -294,7 +326,8 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
               muted={animated}
               playsInline
               preload="metadata"
-              onError={() => setFailedSrc(streamSrc)}
+              onLoadedMetadata={() => restore(current.id)}
+              onError={onPlayerError}
             />
           )}
         </div>

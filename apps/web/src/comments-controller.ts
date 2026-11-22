@@ -15,9 +15,9 @@ import type { UploadRequest } from './upload';
 import type { MessageDeletion } from './useMessageDelete';
 
 /**
- * The comments screen's controller contract, split from `useComments.ts` to
- * keep the hook under the god-file cap.
- */
+The comments screen's controller contract, split from `useComments.ts` to
+keep the hook under the god-file cap.
+*/
 
 /**
 The comments a caller already read, so the controller does not read them
@@ -26,9 +26,9 @@ again: the outcome of the read, whether it worked or not.
 export type PrefetchedComments = { ok: true; result: GetCommentsResult } | { ok: false; error: string };
 
 /**
- * A channel post addressed the way the comments bridge does: the channel's id
- * and the post's message id. Shared by the controller and its send half.
- */
+A channel post addressed the way the comments bridge does: the channel's id
+and the post's message id. Shared by the controller and its send half.
+*/
 export type PostKey = { chatId: PeerId; messageId: number };
 
 export interface CommentsController {
@@ -66,10 +66,10 @@ export interface CommentsController {
   */
   replyKeyboard: ActiveReplyKeyboard | null;
   /**
-   * Opens a post's comment thread. A caller that already read the thread —
-   * together with the chat's window — hands the outcome over, so the screen
-   * does not ask for it a second time.
-   */
+  Opens a post's comment thread. A caller that already read the thread —
+  together with the chat's window — hands the outcome over, so the screen
+  does not ask for it a second time.
+  */
   open: (chat: ChatDto, message: MessageDto, prefetched?: PrefetchedComments) => Promise<void>;
   close: () => void;
   loadOlder: () => Promise<void>;

@@ -2,13 +2,13 @@ import { useMemo, useState } from 'react';
 import { EMOJI_CATEGORIES, readRecentEmoji, rememberRecentEmoji, searchEmoji } from '../emoji';
 
 /**
- * The emoji half of the composer's picker.
- *
- * Picking inserts at the caret and leaves the panel open, the way a keyboard
- * behaves: a message is often several emoji, and reopening the picker for each
- * one would lose the reader's place. The recents row is the only state kept
- * between sessions, and it lives in `localStorage` (see `emoji.ts`).
- */
+The emoji half of the composer's picker.
+
+Picking inserts at the caret and leaves the panel open, the way a keyboard
+behaves: a message is often several emoji, and reopening the picker for each
+one would lose the reader's place. The recents row is the only state kept
+between sessions, and it lives in `localStorage` (see `emoji.ts`).
+*/
 interface EmojiPickerProps {
   onPick: (char: string) => void;
 }

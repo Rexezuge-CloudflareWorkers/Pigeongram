@@ -6,19 +6,19 @@ import { EngineError } from './errors';
 import { optionalRandomId, requirePeerId } from './params';
 
 /**
- * Parsing and validation for the raw-body upload routes.
- *
- * `POST /user/upload` carries one file and its metadata in the query string.
- * `POST /user/upload-group` carries 2–10 files concatenated in order, with the
- * per-item metadata base64url-encoded JSON in the `manifest` query parameter.
- * Both parsers live here — and are imported by the worker entry for its
- * pre-flight — so the engine and the edge agree on every rule before the body
- * is touched.
- */
+Parsing and validation for the raw-body upload routes.
+
+`POST /user/upload` carries one file and its metadata in the query string.
+`POST /user/upload-group` carries 2–10 files concatenated in order, with the
+per-item metadata base64url-encoded JSON in the `manifest` query parameter.
+Both parsers live here — and are imported by the worker entry for its
+pre-flight — so the engine and the edge agree on every rule before the body
+is touched.
+*/
 
 /**
- * The media fields both routes share.
- */
+The media fields both routes share.
+*/
 export interface UploadMediaSpec {
   kind: UploadKind;
   fileName?: string;
@@ -42,16 +42,16 @@ export interface UploadSpec extends UploadMediaSpec {
   */
   replyTo?: number;
   /**
-   * Client-chosen Telegram `random_id`, reused by a retry so an accepted send
-   * is not duplicated. An album has none: Telegram picks the group's id.
-   */
+  Client-chosen Telegram `random_id`, reused by a retry so an accepted send
+  is not duplicated. An album has none: Telegram picks the group's id.
+  */
   randomId?: Long;
 }
 
 /**
- * One member of an album. `size` is required: it is the exact byte range the
- * engine hands to mtcute out of the concatenated request body.
- */
+One member of an album. `size` is required: it is the exact byte range the
+engine hands to mtcute out of the concatenated request body.
+*/
 export interface UploadItemSpec extends UploadMediaSpec {
   size: number;
 }
@@ -132,11 +132,11 @@ export function parseUploadGroupSpec(url: URL, request: Request, config: UploadC
 }
 
 /**
- * Album members must share a media class: photos, videos and GIFs mix (they
- * are visual media), while documents only group with documents. Telegram
- * rejects mixed media and documents in one album; failing here gives a clear
- * 400 instead of a Telegram error after the upload bytes are spent.
- */
+Album members must share a media class: photos, videos and GIFs mix (they
+are visual media), while documents only group with documents. Telegram
+rejects mixed media and documents in one album; failing here gives a clear
+400 instead of a Telegram error after the upload bytes are spent.
+*/
 function validateAlbumKinds(items: readonly UploadItemSpec[]): void {
   const visual = items.every((item) => item.kind === 'photo' || item.kind === 'video' || item.kind === 'animation');
   const documents = items.every((item) => item.kind === 'document');
@@ -146,9 +146,9 @@ function validateAlbumKinds(items: readonly UploadItemSpec[]): void {
 }
 
 /**
- * A positive message id from the query string, or null when absent/unusable —
- * but an explicitly present garbage value is an error, not an omission.
- */
+A positive message id from the query string, or null when absent/unusable —
+but an explicitly present garbage value is an error, not an omission.
+*/
 function parseOptionalMessageId(value: string | null, name: string): number | null {
   if (value === null) return null;
   const messageId = parseNumber(value);
@@ -159,10 +159,10 @@ function parseOptionalMessageId(value: string | null, name: string): number | nu
 }
 
 /**
- * Decodes the album manifest: a base64url JSON array of item descriptors. The
- * length cap keeps a hostile query from turning into a large decode before the
- * real validation starts.
- */
+Decodes the album manifest: a base64url JSON array of item descriptors. The
+length cap keeps a hostile query from turning into a large decode before the
+real validation starts.
+*/
 function parseManifest(value: string | null): UploadItemSpec[] {
   if (value === null || value.length === 0) {
     throw new EngineError('manifest query parameter is required', 400);
@@ -284,10 +284,10 @@ function parseKind(value: string | null): UploadKind {
 }
 
 /**
- * A voice note's duration is what the bubble shows, so it is part of the
- * message rather than a hint: absent or out-of-range values are refused
- * before the body is read, and the bound is the same one the recorder uses.
- */
+A voice note's duration is what the bubble shows, so it is part of the
+message rather than a hint: absent or out-of-range values are refused
+before the body is read, and the bound is the same one the recorder uses.
+*/
 function checkVoiceDuration(duration: number | null): void {
   if (duration === null) {
     throw new EngineError('a voice note requires its duration in seconds', 400);
@@ -298,8 +298,8 @@ function checkVoiceDuration(duration: number | null): void {
 }
 
 /**
- * A positive integer from the query string, or null when absent/unusable.
- */
+A positive integer from the query string, or null when absent/unusable.
+*/
 function parseQuantity(value: string | null): number | null {
   if (value === null) return null;
   const parsed = Number(value);

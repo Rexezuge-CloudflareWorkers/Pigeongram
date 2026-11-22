@@ -1,11 +1,11 @@
 import type { MessageDto } from './types';
 
 /**
- * Where reading stopped in a thread: the first unread message and the water
- * mark a scroll position proves read. Kept DOM-free so the open jump, the
- * divider and the read receipts can be reasoned about (and tested) on their
- * own; `ThreadView` only turns the scroll container into `visibleIds`.
- */
+Where reading stopped in a thread: the first unread message and the water
+mark a scroll position proves read. Kept DOM-free so the open jump, the
+divider and the read receipts can be reasoned about (and tested) on their
+own; `ThreadView` only turns the scroll container into `visibleIds`.
+*/
 
 /**
 The thread's first unread message: the earliest incoming message after the

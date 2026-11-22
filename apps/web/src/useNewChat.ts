@@ -3,51 +3,51 @@ import { searchContacts } from './api';
 import type { ChatDto } from './types';
 
 /**
- * The new-message picker's controller: the account's contacts before the
- * reader types, and Telegram's own search once they do.
- *
- * One picker open is one read of the address book, and one read per settled
- * query — one Durable Object event and one Telegram call each. The blank query
- * is deliberately kept apart from the searched one: clearing the field returns
- * to the contacts already in hand instead of paying for them again.
- */
+The new-message picker's controller: the account's contacts before the
+reader types, and Telegram's own search once they do.
+
+One picker open is one read of the address book, and one read per settled
+query — one Durable Object event and one Telegram call each. The blank query
+is deliberately kept apart from the searched one: clearing the field returns
+to the contacts already in hand instead of paying for them again.
+*/
 
 /**
- * How long typing settles before a read is sent, matching the search screen:
- * one search is one Durable Object event, so a keystroke must not become a
- * request.
- */
+How long typing settles before a read is sent, matching the search screen:
+one search is one Durable Object event, so a keystroke must not become a
+request.
+*/
 const DEBOUNCE_MS = 300;
 
 interface UseNewChatResult {
   query: string;
   setQuery: (query: string) => void;
   /**
-   * The blank-query list: the account's contacts, alphabetically.
-   */
+  The blank-query list: the account's contacts, alphabetically.
+  */
   contacts: readonly ChatDto[];
   /**
-   * The searched people, in Telegram's relevance order.
-   */
+  The searched people, in Telegram's relevance order.
+  */
   people: readonly ChatDto[];
   /**
-   * The public chats the search matched.
-   */
+  The public chats the search matched.
+  */
   chats: readonly ChatDto[];
   loading: boolean;
   error: string | null;
   /**
-   * Reads the contacts again after a failure.
-   */
+  Reads the contacts again after a failure.
+  */
   retry: () => void;
 }
 
 interface SearchAnswer {
   /**
-   * The trimmed query the answer belongs to. A late answer for an older query
-   * stays in state but is never shown, so the list cannot describe a query the
-   * reader has already replaced.
-   */
+  The trimmed query the answer belongs to. A late answer for an older query
+  stays in state but is never shown, so the list cannot describe a query the
+  reader has already replaced.
+  */
   key: string;
   people: ChatDto[];
   chats: ChatDto[];

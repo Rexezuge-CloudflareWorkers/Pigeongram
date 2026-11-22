@@ -44,18 +44,18 @@ const LONG_PRESS_SLOP_PX = 10;
 
 interface MessageRowProps {
   /**
-   One display group, oldest first: a standalone message, or an album's messages.
-   */
+  One display group, oldest first: a standalone message, or an album's messages.
+  */
   group: readonly MessageDto[];
   chat: ChatDto;
   /**
-   The loaded message this one replies to, when it is still in the thread.
-   */
+  The loaded message this one replies to, when it is still in the thread.
+  */
   original: MessageDto | null;
   /**
-   Whether this group arrived after the window landed and so animates in;
-   history, a cache paint and a re-mount render without motion.
-   */
+  Whether this group arrived after the window landed and so animates in;
+  history, a cache paint and a re-mount render without motion.
+  */
   isNew?: boolean;
   /**
   Whether the reply quote renders (default true); the comments view hides it

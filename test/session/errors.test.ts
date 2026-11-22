@@ -4,12 +4,12 @@ import { EngineConfigError, readApiCredentials } from '../../packages/provider-c
 import { EngineError, STORAGE_WRITE_QUOTA_MESSAGE, isStorageWriteQuotaError } from '../../packages/backend-services/src/session/errors';
 
 /**
- * The engine's failure vocabulary on the family's taxonomy.
- *
- * The bridge is one boundary in a family of workers, so its errors have to be
- * `ServiceError`s: the mapper branches on that class, and an `EngineError` that
- * only looked like one would arrive at the client as a masked 500.
- */
+The engine's failure vocabulary on the family's taxonomy.
+
+The bridge is one boundary in a family of workers, so its errors have to be
+`ServiceError`s: the mapper branches on that class, and an `EngineError` that
+only looked like one would arrive at the client as a masked 500.
+*/
 
 describe('EngineError', () => {
   it('is a ServiceError whose type is the bridge code', () => {

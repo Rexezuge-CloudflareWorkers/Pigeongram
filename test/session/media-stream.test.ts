@@ -5,12 +5,12 @@ import type { DownloadParams, DownloadSource } from '../../packages/backend-serv
 import { windowedStream } from '../../packages/backend-services/src/session/media-stream';
 
 /**
- * `windowedStream` is where browser ranges are turned into byte windows: the
- * part-block-aligned offset, the dropped prefix and the cut tail. The stream
- * behaviour matters as much as the arithmetic — a range that runs ahead of the
- * player buffers the file in the isolate, and one that keeps downloading after
- * the player left burns connection slots.
- */
+`windowedStream` is where browser ranges are turned into byte windows: the
+part-block-aligned offset, the dropped prefix and the cut tail. The stream
+behaviour matters as much as the arithmetic — a range that runs ahead of the
+player buffers the file in the isolate, and one that keeps downloading after
+the player left burns connection slots.
+*/
 
 const LOCATION = { fileSize: 4096 * 32 } as unknown as FileLocation;
 
@@ -41,9 +41,9 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> 
 }
 
 /**
- * A quiet turn of the event loop, enough for the stream's pump and the fake
- * download's microtasks to settle.
- */
+A quiet turn of the event loop, enough for the stream's pump and the fake
+download's microtasks to settle.
+*/
 function tick(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
@@ -57,10 +57,10 @@ interface SourceState {
 }
 
 /**
- * A stand-in download source: yields `chunks` in order and runs `throttle`
- * before every chunk, the way mtcute's worker loop does. Records the params it
- * was handed and whether the iterator was returned early.
- */
+A stand-in download source: yields `chunks` in order and runs `throttle`
+before every chunk, the way mtcute's worker loop does. Records the params it
+was handed and whether the iterator was returned early.
+*/
 function fakeSource(chunks: readonly Uint8Array[]): { source: DownloadSource; state: SourceState } {
   const state: SourceState = { params: null, pulled: 0, returned: false };
   const source: DownloadSource = {
@@ -150,10 +150,10 @@ describe('windowedStream', () => {
 const MIB = 1024 * 1024;
 
 /**
- * A stand-in for Telegram's `upload.getFile` server checks (core.telegram.org/
- * api/files): the part is 4 KB-aligned, `limit` divides 1 MB, and — the rule
- * that broke deep video seeks — the whole part stays inside one 1 MB block.
- */
+A stand-in for Telegram's `upload.getFile` server checks (core.telegram.org/
+api/files): the part is 4 KB-aligned, `limit` divides 1 MB, and — the rule
+that broke deep video seeks — the whole part stays inside one 1 MB block.
+*/
 function telegramClient(): {
   client: Parameters<typeof downloadAsIterable>[0];
   requests: Array<{ offset: number; limit: number }>;
@@ -170,8 +170,8 @@ function telegramClient(): {
     async call(request: { offset: number; limit: number }): Promise<{ _: 'upload.file'; bytes: Uint8Array }> {
       const { offset, limit } = request;
       if (offset % 4096 !== 0) throw new Error('OFFSET_INVALID');
-      if (limit % 4096 !== 0 || MIB % limit !== 0) throw new Error('LIMIT_INVALID');
-      if (Math.floor(offset / MIB) !== Math.floor((offset + limit - 1) / MIB)) throw new Error('LIMIT_INVALID');
+      if (limit % 4096 !== 0 || MIB % limit !== 0 || Math.floor(offset / MIB) !== Math.floor((offset + limit - 1) / MIB))
+        throw new Error('LIMIT_INVALID');
       requests.push({ offset, limit });
       return { _: 'upload.file', bytes: new Uint8Array(limit) };
     },
@@ -192,11 +192,11 @@ function realSource(client: Parameters<typeof downloadAsIterable>[0]): DownloadS
 
 describe('windowedStream × mtcute', () => {
   /**
-   * The regression guard for the original outages: mtcute validates the
-   * download params in a generator that only runs on the first pull, so a
-   * window it rejects fails after the `206` headers are on the wire. The real
-   * generator does the chunking here; the stub client stands in for Telegram.
-   */
+  The regression guard for the original outages: mtcute validates the
+  download params in a generator that only runs on the first pull, so a
+  window it rejects fails after the `206` headers are on the wire. The real
+  generator does the chunking here; the stub client stands in for Telegram.
+  */
   it('builds params the real download accepts for a mid-file range', async () => {
     const { client, requests } = telegramClient();
     const fileSize = 16 * MIB;

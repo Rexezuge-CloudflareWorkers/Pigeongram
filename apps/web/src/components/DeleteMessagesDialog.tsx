@@ -4,8 +4,8 @@ import { Presence } from './Presence';
 
 interface DeleteMessagesDialogProps {
   /**
-   * The delete flow of whichever controller is on screen.
-   */
+  The delete flow of whichever controller is on screen.
+  */
   deletion: MessageDeletion;
 }
 

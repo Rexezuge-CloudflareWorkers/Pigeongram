@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { decodeBase64, encodeBase64 } from '../../packages/backend-services/src/session/base64';
 
 /**
- * The engine's half of the bridge's base64 pair.
- *
- * The decoder's contract is `null` on malformed input — every caller turns that
- * into its own 400 — so the guard has to survive the move onto the family
- * codec, which throws by design.
- */
+The engine's half of the bridge's base64 pair.
+
+The decoder's contract is `null` on malformed input — every caller turns that
+into its own 400 — so the guard has to survive the move onto the family
+codec, which throws by design.
+*/
 
 describe('decodeBase64', () => {
   it('round-trips arbitrary bytes', () => {

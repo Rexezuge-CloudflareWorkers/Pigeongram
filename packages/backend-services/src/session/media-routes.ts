@@ -1,9 +1,10 @@
 import type { TelegramDriver } from './driver';
 import type { AvatarCache } from './avatar-cache';
 import type { UploadConfig } from './config';
-import { EngineError } from './errors';
+import { EngineError, RangeNotSatisfiableError } from './errors';
 import { log } from './log';
 import type { MediaDownload } from './media';
+import type { MediaRange } from './media-window';
 import { requirePeerId } from './params';
 import { parseUploadGroupSpec, parseUploadSpec } from './upload-spec';
 
@@ -13,7 +14,7 @@ HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
 stays about the session, not about query strings and headers.
 */
 
-const FILE_CACHE_SECONDS = 3600;
+const FILE_CACHE_SECONDS = 86_400;
 const AVATAR_CACHE_SECONDS = 86_400;
 
 export async function fileResponse(driver: TelegramDriver, request: Request, url: URL): Promise<Response> {
@@ -22,24 +23,45 @@ export async function fileResponse(driver: TelegramDriver, request: Request, url
   const range = parseRange(request.headers.get('range'));
   const quality = parseQuality(url.searchParams.get('quality'));
   const isDownload = url.searchParams.get('download') === '1';
-  const media = await driver.streamMessageMedia(chatId, messageId, {
+  const options = {
     ...(url.searchParams.get('thumb') === '1' && { thumb: true }),
     ...(range && { range }),
     ...(quality !== null && { quality }),
-  });
-  return mediaResponse(media, isDownload);
+  };
+  let media: MediaDownload;
+  try {
+    media = await driver.streamMessageMedia(chatId, messageId, options);
+  } catch (error) {
+    if (error instanceof RangeNotSatisfiableError) return rangeNotSatisfiable(error.size);
+    throw error;
+  }
+
+  // An `If-Range` that no longer matches the file must not be answered with a
+  // partial response: the browser would splice old bytes onto new ones. The
+  // window was only planned, not pulled, so the range is dropped and the file
+  // served whole.
+  const ifRange = request.headers.get('if-range');
+  if (range && media.status === 206 && ifRange !== null && !validatorMatches(ifRange, media.etag)) {
+    await discardStream(media.stream);
+    media = await driver.streamMessageMedia(chatId, messageId, { ...options, range: undefined });
+  } else if (!range && validatorMatches(request.headers.get('if-none-match'), media.etag)) {
+    await discardStream(media.stream);
+    return notModified(media.etag);
+  }
+
+  return mediaResponse(media, isDownload, request.method === 'HEAD');
 }
 
-export async function stickerResponse(driver: TelegramDriver, url: URL): Promise<Response> {
+export async function stickerResponse(driver: TelegramDriver, url: URL, method = 'GET'): Promise<Response> {
   const documentId = url.searchParams.get('documentId');
   if (documentId === null || !/^\d+$/.test(documentId)) {
     throw new EngineError('documentId query parameter is required', 400);
   }
   const media = await driver.streamSticker(documentId, url.searchParams.get('thumb') === '1');
-  return mediaResponse(media, false);
+  return mediaResponse(media, false, method === 'HEAD');
 }
 
-export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL): Promise<Response> {
+export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache, url: URL, method = 'GET'): Promise<Response> {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
   const size = url.searchParams.get('size') ?? 'small';
   if (size !== 'small' && size !== 'big') {
@@ -50,7 +72,7 @@ export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache,
   const version = await driver.readAvatarVersion(chatId, size);
   const cached = version === null ? null : cache.read(version, size);
   if (cached) {
-    return avatarBytes(cached.mime, cached.bytes);
+    return avatarBytes(cached.mime, cached.bytes, method === 'HEAD');
   }
   const avatar = await driver.readAvatar(chatId, size);
   try {
@@ -60,7 +82,7 @@ export async function avatarResponse(driver: TelegramDriver, cache: AvatarCache,
     // budget) must still serve the bytes that were just downloaded.
     log.warn('avatar.cache_write_failed', { error });
   }
-  return avatarBytes(avatar.mime, avatar.bytes);
+  return avatarBytes(avatar.mime, avatar.bytes, method === 'HEAD');
 }
 
 export async function uploadResponse(driver: TelegramDriver, request: Request, url: URL, config: UploadConfig): Promise<Response> {
@@ -141,64 +163,133 @@ async function discardBody(request: Request): Promise<void> {
   }
 }
 
-function isImageMime(mime: string): boolean {
+function isInlineMime(mime: string): boolean {
   const lower = mime.toLowerCase();
   if (lower === 'image/svg+xml') return false;
-  return lower.startsWith('image/');
+  // Video and audio are what a media element plays: marking them `attachment`
+  // made Safari/iOS (and "open in a tab") download instead of play.
+  return lower.startsWith('image/') || lower.startsWith('video/') || lower.startsWith('audio/');
 }
 
-function mediaResponse(download: MediaDownload, isDownload: boolean): Response {
+function mediaResponse(download: MediaDownload, isDownload: boolean, head: boolean): Response {
   const headers: Record<string, string> = {
     'content-type': download.mime,
     'cache-control': `private, max-age=${FILE_CACHE_SECONDS}`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
     'cross-origin-resource-policy': 'same-origin',
-    'content-disposition': isDownload || !isImageMime(download.mime) ? 'attachment' : 'inline',
+    'content-disposition': isDownload || !isInlineMime(download.mime) ? 'attachment' : 'inline',
   };
   if (download.length !== null) headers['content-length'] = String(download.length);
   if (download.size !== null) headers['accept-ranges'] = 'bytes';
   if (download.contentRange !== null) headers['content-range'] = download.contentRange;
+  if (download.etag !== null) headers['etag'] = download.etag;
+  if (head) {
+    // A HEAD is a header probe: the range was planned but never pulled, so the
+    // download is released instead of left running for a body nobody reads.
+    void download.stream.cancel().catch(() => {});
+    return new Response(null, { status: download.status, headers });
+  }
   return new Response(download.stream, { status: download.status, headers });
+}
+
+/**
+The `416` a range past the file end earns. `content-range` is what tells the
+player the real length, so a browser can restart from a valid position.
+*/
+function rangeNotSatisfiable(size: number): Response {
+  return new Response(null, {
+    status: 416,
+    headers: {
+      'content-range': `bytes */${size}`,
+      'accept-ranges': 'bytes',
+      'cache-control': 'no-store',
+    },
+  });
+}
+
+/**
+The `304` a conditional GET earns. The entity tags are stable for the life
+of the file, so a revalidating browser reuses its own copy.
+*/
+function notModified(etag: string | null): Response {
+  return new Response(null, {
+    status: 304,
+    headers: {
+      ...(etag !== null && { etag }),
+      'cache-control': `private, max-age=${FILE_CACHE_SECONDS}`,
+    },
+  });
+}
+
+/**
+Whether a request validator (`If-Range` or a possibly comma-separated
+`If-None-Match`) names this response's entity tag. A missing tag on either
+side is never a match: without an entity tag there is nothing to validate.
+*/
+function validatorMatches(header: string | null, etag: string | null): boolean {
+  if (header === null || etag === null) return false;
+  if (header.trim() === '*') return true;
+  return header.split(',').some((candidate) => candidate.trim() === etag);
 }
 
 /**
 A cached avatar, served whole. The bytes are the ones Telegram sent, so the
 browser's own cache can hold them for a day like any other profile photo.
 */
-function avatarBytes(mime: string, bytes: Uint8Array): Response {
+function avatarBytes(mime: string, bytes: Uint8Array, head: boolean): Response {
   // Copied into a plain buffer: the storage may hand back a view over a
   // shared buffer, which the response body does not take.
   const body = new Uint8Array(bytes.byteLength);
   body.set(bytes);
-  return new Response(body, {
-    status: 200,
-    headers: {
-      'content-type': mime,
-      'content-length': String(body.byteLength),
-      'cache-control': `private, max-age=${AVATAR_CACHE_SECONDS}`,
-      'x-content-type-options': 'nosniff',
-      'content-security-policy': 'sandbox',
-      'cross-origin-resource-policy': 'same-origin',
-      'content-disposition': 'inline',
-    },
-  });
+  const headers = {
+    'content-type': mime,
+    'content-length': String(body.byteLength),
+    'cache-control': `private, max-age=${AVATAR_CACHE_SECONDS}`,
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': 'sandbox',
+    'cross-origin-resource-policy': 'same-origin',
+    'content-disposition': 'inline',
+  };
+  return new Response(head ? null : body, { status: 200, headers });
 }
 
 /**
-Single-range `bytes=a-b` / `bytes=a-` parsing; anything more elaborate (or
-malformed) is ignored and answered with the full file, which is always a
+Single-range parsing: `bytes=a-b`, `bytes=a-` and the suffix form
+`bytes=-N`. Anything more elaborate (a multi-range request, another unit)
+or malformed is ignored and answered with the full file, which is always a
 legal response.
+
+The suffix form needs the file size, so it travels as a length and is
+resolved by the download; treating it as "no range" (the old behaviour) sent
+a whole video to a player that asked only for its tail.
 */
-function parseRange(header: string | null): { start: number; end: number | null } | null {
+function parseRange(header: string | null): MediaRange | null {
   if (!header) return null;
-  const match = /^bytes=(\d+)-(\d*)$/.exec(header.trim());
-  if (!match) return null;
-  const start = Number(match[1]);
-  const end = match[2].length > 0 ? Number(match[2]) : null;
-  if (!Number.isSafeInteger(start) || start < 0) return null;
-  if (end !== null && (!Number.isSafeInteger(end) || end < start)) return null;
-  return { start, end };
+  const trimmed = header.trim();
+  const bounded = /^bytes=(\d+)-(\d*)$/.exec(trimmed);
+  if (bounded) {
+    const start = Number(bounded[1]);
+    const end = bounded[2].length > 0 ? Number(bounded[2]) : null;
+    if (!Number.isSafeInteger(start)) return null;
+    if (end !== null && (!Number.isSafeInteger(end) || end < start)) return null;
+    return { start, end };
+  }
+  const suffix = /^bytes=-(\d+)$/.exec(trimmed);
+  if (suffix) {
+    const length = Number(suffix[1]);
+    if (!Number.isSafeInteger(length)) return null;
+    return { suffix: length };
+  }
+  return null;
+}
+
+async function discardStream(stream: ReadableStream<Uint8Array>): Promise<void> {
+  try {
+    await stream.cancel();
+  } catch {
+    // Already closed.
+  }
 }
 
 function parseNumber(value: string | null): number {

@@ -4,15 +4,15 @@ import { WorkerCryptoProvider } from '../../packages/provider-clients/src/mtprot
 import type { CryptoWasmBindings } from '../../packages/provider-clients/src/mtproto/crypto';
 
 /**
- * The workerd crypto provider's routing.
- *
- * SHA-1, AES and gzip come from the bundled mtcute wasm module; PBKDF2, HMAC
- * and the random source come from WebCrypto. The bindings are injected — Node
- * cannot instantiate the real module — and the fake proves which call each
- * method makes. The WebCrypto half is checked against node's own
- * implementations, so a wrong hash name or key length fails here rather than
- * in a login attempt against Telegram.
- */
+The workerd crypto provider's routing.
+
+SHA-1, AES and gzip come from the bundled mtcute wasm module; PBKDF2, HMAC
+and the random source come from WebCrypto. The bindings are injected — Node
+cannot instantiate the real module — and the fake proves which call each
+method makes. The WebCrypto half is checked against node's own
+implementations, so a wrong hash name or key length fails here rather than
+in a login attempt against Telegram.
+*/
 
 const CONTEXT = 7;
 

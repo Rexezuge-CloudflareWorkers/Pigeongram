@@ -14,8 +14,8 @@ import type {
 } from '../types';
 
 /**
- * Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.
- */
+Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-testable.
+*/
 
 export * from './deleted';
 
@@ -104,9 +104,9 @@ export function applyReadThrough(dialogs: DialogDto[], chatId: PeerId, maxId: nu
 }
 
 /**
- * Folds a presence change into the chat list. A peer's id is the marked peer
- * id of a user chat, so the row is found by it.
- */
+Folds a presence change into the chat list. A peer's id is the marked peer
+id of a user chat, so the row is found by it.
+*/
 export function applyUserStatus(dialogs: DialogDto[], userId: PeerId, presence: PresenceDto | null): DialogDto[] {
   return dialogs.map((dialog) => (dialog.chat.id === userId ? { ...dialog, chat: { ...dialog.chat, presence } } : dialog));
 }
@@ -186,15 +186,15 @@ export interface CommentsThread {
   */
   count: number;
   /**
-   Cursor for older comments; null when the thread start is loaded.
-   */
+  Cursor for older comments; null when the thread start is loaded.
+  */
   nextOffset: { id: number; date: number } | null;
   /**
-   Ids of comments that arrived after the screen opened — a live comment, or
-   one the caller just sent — and that the view should animate in. History
-   reads and paging never add to it, and it is cleared on every open, so a
-   re-mount does not replay the entrance animation.
-   */
+  Ids of comments that arrived after the screen opened — a live comment, or
+  one the caller just sent — and that the view should animate in. History
+  reads and paging never add to it, and it is cleared on every open, so a
+  re-mount does not replay the entrance animation.
+  */
   newMessageIds: ReadonlySet<number>;
 }
 
@@ -260,8 +260,7 @@ export function applyCommentReactions(
     if (messageId !== thread.post.id) return thread;
     return { ...thread, post: { ...thread.post, reactions } };
   }
-  if (thread.discussionChatId !== chatId) return thread;
-  if (thread.comments.every((comment) => comment.id !== messageId)) return thread;
+  if (thread.discussionChatId !== chatId || thread.comments.every((comment) => comment.id !== messageId)) return thread;
   return { ...thread, comments: applyReactionUpdate(thread.comments, chatId, messageId, reactions) };
 }
 

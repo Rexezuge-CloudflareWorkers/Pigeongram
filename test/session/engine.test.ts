@@ -36,27 +36,27 @@ interface Harness {
   sockets: FakeSocket[];
   db: DatabaseSync;
   /**
-   * The storage preparations the engine ran before its first event.
-   */
+  The storage preparations the engine ran before its first event.
+  */
   prepared: number[];
   /**
-   * The work the engine left running outside the input gate.
-   */
+  The work the engine left running outside the input gate.
+  */
   backgrounded: number[];
 }
 
 /**
- * The generated `CloudflareEnv` types vars as string literals; loosening just
- * the one var this suite overrides keeps the rest of the shape checked.
- */
+The generated `CloudflareEnv` types vars as string literals; loosening just
+the one var this suite overrides keeps the rest of the shape checked.
+*/
 type TestEnv = Omit<Partial<CloudflareEnv>, 'UPLOAD_MAX_BYTES'> & { UPLOAD_MAX_BYTES?: string };
 
 /**
- * A `DurableObjectState` stand-in: SQLite from `node:sqlite`, an alarm spy, and
- * a socket list. The engine only ever touches these members, so the shape is
- * enough — `WebSocketPair` (the one global workerd owns) is only reached on the
- * `/user/updates` route, which these tests deliberately avoid.
- */
+A `DurableObjectState` stand-in: SQLite from `node:sqlite`, an alarm spy, and
+a socket list. The engine only ever touches these members, so the shape is
+enough — `WebSocketPair` (the one global workerd owns) is only reached on the
+`/user/updates` route, which these tests deliberately avoid.
+*/
 function createHarness(env: TestEnv = {}, seed?: (db: DatabaseSync) => void): Harness {
   const db = openNodeDatabase();
   seed?.(db);
@@ -566,13 +566,13 @@ const ME: MeDto = {
 };
 
 /**
- * The engine over injected collaborators.
- *
- * `EngineDeps` is the seam the route table needed: every route can be driven
- * to a decision without wasm, a Telegram connection or a real account, and the
- * quota failures can be produced by the store instead of by exhausting a
- * budget.
- */
+The engine over injected collaborators.
+
+`EngineDeps` is the seam the route table needed: every route can be driven
+to a decision without wasm, a Telegram connection or a real account, and the
+quota failures can be produced by the store instead of by exhausting a
+budget.
+*/
 function createSeamedHarness(options: { authorized?: boolean; me?: MeDto; store?: ReturnType<typeof fakeStore> } = {}) {
   const alarms: number[] = [];
   const driver = fakeDriver(options);

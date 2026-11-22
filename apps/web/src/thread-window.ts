@@ -1,13 +1,13 @@
 import type { ChatDto } from './types';
 
 /**
- * The rules of a thread's first window: how much of the chat it reads, and
- * which chats carry a slash-command menu.
- *
- * Kept away from the thread controller because the window is worth reading on
- * its own. The opening window is deliberately small so a chat paints sooner;
- * older history is read at the paging size when the reader asks for it.
- */
+The rules of a thread's first window: how much of the chat it reads, and
+which chats carry a slash-command menu.
+
+Kept away from the thread controller because the window is worth reading on
+its own. The opening window is deliberately small so a chat paints sooner;
+older history is read at the paging size when the reader asks for it.
+*/
 
 export interface OpenThreadOptions {
   /**

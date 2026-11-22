@@ -5,23 +5,23 @@ import type { CommentsController, PrefetchedComments } from './comments-controll
 import type { OpenThreadResult, ThreadController } from './thread-controller';
 
 /**
- * Applies a `Route` to the thread and comments controllers.
- *
- * The router owns the URL and history; this hook owns what the screen shows.
- * Keeping the two apart lets the history half stay small and lets the reader
- * see the one non-obvious rule: a chat that is already open is reused, so
- * stepping back from comments does not re-fetch the window or jump the reader
- * back to the unread divider. A Telegram link asks for `force`, which keeps
- * its old "re-read around the linked post" behaviour.
- */
+Applies a `Route` to the thread and comments controllers.
+
+The router owns the URL and history; this hook owns what the screen shows.
+Keeping the two apart lets the history half stay small and lets the reader
+see the one non-obvious rule: a chat that is already open is reused, so
+stepping back from comments does not re-fetch the window or jump the reader
+back to the unread divider. A Telegram link asks for `force`, which keeps
+its old "re-read around the linked post" behaviour.
+*/
 
 interface ChatNavigationOptions {
   /**
-   * The chat's dialog, in either list, or a transient one for a chat reached
-   * through search. A callback rather than the array because `boot` applies
-   * the URL immediately after the dialogs fetch resolves, before React has
-   * committed them; the route must find its chat in that same tick.
-   */
+  The chat's dialog, in either list, or a transient one for a chat reached
+  through search. A callback rather than the array because `boot` applies
+  the URL immediately after the dialogs fetch resolves, before React has
+  committed them; the route must find its chat in that same tick.
+  */
   findDialog: (chatId: PeerId) => DialogDto | undefined;
   threads: ThreadController;
   comments: CommentsController;

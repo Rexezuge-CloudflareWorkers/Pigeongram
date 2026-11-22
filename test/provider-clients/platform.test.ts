@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkerPlatform } from '../../packages/provider-clients/src/mtproto/platform';
 
 /**
- * mtcute's platform surface inside a Durable Object.
- *
- * The class is small but load-bearing: it is what keeps mtcute from reaching
- * for browser events workerd does not have, and it is the only place mtcute's
- * log lines are formatted for Workers Logs.
- */
+mtcute's platform surface inside a Durable Object.
+
+The class is small but load-bearing: it is what keeps mtcute from reaching
+for browser events workerd does not have, and it is the only place mtcute's
+log lines are formatted for Workers Logs.
+*/
 
 afterEach(() => {
   vi.restoreAllMocks();

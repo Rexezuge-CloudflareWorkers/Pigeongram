@@ -13,10 +13,10 @@ import {
 } from './photo-zoom';
 
 /**
- * The pointer bookkeeping the zoom hook shares between its handlers. These are
- * plain functions over refs so the hook stays about React and the geometry
- * module stays about view math.
- */
+The pointer bookkeeping the zoom hook shares between its handlers. These are
+plain functions over refs so the hook stays about React and the geometry
+module stays about view math.
+*/
 
 export const DOUBLE_TAP_MS = 320;
 const TAP_SLOP_PX = 24;
@@ -48,10 +48,10 @@ export function createTapTracker(): TapTracker {
 }
 
 /**
- * Records a completed tap and fires the toggle when it pairs with the previous
- * one. The tracker lives in a ref, so the timing survives re-renders without
- * pulling React into the gesture math.
- */
+Records a completed tap and fires the toggle when it pairs with the previous
+one. The tracker lives in a ref, so the timing survives re-renders without
+pulling React into the gesture math.
+*/
 export function registerTap(tracker: TapTracker, point: Point, toggle: (clientX: number, clientY: number) => void): void {
   const now = Date.now();
   const previous = tracker.last;
@@ -65,10 +65,10 @@ export function registerTap(tracker: TapTracker, point: Point, toggle: (clientX:
 }
 
 /**
- * Applies a two-pointer update: scale from the distance change, translate by
- * the midpoint change, and keep the content point under the starting midpoint
- * beneath the current one.
- */
+Applies a two-pointer update: scale from the distance change, translate by
+the midpoint change, and keep the content point under the starting midpoint
+beneath the current one.
+*/
 export function movePinch(
   active: PinchGesture,
   pointers: Map<number, Point>,

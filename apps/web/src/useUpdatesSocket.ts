@@ -3,19 +3,19 @@ import { updatesSocketUrl } from './api';
 import type { ClientSocketMessage, ServerSocketMessage, UpdateEvent } from './types';
 
 /**
- * Keeps one `/user/updates` socket attached, reconnecting with capped backoff.
- *
- * `onUpdate` receives live bridge events; `onReady` fires whenever the socket
- * (re)connects. Its argument says whether the app should resync the state it
- * may have missed: the first socket after a sign-in is the boot's own
- * connection, and the app has just read everything it needs — a later socket
- * means the connection dropped.
- *
- * The returned `send` puts a message on the socket. It exists for the
- * signalling packets of a call: they ride the socket rather than
- * `POST /user/rpc`, because a WebSocket message is not a Worker request and a
- * call setup sends a burst of them.
- */
+Keeps one `/user/updates` socket attached, reconnecting with capped backoff.
+
+`onUpdate` receives live bridge events; `onReady` fires whenever the socket
+(re)connects. Its argument says whether the app should resync the state it
+may have missed: the first socket after a sign-in is the boot's own
+connection, and the app has just read everything it needs — a later socket
+means the connection dropped.
+
+The returned `send` puts a message on the socket. It exists for the
+signalling packets of a call: they ride the socket rather than
+`POST /user/rpc`, because a WebSocket message is not a Worker request and a
+call setup sends a burst of them.
+*/
 export function useUpdatesSocket(
   enabled: boolean,
   onUpdate: (update: UpdateEvent) => void,
@@ -136,17 +136,17 @@ export function useUpdatesSocket(
 }
 
 /**
- * A random fraction in [0, 1].
- *
- * The reconnect backoff only needs an even spread, not unpredictability, but
- * `crypto` is what the library forbids substituting with `Math.random`; a
- * Uint32 has enough resolution for the ±20% window.
- *
- * The divisor stays `2^32 - 1` rather than `2^32` on purpose: that is the one
- * division CodeQL's `js/biased-cryptographic-random` accepts as an unbiased
- * reduction of a secure random value (it only whitelists `2^n - 1`), and the
- * endpoints it adds cost nothing to a jitter.
- */
+A random fraction in [0, 1].
+
+The reconnect backoff only needs an even spread, not unpredictability, but
+`crypto` is what the library forbids substituting with `Math.random`; a
+Uint32 has enough resolution for the ±20% window.
+
+The divisor stays `2^32 - 1` rather than `2^32` on purpose: that is the one
+division CodeQL's `js/biased-cryptographic-random` accepts as an unbiased
+reduction of a secure random value (it only whitelists `2^n - 1`), and the
+endpoints it adds cost nothing to a jitter.
+*/
 const JITTER_MAX = 0xff_ff_ff_ff;
 
 function jitter(): number {

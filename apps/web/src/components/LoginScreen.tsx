@@ -6,10 +6,10 @@ import { Spinner } from './Spinner';
 import { TextField } from './TextField';
 
 /**
- * The last few seconds of a code's life are not shown at all: Telegram's login
- * tokens live ~30 s, and a scanned-but-expired token makes the scanning app
- * answer with a generic "an error occurred".
- */
+The last few seconds of a code's life are not shown at all: Telegram's login
+tokens live ~30 s, and a scanned-but-expired token makes the scanning app
+answer with a generic "an error occurred".
+*/
 const QR_REFRESH_WINDOW_MS = 3000;
 
 interface LoginScreenProps {

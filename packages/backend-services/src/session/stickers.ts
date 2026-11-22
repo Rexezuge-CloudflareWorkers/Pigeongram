@@ -11,22 +11,22 @@ import type { PartialMethodTable } from './rpc-methods';
 import type { StickerRegistry } from './sticker-registry';
 
 /**
- * The sticker half of the bridge: the picker's library, one pack in full, the
- * send and the install a `t.me/addstickers` link offers.
- *
- * Telegram has no high-level recent/faved sticker read in mtcute, so those two
- * are raw TL calls whose documents are turned into `Sticker` objects here.
- * Their ids are what the picker names; the engine keeps the documents in
- * {@link StickerRegistry} and never hands a file reference to the browser.
- */
+The sticker half of the bridge: the picker's library, one pack in full, the
+send and the install a `t.me/addstickers` link offers.
+
+Telegram has no high-level recent/faved sticker read in mtcute, so those two
+are raw TL calls whose documents are turned into `Sticker` objects here.
+Their ids are what the picker names; the engine keeps the documents in
+{@link StickerRegistry} and never hands a file reference to the browser.
+*/
 
 const RECENT_LIMIT = 60;
 
 /**
- * The raw-document parser: a sticker is the document that carries the sticker
- * (or custom-emoji) attribute, and its size lives on the image or video
- * attribute beside it.
- */
+The raw-document parser: a sticker is the document that carries the sticker
+(or custom-emoji) attribute, and its size lives on the image or video
+attribute beside it.
+*/
 function parseSticker(doc: tl.TypeDocument): Sticker | null {
   if (doc._ !== 'document') return null;
   const attr = doc.attributes.find(
@@ -61,14 +61,14 @@ async function readFaved(client: TelegramClient): Promise<Sticker[]> {
 }
 
 /**
- * The picker's opening read: the account's recent and saved stickers, and the
- * installed packs as brief sets. The three reads are independent and run
- * concurrently over the one connection.
- *
- * Only regular sticker packs are listed. An emoji or mask pack holds documents
- * this client cannot send as a sticker yet, and listing one would offer a send
- * that Telegram refuses.
- */
+The picker's opening read: the account's recent and saved stickers, and the
+installed packs as brief sets. The three reads are independent and run
+concurrently over the one connection.
+
+Only regular sticker packs are listed. An emoji or mask pack holds documents
+this client cannot send as a sticker yet, and listing one would offer a send
+that Telegram refuses.
+*/
 export async function readStickerLibrary(client: TelegramClient, registry: StickerRegistry): Promise<StickerLibraryDto> {
   const [recent, faved, installed] = await Promise.all([readRecent(client, false), readFaved(client), client.getInstalledStickers()]);
   return {
@@ -79,9 +79,9 @@ export async function readStickerLibrary(client: TelegramClient, registry: Stick
 }
 
 /**
- * Reads one pack in full, addressed either by its Telegram identity or by the
- * short name a link carries.
- */
+Reads one pack in full, addressed either by its Telegram identity or by the
+short name a link carries.
+*/
 export async function readStickerSet(
   client: TelegramClient,
   registry: StickerRegistry,
@@ -142,10 +142,10 @@ function optionalSetRef(value: unknown): StickerSetRef | undefined {
 }
 
 /**
- * Resolves a sticker the picker named. The registry is the fast path; the
- * pack identity is the cold-start fallback after a Durable Object restart,
- * which is why a send may carry it.
- */
+Resolves a sticker the picker named. The registry is the fast path; the
+pack identity is the cold-start fallback after a Durable Object restart,
+which is why a send may carry it.
+*/
 export async function resolveSticker(
   client: TelegramClient,
   registry: StickerRegistry,
@@ -166,9 +166,9 @@ export async function resolveSticker(
 }
 
 /**
- * Sends one sticker. `randomId` is reused by the outbox's retry, so a send that
- * actually landed is not duplicated.
- */
+Sends one sticker. `randomId` is reused by the outbox's retry, so a send that
+actually landed is not duplicated.
+*/
 export async function sendStickerMessage(
   client: TelegramClient,
   registry: StickerRegistry,
@@ -189,9 +189,9 @@ export async function sendStickerMessage(
 }
 
 /**
- * Installs the pack a link names. The answer is the pack itself, so the picker
- * and the toast can name it without a second read.
- */
+Installs the pack a link names. The answer is the pack itself, so the picker
+and the toast can name it without a second read.
+*/
 export async function installStickerSet(
   client: TelegramClient,
   registry: StickerRegistry,
@@ -207,9 +207,9 @@ export async function installStickerSet(
 }
 
 /**
- * The sticker surface, as one entry per method. The library and one pack are
- * reads, so a chat screen can batch them; sending and installing are writes.
- */
+The sticker surface, as one entry per method. The library and one pack are
+reads, so a chat screen can batch them; sending and installing are writes.
+*/
 export const stickerRpcMethods = {
   getStickerLibrary: {
     readOnly: true,

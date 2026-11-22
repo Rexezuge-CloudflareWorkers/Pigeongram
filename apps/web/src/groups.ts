@@ -2,7 +2,7 @@ import type { DialogMessageDto, MessageDto } from './types';
 
 /**
 Album grouping for display.
- *
+
 Telegram delivers one album as several real messages that share a `groupedId`.
 The UI renders them as one bubble, but every message stays addressable:
 reactions, read receipts and replies all remain per message. Kept pure so the
@@ -62,21 +62,21 @@ export function messageRowSelector(messageId: number): string {
 }
 
 /**
- * Whether a message continues the album the chat list already counted.
- *
- * Telegram delivers an album's members one by one, and the badge counts the
- * album once. The chat list's last message is the album's newest member, so a
- * message sharing its `groupedId` belongs to the album the badge counts — even
- * when the browser attached halfway through it.
- */
+Whether a message continues the album the chat list already counted.
+
+Telegram delivers an album's members one by one, and the badge counts the
+album once. The chat list's last message is the album's newest member, so a
+message sharing its `groupedId` belongs to the album the badge counts — even
+when the browser attached halfway through it.
+*/
 export function continuesAlbum(message: MessageDto, last: DialogMessageDto | null): boolean {
   return message.groupedId !== null && last !== null && last.groupedId === message.groupedId;
 }
 
 /**
- * How many unread messages a set of messages stands for: an album counts once,
- * however many of its members the set holds.
- */
+How many unread messages a set of messages stands for: an album counts once,
+however many of its members the set holds.
+*/
 export function countUnreadGroups(messages: readonly MessageDto[]): number {
   const albums = new Set<string>();
   let plain = 0;
@@ -91,9 +91,9 @@ export function countUnreadGroups(messages: readonly MessageDto[]): number {
 }
 
 /**
- * How many unread messages the incoming messages between two watermarks stand
- * for. The account's own messages are not unread, so they count for nothing.
- */
+How many unread messages the incoming messages between two watermarks stand
+for. The account's own messages are not unread, so they count for nothing.
+*/
 export function countUnreadGroupsBetween(messages: readonly MessageDto[], fromId: number, toId: number): number {
   return countUnreadGroups(messages.filter((message) => !message.outgoing && message.id > fromId && message.id <= toId));
 }

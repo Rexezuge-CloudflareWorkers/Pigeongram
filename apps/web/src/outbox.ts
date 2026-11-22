@@ -3,82 +3,82 @@ import type { DialogDto, MessageDto, MessageMediaDto, MessageReplyDto, PeerId, S
 import { mediaKind } from './upload';
 
 /**
- * The optimistic half of a send: a message the user has composed that is not
- * yet a real Telegram message. It lives beside the thread and the dialogs, not
- * inside them: message ids, read watermarks and reply lookups must stay
- * server-truth while the bridge works.
- */
+The optimistic half of a send: a message the user has composed that is not
+yet a real Telegram message. It lives beside the thread and the dialogs, not
+inside them: message ids, read watermarks and reply lookups must stay
+server-truth while the bridge works.
+*/
 
 type PendingStatus = 'preparing' | 'uploading' | 'sending' | 'failed';
 
 /**
- * The counter behind the random id's fallback, for a runtime without Web
- * Crypto.
- */
+The counter behind the random id's fallback, for a runtime without Web
+Crypto.
+*/
 let fallbackCounter = 0;
 
 export interface PendingMessage {
   /**
-   * Stable key for React and the outbox map.
-   */
+  Stable key for React and the outbox map.
+  */
   key: string;
   /**
-   * Monotonic per session; gives the synthetic DTO a negative id without
-   * colliding with a real message.
-   */
+  Monotonic per session; gives the synthetic DTO a negative id without
+  colliding with a real message.
+  */
   sequence: number;
   /**
-   * Stable Telegram `random_id`: reused when a failed attempt is retried, so
-   * Telegram drops a duplicate if the first attempt actually landed.
-   */
+  Stable Telegram `random_id`: reused when a failed attempt is retried, so
+  Telegram drops a duplicate if the first attempt actually landed.
+  */
   randomId: string;
   /**
-   * The conversation the bubble belongs to. For a comment this is the
-   * discussion group (or the channel before the thread exists).
-   */
+  The conversation the bubble belongs to. For a comment this is the
+  discussion group (or the channel before the thread exists).
+  */
   chatId: PeerId;
   /**
-   * The controller's filter: a chat id for a thread, a post key for comments.
-   */
+  The controller's filter: a chat id for a thread, a post key for comments.
+  */
   scope: string;
   kind: 'text' | 'file' | 'sticker';
   /**
-   * Message text, or the caption of a file.
-   */
+  Message text, or the caption of a file.
+  */
   text: string;
   /**
-   * How many files the entry carries: zero for a text message, one for a
-   * single file, more for an album.
-   */
+  How many files the entry carries: zero for a text message, one for a
+  single file, more for an album.
+  */
   fileCount: number;
   replyTo: number | null;
   /**
-   * The replied-to message at send time, so the quote still renders if the
-   * thread is reloaded before the send settles.
-   */
+  The replied-to message at send time, so the quote still renders if the
+  thread is reloaded before the send settles.
+  */
   replyPreview: MessageDto | null;
   media: MessageMediaDto | null;
   /**
-   * Object URL for a local file preview; null for text and undecodable files.
-   */
+  Object URL for a local file preview; null for text and undecodable files.
+  */
   previewUrl: string | null;
   /**
-   * Unix milliseconds.
-   */
+  Unix milliseconds.
+  */
   createdAt: number;
   status: PendingStatus;
   /**
-   * Upload fraction, 0..1.
-   */
+  Upload fraction, 0..1.
+  */
   progress: number | null;
   failure: string | null;
 }
 
 /**
- * A positive 63-bit random id as a decimal string, the shape Telegram's
- * `random_id` takes. Kept positive so it round-trips through the bridge's
- * signed 64-bit parser without a negative-decimal special case.
- */
+A positive 63-bit random id as a decimal string, the shape Telegram's
+`random_id` takes. Kept positive so it round-trips through the bridge's
+signed 64-bit parser without a negative-decimal special case.
+*/
 export function randomMessageId(): string {
   const words = new Uint32Array(2);
   if (typeof globalThis.crypto?.getRandomValues === 'function') {
@@ -93,13 +93,13 @@ export function randomMessageId(): string {
 }
 
 /**
- * The media descriptor a local file shows before Telegram's prepared media
- * arrives. `prepareUpload` may turn the kind into `document` later, and a
- * send-as-file selection is a document from the start.
- *
- * A voice note is named by the recorder (`voiceDuration`), because its Ogg
- * container would otherwise be read as a document.
- */
+The media descriptor a local file shows before Telegram's prepared media
+arrives. `prepareUpload` may turn the kind into `document` later, and a
+send-as-file selection is a document from the start.
+
+A voice note is named by the recorder (`voiceDuration`), because its Ogg
+container would otherwise be read as a document.
+*/
 export function pendingMedia(file: File, sendAsFile = false, voiceDuration: number | null = null): MessageMediaDto {
   return {
     kind: voiceDuration === null ? (sendAsFile ? 'document' : mediaKind(file)) : 'voice',
@@ -113,10 +113,10 @@ export function pendingMedia(file: File, sendAsFile = false, voiceDuration: numb
 }
 
 /**
- * The media descriptor a sticker shows before it settles: the picker's grid
- * already knows the emoji and the box, and the chat list's preview line reads
- * the emoji exactly as it does for a sent sticker.
- */
+The media descriptor a sticker shows before it settles: the picker's grid
+already knows the emoji and the box, and the chat list's preview line reads
+the emoji exactly as it does for a sent sticker.
+*/
 export function pendingStickerMedia(sticker: StickerDto): MessageMediaDto {
   return {
     kind: 'sticker',
@@ -151,9 +151,9 @@ export function revokePreview(url: string | null): void {
 }
 
 /**
- * The synthetic DTO the chat list folds in: outgoing, dated now, with a
- * negative id so it can never be mistaken for a Telegram message.
- */
+The synthetic DTO the chat list folds in: outgoing, dated now, with a
+negative id so it can never be mistaken for a Telegram message.
+*/
 export function pendingAsMessage(entry: PendingMessage): MessageDto {
   return {
     id: -entry.sequence,
@@ -203,11 +203,11 @@ function pendingReply(entry: PendingMessage): MessageReplyDto | null {
 }
 
 /**
- * Overlays pending sends on the server dialogs for rendering only. Applying
- * the newest pending entry of each chat through `applyNewMessage` keeps the
- * pinned/unpinned ordering rule in one place; dropping an entry is the whole
- * rollback.
- */
+Overlays pending sends on the server dialogs for rendering only. Applying
+the newest pending entry of each chat through `applyNewMessage` keeps the
+pinned/unpinned ordering rule in one place; dropping an entry is the whole
+rollback.
+*/
 export function withPendingDialogs(dialogs: DialogDto[], pending: readonly PendingMessage[], activeChatId: PeerId | null): DialogDto[] {
   return pending.reduce((current, entry) => applyNewMessage(current, pendingAsMessage(entry), activeChatId), dialogs);
 }

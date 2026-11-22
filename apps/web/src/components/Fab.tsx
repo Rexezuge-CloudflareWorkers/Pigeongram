@@ -1,15 +1,15 @@
 import { Icon } from './Icon';
 
 /**
- * The app's floating action button: a tonal container with a 40px glyph,
- * elevated by tonal surface pairing rather than a shadow (MD3 level 3).
- * Pairs with `Icon` (`name="arrow-down"` for the scroll-to-latest case).
- */
+The app's floating action button: a tonal container with a 40px glyph,
+elevated by tonal surface pairing rather than a shadow (MD3 level 3).
+Pairs with `Icon` (`name="arrow-down"` for the scroll-to-latest case).
+*/
 
 /**
- * The scroll-to-latest affordance: a small tonal FAB over the message pane.
- * Placement is owned by the caller.
- */
+The scroll-to-latest affordance: a small tonal FAB over the message pane.
+Placement is owned by the caller.
+*/
 export function JumpToLatestButton({
   onClick,
   disabled = false,

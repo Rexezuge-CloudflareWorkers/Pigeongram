@@ -9,12 +9,12 @@ import type { UploadRequest } from './upload';
 import type { useOutbox } from './useOutbox';
 
 /**
- * The thread's three sends: text, an attachment and a sticker.
- *
- * Split from `useThread.ts` so the controller stays under the god-file cap.
- * Every one is optimistic: the outbox owns the bridge round trip, the progress
- * and the retry, and the fold below only runs when the real message arrives.
- */
+The thread's three sends: text, an attachment and a sticker.
+
+Split from `useThread.ts` so the controller stays under the god-file cap.
+Every one is optimistic: the outbox owns the bridge round trip, the progress
+and the retry, and the fold below only runs when the real message arrives.
+*/
 interface ThreadSendsOptions {
   thread: ChatThread | null;
   outbox: ReturnType<typeof useOutbox>;

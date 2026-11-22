@@ -13,18 +13,18 @@ import { ProfilePopup } from './ProfilePopup';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
 /**
- * The nav bar of the open chat: who it is, and what can be done with it.
- *
- * The peer's picture and its name open the profile, and the ⋮ menu holds the
- * actions that are about the chat rather than about the reader — the profile,
- * the handle to copy, the chat in the app, and the move into or out of the
- * archive.
- *
- * The menu is a portal with `position: fixed` so the thread cannot clip it.
- * Its position is measured from the trigger once the menu has a size, then
- * clamped to the viewport; focus moves to the first item on open and returns
- * to the trigger when the menu closes.
- */
+The nav bar of the open chat: who it is, and what can be done with it.
+
+The peer's picture and its name open the profile, and the ⋮ menu holds the
+actions that are about the chat rather than about the reader — the profile,
+the handle to copy, the chat in the app, and the move into or out of the
+archive.
+
+The menu is a portal with `position: fixed` so the thread cannot clip it.
+Its position is measured from the trigger once the menu has a size, then
+clamped to the viewport; focus moves to the first item on open and returns
+to the trigger when the menu closes.
+*/
 
 interface ThreadHeaderProps {
   chat: ChatDto;
@@ -32,34 +32,34 @@ interface ThreadHeaderProps {
   archived: boolean;
   onBack: () => void;
   /**
-   * Moves the chat into the archive, or back out of it. The promise settles
-   * when the move is done, so the confirmation can wait for it.
-   */
+  Moves the chat into the archive, or back out of it. The promise settles
+  when the move is done, so the confirmation can wait for it.
+  */
   onSetArchived: (archived: boolean) => Promise<void>;
   /**
-   * Whether the chat is in the loaded list, so the archive move is meaningful.
-   * A chat reached through search is transient: it has no folder to move.
-   */
+  Whether the chat is in the loaded list, so the archive move is meaningful.
+  A chat reached through search is transient: it has no folder to move.
+  */
   canArchive: boolean;
   /**
-   * Opens the search overlay scoped to this chat.
-   */
+  Opens the search overlay scoped to this chat.
+  */
   onSearch: () => void;
   /**
-   * Starts a voice call to the chat. Only a person can be called, so the
-   * button is offered for a user and for nobody else.
-   */
+  Starts a voice call to the chat. Only a person can be called, so the
+  button is offered for a user and for nobody else.
+  */
   onCall: () => void;
   /**
-   * Whether a call is already up; the button is disabled until it ends.
-   */
+  Whether a call is already up; the button is disabled until it ends.
+  */
   callActive: boolean;
 }
 
 /**
- * How long the copied handle stays on the menu item, so the reader sees that
- * the write happened before the menu goes away.
- */
+How long the copied handle stays on the menu item, so the reader sees that
+the write happened before the menu goes away.
+*/
 const COPY_FEEDBACK_MS = 1600;
 
 export function ThreadHeader({
@@ -133,9 +133,9 @@ export function ThreadHeader({
   };
 
   /**
-   * The menu item asks before it moves: the archive takes the chat out of the
-   * list, and the reader may only have meant to look at the menu.
-   */
+  The menu item asks before it moves: the archive takes the chat out of the
+  list, and the reader may only have meant to look at the menu.
+  */
   const requestArchive = (): void => {
     setMenuOpen(false);
     setArchiveConfirmOpen(true);

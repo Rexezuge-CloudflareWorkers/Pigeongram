@@ -6,10 +6,10 @@ import { batchResult, request, rpc, rpcBatch } from '../../apps/web/src/api/requ
 import type { RpcBatchOutcome } from '../../apps/web/src/types';
 
 /**
- * The bridge transport on the family's shared client: body serialisation,
- * error decoding, the Access probe's two "no answer" shapes, and the batch
- * helpers the chat and thread reads sit on.
- */
+The bridge transport on the family's shared client: body serialisation,
+error decoding, the Access probe's two "no answer" shapes, and the batch
+helpers the chat and thread reads sit on.
+*/
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'content-type': 'application/json' } });

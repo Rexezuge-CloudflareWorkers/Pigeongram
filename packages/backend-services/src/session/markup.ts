@@ -9,9 +9,9 @@ import type {
 } from '../types';
 
 /**
- * Inline keyboard mapping, split from `dto.ts` to keep the message mapper under
- * the god-file cap.
- */
+Inline keyboard mapping, split from `dto.ts` to keep the message mapper under
+the god-file cap.
+*/
 
 export function toMessageMarkupDto(message: Message): MessageMarkupDto | null {
   const markup = message.markup;
@@ -23,10 +23,10 @@ export function toMessageMarkupDto(message: Message): MessageMarkupDto | null {
 }
 
 /**
- * Reply keyboard mapping: the chat-level keyboard above the composer, its
- * removal, or a force-reply request. Inline keyboards stay in `markup`; the
- * two render in different places, so they travel as different fields.
- */
+Reply keyboard mapping: the chat-level keyboard above the composer, its
+removal, or a force-reply request. Inline keyboards stay in `markup`; the
+two render in different places, so they travel as different fields.
+*/
 export function toMessageReplyKeyboardDto(message: Message): MessageReplyKeyboardDto | null {
   const markup = message.markup;
   if (markup === null) return null;

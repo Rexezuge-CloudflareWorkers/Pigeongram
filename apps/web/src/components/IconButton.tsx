@@ -2,14 +2,14 @@ import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 /**
- * The app's icon button: a 40px (MD3 touch target) or 36px (standard) circle
- * with a single glyph. Standard is the quiet `on-surface-variant` glyph
- * over a tonal hover; filled carries `primary` against `on-primary`;
- * tonal sits on `secondary-container`.
- *
- * Pairs with `Icon` for the glyph. The accessible name always comes from the
- * call site (`aria-label`), matching the visible affordance.
- */
+The app's icon button: a 40px (MD3 touch target) or 36px (standard) circle
+with a single glyph. Standard is the quiet `on-surface-variant` glyph
+over a tonal hover; filled carries `primary` against `on-primary`;
+tonal sits on `secondary-container`.
+
+Pairs with `Icon` for the glyph. The accessible name always comes from the
+call site (`aria-label`), matching the visible affordance.
+*/
 
 type IconButtonVariant = 'standard' | 'filled' | 'tonal';
 

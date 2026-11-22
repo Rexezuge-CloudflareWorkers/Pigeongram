@@ -4,11 +4,11 @@ import { Avatar } from '../../apps/web/src/components/Avatar';
 import { DEFAULT_DATA_SAVER, DataSaverProvider } from '../../apps/web/src/data-saver';
 
 /**
- * The profile picture and its fallbacks.
- *
- * The load is deliberately deferred until the avatar is near the viewport, so
- * the tests drive both the observer and the no-observer path.
- */
+The profile picture and its fallbacks.
+
+The load is deliberately deferred until the avatar is near the viewport, so
+the tests drive both the observer and the no-observer path.
+*/
 
 afterEach(() => {
   cleanup();

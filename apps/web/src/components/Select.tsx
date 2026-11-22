@@ -2,16 +2,16 @@ import type { SelectHTMLAttributes } from 'react';
 import { Icon } from './Icon';
 
 /**
- * The app's select, in the Material 3 outlined shape: the same 56px
- * extra-small field as `TextField`, with the platform's own options — the
- * native menu is what makes the video-quality picker reliable on every
- * browser, so no headless dropdown replaces it. The accessible name is the
- * call site's `aria-label` (e.g. "Video quality").
- *
- * Font size is 16px (`text-base`) to prevent iOS Safari input zoom; the
- * video-quality select lives in the viewer chrome, so it is kept at 16px
- * even though the text is small.
- */
+The app's select, in the Material 3 outlined shape: the same 56px
+extra-small field as `TextField`, with the platform's own options — the
+native menu is what makes the video-quality picker reliable on every
+browser, so no headless dropdown replaces it. The accessible name is the
+call site's `aria-label` (e.g. "Video quality").
+
+Font size is 16px (`text-base`) to prevent iOS Safari input zoom; the
+video-quality select lives in the viewer chrome, so it is kept at 16px
+even though the text is small.
+*/
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   className?: string;

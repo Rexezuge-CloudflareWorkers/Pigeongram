@@ -4,18 +4,18 @@ interface LaunchScreenProps {
 }
 
 /**
- * The first paint while the SPA probes the Access session.
- *
- * The launch state is deliberately text-free: the probe is the app starting,
- * and a heading plus a spinner made it read like a stalled form. The mark is
- * the paper plane the favicon and the install icons draw, with the layered
- * motion in `styles/launch.css`; the status text is visually hidden so a
- * screen reader still hears the probe.
- *
- * A real bridge failure stays on this screen with the message and a retry
- * instead of masquerading as a signed-out visitor. The mark dims and pauses so
- * the failure reads as a state, not as a broken animation.
- */
+The first paint while the SPA probes the Access session.
+
+The launch state is deliberately text-free: the probe is the app starting,
+and a heading plus a spinner made it read like a stalled form. The mark is
+the paper plane the favicon and the install icons draw, with the layered
+motion in `styles/launch.css`; the status text is visually hidden so a
+screen reader still hears the probe.
+
+A real bridge failure stays on this screen with the message and a retry
+instead of masquerading as a signed-out visitor. The mark dims and pauses so
+the failure reads as a state, not as a broken animation.
+*/
 export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
   return (
     <main className={`launch${error ? ' launch--error' : ''}`}>
@@ -48,12 +48,12 @@ export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
 }
 
 /**
- * The app's mark, in the favicon's 32-unit box.
- *
- * The geometry is the one `index.html` and `apps/web/build/pwa/mark.ts` draw; only
- * the tile is lifted from `--bg` to a panel gradient, because on the splash the
- * tile would otherwise disappear into the page. Keep the three copies in step.
- */
+The app's mark, in the favicon's 32-unit box.
+
+The geometry is the one `index.html` and `apps/web/build/pwa/mark.ts` draw; only
+the tile is lifted from `--bg` to a panel gradient, because on the splash the
+tile would otherwise disappear into the page. Keep the three copies in step.
+*/
 function AppMark() {
   return (
     <svg viewBox="0 0 32 32" focusable="false">

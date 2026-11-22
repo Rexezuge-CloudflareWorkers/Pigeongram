@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { composerSends } from '../../apps/web/src/composer-sends';
 
 /**
- * The view's send wrappers: every one clears the open reply target before it
- * hands the send on, so a second message never carries the previous reply.
- */
+The view's send wrappers: every one clears the open reply target before it
+hands the send on, so a second message never carries the previous reply.
+*/
 
 describe('composerSends', () => {
   function harness() {

@@ -1,13 +1,13 @@
 import { APP_NAME } from '../app-name';
 
 /**
- * The screen shown when the client cannot reach the server at all.
- *
- * It is the fourth face of the home page: the network is gone, so neither the
- * Cloudflare Access session nor the Telegram session can be probed, and the
- * chat list is not there to show. The app retries by itself when the browser
- * says the network is back.
- */
+The screen shown when the client cannot reach the server at all.
+
+It is the fourth face of the home page: the network is gone, so neither the
+Cloudflare Access session nor the Telegram session can be probed, and the
+chat list is not there to show. The app retries by itself when the browser
+says the network is back.
+*/
 interface OfflineScreenProps {
   onRetry: () => void;
 }

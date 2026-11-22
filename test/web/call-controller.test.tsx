@@ -4,14 +4,14 @@ import type { CallDto, GetCallDhConfigResult } from '../../apps/web/src/call-typ
 import { toBase64 } from '../../apps/web/src/calls/base64';
 
 /**
- * The calls controller's ordering rules.
- *
- * A call has three awaits before it exists (the DH config, the key pair and
- * the request), and two simultaneously — a double tap, or two updates that
- * arrive in the same batch — must not start or answer it twice. Each case here
- * is one of those windows, with the deferred promise standing where the
- * network is.
- */
+The calls controller's ordering rules.
+
+A call has three awaits before it exists (the DH config, the key pair and
+the request), and two simultaneously — a double tap, or two updates that
+arrive in the same batch — must not start or answer it twice. Each case here
+is one of those windows, with the deferred promise standing where the
+network is.
+*/
 
 const rpc = vi.hoisted(() => ({
   fetchCallDhConfig: vi.fn(),

@@ -52,11 +52,11 @@ const CREATE_META = `create table if not exists engine_meta (
 )`;
 
 /**
- * The engine's own bookkeeping on the DO's SQLite: the wake log feeding the
- * soak stats and a tiny key/value table for persisted bits (the signed-in
- * user's DTO, the last error). Table names are prefixed `engine_` to stay out
- * of mtcute's namespace.
- */
+The engine's own bookkeeping on the DO's SQLite: the wake log feeding the
+soak stats and a tiny key/value table for persisted bits (the signed-in
+user's DTO, the last error). Table names are prefixed `engine_` to stay out
+of mtcute's namespace.
+*/
 export class EngineStore {
   constructor(private readonly storage: SqlStorageLike) {
     this.storage.exec(CREATE_WAKES);

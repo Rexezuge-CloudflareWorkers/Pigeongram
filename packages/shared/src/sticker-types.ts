@@ -1,9 +1,9 @@
 /**
- * The sticker half of the bridge contract: the picker's library, one pack, the
- * send and the install a `t.me/addstickers` link offers. Split from
- * `rpc-types.ts` so the method shapes stay under the god-file cap; the SPA
- * mirrors these in `apps/web/src/types.ts`.
- */
+The sticker half of the bridge contract: the picker's library, one pack, the
+send and the install a `t.me/addstickers` link offers. Split from
+`rpc-types.ts` so the method shapes stay under the god-file cap; the SPA
+mirrors these in `apps/web/src/types.ts`.
+*/
 
 import type { MessageDto, PeerId, StickerLibraryDto, StickerSetDto } from './types';
 
@@ -19,16 +19,16 @@ Reads one pack in full. A pack is addressed either by its Telegram identity
 */
 export interface GetStickerSetParams {
   /**
-   * Decimal id of the sticker set, with `accessHash`.
-   */
+  Decimal id of the sticker set, with `accessHash`.
+  */
   id?: string;
   /**
-   * Decimal access hash of the sticker set, with `id`.
-   */
+  Decimal access hash of the sticker set, with `id`.
+  */
   accessHash?: string;
   /**
-   * The pack's short name, when its Telegram identity is not known.
-   */
+  The pack's short name, when its Telegram identity is not known.
+  */
   shortName?: string;
 }
 
@@ -47,20 +47,20 @@ identity is what lets the engine read it again instead of failing the send.
 export interface SendStickerParams {
   chatId: PeerId;
   /**
-   * Decimal document id of the sticker, as a `StickerDto` carried it.
-   */
+  Decimal document id of the sticker, as a `StickerDto` carried it.
+  */
   documentId: string;
   /**
-   * Id of the message to reply to, in the same chat.
-   */
+  Id of the message to reply to, in the same chat.
+  */
   replyTo?: number;
   /**
-   * Client-chosen Telegram `random_id`, so a retried send is not duplicated.
-   */
+  Client-chosen Telegram `random_id`, so a retried send is not duplicated.
+  */
   randomId?: string;
   /**
-   * The pack the sticker came from, for the registry's cold-start fallback.
-   */
+  The pack the sticker came from, for the registry's cold-start fallback.
+  */
   set?: {
     id: string;
     accessHash: string;

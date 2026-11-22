@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { toMessageWebPageDto, webPagePhoto } from '../../packages/backend-services/src/session/web-page';
 
 /**
- * Link previews: what a `messageMediaWebPage` puts on the wire, and what it
- * leaves out. The card is Telegram's copy of the page, so the mapper is also
- * where an unsafe URL and a photo-less preview are turned away.
- */
+Link previews: what a `messageMediaWebPage` puts on the wire, and what it
+leaves out. The card is Telegram's copy of the page, so the mapper is also
+where an unsafe URL and a photo-less preview are turned away.
+*/
 
 const PHOTO_ID = Long.fromNumber(1234);
 
@@ -27,9 +27,9 @@ function rawPhoto(overrides: Record<string, unknown> = {}): tl.RawPhoto {
 }
 
 /**
- * A `WebPageMedia` over a raw web page, with the page fields and the media
- * flags overridable.
- */
+A `WebPageMedia` over a raw web page, with the page fields and the media
+flags overridable.
+*/
 function webpage(page: Record<string, unknown> = {}, media: Record<string, unknown> = {}): WebPageMedia {
   const raw = {
     _: 'messageMediaWebPage',

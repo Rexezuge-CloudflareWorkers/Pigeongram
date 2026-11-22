@@ -32,9 +32,9 @@ export interface MtBundle {
 }
 
 /**
- * The two secret-backed values the mtcute client needs. Narrowed from
- * `CloudflareEnv` so a test can supply just the pair it is exercising.
- */
+The two secret-backed values the mtcute client needs. Narrowed from
+`CloudflareEnv` so a test can supply just the pair it is exercising.
+*/
 export interface ApiCredentialEnv {
   readonly TELEGRAM_API_ID?: string;
   readonly TELEGRAM_API_HASH?: string;
@@ -55,15 +55,15 @@ export function readApiCredentials(env: ApiCredentialEnv): { apiId: number; apiH
 }
 
 /**
- * Builds mtcute for the DO: SQLite storage on the DO's database, the WSS
- * transport to `apiws`, the workerd crypto provider, and the updates manager
- * (whose `catchUp` option is what the wake cycle replays `getDifference`
- * with).
- *
- * The high-level {@link TelegramClient} is created with `disableUpdates: true`
- * because the engine consumes **raw** updates (`base.onRawUpdate`) and maps
- * them to its own DTOs; the high-level parsing pipeline is skipped.
- */
+Builds mtcute for the DO: SQLite storage on the DO's database, the WSS
+transport to `apiws`, the workerd crypto provider, and the updates manager
+(whose `catchUp` option is what the wake cycle replays `getDifference`
+with).
+
+The high-level {@link TelegramClient} is created with `disableUpdates: true`
+because the engine consumes **raw** updates (`base.onRawUpdate`) and maps
+them to its own DTOs; the high-level parsing pipeline is skipped.
+*/
 export function createMtBundle(env: CloudflareEnv, storage: TransactionalStorageLike): MtBundle {
   const { apiId, apiHash } = readApiCredentials(env);
   const provider = createTelegramStorage(storage);

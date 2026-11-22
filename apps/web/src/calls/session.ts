@@ -1,69 +1,69 @@
 /**
- * The state of the call the reader is in.
- *
- * This module is the pure half of the call controller: it holds no
- * connections, no keys and no timers, only the state machine the UI renders.
- * Everything that needs the network lives in `controller.ts`, and everything
- * that needs the key lives beside it.
- */
+The state of the call the reader is in.
+
+This module is the pure half of the call controller: it holds no
+connections, no keys and no timers, only the state machine the UI renders.
+Everything that needs the network lives in `controller.ts`, and everything
+that needs the key lives beside it.
+*/
 
 /**
- * Where the call stands.
- *
- * - `ringing` — the call is not answered yet: an outgoing call waits for the
- *   other side to pick up, an incoming one rings at the reader.
- * - `connecting` — the key exchange is over and the two peers are setting the
- *   media connection up.
- * - `active` — the media flows.
- * - `ended` — the call is over; the overlay says so and then goes away.
- */
+Where the call stands.
+
+- `ringing` — the call is not answered yet: an outgoing call waits for the
+  other side to pick up, an incoming one rings at the reader.
+- `connecting` — the key exchange is over and the two peers are setting the
+  media connection up.
+- `active` — the media flows.
+- `ended` — the call is over; the overlay says so and then goes away.
+*/
 type CallPhase = 'ringing' | 'connecting' | 'active' | 'ended';
 
 /**
- * Which way the call went.
- */
+Which way the call went.
+*/
 type CallDirection = 'outgoing' | 'incoming';
 
 /**
- * What the UI shows.
- */
+What the UI shows.
+*/
 export interface CallView {
   /**
-   * The call's id, as its decimal string.
-   */
+  The call's id, as its decimal string.
+  */
   callId: string;
   /**
-   * The chat the call belongs to, as its marked peer id.
-   */
+  The chat the call belongs to, as its marked peer id.
+  */
   chatId: number;
   /**
-   * The other side's user id.
-   */
+  The other side's user id.
+  */
   peerId: number;
   direction: CallDirection;
   phase: CallPhase;
   /**
-   * Whether the microphone is muted.
-   */
+  Whether the microphone is muted.
+  */
   muted: boolean;
   /**
-   * The key's fingerprint, once the exchange is over. It is what the two
-   * sides compare to be sure they share the same key.
-   */
+  The key's fingerprint, once the exchange is over. It is what the two
+  sides compare to be sure they share the same key.
+  */
   fingerprint: string | null;
   /**
-   * Why the call failed, when it did.
-   */
+  Why the call failed, when it did.
+  */
   error: string | null;
   /**
-   * When the call started, in unix milliseconds.
-   */
+  When the call started, in unix milliseconds.
+  */
   startedAt: number;
 }
 
 /**
- * Everything that moves the state machine.
- */
+Everything that moves the state machine.
+*/
 export type CallAction =
   | { type: 'outgoing'; callId: string; chatId: number; peerId: number }
   | { type: 'incoming'; callId: string; chatId: number; peerId: number }
@@ -75,11 +75,11 @@ export type CallAction =
   | { type: 'dismissed' };
 
 /**
- * The call state machine.
- *
- * An action about another call is ignored: the updates stream carries every
- * call of the account, and only the one the reader is in matters.
- */
+The call state machine.
+
+An action about another call is ignored: the updates stream carries every
+call of the account, and only the one the reader is in matters.
+*/
 export function callReducer(view: CallView | null, action: CallAction): CallView | null {
   switch (action.type) {
     case 'outgoing': {

@@ -9,9 +9,9 @@ function image(name = 'image.png'): File {
 }
 
 /**
- * The clipboard of a paste. jsdom has no `DataTransfer`, so the stub is what
- * the composer reads: the item list, the file list and the plain text.
- */
+The clipboard of a paste. jsdom has no `DataTransfer`, so the stub is what
+the composer reads: the item list, the file list and the plain text.
+*/
 function clipboard(files: File[], text = ''): unknown {
   return {
     items: files.map((file) => ({ kind: 'file', type: file.type, getAsFile: () => file })),

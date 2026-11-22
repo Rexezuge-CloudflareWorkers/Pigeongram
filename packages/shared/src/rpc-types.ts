@@ -1,8 +1,8 @@
 /**
- * The RPC half of the JSON contract: the method names exposed over
- * `POST /user/rpc` with their parameters and results. Split from `types.ts`
- * and `chat-link-types.ts` to stay under the god-file cap.
- */
+The RPC half of the JSON contract: the method names exposed over
+`POST /user/rpc` with their parameters and results. Split from `types.ts`
+and `chat-link-types.ts` to stay under the god-file cap.
+*/
 
 import type { BotCommandDto, DialogDto, MeDto, MessageDto, PeerId, ProfileDto } from './types';
 
@@ -165,11 +165,11 @@ export interface RpcBatchOutcome {
 export interface GetDialogsParams {
   limit?: number;
   /**
-   * Reads the archive instead of the chat list: `true` returns the chats in
-   * Telegram's archive (the peer folder 1), `false` (the default) the main
-   * list. The two are separate reads — one limit would otherwise cost the
-   * main list the chats the archive holds.
-   */
+  Reads the archive instead of the chat list: `true` returns the chats in
+  Telegram's archive (the peer folder 1), `false` (the default) the main
+  list. The two are separate reads — one limit would otherwise cost the
+  main list the chats the archive holds.
+  */
   archived?: boolean;
 }
 
@@ -179,8 +179,8 @@ Moves a chat into the archive, or back out of it.
 export interface SetArchivedParams {
   chatId: PeerId;
   /**
-   * `true` archives the chat, `false` brings it back into the main list.
-   */
+  `true` archives the chat, `false` brings it back into the main list.
+  */
   archived: boolean;
 }
 
@@ -190,8 +190,8 @@ Pins a chat in its list, or unpins it.
 export interface SetPinnedParams {
   chatId: PeerId;
   /**
-   * `true` pins the chat, `false` unpins it.
-   */
+  `true` pins the chat, `false` unpins it.
+  */
   pinned: boolean;
 }
 
@@ -199,82 +199,82 @@ export interface GetHistoryParams {
   chatId: PeerId;
   limit?: number;
   /**
-   * Pagination cursor: return messages older than this message. `offsetDate`
-   * comes along from the oldest loaded message; a link jump knows only the
-   * post's id, and an omitted date reads as 0. The UI de-duplicates by id
-   * anyway.
-   */
+  Pagination cursor: return messages older than this message. `offsetDate`
+  comes along from the oldest loaded message; a link jump knows only the
+  post's id, and an omitted date reads as 0. The UI de-duplicates by id
+  anyway.
+  */
   offsetId?: number;
   offsetDate?: number;
   /**
-   * Skips `addOffset` messages from `offsetId` before reading (negative is
-   * towards newer messages), so a linked post can land mid-page: the SPA asks
-   * for a page around it instead of everything older than it.
-   */
+  Skips `addOffset` messages from `offsetId` before reading (negative is
+  towards newer messages), so a linked post can land mid-page: the SPA asks
+  for a page around it instead of everything older than it.
+  */
   addOffset?: number;
   /**
-   * The message the window has to hold: a linked post the reader jumped to.
-   * The engine reads around it and, when the first read missed it (a deleted
-   * post, or one past the end of the history), reads the page that ends at it
-   * instead — the fallback the SPA used to spend a second round trip on.
-   */
+  The message the window has to hold: a linked post the reader jumped to.
+  The engine reads around it and, when the first read missed it (a deleted
+  post, or one past the end of the history), reads the page that ends at it
+  instead — the fallback the SPA used to spend a second round trip on.
+  */
   anchorId?: number;
 }
 
 export interface GetCommentsParams {
   /**
-   * The channel the post belongs to.
-   */
+  The channel the post belongs to.
+  */
   chatId: PeerId;
   /**
-   * Id of the channel post whose thread is being read.
-   */
+  Id of the channel post whose thread is being read.
+  */
   messageId: number;
   limit?: number;
   /**
-   * Pagination cursor for older comments: the oldest loaded comment's id and
-   * unix-seconds date. Both come together or not at all.
-   */
+  Pagination cursor for older comments: the oldest loaded comment's id and
+  unix-seconds date. Both come together or not at all.
+  */
   offsetId?: number;
   offsetDate?: number;
 }
 
 export interface SendCommentParams {
   /**
-   * The channel the post belongs to.
-   */
+  The channel the post belongs to.
+  */
   chatId: PeerId;
   /**
-   * Id of the channel post being commented on.
-   */
+  Id of the channel post being commented on.
+  */
   messageId: number;
   text: string;
   /**
-   * Id of the comment being replied to inside the thread; omitted for a
-   * top-level comment.
-   */
+  Id of the comment being replied to inside the thread; omitted for a
+  top-level comment.
+  */
   replyTo?: number;
   /**
-   * Client-chosen Telegram `random_id`, reused by a retry so an accepted
-   * comment is not duplicated.
-   */
+  Client-chosen Telegram `random_id`, reused by a retry so an accepted
+  comment is not duplicated.
+  */
   randomId?: string;
 }
 
 export interface GetBotCommandsParams {
   chatId: PeerId;
   /**
-   * A channel post whose comment thread is the target: the commands belong to
-   * the linked discussion group the engine resolves for the post, not to
-   * `chatId`. Omitted for a chat's own menu.
-   */
+  A channel post whose comment thread is the target: the commands belong to
+  the linked discussion group the engine resolves for the post, not to
+  `chatId`. Omitted for a chat's own menu.
+  */
   messageId?: number;
 }
 
 export interface GetProfileParams {
   /**
-   * The marked peer id whose profile is read.
-   */
+  The marked peer id whose profile is read.
+  */
   chatId: PeerId;
 }
 
@@ -308,39 +308,39 @@ export interface GetHistoryResult {
 
 export interface SendUploadGroupResult {
   /**
-   * The album's messages, oldest first, as Telegram returned them.
-   */
+  The album's messages, oldest first, as Telegram returned them.
+  */
   messages: MessageDto[];
 }
 
 export interface GetCommentsResult {
   /**
-   * Comments of one thread window, oldest first.
-   */
+  Comments of one thread window, oldest first.
+  */
   comments: MessageDto[];
   /**
-   * Total number of comments in the thread.
-   */
+  Total number of comments in the thread.
+  */
   count: number;
   /**
-   * Marked id of the linked discussion group; null when the thread does not
-   * exist yet (no comment was ever posted).
-   */
+  Marked id of the linked discussion group; null when the thread does not
+  exist yet (no comment was ever posted).
+  */
   discussionChatId: PeerId | null;
   /**
-   * Id of the thread's root message in the discussion group; null when the
-   * thread does not exist yet.
-   */
+  Id of the thread's root message in the discussion group; null when the
+  thread does not exist yet.
+  */
   discussionMessageId: number | null;
   /**
-   * Slash commands of the linked discussion group; empty while the thread does
-   * not exist yet. The comments composer posts into that group.
-   */
+  Slash commands of the linked discussion group; empty while the thread does
+  not exist yet. The comments composer posts into that group.
+  */
   commands: BotCommandDto[];
   /**
-   * Pagination cursor for older comments; absent when the oldest comment is
-   * loaded.
-   */
+  Pagination cursor for older comments; absent when the oldest comment is
+  loaded.
+  */
   nextOffsetId?: number;
   nextOffsetDate?: number;
 }

@@ -22,13 +22,13 @@ import { resolveReplyPreviews } from './reply-previews';
 import type { PartialMethodTable } from './rpc-methods';
 
 /**
- * The message half of the bridge: history windows, sends, forwards, reads,
- * reactions, votes, callback buttons and comment threads.
- *
- * The window helpers live here because they are the read path's rules: an
- * anchored jump lands the post mid-page, and the oldest album of a window is
- * completed so its grid never renders a partial row at the top edge.
- */
+The message half of the bridge: history windows, sends, forwards, reads,
+reactions, votes, callback buttons and comment threads.
+
+The window helpers live here because they are the read path's rules: an
+anchored jump lands the post mid-page, and the oldest album of a window is
+completed so its grid never renders a partial row at the top edge.
+*/
 export const messagesRpcMethods = {
   getHistory: {
     readOnly: true,
@@ -322,20 +322,20 @@ interface WindowRequest {
   offsetDate?: number;
   addOffset: number;
   /**
-   * The message the window has to hold, when the reader jumped to one.
-   */
+  The message the window has to hold, when the reader jumped to one.
+  */
   anchorId?: number;
 }
 
 /**
- * Reads one window of a chat.
- *
- * With an anchor, the window is read *around* that message: the post lands
- * mid-page with its newer context beside it. When the first read missed it —
- * a deleted post, or one past the end of the history — the page that ends at
- * it is read instead, which still lands the reader right next to it. That
- * fallback used to cost the SPA a second round trip.
- */
+Reads one window of a chat.
+
+With an anchor, the window is read *around* that message: the post lands
+mid-page with its newer context beside it. When the first read missed it —
+a deleted post, or one past the end of the history — the page that ends at
+it is read instead, which still lands the reader right next to it. That
+fallback used to cost the SPA a second round trip.
+*/
 async function readWindow(client: TelegramClient, chatId: number, request: WindowRequest): Promise<Message[]> {
   if (request.anchorId !== undefined) {
     const skip = request.addOffset === 0 ? -Math.min(JUMP_CONTEXT, Math.floor(request.limit / 2)) : request.addOffset;

@@ -3535,7 +3535,11 @@ describe('App', () => {
       expect(player.getAttribute('src')).toContain('/user/file?chatId=2&messageId=30');
       expect(player.getAttribute('poster')).toContain('thumb=1');
 
+      // One automatic retry first: a dropped stream is not a broken file.
       fireEvent.error(player);
+      const retried = dialog.querySelector<HTMLVideoElement>('video.media-viewer-media');
+      if (!retried) throw new Error('The viewer did not retry');
+      fireEvent.error(retried);
       const link = await within(dialog).findByRole('link', { name: /clip\.mp4/ });
       expect(link.getAttribute('href')).toContain('/user/file?chatId=2&messageId=30');
     });

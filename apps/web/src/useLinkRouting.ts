@@ -10,40 +10,40 @@ import { useForwardOrigin } from './useForwardOrigin';
 import { useInviteNavigation } from './useInviteNavigation';
 
 /**
- * The router for the Telegram navigation points inside message bodies: a chat
- * link, a forward's origin, and a private invite card.
- *
- * A chat the loaded list carries opens at once; anything else is resolved by the
- * bridge, which may open a transient preview, offer the invite card, or hand the
- * target to the installed app. Split from `useSignedInNavigation` so the routing
- * hook stays under the god-file cap; the resolution ticket is shared with it, so
- * a slow answer cannot take the reader away from a screen they moved to after
- * the click.
- */
+The router for the Telegram navigation points inside message bodies: a chat
+link, a forward's origin, and a private invite card.
+
+A chat the loaded list carries opens at once; anything else is resolved by the
+bridge, which may open a transient preview, offer the invite card, or hand the
+target to the installed app. Split from `useSignedInNavigation` so the routing
+hook stays under the god-file cap; the resolution ticket is shared with it, so
+a slow answer cannot take the reader away from a screen they moved to after
+the click.
+*/
 
 interface UseLinkRoutingOptions {
   /**
-   * Every loaded dialog: a known chat opens without a bridge round trip.
-   */
+  Every loaded dialog: a known chat opens without a bridge round trip.
+  */
   dialogs: readonly DialogDto[];
   /**
-   * The navigation's resolution counter. A link click bumps it, and a slower
-   * answer that is no longer the newest is dropped.
-   */
+  The navigation's resolution counter. A link click bumps it, and a slower
+  answer that is no longer the newest is dropped.
+  */
   resolutionRef: MutableRefObject<number>;
   openChat: (chat: ChatDto, target?: { postId?: number; commentId?: number }) => void;
   /**
-   * Keeps a chat outside the loaded list addressable for this session.
-   */
+  Keeps a chat outside the loaded list addressable for this session.
+  */
   registerChat: (chat: ChatDto) => void;
   /**
-   * Publishes the preview mark, or clears it, for a resolved public chat the
-   * account has not joined.
-   */
+  Publishes the preview mark, or clears it, for a resolved public chat the
+  account has not joined.
+  */
   setPreview: (preview: ChatPreview | null) => void;
   /**
-   * Reads the chat list again after a join.
-   */
+  Reads the chat list again after a join.
+  */
   reload: () => Promise<void>;
   onError: (failure: unknown) => void;
   onNotice: (text: string) => void;
@@ -53,10 +53,10 @@ interface LinkRouting {
   openForwardOrigin: (forward: MessageForwardDto) => void;
   handleTelegramLink: (url: string) => boolean;
   /**
-   * Opens a chat the new-message picker found. A chat already in the list is
-   * that chat; anyone else is opened the way a Telegram link resolves one,
-   * including the preview the account has not joined yet.
-   */
+  Opens a chat the new-message picker found. A chat already in the list is
+  that chat; anyone else is opened the way a Telegram link resolves one,
+  including the preview the account has not joined yet.
+  */
   openFoundChat: (chat: ChatDto) => void;
   invite: PendingInvite | null;
   joinInvite: () => void;
@@ -74,10 +74,10 @@ export function useLinkRouting({
   onNotice,
 }: UseLinkRoutingOptions): LinkRouting {
   /**
-   * Turns a resolved chat into a thread: a member opens normally, a public chat
-   * the account is not in opens as a preview. A target with no public username
-   * could not be joined from here, so it goes to the installed app.
-   */
+  Turns a resolved chat into a thread: a member opens normally, a public chat
+  the account is not in opens as a preview. A target with no public username
+  could not be joined from here, so it goes to the installed app.
+  */
   const showResolved = useCallback(
     (chat: ChatDto, member: boolean, target: TelegramChatTarget, request: ResolveRequest): void => {
       if (!member && chat.username === null) {
@@ -104,10 +104,10 @@ export function useLinkRouting({
   );
 
   /**
-   * Resolves a username or marked id the loaded list does not carry. A 404 is
-   * the unknown-chat case and hands the target to the installed app; every
-   * other failure is reported.
-   */
+  Resolves a username or marked id the loaded list does not carry. A 404 is
+  the unknown-chat case and hands the target to the installed app; every
+  other failure is reported.
+  */
   const resolveTarget = useCallback(
     (target: TelegramChatTarget, request: ResolveRequest = {}): void => {
       const ticket = ++resolutionRef.current;
@@ -138,16 +138,16 @@ export function useLinkRouting({
   const openForwardOrigin = useForwardOrigin(dialogs, openChat, resolveTarget);
 
   /**
-   * Opens a chat the new-message picker found.
-   *
-   * A person is a member by definition, and the picker's read already stored
-   * the peer in the engine's cache, so opening the thread is one route change.
-   * A group or a channel may be one the account has not joined: its public
-   * username goes through the same resolution a link takes, so the thread
-   * shows Join where a composer would fail. A chat whose marked id the list
-   * does not carry and whose username Telegram withheld keeps the picker's own
-   * DTO, exactly as a transient search hit does.
-   */
+  Opens a chat the new-message picker found.
+  
+  A person is a member by definition, and the picker's read already stored
+  the peer in the engine's cache, so opening the thread is one route change.
+  A group or a channel may be one the account has not joined: its public
+  username goes through the same resolution a link takes, so the thread
+  shows Join where a composer would fail. A chat whose marked id the list
+  does not carry and whose username Telegram withheld keeps the picker's own
+  DTO, exactly as a transient search hit does.
+  */
   const openFoundChat = useCallback(
     (chat: ChatDto): void => {
       const known = dialogs.find((dialog) => dialog.chat.id === chat.id);
@@ -173,12 +173,12 @@ export function useLinkRouting({
   );
 
   /**
-   * Routes a click on a link inside a message: a chat this client already knows
-   * opens in the thread (a linked post lands on that post), any other Telegram
-   * chat is resolved and opened or previewed, a private invite opens its card,
-   * and everything Telegram cannot open here is handed to the installed app.
-   * `false` leaves ordinary web links to the browser.
-   */
+  Routes a click on a link inside a message: a chat this client already knows
+  opens in the thread (a linked post lands on that post), any other Telegram
+  chat is resolved and opened or previewed, a private invite opens its card,
+  and everything Telegram cannot open here is handed to the installed app.
+  `false` leaves ordinary web links to the browser.
+  */
   const handleTelegramLink = useCallback(
     (url: string): boolean => {
       const link = parseTelegramLink(url);

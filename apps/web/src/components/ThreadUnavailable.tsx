@@ -1,13 +1,13 @@
 import { Icon } from './Icon';
 
 /**
- * The thread of a chat Telegram no longer offers to this account.
- *
- * The engine answers a chat the account left, or one that was deleted, with
- * `not_found`, and retrying that read cannot bring it back. So the pane says
- * what happened and offers the one action that works — leaving it — instead of
- * an empty thread and a composer whose sends would all fail.
- */
+The thread of a chat Telegram no longer offers to this account.
+
+The engine answers a chat the account left, or one that was deleted, with
+`not_found`, and retrying that read cannot bring it back. So the pane says
+what happened and offers the one action that works — leaving it — instead of
+an empty thread and a composer whose sends would all fail.
+*/
 interface ThreadUnavailableProps {
   onBack: () => void;
 }

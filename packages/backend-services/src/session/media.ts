@@ -1,49 +1,56 @@
-import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice, tl } from '@mtcute/core';
-import { Document as MtDocument } from '@mtcute/core';
+import type { Audio, Document, FileLocation, MessageMedia, Photo, Sticker, Thumbnail, Video, Voice } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
 import { MEDIA_WINDOW_BYTES } from './config';
 import { EngineError } from './errors';
-import { log } from './log';
+import type { MediaRange } from './media-window';
+import { planWindow } from './media-window';
+import type { MediaTargetCache } from './media-targets';
 import { windowedStream } from './media-stream';
 import type { StickerRegistry } from './sticker-registry';
-import { variantDocuments } from './video-variants';
+import { resolveQuality } from './media-quality';
 import { webPagePhoto } from './web-page';
 
 /**
- * Media downloads.
- *
- * Downloads resolve the file location (`file_reference` included) at request
- * time from the message or peer itself, so the SPA never carries locations
- * around. Uploads live in `upload.ts`; both stream through mtcute without
- * buffering the payload in the isolate.
- */
+Media downloads.
+
+Downloads resolve the file location (`file_reference` included) at request
+time from the message or peer itself, so the SPA never carries locations
+around. Uploads live in `upload.ts`; both stream through mtcute without
+buffering the payload in the isolate.
+*/
 
 export type AvatarSize = 'small' | 'big';
 
 export interface MediaDownload {
   stream: ReadableStream<Uint8Array>;
   /**
-   * MIME type to serve the bytes as.
-   */
+  MIME type to serve the bytes as.
+  */
   mime: string;
   /**
-   * Size of the full file in bytes, when known.
-   */
+  Size of the full file in bytes, when known.
+  */
   size: number | null;
   /**
-   * Size of this response's body in bytes, when known.
-   */
+  Size of this response's body in bytes, when known.
+  */
   length: number | null;
   status: 200 | 206;
   /**
-   * `bytes start-end/size` when the response is partial, else null.
-   */
+  `bytes start-end/size` when the response is partial, else null.
+  */
   contentRange: string | null;
+  /**
+  The entity tag of the bytes, when Telegram gave the file a stable id.
+  `If-Range`/`If-None-Match` are answered against it, so a player can resume
+  a partial download without mixing two versions of a file.
+  */
+  etag: string | null;
 }
 
 export interface MessageMediaOptions {
   thumb?: boolean;
-  range?: { start: number; end: number | null };
+  range?: MediaRange;
   /**
   Stream variant for a video: `0` is the primary document, `1..n` select
   Telegram's alternative qualities (highest resolution first, one per
@@ -55,37 +62,64 @@ export interface MessageMediaOptions {
 }
 
 /**
- * Streams a message's media (photo, video, audio, voice, sticker, document),
- * or the photo of a link preview.
- *
- * `thumb: true` resolves a bubble-sized preview instead — the poster for a
- * video or the largest preview of a photo within {@link PREVIEW_MAX_EDGE}. A
- * `range` produces a partial
- * response from the closest block-aligned offset, which is what lets `<video>`
- * seek without downloading the whole file (`media-stream.ts` cuts the window
- * itself, for the reason documented there). `quality` selects a video variant
- * server-side (`0` primary, `1..n` alternatives, `max` largest); downloads ask
- * for `max` so they always fetch the highest quality, while playback uses the
- * chosen variant.
- */
+Streams a message's media (photo, video, audio, voice, sticker, document),
+or the photo of a link preview.
+
+`thumb: true` resolves a bubble-sized preview instead — the poster for a
+video or the largest preview of a photo within {@link PREVIEW_MAX_EDGE}. A
+`range` produces a partial
+response from the closest part-aligned offset, which is what lets `<video>`
+seek without downloading the whole file (`media-stream.ts` cuts the window
+itself, for the reason documented there). `quality` selects a video variant
+server-side (`0` primary, `1..n` alternatives, `max` largest); downloads ask
+for `max` so they always fetch the highest quality, while playback uses the
+chosen variant.
+
+`cache` keeps the resolved message between the many range requests one
+`<video>` makes; a download failure evicts the entry so a stale
+`file_reference` is not reused.
+*/
 export async function streamMessageMedia(
   client: TelegramClient,
   chatId: number,
   messageId: number,
   options: MessageMediaOptions = {},
   mediaWindowBytes = MEDIA_WINDOW_BYTES,
+  cache?: MediaTargetCache,
 ): Promise<MediaDownload> {
+  const cached = cache?.get(chatId, messageId) ?? null;
+  const file = cached ?? (await resolveMessageMedia(client, chatId, messageId));
+  if (!cached) cache?.set(chatId, messageId, file);
+  const store = cache;
+  const onSourceError = store ? (): void => store.delete(chatId, messageId) : undefined;
+  return streamResolvedMedia(client, file, options, mediaWindowBytes, onSourceError);
+}
+
+/**
+Reads the message behind a media request. One Telegram round trip, and the
+only one a cached range request pays.
+*/
+async function resolveMessageMedia(client: TelegramClient, chatId: number, messageId: number): Promise<DownloadableMedia> {
   const [message] = await client.getMessages(chatId, [messageId]);
   if (!message) throw new EngineError('Message not found', 404);
   const file = downloadableMedia(message.media);
   if (!file) {
     throw new EngineError('Message has no downloadable media', 400);
   }
+  return file;
+}
 
+function streamResolvedMedia(
+  client: TelegramClient,
+  file: DownloadableMedia,
+  options: MessageMediaOptions,
+  mediaWindowBytes: number,
+  onSourceError?: (error: unknown) => void,
+): MediaDownload {
   if (options.thumb === true) {
     const thumb = pickThumbnail(file.thumbnails);
     if (!thumb) throw new EngineError('Message media has no thumbnail', 404);
-    return fullDownload(client, thumb, 'image/jpeg', false);
+    return fullDownload(client, thumb, 'image/jpeg', false, onSourceError);
   }
 
   const target = resolveQuality(file, options.quality);
@@ -93,20 +127,20 @@ export async function streamMessageMedia(
   // list, which is good enough for bounds but not for a `content-range`
   // promise. Videos and documents carry exact sizes and support seeking.
   if (!target.exactSize || !options.range) {
-    return fullDownload(client, target.location, target.mime, target.exactSize);
+    return fullDownload(client, target.location, target.mime, target.exactSize, onSourceError);
   }
-  return rangedDownload(client, target.location, target.mime, options.range, mediaWindowBytes);
+  return rangedDownload(client, target.location, target.mime, options.range, mediaWindowBytes, onSourceError);
 }
 
 /**
- * Streams one sticker from the engine's registry, addressed by the document id
- * the picker was given.
- *
- * `preview` resolves the sticker's own thumbnail, which is what a picker cell
- * renders: a static sticker may be served whole, while an animated or video one
- * has no still frame in its payload and must use the thumbnail. The full file is
- * what a settled message fetches.
- */
+Streams one sticker from the engine's registry, addressed by the document id
+the picker was given.
+
+`preview` resolves the sticker's own thumbnail, which is what a picker cell
+renders: a static sticker may be served whole, while an animated or video one
+has no still frame in its payload and must use the thumbnail. The full file is
+what a settled message fetches.
+*/
 export async function streamSticker(
   client: TelegramClient,
   registry: StickerRegistry,
@@ -124,26 +158,26 @@ export async function streamSticker(
 }
 
 /**
- * A profile photo, whole.
- */
+A profile photo, whole.
+*/
 export interface AvatarImage {
   mime: string;
   bytes: Uint8Array;
   /**
-   * The version token that identifies this photo. Telegram changes it when
-   * the photo changes, so it is the cache key — and it comes from the engine,
-   * never from the caller.
-   */
+  The version token that identifies this photo. Telegram changes it when
+  the photo changes, so it is the cache key — and it comes from the engine,
+  never from the caller.
+  */
   version: string;
 }
 
 /**
- * Reads a peer's profile photo whole, with the version token that identifies
- * it.
- *
- * Avatars are small, so they are buffered rather than streamed: the engine
- * keeps the bytes, and a repeat request never reaches Telegram again.
- */
+Reads a peer's profile photo whole, with the version token that identifies
+it.
+
+Avatars are small, so they are buffered rather than streamed: the engine
+keeps the bytes, and a repeat request never reaches Telegram again.
+*/
 export async function readAvatar(client: TelegramClient, chatId: number, size: AvatarSize): Promise<AvatarImage> {
   const peer = await client.getPeer(chatId).catch(() => null);
   if (!peer) throw new EngineError('Peer not found', 404);
@@ -154,10 +188,10 @@ export async function readAvatar(client: TelegramClient, chatId: number, size: A
 }
 
 /**
- * The version token of a peer's profile photo, or null when the peer has no
- * photo. It identifies the bytes without reading them, so the engine can
- * answer from its cache without asking Telegram.
- */
+The version token of a peer's profile photo, or null when the peer has no
+photo. It identifies the bytes without reading them, so the engine can
+answer from its cache without asking Telegram.
+*/
 export async function readAvatarVersion(client: TelegramClient, chatId: number, size: AvatarSize): Promise<string | null> {
   const peer = await client.getPeer(chatId).catch(() => null);
   if (!peer?.photo) return null;
@@ -165,8 +199,8 @@ export async function readAvatarVersion(client: TelegramClient, chatId: number, 
 }
 
 /**
- * Collects a chunk stream into one buffer.
- */
+Collects a chunk stream into one buffer.
+*/
 async function collect(chunks: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
   const parts: Uint8Array[] = [];
   let total = 0;
@@ -184,12 +218,18 @@ async function collect(chunks: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
 }
 
 /**
- * A full (status 200) download. `exactSize` says whether `location.fileSize`
- * is the true byte length — for photos it is derived from the size list, so it
- * is used for bounds but not promised as `content-length`; without it the
- * window runs to the end of the file.
- */
-function fullDownload(client: TelegramClient, location: FileLocation, mime: string, exactSize: boolean): MediaDownload {
+A full (status 200) download. `exactSize` says whether `location.fileSize`
+is the true byte length — for photos it is derived from the size list, so it
+is used for bounds but not promised as `content-length`; without it the
+window runs to the end of the file.
+*/
+function fullDownload(
+  client: TelegramClient,
+  location: FileLocation,
+  mime: string,
+  exactSize: boolean,
+  onSourceError?: (error: unknown) => void,
+): MediaDownload {
   // `size` is the trustworthy total behind `accept-ranges`/`content-range`
   // (seeking); it stays gated on `exactSize`, since a derived photo size is
   // not a promise a browser can seek against. `length` is this response's body
@@ -200,12 +240,13 @@ function fullDownload(client: TelegramClient, location: FileLocation, mime: stri
   const fileSize = location.fileSize ?? null;
   const size = exactSize ? fileSize : null;
   return {
-    stream: windowedStream(client, location, { offset: 0, drop: 0, length: fileSize }),
+    stream: windowedStream(client, location, { offset: 0, drop: 0, length: fileSize, onSourceError }),
     mime,
     size,
     length: fileSize,
     status: 200,
     contentRange: null,
+    etag: entityTag(location),
   };
 }
 
@@ -213,48 +254,59 @@ function rangedDownload(
   client: TelegramClient,
   location: FileLocation,
   mime: string,
-  range: { start: number; end: number | null },
+  range: MediaRange,
   mediaWindowBytes: number,
+  onSourceError?: (error: unknown) => void,
 ): MediaDownload {
   const size = location.fileSize ?? null;
   if (size === null) {
     // Without a known size there is no `content-range` to promise; serve the
     // whole file instead of a partial response the browser cannot verify.
-    return fullDownload(client, location, mime, false);
+    return fullDownload(client, location, mime, false, onSourceError);
   }
 
-  const end = Math.min(range.end ?? size - 1, size - 1);
-  if (range.start > end) {
-    throw new EngineError('Requested range is outside the file', 416);
-  }
-
-  // Telegram parts must not straddle a part block, so start at the closest
-  // block below the request and drop the extra prefix bytes from the stream.
-  const aligned = range.start - (range.start % mediaWindowBytes);
-  const length = end - range.start + 1;
+  const plan = planWindow(range, size, mediaWindowBytes);
+  const end = plan.offset + plan.drop + plan.length - 1;
   return {
-    stream: windowedStream(client, location, { offset: aligned, drop: range.start - aligned, length }),
+    stream: windowedStream(client, location, {
+      offset: plan.offset,
+      drop: plan.drop,
+      length: plan.length,
+      partSize: plan.partSize,
+      onSourceError,
+    }),
     mime,
     size,
-    length,
+    length: plan.length,
     status: 206,
-    contentRange: `bytes ${range.start}-${end}/${size}`,
+    contentRange: `bytes ${plan.offset + plan.drop}-${end}/${size}`,
+    etag: entityTag(location),
   };
 }
 
 /**
- * The message-media union members that are file locations (everything a
- * `/user/file` request can stream). A web page preview's photo is one: the
- * card fetches it through the same route, while the page itself is never
- * contacted.
- */
-type DownloadableMedia = Photo | Video | Audio | Voice | Sticker | Document;
+The stable entity tag of a file location, when Telegram gave one. The id
+changes when the file does, so it is a valid `ETag` for conditional and
+resumable requests.
+*/
+function entityTag(location: FileLocation): string | null {
+  const uniqueFileId = (location as FileLocation & { uniqueFileId?: string }).uniqueFileId;
+  return typeof uniqueFileId === 'string' && uniqueFileId.length > 0 ? `"${uniqueFileId}"` : null;
+}
 
 /**
- * Narrows `MessageMedia` (which also covers polls, geo points, …) to the file
- * behind a `/user/file` request, if there is one. A web page preview resolves
- * to its photo; every other non-file media resolves to null.
- */
+The message-media union members that are file locations (everything a
+`/user/file` request can stream). A web page preview's photo is one: the
+card fetches it through the same route, while the page itself is never
+contacted.
+*/
+export type DownloadableMedia = Photo | Video | Audio | Voice | Sticker | Document;
+
+/**
+Narrows `MessageMedia` (which also covers polls, geo points, …) to the file
+behind a `/user/file` request, if there is one. A web page preview resolves
+to its photo; every other non-file media resolves to null.
+*/
 function downloadableMedia(media: MessageMedia): DownloadableMedia | null {
   if (media?.type === 'webpage') return webPagePhoto(media);
   switch (media?.type) {
@@ -272,89 +324,11 @@ function downloadableMedia(media: MessageMedia): DownloadableMedia | null {
   }
 }
 
-interface QualityTarget {
-  location: FileLocation;
-  /**
-  MIME type to serve the bytes as.
-  */
-  mime: string;
-  /**
-  Whether the location's `fileSize` is the exact byte length (videos and
-  documents). Photos derive a size from Telegram's size list, so it is used for
-  bounds but never promised as `content-length`.
-  */
-  exactSize: boolean;
-}
-
 /**
-Picks the file to stream for a requested video quality. `file.media` carries
-the raw `messageMediaDocument` for a document-backed video, which is the only
-shape that can have alternative qualities. Every other request serves the
-primary file, so an inapplicable `quality` (e.g. on a photo or a download of a
-non-video) never breaks. When a quality *is* requested for a video but no
-variant resolves, the fallback is logged: a silently ignored selection looks
-like a broken resolution switch.
+The largest edge a bubble preview may have. A photo's thumbnail list also
+carries its full-size image, so `thumb: true` picks the largest entry that
+still fits a bubble; the viewer is what asks for the original.
 */
-function resolveQuality(file: DownloadableMedia, quality: number | 'max' | undefined): QualityTarget {
-  if (quality === undefined) return targetOf(file);
-  if (file.type !== 'video') return targetOf(file);
-  const rawMedia = (file as { media?: tl.RawMessageMediaDocument }).media;
-  if (rawMedia?._ !== 'messageMediaDocument') return targetOf(file);
-  const variants = variantDocuments(file);
-  if (variants.length === 1) {
-    log.warn('media.quality_ignored', { quality, reason: 'no_alternative_qualities' });
-    return targetOf(file);
-  }
-  const chosen = quality === 'max' ? maxVariant(variants) : variantByIndex(variants, quality);
-  if (chosen === file.raw) return targetOf(file);
-  // A generic document location streams the chosen TL document the same way as
-  // the primary; it carries the file reference and size mtcute needs.
-  return { location: new MtDocument(chosen), mime: chosen.mimeType || 'video/mp4', exactSize: true };
-}
-
-function targetOf(file: DownloadableMedia): QualityTarget {
-  const photo = file.type === 'photo';
-  return { location: file, mime: photo ? 'image/jpeg' : file.mimeType, exactSize: !photo };
-}
-
-function variantByIndex(variants: readonly tl.RawDocument[], index: number): tl.RawDocument {
-  if (!Number.isSafeInteger(index) || index < 0 || index >= variants.length) {
-    throw new EngineError('quality is out of range', 400);
-  }
-  return variants[index];
-}
-
-function maxVariant(variants: readonly tl.RawDocument[]): tl.RawDocument {
-  let best = variants[0];
-  let bestPixels = videoPixels(best);
-  let bestSize = typeof best.size === 'number' ? best.size : 0;
-  for (const variant of variants.slice(1)) {
-    const pixels = videoPixels(variant);
-    const size = typeof variant.size === 'number' ? variant.size : 0;
-    if (pixels <= bestPixels && (pixels !== bestPixels || size <= bestSize)) continue;
-    best = variant;
-    bestPixels = pixels;
-    bestSize = size;
-  }
-  return best;
-}
-
-function videoPixels(document: tl.RawDocument): number {
-  const video = document.attributes.find(
-    (attribute): attribute is tl.RawDocumentAttributeVideo => attribute._ === 'documentAttributeVideo',
-  );
-  if (video) return video.w * video.h;
-  const image = document.attributes.find(
-    (attribute): attribute is tl.RawDocumentAttributeImageSize => attribute._ === 'documentAttributeImageSize',
-  );
-  return image ? image.w * image.h : 0;
-}
-
-/**
- * The largest edge a bubble preview may have. A photo's thumbnail list also
- * carries its full-size image, so `thumb: true` picks the largest entry that
- * still fits a bubble; the viewer is what asks for the original.
- */
 const PREVIEW_MAX_EDGE = 800;
 
 function previewEdge(thumb: Thumbnail): number {

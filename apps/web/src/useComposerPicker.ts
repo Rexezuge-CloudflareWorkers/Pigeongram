@@ -3,12 +3,12 @@ import type { RefObject } from 'react';
 import type { StickerDto } from './types';
 
 /**
- * The composer's sticker/emoji popover state and the two actions it needs.
- *
- * Split from `Composer.tsx` so the component stays under the god-file cap. The
- * panel is a popover, not a history layer: it closes on its own button, Escape
- * or an outside press (the picker owns those), and sending a sticker closes it.
- */
+The composer's sticker/emoji popover state and the two actions it needs.
+
+Split from `Composer.tsx` so the component stays under the god-file cap. The
+panel is a popover, not a history layer: it closes on its own button, Escape
+or an outside press (the picker owns those), and sending a sticker closes it.
+*/
 interface ComposerPickerOptions {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -23,9 +23,9 @@ interface ComposerPicker {
   toggle: () => void;
   close: () => void;
   /**
-   * Inserts an emoji at the caret and leaves the panel open: a message is often
-   * several emoji, and reopening the picker for each one would lose the place.
-   */
+  Inserts an emoji at the caret and leaves the panel open: a message is often
+  several emoji, and reopening the picker for each one would lose the place.
+  */
   insertEmoji: (char: string) => void;
   sendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null) => void;
 }

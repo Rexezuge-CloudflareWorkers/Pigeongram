@@ -2,12 +2,12 @@ import type { InputHTMLAttributes } from 'react';
 import { Icon } from './Icon';
 
 /**
- * The app's checkbox, in the Material 3 shape: a 20px box, rounded extra-
- * small, with an `outline` border that fills with `primary` (and an
- * `on-primary` check) when checked. The accessible name comes from the
- * call site, so it sits inside the `<label>` it belongs to (UploadDialog's
- * "Group Items") exactly like the native control it replaces.
- */
+The app's checkbox, in the Material 3 shape: a 20px box, rounded extra-
+small, with an `outline` border that fills with `primary` (and an
+`on-primary` check) when checked. The accessible name comes from the
+call site, so it sits inside the `<label>` it belongs to (UploadDialog's
+"Group Items") exactly like the native control it replaces.
+*/
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   className?: string;

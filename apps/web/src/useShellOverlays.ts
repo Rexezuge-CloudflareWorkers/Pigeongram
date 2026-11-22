@@ -3,54 +3,54 @@ import type { SearchScope } from './search';
 import type { ChatDto, MessageDto } from './types';
 
 /**
- * The signed-in shell's overlay state: the search sheet and the new-message
- * picker, with the actions that open and settle them.
- *
- * Both are page-level overlays whose state belongs to the shell but whose
- * meaning belongs to navigation — a search hit and a found chat are both
- * "open this chat", which the navigation layer already knows how to do. Split
- * from `SignedInShell` so that file keeps painting the screen instead of
- * growing one feature at a time.
- */
+The signed-in shell's overlay state: the search sheet and the new-message
+picker, with the actions that open and settle them.
+
+Both are page-level overlays whose state belongs to the shell but whose
+meaning belongs to navigation — a search hit and a found chat are both
+"open this chat", which the navigation layer already knows how to do. Split
+from `SignedInShell` so that file keeps painting the screen instead of
+growing one feature at a time.
+*/
 
 interface UseShellOverlaysOptions {
   /**
-   * Opens a search hit at its message, in the bridge's chat-first order.
-   */
+  Opens a search hit at its message, in the bridge's chat-first order.
+  */
   openSearchResult: (chat: ChatDto, message: MessageDto) => void;
   /**
-   * Opens a chat the new-message picker found.
-   */
+  Opens a chat the new-message picker found.
+  */
   openFoundChat: (chat: ChatDto) => void;
 }
 
 interface ShellOverlayController {
   /**
-   * What the search overlay was opened for, or null when it is closed.
-   */
+  What the search overlay was opened for, or null when it is closed.
+  */
   search: { scope: SearchScope; query?: string } | null;
   openGlobalSearch: () => void;
   /**
-   * Searches the open chat, when there is one.
-   */
+  Searches the open chat, when there is one.
+  */
   openThreadSearch: (chat: ChatDto | null) => void;
   /**
-   * Searches every chat for a tapped hashtag.
-   */
+  Searches every chat for a tapped hashtag.
+  */
   searchHashtag: (hashtag: string) => void;
   /**
-   * Closes the search sheet and opens the chosen hit.
-   */
+  Closes the search sheet and opens the chosen hit.
+  */
   openSearchResult: (message: MessageDto, chat: ChatDto) => void;
   closeSearch: () => void;
   /**
-   * Whether the new-message picker is open.
-   */
+  Whether the new-message picker is open.
+  */
   newChat: boolean;
   openNewChat: () => void;
   /**
-   * Closes the picker and opens the chosen chat.
-   */
+  Closes the picker and opens the chosen chat.
+  */
   selectNewChat: (chat: ChatDto) => void;
   closeNewChat: () => void;
 }

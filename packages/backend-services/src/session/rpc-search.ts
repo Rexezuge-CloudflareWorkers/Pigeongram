@@ -7,14 +7,14 @@ import { clampInt, optionalInt, requireMessageId, requirePeerId, requireQuery } 
 import type { PartialMethodTable } from './rpc-methods';
 
 /**
- * The search half of the bridge: one chat's messages and the account-wide
- * search.
- *
- * Both reads answer newest first, which is Telegram's own order for a search
- * (the opposite of a history window). The global read also carries the chats
- * its page touches: a result may belong to a chat outside the loaded chat
- * list, and the SPA needs the chat to render and open the row.
- */
+The search half of the bridge: one chat's messages and the account-wide
+search.
+
+Both reads answer newest first, which is Telegram's own order for a search
+(the opposite of a history window). The global read also carries the chats
+its page touches: a result may belong to a chat outside the loaded chat
+list, and the SPA needs the chat to render and open the row.
+*/
 export const searchRpcMethods = {
   searchMessages: {
     readOnly: true,
@@ -51,9 +51,9 @@ export const searchRpcMethods = {
       // chat is that message's chat — no need to decode the input peer.
       const last = found.at(-1);
       const next =
-        found.next !== undefined && last !== undefined
-          ? { rate: found.next.rate, chatId: last.chat.id, messageId: found.next.id }
-          : undefined;
+        found.next === undefined || last === undefined
+          ? undefined
+          : { rate: found.next.rate, chatId: last.chat.id, messageId: found.next.id };
       return {
         messages: found.map(toMessageDto),
         chats: chatsIn(found),
@@ -64,10 +64,10 @@ export const searchRpcMethods = {
 } as const satisfies PartialMethodTable;
 
 /**
- * Reads the global search cursor. Every field is required: a cursor is either
- * the previous page's whole answer or absent, and a partial one would silently
- * restart the search.
- */
+Reads the global search cursor. Every field is required: a cursor is either
+the previous page's whole answer or absent, and a partial one would silently
+restart the search.
+*/
 function readSearchOffset(value: unknown): SearchGlobalCursor | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -82,8 +82,8 @@ function readSearchOffset(value: unknown): SearchGlobalCursor | undefined {
 }
 
 /**
- * The distinct chats of a page, in the order their first message appears.
- */
+The distinct chats of a page, in the order their first message appears.
+*/
 function chatsIn(messages: readonly Message[]): ChatDto[] {
   const chats = new Map<number, ChatDto>();
   for (const message of messages) {

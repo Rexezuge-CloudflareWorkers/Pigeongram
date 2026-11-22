@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useDropNotice } from '../../apps/web/src/components/useDropNotice';
 
 /**
- * The shell's notice slot. The toast surface owns the countdown, so this only
- * keeps the current notice and clears it on request; every notify carries a
- * fresh token so a repeated message still counts as a new arrival.
- */
+The shell's notice slot. The toast surface owns the countdown, so this only
+keeps the current notice and clears it on request; every notify carries a
+fresh token so a repeated message still counts as a new arrival.
+*/
 
 afterEach(() => {
   cleanup();

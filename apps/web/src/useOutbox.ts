@@ -6,13 +6,13 @@ import type { MessageDto, PeerId, StickerDto } from './types';
 import type { UploadRequest } from './upload';
 
 /**
- * The outbox behind optimistic sends. A message appears in the thread and the
- * chat list the moment it is enqueued; this hook owns the bridge round trip,
- * per-upload progress, retries and URL cleanup, and never blocks the composer.
- *
- * Text sends are chained per chat so rapid messages keep submission order;
- * uploads run independently, so a large file never delays the next text.
- */
+The outbox behind optimistic sends. A message appears in the thread and the
+chat list the moment it is enqueued; this hook owns the bridge round trip,
+per-upload progress, retries and URL cleanup, and never blocks the composer.
+
+Text sends are chained per chat so rapid messages keep submission order;
+uploads run independently, so a large file never delays the next text.
+*/
 
 export type PendingBody =
   | { kind: 'text'; text: string; replyTo?: number }
@@ -20,36 +20,36 @@ export type PendingBody =
   | { kind: 'sticker'; documentId: string; replyTo?: number; set?: { id: string; accessHash: string } };
 
 /**
- * The sticker a pending entry carries: the document id the engine minted, and
- * the pack it came from for the cold-registry fallback.
- */
+The sticker a pending entry carries: the document id the engine minted, and
+the pack it came from for the cold-registry fallback.
+*/
 interface PendingSticker {
   sticker: StickerDto;
   set: { id: string; accessHash: string } | null;
 }
 
 /**
- * Performs the bridge call for one pending entry. The outbox has already
- * picked the body and generated the random ids; a file batch carries one id
- * per file, so a retry of a single-file send cannot duplicate it.
- */
+Performs the bridge call for one pending entry. The outbox has already
+picked the body and generated the random ids; a file batch carries one id
+per file, so a retry of a single-file send cannot duplicate it.
+*/
 type DeliverPending = (body: PendingBody, randomIds: readonly string[], onProgress: (fraction: number) => void) => Promise<MessageDto[]>;
 
 interface PendingJob {
   entry: PendingMessage;
   /**
-   * The files of an upload entry, kept for the retry.
-   */
+  The files of an upload entry, kept for the retry.
+  */
   request: UploadRequest | null;
   /**
-   * The sticker of a sticker entry, kept for the retry. Null for every other
-   * kind.
-   */
+  The sticker of a sticker entry, kept for the retry. Null for every other
+  kind.
+  */
   sticker: PendingSticker | null;
   /**
-   * The client-chosen Telegram random ids: one for a text message, one per
-   * file for an upload.
-   */
+  The client-chosen Telegram random ids: one for a text message, one per
+  file for an upload.
+  */
   randomIds: string[];
   deliver: DeliverPending;
   onSettled: (messages: MessageDto[]) => void;
@@ -79,9 +79,9 @@ interface EnqueueStickerInput extends EnqueueBase {
 
 interface UseOutboxOptions {
   /**
-   * Reports a failed send to the global toast; the pending row keeps the
-   * failure and the Retry affordance either way.
-   */
+  Reports a failed send to the global toast; the pending row keeps the
+  failure and the Retry affordance either way.
+  */
   onError: (failure: unknown) => void;
 }
 

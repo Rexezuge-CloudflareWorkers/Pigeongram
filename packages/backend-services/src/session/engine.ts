@@ -22,9 +22,9 @@ Name of the single Durable Object instance that owns the account.
 export const ENGINE_OBJECT_NAME = 'main';
 
 /**
- * The paths the engine serves. A request whose path is here but whose method
- * is not is a 405, not a 404: the resource exists and the verb is wrong.
- */
+The paths the engine serves. A request whose path is here but whose method
+is not is a 405, not a 404: the resource exists and the verb is wrong.
+*/
 const ENGINE_PATHS: ReadonlySet<string> = new Set([
   '/user/updates',
   '/user/state',
@@ -45,30 +45,30 @@ const ENGINE_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The collaborators a test may replace. Production builds them from the DO's
- * storage and the environment, exactly as before; the seams exist so the
- * route table, the quota failures and the clock can be exercised without a
- * real Telegram session.
- */
+The collaborators a test may replace. Production builds them from the DO's
+storage and the environment, exactly as before; the seams exist so the
+route table, the quota failures and the clock can be exercised without a
+real Telegram session.
+*/
 export interface EngineDeps {
   driver?: TelegramDriver;
   store?: EngineStore;
   avatars?: AvatarCache;
   /**
-   * The engine's clock. Defaults to `Date.now`; the wake cadence and the
-   * avatar cache's ordering read it.
-   */
+  The engine's clock. Defaults to `Date.now`; the wake cadence and the
+  avatar cache's ordering read it.
+  */
   now?: () => number;
 }
 
 /**
- * The session engine: one Durable Object instance owns one Telegram account.
- *
- * The class is the Durable Object's HTTP surface and the owner of the
- * account's state; the wake and live lifecycle — the two modes the mtcute
- * client runs in — lives in `lifecycle.ts`, and the bridge's methods live in
- * `rpc-methods.ts`.
- */
+The session engine: one Durable Object instance owns one Telegram account.
+
+The class is the Durable Object's HTTP surface and the owner of the
+account's state; the wake and live lifecycle — the two modes the mtcute
+client runs in — lives in `lifecycle.ts`, and the bridge's methods live in
+`rpc-methods.ts`.
+*/
 export class SessionEngine {
   private readonly config: EngineConfig;
   private readonly env: CloudflareEnv;
@@ -126,13 +126,13 @@ export class SessionEngine {
   }
 
   /**
-   * Prepares the mtcute storage before the first event is dispatched.
-   *
-   * The Durable Object hands out one event at a time, so the migrations the
-   * storage needs would otherwise be the first thing every cold request paid
-   * for. Running them once, while the object is still empty, keeps them off
-   * the request path.
-   */
+  Prepares the mtcute storage before the first event is dispatched.
+  
+  The Durable Object hands out one event at a time, so the migrations the
+  storage needs would otherwise be the first thing every cold request paid
+  for. Running them once, while the object is still empty, keeps them off
+  the request path.
+  */
   private warmUp(): void {
     const blocking = this.state as unknown as { blockConcurrencyWhile?: <T>(callback: () => Promise<T>) => Promise<T> };
     if (typeof blocking.blockConcurrencyWhile !== 'function') {
@@ -221,18 +221,21 @@ export class SessionEngine {
       case 'GET /user/stats': {
         return Response.json(this.stats(url));
       }
-      case 'GET /user/file': {
+      case 'GET /user/file':
+      case 'HEAD /user/file': {
         const response = await fileResponse(this.driver, request, url);
         await this.lifecycle.afterActivity();
         return response;
       }
-      case 'GET /user/avatar': {
-        const response = await avatarResponse(this.driver, this.avatars, url);
+      case 'GET /user/avatar':
+      case 'HEAD /user/avatar': {
+        const response = await avatarResponse(this.driver, this.avatars, url, request.method);
         await this.lifecycle.afterActivity();
         return response;
       }
-      case 'GET /user/sticker': {
-        const response = await stickerResponse(this.driver, url);
+      case 'GET /user/sticker':
+      case 'HEAD /user/sticker': {
+        const response = await stickerResponse(this.driver, url, request.method);
         await this.lifecycle.afterActivity();
         return response;
       }
@@ -296,13 +299,13 @@ export class SessionEngine {
   }
 
   /**
-   * Persists the signed-in user, best effort.
-   *
-   * `engine_meta` is a convenience: the session is already in mtcute's
-   * storage, and the snapshot can be read from Telegram again. With the Free
-   * plan's daily write budget exhausted, a rejected write must not turn a
-   * successful login or logout into a failed one.
-   */
+  Persists the signed-in user, best effort.
+  
+  `engine_meta` is a convenience: the session is already in mtcute's
+  storage, and the snapshot can be read from Telegram again. With the Free
+  plan's daily write budget exhausted, a rejected write must not turn a
+  successful login or logout into a failed one.
+  */
   private writeMeta(key: string, value: string | null): void {
     try {
       this.store.writeMeta(key, value);
@@ -324,8 +327,8 @@ export class SessionEngine {
   // ---- Updates fan-out ---------------------------------------------------
 
   /**
-   * Hibernation-API entry points; the protocol lives in `socket-hub.ts`.
-   */
+  Hibernation-API entry points; the protocol lives in `socket-hub.ts`.
+  */
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     await this.hub.onMessage(socket, message);
   }

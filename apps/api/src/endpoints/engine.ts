@@ -6,24 +6,24 @@ import { CORRELATION_ID_HEADER } from '@pigeongram/backend-runtime/constants';
 import type { ApiContext } from '../types';
 
 /**
- * Forward a `/user/*` request to the session engine.
- *
- * The Durable Object hands out one event at a time, so this handler does as
- * little as possible: it copies the request, stamps the correlation id the
- * engine logs with, and returns the engine's response. The id is re-applied
- * because a Durable Object subrequest response has immutable headers.
- */
+Forward a `/user/*` request to the session engine.
+
+The Durable Object hands out one event at a time, so this handler does as
+little as possible: it copies the request, stamps the correlation id the
+engine logs with, and returns the engine's response. The id is re-applied
+because a Durable Object subrequest response has immutable headers.
+*/
 export async function engineHandler(c: ApiContext): Promise<Response> {
   return forwardToEngine(c);
 }
 
 /**
- * The shared forwarding path.
- *
- * The upload routes validate at the edge and then land here, which is why it is
- * exported rather than inlined in {@link engineHandler}: the pre-flight and the
- * proxy must remain one implementation.
- */
+The shared forwarding path.
+
+The upload routes validate at the edge and then land here, which is why it is
+exported rather than inlined in {@link engineHandler}: the pre-flight and the
+proxy must remain one implementation.
+*/
 export async function forwardToEngine(c: ApiContext): Promise<Response> {
   const correlationId = c.get('correlationId');
   try {
@@ -55,12 +55,12 @@ function withCorrelationId(response: Response, correlationId: string): Response 
 }
 
 /**
- * Drain a request body the Durable Object answered without consuming.
- *
- * workerd reads the stream after the response when a Durable Object returns
- * without reading it (cloudflare/workerd#918); cancelling is what keeps that
- * read from surfacing as an unhandled rejection.
- */
+Drain a request body the Durable Object answered without consuming.
+
+workerd reads the stream after the response when a Durable Object returns
+without reading it (cloudflare/workerd#918); cancelling is what keeps that
+read from surfacing as an unhandled rejection.
+*/
 async function discardRequestBody(request: Request): Promise<void> {
   try {
     await request.body?.cancel();

@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EMOJI_CATEGORIES, readRecentEmoji, rememberRecentEmoji, searchEmoji } from '../../apps/web/src/emoji';
 
 /**
- * The composer's emoji set.
- *
- * The dataset is in-repo data, not a dependency, so these cases pin the three
- * things a picker depends on: every category is parseable, the search matches
- * names and keywords, and the recents row round-trips through storage without
- * ever breaking a pick.
- */
+The composer's emoji set.
+
+The dataset is in-repo data, not a dependency, so these cases pin the three
+things a picker depends on: every category is parseable, the search matches
+names and keywords, and the recents row round-trips through storage without
+ever breaking a pick.
+*/
 
 beforeEach(() => {
   localStorage.clear();

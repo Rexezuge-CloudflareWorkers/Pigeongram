@@ -3,18 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppHeight } from '../../apps/web/src/useAppHeight';
 
 /**
- A visual viewport jsdom does not provide. The hook only reads `height` and
- `scale`, so the fake is an event target with those two fields.
- */
+A visual viewport jsdom does not provide. The hook only reads `height` and
+`scale`, so the fake is an event target with those two fields.
+*/
 class FakeVisualViewport extends EventTarget {
   height = 800;
   scale = 1;
 }
 
 /**
- A root observer fake. jsdom has no ResizeObserver, and the hook watches the
- document element for Chromium's `resizes-content` layout changes.
- */
+A root observer fake. jsdom has no ResizeObserver, and the hook watches the
+document element for Chromium's `resizes-content` layout changes.
+*/
 class FakeResizeObserver {
   static current: FakeResizeObserver | null = null;
 

@@ -3,16 +3,16 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
- * The app's dialog, in the Material 3 shape: a scrim, an extra-large
- * (28px) `surface-container-high` panel, title, content and actions at the
- * end. Owns the modal behaviours every dialog in the app needs — focus moves
- * to `initialFocus`, Tab stays inside, Escape and a scrim press cancel, the
- * page scroll locks, and the element that opened the dialog gets focus back.
- *
- * This is the shared implementation behind ConfirmDialog (and, later,
- * UploadDialog, ProfilePopup, ForwardPicker, SearchOverlay); each of those
- * adds only its content and its busy semantics.
- */
+The app's dialog, in the Material 3 shape: a scrim, an extra-large
+(28px) `surface-container-high` panel, title, content and actions at the
+end. Owns the modal behaviours every dialog in the app needs — focus moves
+to `initialFocus`, Tab stays inside, Escape and a scrim press cancel, the
+page scroll locks, and the element that opened the dialog gets focus back.
+
+This is the shared implementation behind ConfirmDialog (and, later,
+UploadDialog, ProfilePopup, ForwardPicker, SearchOverlay); each of those
+adds only its content and its busy semantics.
+*/
 
 interface DialogProps {
   title: string;

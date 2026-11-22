@@ -6,11 +6,11 @@ import { UnreadAlbumLedger } from '../../packages/backend-services/src/session/u
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
 /**
- * The bridge's dispatch with an album ledger attached.
- *
- * The ledger is what makes the chat list count an album once instead of once
- * per file, so every dispatch in the suite carries one.
- */
+The bridge's dispatch with an album ledger attached.
+
+The ledger is what makes the chat list count an album once instead of once
+per file, so every dispatch in the suite carries one.
+*/
 export function albumLedger(): UnreadAlbumLedger {
   return new UnreadAlbumLedger(createNodeSqlStorage(openNodeDatabase()));
 }
@@ -18,15 +18,15 @@ export function albumLedger(): UnreadAlbumLedger {
 const albums = albumLedger();
 
 /**
- * The calls the engine knows about. The registry holds the access hash of
- * every call it has seen, so a bridge method can address a call by its id.
- */
+The calls the engine knows about. The registry holds the access hash of
+every call it has seen, so a bridge method can address a call by its id.
+*/
 const calls = new CallRegistry();
 
 /**
- * The sticker documents the picker has read. A send names one by its id, so
- * every dispatch carries the same registry the engine keeps.
- */
+The sticker documents the picker has read. A send names one by its id, so
+every dispatch carries the same registry the engine keeps.
+*/
 const stickers = new StickerRegistry();
 
 export function rpc(client: TelegramClient, method: string, params: unknown): Promise<unknown> {

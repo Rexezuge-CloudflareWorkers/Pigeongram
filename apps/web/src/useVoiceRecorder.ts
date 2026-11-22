@@ -18,17 +18,17 @@ export type VoiceRecorderState = 'idle' | 'starting' | 'recording';
 interface VoiceRecorderControls {
   state: VoiceRecorderState;
   /**
-   * Whole seconds captured so far; zero outside a recording.
-   */
+  Whole seconds captured so far; zero outside a recording.
+  */
   seconds: number;
   start: () => void;
   /**
-   * Ends the capture and reports it through `onRecorded`.
-   */
+  Ends the capture and reports it through `onRecorded`.
+  */
   stop: () => void;
   /**
-   * Ends the capture and discards it.
-   */
+  Ends the capture and discards it.
+  */
   cancel: () => void;
 }
 
@@ -36,9 +36,9 @@ interface UseVoiceRecorderOptions {
   onRecorded: (voice: RecordedVoice) => void;
   onError: (message: string) => void;
   /**
-   * The recording stops by itself at this length, so a forgotten microphone
-   * never runs past what the bridge accepts.
-   */
+  The recording stops by itself at this length, so a forgotten microphone
+  never runs past what the bridge accepts.
+  */
   maxSeconds?: number;
 }
 
@@ -47,10 +47,10 @@ export function useVoiceRecorder({ onRecorded, onError, maxSeconds = VOICE_MAX_S
   const [seconds, setSeconds] = useState(0);
   const recordingRef = useRef<VoiceRecording | null>(null);
   /**
-   * Each start gets a token. Cancelling while the permission prompt is still
-   * open bumps it, so the capture that finally resolves is released instead of
-   * becoming a recording the reader thought they had cancelled.
-   */
+  Each start gets a token. Cancelling while the permission prompt is still
+  open bumps it, so the capture that finally resolves is released instead of
+  becoming a recording the reader thought they had cancelled.
+  */
   const attempt = useRef(0);
   const mounted = useRef(true);
   const recordedRef = useRef(onRecorded);

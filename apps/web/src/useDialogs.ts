@@ -73,10 +73,10 @@ export interface DialogsController {
   */
   applyDeleted: (chatId: PeerId, messageIds: readonly number[], removed: readonly MessageDto[], remaining: readonly MessageDto[]) => void;
   /**
-   * Folds a wholesale read into the lists: the badge empties and the watermark
-   * moves to the chat's newest known message. The server's own `read` update
-   * settles the exact count a moment later.
-   */
+  Folds a wholesale read into the lists: the badge empties and the watermark
+  moves to the chat's newest known message. The server's own `read` update
+  settles the exact count a moment later.
+  */
   applyReadAll: (chatId: PeerId, maxId: number) => void;
   /**
   Moves a chat into the archive, or back out of it.

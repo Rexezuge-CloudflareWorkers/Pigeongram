@@ -1,25 +1,25 @@
 import { useEffect } from 'react';
 
 /**
- * Caps the signed-in shell at the area left above the on-screen keyboard.
- * `dvh` already carries the browser's own auto-hiding chrome (see `.app` in
- * `base.css`) and, under Chromium's `resizes-content`, the keyboard too. What
- * it cannot cover is a keyboard that only shrinks the visual viewport (iOS
- * Safari): `dvh` stays at its full height while the composer sits behind the
- * keyboard. Mobile browsers may also keep the layout viewport at its
- * pre-keyboard height and overlay the keyboard on it, and some report the
- * visual height late or a little differently. The smaller of the layout and
- * visual heights is the area both agree is visible, so the composer stays
- * reachable whichever viewport the browser updates last.
- *
- * The published value *caps* the shell (`.app`'s `max-height`) rather than
- * sizing it, so it can only ever shorten it; it is floored to whole pixels so
- * the cap is never aimed above the area the two viewports agree on.
- *
- * Pinch-zoom also shrinks the visual viewport, but it is not a layout change:
- * the property is dropped then, so a zoomed reader pans the full shell rather
- * than being handed a smaller copy of it.
- */
+Caps the signed-in shell at the area left above the on-screen keyboard.
+`dvh` already carries the browser's own auto-hiding chrome (see `.app` in
+`base.css`) and, under Chromium's `resizes-content`, the keyboard too. What
+it cannot cover is a keyboard that only shrinks the visual viewport (iOS
+Safari): `dvh` stays at its full height while the composer sits behind the
+keyboard. Mobile browsers may also keep the layout viewport at its
+pre-keyboard height and overlay the keyboard on it, and some report the
+visual height late or a little differently. The smaller of the layout and
+visual heights is the area both agree is visible, so the composer stays
+reachable whichever viewport the browser updates last.
+
+The published value *caps* the shell (`.app`'s `max-height`) rather than
+sizing it, so it can only ever shorten it; it is floored to whole pixels so
+the cap is never aimed above the area the two viewports agree on.
+
+Pinch-zoom also shrinks the visual viewport, but it is not a layout change:
+the property is dropped then, so a zoomed reader pans the full shell rather
+than being handed a smaller copy of it.
+*/
 export function useAppHeight(): void {
   useEffect(() => {
     const viewport = window.visualViewport;

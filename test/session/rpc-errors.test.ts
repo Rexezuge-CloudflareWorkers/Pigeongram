@@ -8,9 +8,9 @@ import {
 import { EngineError, STORAGE_WRITE_QUOTA_MESSAGE } from '../../packages/backend-services/src/session/errors';
 
 /**
- * The bridge's failure vocabulary: mtcute's server strings become the
- * reader's words, and everything else keeps the message that produced it.
- */
+The bridge's failure vocabulary: mtcute's server strings become the
+reader's words, and everything else keeps the message that produced it.
+*/
 
 function rpcError(text: string, extra: Record<string, unknown> = {}): Error {
   return Object.assign(new Error(text), { text, ...extra });

@@ -1,12 +1,12 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 /**
- * The app's chip, in the Material 3 filter-chip shape: a 32px rounded
- * `extra-small` pill with an `outline-variant` border when unselected and
- * `secondary-container` (with `on-secondary-container` text) when selected.
- * It keeps `aria-pressed` so the search-scope toggle and other `pressed`
- * affordances keep their contract.
- */
+The app's chip, in the Material 3 filter-chip shape: a 32px rounded
+`extra-small` pill with an `outline-variant` border when unselected and
+`secondary-container` (with `on-secondary-container` text) when selected.
+It keeps `aria-pressed` so the search-scope toggle and other `pressed`
+affordances keep their contract.
+*/
 
 interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;

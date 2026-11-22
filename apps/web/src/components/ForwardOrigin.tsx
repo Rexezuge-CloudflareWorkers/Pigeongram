@@ -3,11 +3,11 @@ import type { MessageForwardDto } from '../types';
 import { Icon } from './Icon';
 
 /**
- * The "Forwarded from …" line above a bubble's sender.
- *
- * Only the origin's name is a control: the arrow and the prefix stay text. A
- * hidden forward has no addressable origin, so its name stays text too.
- */
+The "Forwarded from …" line above a bubble's sender.
+
+Only the origin's name is a control: the arrow and the prefix stay text. A
+hidden forward has no addressable origin, so its name stays text too.
+*/
 export function ForwardOrigin({ forward }: { forward: MessageForwardDto }) {
   const open = useForwardOriginHandler();
   const label = forward.senderName ?? 'A Hidden User';

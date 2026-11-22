@@ -23,9 +23,9 @@ interface UseComposerCommandsOptions {
   formRef: RefObject<HTMLFormElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   /**
-   * Sends the highlighted command. The composer owns the send path, so a picked
-   * command is cleared exactly like any other submission.
-   */
+  Sends the highlighted command. The composer owns the send path, so a picked
+  command is cleared exactly like any other submission.
+  */
   onSend: (text: string) => void;
 }
 

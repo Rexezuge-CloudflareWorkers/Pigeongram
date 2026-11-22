@@ -85,9 +85,9 @@ describe('isVisualAlbum', () => {
 });
 
 /**
- * The chat list's view of the last message: an album's newest member, or a
- * message of its own.
- */
+The chat list's view of the last message: an album's newest member, or a
+message of its own.
+*/
 function dialogMessage(groupedId: string | null): DialogMessageDto {
   return {
     id: 1,

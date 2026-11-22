@@ -1,10 +1,10 @@
 import type { PeerId } from '../types';
 
 /**
- * The upload and media-URL half of the bridge. Uploads are raw-body requests
- * (the file never goes through JSON), and the media routes are plain URLs the
- * browser fetches with its own Access cookie: neither can ride `rpc`.
- */
+The upload and media-URL half of the bridge. Uploads are raw-body requests
+(the file never goes through JSON), and the media routes are plain URLs the
+browser fetches with its own Access cookie: neither can ride `rpc`.
+*/
 
 export type { UploadGroupInput, UploadGroupItem, UploadInput } from '../upload-api';
 export { uploadFile, uploadGroup } from '../upload-api';

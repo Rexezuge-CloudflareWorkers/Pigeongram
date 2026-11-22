@@ -10,26 +10,26 @@ import { PinnedMessagesDialog } from './PinnedMessagesDialog';
 import { ThreadView } from './ThreadView';
 
 /**
- * The `newMessageIds` of no thread: the state between chats carries no
- * arrival bookkeeping, so nothing animates there.
- */
+The `newMessageIds` of no thread: the state between chats carries no
+arrival bookkeeping, so nothing animates there.
+*/
 const NO_NEW_MESSAGE_IDS: ReadonlySet<number> = new Set();
 
 /**
- * The conversation pane: the comments screen when it is open, the chat thread
- * otherwise. Split out of `App.tsx` so the app shell stays readable (and under
- * the god-file cap) while the two views keep their own props.
- */
+The conversation pane: the comments screen when it is open, the chat thread
+otherwise. Split out of `App.tsx` so the app shell stays readable (and under
+the god-file cap) while the two views keep their own props.
+*/
 /**
- * The calls' half of the app shell, as the conversation pane sees it.
- */
+The calls' half of the app shell, as the conversation pane sees it.
+*/
 interface ThreadPaneCalls {
   startCall: (chatId: number) => void;
   /**
-   * Whether a call is already up. The header's call button is disabled then:
-   * the controller refuses the second call anyway, but a disabled button says
-   * so before the tap.
-   */
+  Whether a call is already up. The header's call button is disabled then:
+  the controller refuses the second call anyway, but a disabled button says
+  so before the tap.
+  */
   callActive: boolean;
 }
 
@@ -37,59 +37,59 @@ interface ThreadPaneProps {
   threads: ThreadController;
   comments: CommentsController;
   /**
-   * The open chat, or null while no chat is open.
-   */
+  The open chat, or null while no chat is open.
+  */
   selected: ChatDto | null;
   /**
-   * The open chat's live presence, kept current by the dialogs.
-   */
+  The open chat's live presence, kept current by the dialogs.
+  */
   presence: PresenceDto | null;
   /**
-   * Whether the open chat sits in the account's archive.
-   */
+  Whether the open chat sits in the account's archive.
+  */
   archived: boolean;
   /**
-   * The open chat as a preview when the account has not joined it; Join takes
-   * the composer's place.
-   */
+  The open chat as a preview when the account has not joined it; Join takes
+  the composer's place.
+  */
   preview: ChatPreview | null;
   /**
-   * Joins the open preview chat.
-   */
+  Joins the open preview chat.
+  */
   onJoin: () => void;
   /**
-   * Whether the open chat is in the loaded list, so the archive move is
-   * meaningful. A chat reached through search is transient.
-   */
+  Whether the open chat is in the loaded list, so the archive move is
+  meaningful. A chat reached through search is transient.
+  */
   canArchive: boolean;
   onBack: () => void;
   /**
-   * Moves the open chat into the archive, or back out of it. The promise
-   * settles when the move is done.
-   */
+  Moves the open chat into the archive, or back out of it. The promise
+  settles when the move is done.
+  */
   onSetArchived: (archived: boolean) => Promise<void>;
   /**
-   * The account's calls: the header starts one, and a call in progress
-   * disables the button.
-   */
+  The account's calls: the header starts one, and a call in progress
+  disables the button.
+  */
   calls: ThreadPaneCalls;
   /**
-   * Opens the search overlay scoped to the open chat.
-   */
+  Opens the search overlay scoped to the open chat.
+  */
   onSearch: () => void;
   onForward: (messages: readonly MessageDto[]) => void;
   onOpenMedia: (source: 'thread' | 'comments', messageId: number) => void;
   onReadThrough: (chatId: PeerId, maxId: number) => void;
   /**
-   * Marks the whole chat read, including an unread backlog the thread has not
-   * loaded. The down-arrow jump uses it before reading the newest window.
-   */
+  Marks the whole chat read, including an unread backlog the thread has not
+  loaded. The down-arrow jump uses it before reading the newest window.
+  */
   onMarkAllRead: (chatId: PeerId) => void;
   onOpenComments: (message: MessageDto) => void;
   /**
-   * Opens one of the chat's pinned messages at its post, even when it sits
-   * outside the loaded window. The shell owns the navigation.
-   */
+  Opens one of the chat's pinned messages at its post, even when it sits
+  outside the loaded window. The shell owns the navigation.
+  */
   onOpenPost: (messageId: number) => void;
 }
 

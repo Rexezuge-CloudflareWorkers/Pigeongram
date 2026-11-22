@@ -3,12 +3,12 @@ import { MAX_SOCKET_FRAME_BYTES, UpdatesSocketHub } from '../../packages/backend
 import type { SocketHubHost } from '../../packages/backend-services/src/session/socket-hub';
 
 /**
- * The updates socket's protocol.
- *
- * The hub is the engine's input boundary: a frame that is not one of its
- * three messages must cost nothing, and the last socket closing is what
- * releases the live session.
- */
+The updates socket's protocol.
+
+The hub is the engine's input boundary: a frame that is not one of its
+three messages must cost nothing, and the last socket closing is what
+releases the live session.
+*/
 
 interface FakeSocket {
   sent: string[];

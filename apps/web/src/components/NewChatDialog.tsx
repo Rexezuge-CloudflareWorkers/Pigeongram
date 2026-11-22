@@ -8,23 +8,23 @@ import { Spinner } from './Spinner';
 import { TextField } from './TextField';
 
 /**
- * The new-message picker: the account's contacts, and Telegram's own search
- * for a person or a public chat the list does not carry.
- *
- * It is a portal modal like the forward picker, with the same dismissals —
- * Escape, the close button, the scrim — and the same focus discipline. The
- * read belongs to `useNewChat`; this file only paints what the controller
- * found and reports the row the reader chose, which the shell routes through
- * the same resolution a Telegram link takes.
- */
+The new-message picker: the account's contacts, and Telegram's own search
+for a person or a public chat the list does not carry.
+
+It is a portal modal like the forward picker, with the same dismissals —
+Escape, the close button, the scrim — and the same focus discipline. The
+read belongs to `useNewChat`; this file only paints what the controller
+found and reports the row the reader chose, which the shell routes through
+the same resolution a Telegram link takes.
+*/
 
 interface NewChatDialogProps {
   onSelect: (chat: ChatDto) => void;
   onClose: () => void;
   /**
-   * Whether the dialog is animating out; the parent keeps it mounted for the
-   * exit beat.
-   */
+  Whether the dialog is animating out; the parent keeps it mounted for the
+  exit beat.
+  */
   exiting?: boolean;
 }
 
@@ -108,7 +108,7 @@ export function NewChatDialog({ onSelect, onClose, exiting = false }: NewChatDia
         </div>
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
           {controller.loading ? <Spinner label={searching ? 'Searching…' : 'Loading Contacts…'} /> : null}
-          {!controller.loading && controller.error !== null ? (
+          {controller.loading || controller.error === null ? null : (
             <div role="alert" className="flex flex-col items-start gap-3 px-2 py-3">
               <p className="m-0 text-sm text-danger">{controller.error}</p>
               <button
@@ -119,7 +119,7 @@ export function NewChatDialog({ onSelect, onClose, exiting = false }: NewChatDia
                 Retry
               </button>
             </div>
-          ) : null}
+          )}
           {!controller.loading && controller.error === null ? (
             <>
               {!searching && controller.contacts.length > 0 ? (
@@ -147,9 +147,9 @@ export function NewChatDialog({ onSelect, onClose, exiting = false }: NewChatDia
 }
 
 /**
- * One titled block of rows. The heading names the list for assistive tech and
- * is the only visible section label, so both read the same word.
- */
+One titled block of rows. The heading names the list for assistive tech and
+is the only visible section label, so both read the same word.
+*/
 function ChatGroup({
   id,
   heading,
@@ -190,9 +190,9 @@ function ChatGroup({
 }
 
 /**
- * What a row says beneath a peer with no public handle: its kind, in the
- * words the rest of the app uses for one.
- */
+What a row says beneath a peer with no public handle: its kind, in the
+words the rest of the app uses for one.
+*/
 function chatKindLabel(kind: ChatDto['kind']): string {
   switch (kind) {
     case 'user': {

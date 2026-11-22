@@ -35,11 +35,11 @@ export function isSameDay(a: number, b: number): boolean {
 }
 
 /**
- * What a presence reads as: `online`, `last seen today at 14:32`, or one of
- * the coarse states Telegram reports when it hides the exact time. Null when
- * the peer has no presence at all — a bot, a group, a channel, or a person who
- * keeps their last seen to themselves.
- */
+What a presence reads as: `online`, `last seen today at 14:32`, or one of
+the coarse states Telegram reports when it hides the exact time. Null when
+the peer has no presence at all — a bot, a group, a channel, or a person who
+keeps their last seen to themselves.
+*/
 export function formatPresence(presence: PresenceDto | null): string | null {
   if (!presence) return null;
   switch (presence.status) {

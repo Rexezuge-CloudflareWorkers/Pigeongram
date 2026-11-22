@@ -247,9 +247,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
   );
 
   /**
-   * The calls own the updates socket: a call's signalling rides it, and a
-   * call arrives as an ordinary bridge event.
-   */
+  The calls own the updates socket: a call's signalling rides it, and a
+  call arrives as an ordinary bridge event.
+  */
   const findChat = useCallback((chatId: PeerId) => findDialog(chatId)?.chat ?? null, [findDialog]);
   const calls = useCallHost({ enabled: true, onUpdate: handleUpdate, onResync: loadDialogs, findChat, onError });
   const connected = calls.connected;

@@ -9,11 +9,11 @@ import { MessageText } from './MessageText';
 import { Spinner } from './Spinner';
 
 /**
- * One optimistic message: the bubble the user sees between pressing Send and
- * the bridge confirming the real message. It mirrors the shape of `MessageRow`
- * (reply quote, media, text, a meta line) but reads its media from a local
- * object URL and carries the outbox status instead of Telegram's checks.
- */
+One optimistic message: the bubble the user sees between pressing Send and
+the bridge confirming the real message. It mirrors the shape of `MessageRow`
+(reply quote, media, text, a meta line) but reads its media from a local
+object URL and carries the outbox status instead of Telegram's checks.
+*/
 
 interface PendingMessageRowProps {
   entry: PendingMessage;

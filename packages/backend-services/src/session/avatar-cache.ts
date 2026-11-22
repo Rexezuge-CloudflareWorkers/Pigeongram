@@ -58,20 +58,20 @@ export class AvatarCache {
   constructor(
     private readonly storage: SqlStorageLike,
     /**
-     * The clock the eviction order reads. Injectable so a test can decide
-     * which entries are oldest instead of sleeping through the ordering.
-     */
+    The clock the eviction order reads. Injectable so a test can decide
+    which entries are oldest instead of sleeping through the ordering.
+    */
     private readonly now: () => number = Date.now,
   ) {
     this.storage.exec(CREATE_AVATARS);
   }
 
   /**
-   * The cached bytes for a photo version, or null when they are not cached.
-   *
-   * The key is the version token the *engine* resolved, never one the caller
-   * sent: a caller must not be able to name another peer's cached bytes.
-   */
+  The cached bytes for a photo version, or null when they are not cached.
+  
+  The key is the version token the *engine* resolved, never one the caller
+  sent: a caller must not be able to name another peer's cached bytes.
+  */
   read(version: string, size: string): CachedAvatar | null {
     const row = this.storage.exec(SELECT_AVATAR, version, size).toArray()[0];
     if (!row) return null;
@@ -88,9 +88,9 @@ export class AvatarCache {
   }
 
   /**
-   * Stores a photo's bytes and evicts the oldest entries when the cache is
-   * over its bounds.
-   */
+  Stores a photo's bytes and evicts the oldest entries when the cache is
+  over its bounds.
+  */
   write(version: string, size: string, mime: string, bytes: Uint8Array): void {
     this.storage.exec(INSERT_AVATAR, version, size, mime, bytes, this.now());
     const totals = this.storage.exec(COUNT_AVATARS).toArray()[0];

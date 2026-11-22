@@ -1,11 +1,11 @@
 /**
- * Origin validation for the bridge's CSRF defense.
- *
- * A browser request that carries a session cookie (or an Access assertion) is
- * only acted on when its `Origin` (or `Referer` fallback) names a host the
- * deployment trusts. The check is shared by the worker edge and the Durable
- * Object so a request that bypasses one still fails at the other.
- */
+Origin validation for the bridge's CSRF defense.
+
+A browser request that carries a session cookie (or an Access assertion) is
+only acted on when its `Origin` (or `Referer` fallback) names a host the
+deployment trusts. The check is shared by the worker edge and the Durable
+Object so a request that bypasses one still fails at the other.
+*/
 
 export interface OriginEnv {
   readonly ALLOWED_ORIGINS?: string;

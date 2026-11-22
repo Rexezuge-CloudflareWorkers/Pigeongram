@@ -5,12 +5,12 @@ import { TelegramLinkProvider } from '../../apps/web/src/telegram-links';
 import type { MessageButtonDto, MessageDto, MessageMarkupDto } from '../../apps/web/src/types';
 
 /**
- * The inline keyboard under a message bubble.
- *
- * The kinds Telegram can send split into three behaviours: a link the app may
- * claim, a Mini App handed to the installed app, and a button the browser
- * cannot honour (shown disabled with a reason).
- */
+The inline keyboard under a message bubble.
+
+The kinds Telegram can send split into three behaviours: a link the app may
+claim, a Mini App handed to the installed app, and a button the browser
+cannot honour (shown disabled with a reason).
+*/
 
 afterEach(() => {
   cleanup();

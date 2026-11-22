@@ -8,19 +8,19 @@ import { EngineError } from './errors';
 import type { UploadGroupSpec, UploadMediaSpec, UploadSpec } from './upload-spec';
 
 /**
- * Outgoing media: `POST /user/upload` streams the browser's request body
- * straight into mtcute, which chunks it into MTProto upload parts on the
- * `upload` connection pool — the same transport the session already uses.
- */
+Outgoing media: `POST /user/upload` streams the browser's request body
+straight into mtcute, which chunks it into MTProto upload parts on the
+`upload` connection pool — the same transport the session already uses.
+*/
 
 /**
- * Sends a file uploaded through `POST /user/upload` and maps the sent message
- * back into the bridge DTO.
- *
- * The kind is explicit because mtcute's `InputMedia.auto` sends newly
- * uploaded photos as documents; `fileSize` matters because mtcute buffers a
- * photo's whole stream when the size is unknown (128 MB isolate budget).
- */
+Sends a file uploaded through `POST /user/upload` and maps the sent message
+back into the bridge DTO.
+
+The kind is explicit because mtcute's `InputMedia.auto` sends newly
+uploaded photos as documents; `fileSize` matters because mtcute buffers a
+photo's whole stream when the size is unknown (128 MB isolate budget).
+*/
 export async function sendUploadedMedia(
   client: TelegramClient,
   spec: UploadSpec,
@@ -57,14 +57,14 @@ export async function sendUploadedMedia(
 }
 
 /**
- * Sends a group uploaded through `POST /user/upload-group`: 2–10 files
- * concatenated in the request body and split back apart here, then handed to
- * `messages.sendMultiMedia` as one album. The first item carries the caption.
- *
- * `sendMediaGroup` normalises its medias strictly in array order, uploading
- * each stream to completion before starting the next; `UploadBodySplitter`
- * relies on that to reuse the one request-body reader.
- */
+Sends a group uploaded through `POST /user/upload-group`: 2–10 files
+concatenated in the request body and split back apart here, then handed to
+`messages.sendMultiMedia` as one album. The first item carries the caption.
+
+`sendMediaGroup` normalises its medias strictly in array order, uploading
+each stream to completion before starting the next; `UploadBodySplitter`
+relies on that to reuse the one request-body reader.
+*/
 export async function sendUploadedMediaGroup(
   client: TelegramClient,
   spec: UploadGroupSpec,
@@ -141,15 +141,15 @@ function buildInputMedia(spec: UploadMediaSpec, body: ReadableStream<Uint8Array>
 }
 
 /**
- * Splits one concatenated request body into the exact byte ranges the album
- * manifest declared.
- *
- * mtcute's group send consumes the medias in order and waits for each upload
- * to finish before opening the next stream, so one reader can serve every
- * part: a part may only start after the previous one closed. The check is
- * defensive — a future mtcute that uploads in parallel would otherwise
- * interleave two files into one corrupt upload.
- */
+Splits one concatenated request body into the exact byte ranges the album
+manifest declared.
+
+mtcute's group send consumes the medias in order and waits for each upload
+to finish before opening the next stream, so one reader can serve every
+part: a part may only start after the previous one closed. The check is
+defensive — a future mtcute that uploads in parallel would otherwise
+interleave two files into one corrupt upload.
+*/
 export class UploadBodySplitter {
   readonly #reader: ReadableStreamDefaultReader<Uint8Array>;
   #buffer: Uint8Array | null = null;
@@ -213,9 +213,9 @@ export class UploadBodySplitter {
   }
 
   /**
-   * Releases the request-body reader. Safe after a complete read and after a
-   * failure; a half-read body must not keep workerd's pump alive.
-   */
+  Releases the request-body reader. Safe after a complete read and after a
+  failure; a half-read body must not keep workerd's pump alive.
+  */
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;

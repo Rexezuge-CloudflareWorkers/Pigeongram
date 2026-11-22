@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { log } from '../../packages/backend-services/src/session/log';
 
 /**
- * A log line is data, not prose: tests (and Workers Logs) should be able to
- * read the event and its fields without matching a message. These cases pin
- * the envelope, the console method per level, and the failure-safe encoding.
- */
+A log line is data, not prose: tests (and Workers Logs) should be able to
+read the event and its fields without matching a message. These cases pin
+the envelope, the console method per level, and the failure-safe encoding.
+*/
 
 afterEach(() => {
   vi.restoreAllMocks();

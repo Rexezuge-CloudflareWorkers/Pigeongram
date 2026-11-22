@@ -1,13 +1,13 @@
 import { deflateSync } from 'node:zlib';
 
 /**
- * A minimal PNG encoder.
- *
- * The app needs four PNG files (the manifest icons and the iOS touch icon),
- * and a rasteriser is not worth a dependency: a PNG is a signature, three
- * chunks and a CRC, and Node's zlib already knows how to deflate. The encoder
- * writes 8-bit RGBA, which is what every icon here needs.
- */
+A minimal PNG encoder.
+
+The app needs four PNG files (the manifest icons and the iOS touch icon),
+and a rasteriser is not worth a dependency: a PNG is a signature, three
+chunks and a CRC, and Node's zlib already knows how to deflate. The encoder
+writes 8-bit RGBA, which is what every icon here needs.
+*/
 
 const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -24,10 +24,10 @@ const CRC_TABLE = (() => {
 })();
 
 /**
- * Encodes straight RGBA bytes as a PNG.
- *
- * @param pixels The image, `width * height * 4` bytes, row by row.
- */
+Encodes straight RGBA bytes as a PNG.
+
+@param pixels The image, `width * height * 4` bytes, row by row.
+*/
 export function encodePng(pixels: Uint8Array, width: number, height: number): Uint8Array {
   const stride = width * 4;
   // Every scanline is prefixed with its filter byte; filter 0 is "none".

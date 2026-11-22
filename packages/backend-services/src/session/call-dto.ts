@@ -4,20 +4,20 @@ import { encodeBase64 } from './base64';
 import { toCallProtocolDto } from './call-protocol';
 
 /**
- * Turns Telegram's call constructors into the DTO the bridge serves.
- *
- * The six constructors are the six states a call can be in, so the mapping is
- * one word per constructor and no interpretation beyond that. The access hash
- * is deliberately left out: it stays in the engine, and the browser names a
- * call by its id alone.
- */
+Turns Telegram's call constructors into the DTO the bridge serves.
+
+The six constructors are the six states a call can be in, so the mapping is
+one word per constructor and no interpretation beyond that. The access hash
+is deliberately left out: it stays in the engine, and the browser names a
+call by its id alone.
+*/
 
 /**
- * The friendly name of a discard reason, and the wire constructor behind it.
- *
- * Telegram's reasons are constructors, so the wire name is what the engine
- * sends and the friendly name is what the bridge accepts.
- */
+The friendly name of a discard reason, and the wire constructor behind it.
+
+Telegram's reasons are constructors, so the wire name is what the engine
+sends and the friendly name is what the bridge accepts.
+*/
 const DISCARD_REASONS: ReadonlyMap<string, string> = new Map([
   ['phoneCallDiscardReasonMissed', 'missed'],
   ['phoneCallDiscardReasonDisconnect', 'disconnect'],
@@ -26,8 +26,8 @@ const DISCARD_REASONS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * The wire constructor of a friendly discard reason.
- */
+The wire constructor of a friendly discard reason.
+*/
 export function discardReasonConstructor(reason: string): string {
   switch (reason) {
     case 'missed': {
@@ -49,8 +49,8 @@ export function discardReasonConstructor(reason: string): string {
 }
 
 /**
- * The state a constructor stands for.
- */
+The state a constructor stands for.
+*/
 function stateOf(call: tl.TypePhoneCall): CallState {
   switch (call._) {
     case 'phoneCallEmpty': {
@@ -75,18 +75,18 @@ function stateOf(call: tl.TypePhoneCall): CallState {
 }
 
 /**
- * The call's access hash, when the constructor carries one.
- *
- * The discarded constructor does not: by then the call is over and nothing
- * has to be addressed to it any more.
- */
+The call's access hash, when the constructor carries one.
+
+The discarded constructor does not: by then the call is over and nothing
+has to be addressed to it any more.
+*/
 export function callAccessHash(call: tl.TypePhoneCall): string | null {
   return call._ === 'phoneCallDiscarded' || call._ === 'phoneCallEmpty' ? null : call.accessHash.toString();
 }
 
 /**
- * One way into the call's media.
- */
+One way into the call's media.
+*/
 function toConnectionDto(connection: tl.TypePhoneConnection): CallConnectionDto {
   if (connection._ === 'phoneConnectionWebrtc') {
     return {
@@ -117,15 +117,15 @@ function toConnectionDto(connection: tl.TypePhoneConnection): CallConnectionDto 
 }
 
 /**
- * The protocol of a call that carries none.
- */
+The protocol of a call that carries none.
+*/
 function emptyProtocol(): CallProtocolDto {
   return toCallProtocolDto({ _: 'phoneCallProtocol', minLayer: 0, maxLayer: 0, libraryVersions: [] });
 }
 
 /**
- * The DTO the bridge serves for a call.
- */
+The DTO the bridge serves for a call.
+*/
 export function toCallDto(call: tl.TypePhoneCall): CallDto {
   if (call._ === 'phoneCallEmpty') {
     return {

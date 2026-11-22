@@ -16,14 +16,14 @@ import { albumAwareUnread, reconcileUnreadAlbums } from './unread-albums';
 import type { PartialMethodTable } from './rpc-methods';
 
 /**
- * The chat-list half of the bridge: who the account is, which chats it has,
- * the archive and pin moves, and the per-chat reads that are not message
- * windows.
- *
- * Every method here is a read except `setArchived` and `setPinned`, the two
- * writes the chat list itself can make. The album ledger is consulted wherever
- * a count is served, so the badge and the list agree on what an album is worth.
- */
+The chat-list half of the bridge: who the account is, which chats it has,
+the archive and pin moves, and the per-chat reads that are not message
+windows.
+
+Every method here is a read except `setArchived` and `setPinned`, the two
+writes the chat list itself can make. The album ledger is consulted wherever
+a count is served, so the badge and the list agree on what an album is worth.
+*/
 export const dialogsRpcMethods = {
   getMe: {
     readOnly: true,
@@ -129,12 +129,12 @@ export const dialogsRpcMethods = {
 } as const satisfies PartialMethodTable;
 
 /**
- * Overlays the account's contact presences onto the chat list.
- *
- * Telegram attaches a state to the user objects it sends only when it knows
- * one, so the contact list — which is the authoritative answer for the people
- * in it — wins over whatever the dialog carried.
- */
+Overlays the account's contact presences onto the chat list.
+
+Telegram attaches a state to the user objects it sends only when it knows
+one, so the contact list — which is the authoritative answer for the people
+in it — wins over whatever the dialog carried.
+*/
 function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, PresenceDto>): DialogDto[] {
   if (contacts.size === 0) return dialogs;
   return dialogs.map((dialog) => {
@@ -146,12 +146,12 @@ function overlayPresence(dialogs: DialogDto[], contacts: ReadonlyMap<number, Pre
 }
 
 /**
- * Reads the chat list, one Telegram page at a time.
- *
- * The album ledger is reconciled with the account's unread albums first, so
- * the counts the list carries are the ones the badge shows: an album counts
- * once, not once per file.
- */
+Reads the chat list, one Telegram page at a time.
+
+The album ledger is reconciled with the account's unread albums first, so
+the counts the list carries are the ones the badge shows: an album counts
+once, not once per file.
+*/
 async function collectDialogs(
   client: TelegramClient,
   limit: number,

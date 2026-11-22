@@ -20,9 +20,9 @@ import type { UploadRequest } from './upload';
 import type { MessageDeletion } from './useMessageDelete';
 
 /**
- * The chat thread's controller contract, split from `useThread.ts` to keep the
- * hook under the god-file cap (the same shape as `CommentsController`).
- */
+The chat thread's controller contract, split from `useThread.ts` to keep the
+hook under the god-file cap (the same shape as `CommentsController`).
+*/
 
 /**
 What opening a chat answered.
@@ -109,9 +109,9 @@ export interface ThreadController {
   open: (dialog: DialogDto, options?: OpenThreadOptions) => Promise<OpenThreadResult>;
   close: () => void;
   /**
-   * Replaces the open chat's DTO, after a write changed it (a join turns a
-   * preview into a chat with a composer) without re-reading its window.
-   */
+  Replaces the open chat's DTO, after a write changed it (a join turns a
+  preview into a chat with a composer) without re-reading its window.
+  */
   updateChat: (chat: ChatDto) => void;
   loadOlder: () => Promise<void>;
   /**
@@ -121,10 +121,10 @@ export interface ThreadController {
   */
   loadNewer: () => Promise<void>;
   /**
-   * Fast-forwards the loaded window to the chat's newest messages, so a jump
-   * from a backlog or an older linked post can land at the bottom. No-op when
-   * the window already reaches the newest message.
-   */
+  Fast-forwards the loaded window to the chat's newest messages, so a jump
+  from a backlog or an older linked post can land at the bottom. No-op when
+  the window already reaches the newest message.
+  */
   jumpToLatest: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   /**
@@ -147,9 +147,9 @@ export interface ThreadController {
   saveEdit: (text: string) => Promise<void>;
   attach: (request: UploadRequest) => Promise<void>;
   /**
-   * Sends a sticker the picker offered. `set` is the pack's identity, the
-   * cold-start fallback for the engine's registry.
-   */
+  Sends a sticker the picker offered. `set` is the pack's identity, the
+  cold-start fallback for the engine's registry.
+  */
   sendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   retryPending: (key: string) => void;
   discardPending: (key: string) => void;

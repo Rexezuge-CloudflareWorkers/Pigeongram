@@ -22,36 +22,36 @@ import { requirePeerId } from './params';
 import type { PartialMethodTable } from './rpc-methods';
 
 /**
- * The calls half of the bridge.
- *
- * A call is a two-sided thing: Telegram's server relays the handshake and the
- * signalling packets between the two peers, and everything else — the audio,
- * the video — travels directly between them. So the bridge's job is narrow:
- * it holds the account's session, it carries the handshake, and it relays the
- * signalling packets. The media never comes near it.
- *
- * The one thing the bridge deliberately does not carry is the shared key.
- * The Diffie-Hellman exchange happens in the browser, and only the values
- * Telegram's protocol puts on the wire travel through here.
- */
+The calls half of the bridge.
+
+A call is a two-sided thing: Telegram's server relays the handshake and the
+signalling packets between the two peers, and everything else — the audio,
+the video — travels directly between them. So the bridge's job is narrow:
+it holds the account's session, it carries the handshake, and it relays the
+signalling packets. The media never comes near it.
+
+The one thing the bridge deliberately does not carry is the shared key.
+The Diffie-Hellman exchange happens in the browser, and only the values
+Telegram's protocol puts on the wire travel through here.
+*/
 
 /**
- * How many random bytes the Diffie-Hellman config is asked for.
- *
- * The secret is 256 bytes wide, and the config's `random` is the server's
- * contribution to the exchange.
- */
+How many random bytes the Diffie-Hellman config is asked for.
+
+The secret is 256 bytes wide, and the config's `random` is the server's
+contribution to the exchange.
+*/
 const DH_RANDOM_LENGTH = 256;
 
 /**
- * The calls surface, as one entry per method.
- *
- * The registry spreads this table in with the rest of the bridge's methods, so
- * a call method is no longer a special case in the dispatcher: it is an
- * ordinary entry that happens to be a write. The table's type covers every
- * member of {@link CallRpcMethod}, so adding one to the contract fails the
- * build until it is classified here.
- */
+The calls surface, as one entry per method.
+
+The registry spreads this table in with the rest of the bridge's methods, so
+a call method is no longer a special case in the dispatcher: it is an
+ordinary entry that happens to be a write. The table's type covers every
+member of {@link CallRpcMethod}, so adding one to the contract fails the
+build until it is classified here.
+*/
 export const callRpcMethods = {
   getCallDhConfig: {
     readOnly: false,
@@ -157,23 +157,23 @@ export const callRpcMethods = {
 } as const satisfies PartialMethodTable<CallRpcMethod>;
 
 /**
- * Relays one signalling packet to the other peer.
- *
- * Telegram's server carries the packet; the engine never reads it. The
- * packet is only meaningful once the key exchange is over, so it is refused
- * for a call the engine does not know.
- */
+Relays one signalling packet to the other peer.
+
+Telegram's server carries the packet; the engine never reads it. The
+packet is only meaningful once the key exchange is over, so it is refused
+for a call the engine does not know.
+*/
 export async function sendCallSignaling(client: TelegramClient, calls: CallRegistry, callId: string, data: Uint8Array): Promise<void> {
   const id = requireCallId(callId);
   await client.call({ _: 'phone.sendSignalingData', peer: inputPhoneCall(id, calls), data });
 }
 
 /**
- * The Diffie-Hellman prime and generator the key exchange runs on.
- *
- * The prime is public: both peers get it from the same server, and it is the
- * generator that makes the exchange work. The secret is the browser's.
- */
+The Diffie-Hellman prime and generator the key exchange runs on.
+
+The prime is public: both peers get it from the same server, and it is the
+generator that makes the exchange work. The secret is the browser's.
+*/
 async function readDhConfig(client: TelegramClient): Promise<GetCallDhConfigResult> {
   const config = await client.call({ _: 'messages.getDhConfig', version: 0, randomLength: DH_RANDOM_LENGTH });
   if (config._ !== 'messages.dhConfig') {
@@ -183,17 +183,17 @@ async function readDhConfig(client: TelegramClient): Promise<GetCallDhConfigResu
 }
 
 /**
- * Remembers a call the engine has just seen and serves it as the DTO.
- */
+Remembers a call the engine has just seen and serves it as the DTO.
+*/
 function remember(calls: CallRegistry, call: tl.TypePhoneCall): CallResult {
   calls.remember(call);
   return { call: toCallDto(call) };
 }
 
 /**
- * The peer a call method addresses: the call's id and the access hash the
- * engine kept for it.
- */
+The peer a call method addresses: the call's id and the access hash the
+engine kept for it.
+*/
 function inputPhoneCall(callId: ReturnType<typeof requireCallId>, calls: CallRegistry): tl.TypeInputPhoneCall {
   return {
     _: 'inputPhoneCall',

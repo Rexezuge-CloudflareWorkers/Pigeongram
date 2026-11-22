@@ -1,16 +1,18 @@
 import { Long, WebPageMedia } from '@mtcute/core';
 import type { FileLocation, tl } from '@mtcute/core';
 import type { TelegramClient } from '@mtcute/core/client.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DownloadParams } from '../../packages/backend-services/src/session/media-stream';
+import { MEDIA_WINDOW_BYTES } from '../../packages/backend-services/src/session/config';
 import { readAvatar, readAvatarVersion, streamMessageMedia } from '../../packages/backend-services/src/session/media';
+import { MediaTargetCache } from '../../packages/backend-services/src/session/media-targets';
 
 /**
- * The window arithmetic of the media downloads: which aligned offset a browser
- * range resolves to, how many bytes the response promises, and where the
- * bytes come from. The stream mechanics live in `media-stream.test.ts`; here
- * the client is a synthetic file, so a wrong offset shows up as wrong bytes.
- */
+The window arithmetic of the media downloads: which aligned offset a browser
+range resolves to, how many bytes the response promises, and where the
+bytes come from. The stream mechanics live in `media-stream.test.ts`; here
+the client is a synthetic file, so a wrong offset shows up as wrong bytes.
+*/
 
 const SIZE = 10_000;
 const CHUNK = 1000;
@@ -20,8 +22,8 @@ function byteAt(at: number): number {
 }
 
 /**
- * The bytes of the synthetic file in `[from, from + count)`.
- */
+The bytes of the synthetic file in `[from, from + count)`.
+*/
 function bytesAt(from: number, count: number): Uint8Array {
   return Uint8Array.from({ length: count }, (_, index) => byteAt(from + index));
 }
@@ -36,11 +38,11 @@ const VIDEO = {
 const PHOTO = { type: 'photo', fileSize: SIZE, thumbnails: [] as unknown[] };
 
 /**
- * A client whose `downloadAsIterable` serves the synthetic file from the
- * requested offset, recording every download's params. `size` defaults to the
- * module's small fixture so cases that need to cross a 1 MB part block can
- * pass their own.
- */
+A client whose `downloadAsIterable` serves the synthetic file from the
+requested offset, recording every download's params. `size` defaults to the
+module's small fixture so cases that need to cross a 1 MB part block can
+pass their own.
+*/
 function fakeClient(
   media: unknown,
   peer: unknown = null,
@@ -76,10 +78,10 @@ async function body(download: { stream: ReadableStream<Uint8Array> }): Promise<U
 }
 
 /**
- * A `messageMediaWebPage` whose page photo is the synthetic file, so a preview
- * download reads the same bytes as any other media. `page` can drop the photo
- * (the shape a preview without an image arrives as).
- */
+A `messageMediaWebPage` whose page photo is the synthetic file, so a preview
+download reads the same bytes as any other media. `page` can drop the photo
+(the shape a preview without an image arrives as).
+*/
 function webpageMedia(page: Record<string, unknown> = {}): WebPageMedia {
   const raw = {
     _: 'messageMediaWebPage',
@@ -105,15 +107,15 @@ function webpageMedia(page: Record<string, unknown> = {}): WebPageMedia {
 }
 
 /**
- * A document-backed video carrying alternative qualities: the primary plus
- * one larger and one smaller alt, so `max` and index selection are visible
- * as distinct file sizes on the streams the engine opens. `type`, `raw` and
- * `media` are the raw TL pieces the engine reads; everything else is the
- * file-location surface the rest of the harness (`VIDEO`-shaped media)
- * already speaks. The alt vector also carries the files Telegram sends beside
- * the qualities (an HLS manifest and storyboards) and a second codec at the
- * same resolution, so the tests prove both are kept out of the index.
- */
+A document-backed video carrying alternative qualities: the primary plus
+one larger and one smaller alt, so `max` and index selection are visible
+as distinct file sizes on the streams the engine opens. `type`, `raw` and
+`media` are the raw TL pieces the engine reads; everything else is the
+file-location surface the rest of the harness (`VIDEO`-shaped media)
+already speaks. The alt vector also carries the files Telegram sends beside
+the qualities (an HLS manifest and storyboards) and a second codec at the
+same resolution, so the tests prove both are kept out of the index.
+*/
 function videoWithAlternatives(): Record<string, unknown> {
   const document = (id: number, w: number, h: number, size: number, codec?: string) => ({
     _: 'document',
@@ -190,10 +192,11 @@ describe('streamMessageMedia', () => {
     expect(requests[0]?.offset).toBe(0);
   });
 
-  it('starts a mid-file range on a 1 MB part block', async () => {
+  it('starts a mid-file range on the part boundary below the request', async () => {
     // The shape that produced `LIMIT_INVALID`: the browser seeks 64 KB before
-    // the second 1 MB boundary. A merely 4 KB-aligned offset let mtcute's
-    // first 128 KB part cross that boundary, which Telegram rejects.
+    // the second 1 MB boundary. Aligning to the part the download actually
+    // uses (128 KB for a file this size) lands closer than the 1 MB block and
+    // still never lets a part cross that block.
     const size = 3 * 1024 * 1024;
     const start = 1024 * 1024 + 983_040;
     const { client, requests } = fakeClient({ ...VIDEO, fileSize: size }, null, size);
@@ -205,9 +208,29 @@ describe('streamMessageMedia', () => {
       length: 100,
       contentRange: `bytes ${start}-${start + 99}/${size}`,
     });
-    // The part block below the request, not the request's own 4 KB alignment.
-    expect(requests[0]?.offset).toBe(1024 * 1024);
+    expect(requests[0]?.offset).toBe(15 * 128 * 1024);
+    expect(requests[0]?.partSize).toBe(128);
     await expect(body(download)).resolves.toEqual(bytesAt(start, 100));
+  });
+
+  it('uses the smallest part for a short ranged window', async () => {
+    const size = 3 * 1024 * 1024;
+    const { client, requests } = fakeClient({ ...VIDEO, fileSize: size }, null, size);
+
+    // A even shorter window keeps the prefetch bounded: one 128 KB part
+    // instead of the whole 1 MB block the file's size would otherwise use.
+    await streamMessageMedia(client, 1, 2, { range: { start: 0, end: 1 } }, 4 * 1024 * 1024);
+
+    expect(requests[0]).toMatchObject({ offset: 0, partSize: 128 });
+  });
+
+  it('serves a suffix range from the end of the file', async () => {
+    const { client, requests } = fakeClient(VIDEO);
+    const download = await streamMessageMedia(client, 1, 2, { range: { suffix: 500 } });
+
+    expect(download).toMatchObject({ status: 206, length: 500, contentRange: `bytes ${SIZE - 500}-${SIZE - 1}/${SIZE}` });
+    await expect(body(download)).resolves.toEqual(bytesAt(SIZE - 500, 500));
+    expect(requests[0]?.offset).toBe(SIZE - 500 - ((SIZE - 500) % (128 * 1024)));
   });
 
   it('aligns to the media window it is given', async () => {
@@ -336,6 +359,38 @@ describe('streamMessageMedia', () => {
 
     expect(locations[0]?.fileSize).toBe(9500);
     expect(download).toMatchObject({ status: 206, length: 100, contentRange: 'bytes 100-199/9500' });
+  });
+
+  it('resolves a message once for the many ranges of one video', async () => {
+    const { client } = fakeClient(VIDEO);
+    const getMessages = vi.spyOn(client, 'getMessages');
+    const cache = new MediaTargetCache();
+
+    await streamMessageMedia(client, 1, 2, { range: { start: 0, end: 9 } }, MEDIA_WINDOW_BYTES, cache);
+    await streamMessageMedia(client, 1, 2, { range: { start: 10, end: 19 } }, MEDIA_WINDOW_BYTES, cache);
+
+    expect(getMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets a cached message when the download fails', async () => {
+    const { client } = fakeClient(VIDEO);
+    const getMessages = vi.spyOn(client, 'getMessages');
+    let fail = true;
+    vi.spyOn(client, 'downloadAsIterable').mockImplementation(() => {
+      if (fail) throw Object.assign(new Error('File ref expired'), { text: 'FILEREF_UPGRADE_NEEDED' });
+      return (async function* () {
+        yield new Uint8Array([1]);
+      })();
+    });
+    const cache = new MediaTargetCache();
+
+    const first = await streamMessageMedia(client, 1, 2, {}, MEDIA_WINDOW_BYTES, cache);
+    await expect(first.stream.getReader().read()).rejects.toThrow('File ref expired');
+
+    fail = false;
+    await streamMessageMedia(client, 1, 2, {}, MEDIA_WINDOW_BYTES, cache).then((download) => download.stream.cancel());
+
+    expect(getMessages).toHaveBeenCalledTimes(2);
   });
 });
 

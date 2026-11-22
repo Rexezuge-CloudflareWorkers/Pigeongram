@@ -31,17 +31,17 @@ export interface TransactionalStorageLike {
 }
 
 /**
- * `better-sqlite3`-shaped adapter over the Durable Object's SQLite, the shape
- * `BaseSqliteStorageDriver` expects (`ISqliteDatabase`).
- *
- * Notes on the translation:
- * - DO SQL has no prepared-statement objects; each call re-executes the SQL.
- *   The strings come from mtcute's repositories and are constant, so there is
- *   no injection surface added here.
- * - Blobs come back as `ArrayBuffer`; mtcute's TL layer wants `Uint8Array`.
- * - `transaction` maps onto `storage.transactionSync`, the DO's supported way
- *   of atomically applying a batch of statements.
- */
+`better-sqlite3`-shaped adapter over the Durable Object's SQLite, the shape
+`BaseSqliteStorageDriver` expects (`ISqliteDatabase`).
+
+Notes on the translation:
+- DO SQL has no prepared-statement objects; each call re-executes the SQL.
+  The strings come from mtcute's repositories and are constant, so there is
+  no injection surface added here.
+- Blobs come back as `ArrayBuffer`; mtcute's TL layer wants `Uint8Array`.
+- `transaction` maps onto `storage.transactionSync`, the DO's supported way
+  of atomically applying a batch of statements.
+*/
 export class DoSqliteDatabase {
   constructor(private readonly storage: TransactionalStorageLike) {}
 
@@ -74,8 +74,8 @@ export class DoSqliteDatabase {
 }
 
 /**
- * `close()` is a no-op, so a fresh database per `_load()` is safe.
- */
+`close()` is a no-op, so a fresh database per `_load()` is safe.
+*/
 export function createDoSqliteDatabase(storage: TransactionalStorageLike): ISqliteDatabase {
   return new DoSqliteDatabase(storage);
 }

@@ -1,20 +1,20 @@
 /**
- * The placeholder of a thread with no loaded messages.
- *
- * Telegram introduces an empty chat with its description — a bot's own
- * description, or a group's — so that text takes the place of the generic
- * prompt. A public preview keeps the plain prompt: there is no conversation to
- * say hello to, and joining is what starts one.
- */
+The placeholder of a thread with no loaded messages.
+
+Telegram introduces an empty chat with its description — a bot's own
+description, or a group's — so that text takes the place of the generic
+prompt. A public preview keeps the plain prompt: there is no conversation to
+say hello to, and joining is what starts one.
+*/
 
 interface ThreadEmptyProps {
   /**
-   * The text Telegram shows in an empty chat, or null when the chat has none.
-   */
+  The text Telegram shows in an empty chat, or null when the chat has none.
+  */
   description: string | null;
   /**
-   * Whether the open chat is a public preview the account has not joined.
-   */
+  Whether the open chat is a public preview the account has not joined.
+  */
   preview: boolean;
 }
 

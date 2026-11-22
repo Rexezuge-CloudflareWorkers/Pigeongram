@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
 import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
-import { EngineError } from '../../packages/backend-services/src/session/errors';
+import { RangeNotSatisfiableError } from '../../packages/backend-services/src/session/errors';
 import type { MediaDownload } from '../../packages/backend-services/src/session/media';
 import {
   avatarResponse,
@@ -12,10 +12,10 @@ import {
 import type { UploadGroupSpec } from '../../packages/backend-services/src/session/upload-spec';
 
 /**
- * The HTTP half of `/user/file` and `/user/avatar`: which `Range` forms reach the
- * download, and which headers make a `<video>` seek. The engine test suite
- * covers the malformed-coordinate 400s; these cases lock the 200/206 contract.
- */
+The HTTP half of `/user/file` and `/user/avatar`: which `Range` forms reach the
+download, and which headers make a `<video>` seek. The engine test suite
+covers the malformed-coordinate 400s; these cases lock the 200/206 contract.
+*/
 
 function download(overrides: Partial<MediaDownload> = {}): MediaDownload {
   return {
@@ -30,6 +30,7 @@ function download(overrides: Partial<MediaDownload> = {}): MediaDownload {
     length: 4,
     status: 200,
     contentRange: null,
+    etag: '"file-1"',
     ...overrides,
   };
 }
@@ -39,9 +40,9 @@ function stubDriver(media: MediaDownload): { driver: TelegramDriver; streamMessa
   return { driver: { streamMessageMedia } as unknown as TelegramDriver, streamMessageMedia };
 }
 
-function target(path: string, headers: Record<string, string> = {}): { request: Request; url: URL } {
+function target(path: string, headers: Record<string, string> = {}, method = 'GET'): { request: Request; url: URL } {
   const url = new URL(`https://session-engine.internal${path}`);
-  return { request: new Request(url, { headers }), url };
+  return { request: new Request(url, { method, headers }), url };
 }
 
 describe('fileResponse', () => {
@@ -54,9 +55,10 @@ describe('fileResponse', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('video/mp4');
     expect(response.headers.get('content-length')).toBe('4');
-    expect(response.headers.get('content-disposition')).toBe('attachment');
+    expect(response.headers.get('content-disposition')).toBe('inline');
     expect(response.headers.get('accept-ranges')).toBe('bytes');
     expect(response.headers.get('content-range')).toBeNull();
+    expect(response.headers.get('etag')).toBe('"file-1"');
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]));
     expect(streamMessageMedia).toHaveBeenCalledWith(1, 2, {});
   });
@@ -138,14 +140,66 @@ describe('fileResponse', () => {
     expect(streamMessageMedia).toHaveBeenCalledWith(1, 2, { thumb: true });
   });
 
-  it('propagates a range outside the file for the engine to 416', async () => {
+  it('answers a range outside the file with 416 and the file size', async () => {
     const streamMessageMedia = vi.fn(async () => {
-      throw new EngineError('Requested range is outside the file', 416);
+      throw new RangeNotSatisfiableError(1000);
     });
     const driver = { streamMessageMedia } as unknown as TelegramDriver;
     const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=5000-' });
 
-    await expect(fileResponse(driver, request, url)).rejects.toMatchObject({ status: 416 });
+    const response = await fileResponse(driver, request, url);
+
+    expect(response.status).toBe(416);
+    expect(response.headers.get('content-range')).toBe('bytes */1000');
+    expect(response.headers.get('accept-ranges')).toBe('bytes');
+  });
+
+  it('forwards a suffix range instead of serving the whole file', async () => {
+    const media = download({ status: 206, length: 500, contentRange: 'bytes 500-999/1000' });
+    const { driver, streamMessageMedia } = stubDriver(media);
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=-500' });
+
+    await fileResponse(driver, request, url);
+
+    expect(streamMessageMedia).toHaveBeenCalledWith(1, 2, { range: { suffix: 500 } });
+  });
+
+  it('re-requests the whole file when If-Range names another entity', async () => {
+    const first = download({ status: 206, length: 100, contentRange: 'bytes 100-199/1000' });
+    const whole = download();
+    const streamMessageMedia = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(whole);
+    const driver = { streamMessageMedia } as unknown as TelegramDriver;
+    const { request, url } = target('/user/file?chatId=1&messageId=2', {
+      range: 'bytes=100-199',
+      'if-range': '"file-0"',
+    });
+
+    const response = await fileResponse(driver, request, url);
+
+    expect(response.status).toBe(200);
+    expect(streamMessageMedia).toHaveBeenLastCalledWith(1, 2, {});
+  });
+
+  it('answers a matching If-None-Match with 304', async () => {
+    const { driver } = stubDriver(download());
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { 'if-none-match': '"file-0", "file-1"' });
+
+    const response = await fileResponse(driver, request, url);
+
+    expect(response.status).toBe(304);
+    expect(response.headers.get('etag')).toBe('"file-1"');
+  });
+
+  it('answers HEAD with the headers and no body', async () => {
+    const { driver, streamMessageMedia } = stubDriver(download({ status: 206, length: 100, contentRange: 'bytes 0-99/1000' }));
+    const { request, url } = target('/user/file?chatId=1&messageId=2', { range: 'bytes=0-99' }, 'HEAD');
+
+    const response = await fileResponse(driver, request, url);
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-range')).toBe('bytes 0-99/1000');
+    expect(await response.text()).toBe('');
+    expect(streamMessageMedia).toHaveBeenCalledOnce();
   });
 });
 
@@ -196,8 +250,8 @@ describe('uploadGroupResponse', () => {
 
 describe('avatarResponse', () => {
   /**
-   * A cache the test can inspect: the real one is the engine's SQLite.
-   */
+  A cache the test can inspect: the real one is the engine's SQLite.
+  */
   function fakeCache(): { cache: AvatarCache; stored: Map<string, string> } {
     const stored = new Map<string, string>();
     const cache = {
@@ -263,7 +317,7 @@ describe('stickerResponse', () => {
     expect(streamSticker).toHaveBeenCalledWith('42', true);
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/webp');
-    expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
+    expect(response.headers.get('cache-control')).toBe('private, max-age=86400');
     expect(response.headers.get('content-disposition')).toBe('inline');
   });
 

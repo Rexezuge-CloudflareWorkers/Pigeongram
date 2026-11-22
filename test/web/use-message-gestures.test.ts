@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMessageGestures } from '../../apps/web/src/components/useMessageGestures';
 
 /**
- * The swipe-to-reply and reaction-burst state for a message row: the drag
- * translates the bubble until it crosses the reply threshold, then the reply
- * fires and the offset resets; the burst marker fades after one timeout.
- */
+The swipe-to-reply and reaction-burst state for a message row: the drag
+translates the bubble until it crosses the reply threshold, then the reply
+fires and the offset resets; the burst marker fades after one timeout.
+*/
 
 const vibrate = vi.fn();
 

@@ -3,56 +3,56 @@ import { messageRowSelector } from './groups';
 import type { PeerId } from './types';
 
 /**
- * Where a thread was left: the message at the top of the viewport and its
- * offset, with the raw scroll position as a fallback. The anchor keeps the
- * spot stable when media above it settles while the thread is away; the
- * bottom flag lets a reader who was following the newest messages return to
- * the bottom after new ones arrived.
- *
- * Kept apart from the view because the comments detour is the one navigation
- * that unmounts the thread while keeping its loaded window: remembering and
- * resuming that position is the reader-visible half of the rule.
- */
+Where a thread was left: the message at the top of the viewport and its
+offset, with the raw scroll position as a fallback. The anchor keeps the
+spot stable when media above it settles while the thread is away; the
+bottom flag lets a reader who was following the newest messages return to
+the bottom after new ones arrived.
+
+Kept apart from the view because the comments detour is the one navigation
+that unmounts the thread while keeping its loaded window: remembering and
+resuming that position is the reader-visible half of the rule.
+*/
 
 /**
- * The list counts as "at the bottom" within this many pixels, for both the
- * stick-to-bottom pin and the read watermark.
- */
+The list counts as "at the bottom" within this many pixels, for both the
+stick-to-bottom pin and the read watermark.
+*/
 const BOTTOM_PX = 80;
 
 export interface ThreadPosition {
   chatId: PeerId;
   /**
-   * The first message at or below the viewport's top edge, or null when the
-   * window rendered no message rows.
-   */
+  The first message at or below the viewport's top edge, or null when the
+  window rendered no message rows.
+  */
   messageId: number | null;
   /**
-   * That message's top edge relative to the scroll container's top edge; a
-   * partially visible row is negative.
-   */
+  That message's top edge relative to the scroll container's top edge; a
+  partially visible row is negative.
+  */
   offset: number;
   /**
-   * The raw position, used when the anchor message is no longer loaded.
-   */
+  The raw position, used when the anchor message is no longer loaded.
+  */
   scrollTop: number;
   /**
-   * Whether the view followed the newest messages, so a resume can settle on
-   * the bottom even if messages arrived meanwhile.
-   */
+  Whether the view followed the newest messages, so a resume can settle on
+  the bottom even if messages arrived meanwhile.
+  */
   atBottom: boolean;
 }
 
 export interface ThreadPositionMemory {
   remember: (position: ThreadPosition) => void;
   /**
-   * The remembered position for `chatId`, if the open thread is the session
-   * that was left; null when the thread has since been opened or closed.
-   */
+  The remembered position for `chatId`, if the open thread is the session
+  that was left; null when the thread has since been opened or closed.
+  */
   resume: (chatId: PeerId) => ThreadPosition | null;
   /**
-   * Drops the remembered position: a fresh open or a close is a new session.
-   */
+  Drops the remembered position: a fresh open or a close is a new session.
+  */
   forget: () => void;
 }
 
@@ -77,10 +77,10 @@ export function isAtBottom(element: HTMLElement): boolean {
 }
 
 /**
- * Reads the current viewport as a resumable position. The first message row
- * whose bottom edge is inside the container anchors the spot; an album is one
- * row, and its first message id resolves back to the same element.
- */
+Reads the current viewport as a resumable position. The first message row
+whose bottom edge is inside the container anchors the spot; an album is one
+row, and its first message id resolves back to the same element.
+*/
 export function readThreadPosition(element: HTMLElement, chatId: PeerId): ThreadPosition {
   const container = element.getBoundingClientRect();
   let messageId: number | null = null;
@@ -97,11 +97,11 @@ export function readThreadPosition(element: HTMLElement, chatId: PeerId): Thread
 }
 
 /**
- * Puts a saved position back. A bottom reader follows any messages that
- * arrived meanwhile; an anchored reader keeps the same message at the same
- * offset, even if media above it changed size. The raw scroll position is the
- * fallback when the anchor is gone.
- */
+Puts a saved position back. A bottom reader follows any messages that
+arrived meanwhile; an anchored reader keeps the same message at the same
+offset, even if media above it changed size. The raw scroll position is the
+fallback when the anchor is gone.
+*/
 function restoreThreadPosition(element: HTMLElement, position: ThreadPosition): void {
   if (position.atBottom) {
     element.scrollTop = element.scrollHeight;
@@ -121,16 +121,16 @@ interface ThreadOpening {
   focusMessageId: number | null;
   unreadDividerId: number | null;
   /**
-   * A position to resume before any of the defaults applies: the comments
-   * screen took the reader away without closing the thread.
-   */
+  A position to resume before any of the defaults applies: the comments
+  screen took the reader away without closing the thread.
+  */
   resume: ThreadPosition | null;
 }
 
 /**
- * Lands an opened (or reopened) thread: a remembered position wins, then a
- * linked post, then the unread divider, then the bottom.
- */
+Lands an opened (or reopened) thread: a remembered position wins, then a
+linked post, then the unread divider, then the bottom.
+*/
 export function positionThread(element: HTMLElement, opening: ThreadOpening): void {
   if (opening.resume !== null) {
     restoreThreadPosition(element, opening.resume);
@@ -155,10 +155,10 @@ export function positionThread(element: HTMLElement, opening: ThreadOpening): vo
 }
 
 /**
- * Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
- * The class is removed after the flash keyframe finishes; the flash itself is
- * the only motion, the accent outline is the durable cue.
- */
+Flashes a row, so a programmatic jump reads as a jump rather than a no-op.
+The class is removed after the flash keyframe finishes; the flash itself is
+the only motion, the accent outline is the durable cue.
+*/
 function flashRow(element: HTMLElement): void {
   element.classList.add('reply-flash');
   setTimeout(() => element.classList.remove('reply-flash'), 1200);

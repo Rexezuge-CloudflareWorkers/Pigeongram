@@ -6,13 +6,13 @@ import { Dialog } from './Dialog';
 import { Spinner } from './Spinner';
 
 /**
- * The chat's pinned messages, newest first, in a card beside the thread.
- *
- * The banner opens it; each row jumps to its post through the thread's own
- * linked-post route, even when the message sits outside the loaded window. The
- * list is its own read and pages with Telegram's cursor, so a chat with many
- * pins costs only the page the reader asked for.
- */
+The chat's pinned messages, newest first, in a card beside the thread.
+
+The banner opens it; each row jumps to its post through the thread's own
+linked-post route, even when the message sits outside the loaded window. The
+list is its own read and pages with Telegram's cursor, so a chat with many
+pins costs only the page the reader asked for.
+*/
 
 interface PinnedMessagesDialogProps {
   chat: ChatDto;

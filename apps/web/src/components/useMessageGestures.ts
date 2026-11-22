@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 
 /**
- * The swipe-to-reply and reaction-burst state for a message row.
- * Kept in a hook so the row stays under the god-file cap: the horizontal
- * drag translates the bubble until it crosses the reply threshold, then the
- * reply fires and the offset resets. The burst marker is the reaction the
- * last tap adopted; it fades out after one frame timeout.
- */
+The swipe-to-reply and reaction-burst state for a message row.
+Kept in a hook so the row stays under the god-file cap: the horizontal
+drag translates the bubble until it crosses the reply threshold, then the
+reply fires and the offset resets. The burst marker is the reaction the
+last tap adopted; it fades out after one frame timeout.
+*/
 const SWIPE_REPLY_PX = 56;
 const BURST_MS = 340;
 

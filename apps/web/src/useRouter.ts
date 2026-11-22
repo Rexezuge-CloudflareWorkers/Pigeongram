@@ -3,18 +3,18 @@ import { parentRoute, pathForRoute, routeForPath, sameRoute } from './routes';
 import type { Route, RouteApplyOptions } from './routes';
 
 /**
- * The browser-history half of navigation: reads `location`, writes `history`,
- * and listens for `popstate`. The route → screen mapping belongs to
- * `useChatNavigation`; the media viewer owns its own React state and only uses
- * the layer helpers here.
- *
- * Every entry this hook creates carries the same marker and a depth. The depth
- * is what lets the UI's back button behave like the browser's: when the entry
- * came from in-app navigation it calls `history.back()`, and only a first
- * entry (a shared deep link, or the list itself) falls back to replacing the
- * URL with the parent route. The viewer layer is pushed on the same URL, so
- * back closes the viewer without changing the route underneath.
- */
+The browser-history half of navigation: reads `location`, writes `history`,
+and listens for `popstate`. The route → screen mapping belongs to
+`useChatNavigation`; the media viewer owns its own React state and only uses
+the layer helpers here.
+
+Every entry this hook creates carries the same marker and a depth. The depth
+is what lets the UI's back button behave like the browser's: when the entry
+came from in-app navigation it calls `history.back()`, and only a first
+entry (a shared deep link, or the list itself) falls back to replacing the
+URL with the parent route. The viewer layer is pushed on the same URL, so
+back closes the viewer without changing the route underneath.
+*/
 
 const APP = 'telegram-web-client';
 
@@ -26,47 +26,47 @@ interface EntryState {
 
 interface RouterOptions {
   /**
-   * Applies a route. The router has already checked `canOpen` and written the
-   * URL; handlers only have to move the screen.
-   */
+  Applies a route. The router has already checked `canOpen` and written the
+  URL; handlers only have to move the screen.
+  */
   onRoute: (route: Route, options: RouteApplyOptions) => void;
   /**
-   * Whether the route names something the signed-in account can open. The
-   * list always can; a chat the current dialogs do not contain cannot.
-   */
+  Whether the route names something the signed-in account can open. The
+  list always can; a chat the current dialogs do not contain cannot.
+  */
   canOpen: (route: Route) => boolean;
   /**
-   * Enter and leave the viewer layer, for browser forward/back over a viewer
-   * entry. Opening and closing the viewer from the app uses the helpers below
-   * instead.
-   */
+  Enter and leave the viewer layer, for browser forward/back over a viewer
+  entry. Opening and closing the viewer from the app uses the helpers below
+  instead.
+  */
   onViewerEnter?: () => void;
   onViewerLeave?: () => void;
 }
 
 export interface Router {
   /**
-   * Seeds the history stack once the signed-in data is ready, then applies the
-   * route named by the current URL. A fresh deep link gets a parent list (and,
-   * for comments, the chat) behind it, so the browser's back gesture always
-   * lands on an in-app screen.
-   */
+  Seeds the history stack once the signed-in data is ready, then applies the
+  route named by the current URL. A fresh deep link gets a parent list (and,
+  for comments, the chat) behind it, so the browser's back gesture always
+  lands on an in-app screen.
+  */
   boot: () => void;
   /**
-   * The route the app is on. It is the URL's route before the first apply, so
-   * a caller can ask what the URL asks for before the stack is seeded.
-   */
+  The route the app is on. It is the URL's route before the first apply, so
+  a caller can ask what the URL asks for before the stack is seeded.
+  */
   route: () => Route;
   navigateTo: (route: Route, options?: { force?: boolean }) => void;
   replaceTo: (route: Route) => void;
   /**
-   * The view's back button: the same traversal as the browser's back gesture.
-   */
+  The view's back button: the same traversal as the browser's back gesture.
+  */
   back: () => void;
   /**
-   * Sign-out: replaces the current entry with the list and stops applying
-   * popstate until the next boot.
-   */
+  Sign-out: replaces the current entry with the list and stops applying
+  popstate until the next boot.
+  */
   reset: () => void;
   openViewer: () => void;
   closeViewer: () => void;

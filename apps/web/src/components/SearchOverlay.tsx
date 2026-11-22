@@ -27,18 +27,18 @@ returns to the opener on unmount.
 
 interface SearchOverlayProps {
   /**
-   * The open chat, when there is one. The toggle offers it as a scope; without
-   * it the overlay only searches all chats.
-   */
+  The open chat, when there is one. The toggle offers it as a scope; without
+  it the overlay only searches all chats.
+  */
   chat: ChatDto | null;
   initialScope: SearchScope;
   initialQuery?: string;
   onOpenResult: (message: MessageDto, chat: ChatDto) => void;
   onClose: () => void;
   /**
-   * Whether the overlay is animating out; the parent keeps it mounted for the
-   * exit beat.
-   */
+  Whether the overlay is animating out; the parent keeps it mounted for the
+  exit beat.
+  */
   exiting?: boolean;
 }
 

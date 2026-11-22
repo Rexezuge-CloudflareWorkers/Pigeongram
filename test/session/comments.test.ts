@@ -12,10 +12,10 @@ import { rpc } from './rpc-dispatch';
 import type { GetCommentsResult } from '../../packages/shared/src/rpc-types';
 
 /**
- * The comments path against a fake `TelegramClient`: no network, but the same
- * high-level objects mtcute builds, so the raw TL parsing (`normalizeReplies`)
- * and the send routing are exercised for real.
- */
+The comments path against a fake `TelegramClient`: no network, but the same
+high-level objects mtcute builds, so the raw TL parsing (`normalizeReplies`)
+and the send routing are exercised for real.
+*/
 
 const CHANNEL_ID = getMarkedPeerId(20, 'channel');
 const GROUP_ID = getMarkedPeerId(30, 'channel');

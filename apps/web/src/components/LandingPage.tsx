@@ -2,11 +2,11 @@ import { accessLoginUrl } from '../api';
 import { APP_NAME } from '../app-name';
 
 /**
- * The public home page, shown before Cloudflare Access authenticates the
- * browser. Modelled on the sibling Edge-Git landing: the only action is the
- * Access sign-in, which returns to the path the visitor arrived on so a
- * bookmarked chat link survives the login round-trip.
- */
+The public home page, shown before Cloudflare Access authenticates the
+browser. Modelled on the sibling Edge-Git landing: the only action is the
+Access sign-in, which returns to the path the visitor arrived on so a
+bookmarked chat link survives the login round-trip.
+*/
 export function LandingPage() {
   const returnTo = `${location.pathname}${location.search}`;
   return (

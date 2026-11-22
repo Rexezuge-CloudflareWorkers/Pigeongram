@@ -252,19 +252,19 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
 }
 
 /**
- * The media DTO for a payload this client's MTProto layer cannot read.
- *
- * Telegram answers a message whose media type is newer than the layer the
- * client advertised with `messageMediaUnsupported` **and blanks the caption**,
- * so mtcute's high-level `media` is `null` and the message would reach the SPA
- * with nothing to render. The engine keeps it addressable instead: the DTO
- * names the kind `unsupported`, and the UI shows a labelled card with a link
- * to the post in Telegram rather than an empty bubble.
- *
- * Telegram Widgets (layer 233) are the current case: our client advertises
- * layer 232, so every widget arrives this way. `docs/TELEGRAM_WIDGETS.md`
- * records the upgrade path.
- */
+The media DTO for a payload this client's MTProto layer cannot read.
+
+Telegram answers a message whose media type is newer than the layer the
+client advertised with `messageMediaUnsupported` **and blanks the caption**,
+so mtcute's high-level `media` is `null` and the message would reach the SPA
+with nothing to render. The engine keeps it addressable instead: the DTO
+names the kind `unsupported`, and the UI shows a labelled card with a link
+to the post in Telegram rather than an empty bubble.
+
+Telegram Widgets (layer 233) are the current case: our client advertises
+layer 232, so every widget arrives this way. `docs/TELEGRAM_WIDGETS.md`
+records the upgrade path.
+*/
 function unsupportedMediaDto(message: Message): MessageMediaDto | null {
   const raw = message.raw;
   if (raw._ !== 'message' || raw.media?._ !== 'messageMediaUnsupported') return null;
@@ -305,11 +305,11 @@ export function toPollDto(poll: Poll): MessagePollDto {
 }
 
 /**
- * Maps a dialog onto the chat list's shape.
- *
- * `unread` is Telegram's own count unless the caller corrects it: the badge
- * counts an album once, and the album ledger knows the surplus to subtract.
- */
+Maps a dialog onto the chat list's shape.
+
+`unread` is Telegram's own count unless the caller corrects it: the badge
+counts an album once, and the album ledger knows the surplus to subtract.
+*/
 export function toDialogDto(dialog: Dialog, unread: number = dialog.unreadCount): DialogDto {
   return {
     chat: toChatDto(dialog.peer),
@@ -328,9 +328,9 @@ export function toDialogDto(dialog: Dialog, unread: number = dialog.unreadCount)
 }
 
 /**
- * The chat list's view of a dialog's last message: the preview, the
- * timestamp and the media or poll label, and nothing else.
- */
+The chat list's view of a dialog's last message: the preview, the
+timestamp and the media or poll label, and nothing else.
+*/
 export function toDialogMessageDto(message: Message): DialogMessageDto {
   const media = message.media;
   return {

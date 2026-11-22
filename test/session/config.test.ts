@@ -7,11 +7,11 @@ import {
 } from '../../packages/backend-services/src/session/config';
 
 /**
- * The environment is untrusted input: a deployment can omit a var, typo it, or
- * set it below the floor. Every case must land on a usable number, because a
- * wake that arms in one millisecond or an upload cap of zero takes the account
- * offline without an error a reader can act on.
- */
+The environment is untrusted input: a deployment can omit a var, typo it, or
+set it below the floor. Every case must land on a usable number, because a
+wake that arms in one millisecond or an upload cap of zero takes the account
+offline without an error a reader can act on.
+*/
 
 describe('readEngineConfig', () => {
   it('uses the documented defaults when neither var is set', () => {

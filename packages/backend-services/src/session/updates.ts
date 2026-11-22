@@ -8,14 +8,14 @@ import { toMessageDto, toMessageReactionDtos, toPollDto } from './dto';
 import { presenceOf } from './presence';
 
 /**
- * Maps the raw updates the engine cares about onto bridge events.
- * Everything else returns `null` (and is only counted for the soak stats).
- *
- * The registry is what remembers a call's access hash: the browser names a
- * call by its id, and the engine keeps the hash that addresses it. It is
- * optional because the mapping is also used on its own, where the caller only
- * wants the event.
- */
+Maps the raw updates the engine cares about onto bridge events.
+Everything else returns `null` (and is only counted for the soak stats).
+
+The registry is what remembers a call's access hash: the browser names a
+call by its id, and the engine keeps the hash that addresses it. It is
+optional because the mapping is also used on its own, where the caller only
+wants the event.
+*/
 export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateEvent | null {
   const update = info.update;
   switch (update._) {

@@ -8,47 +8,47 @@ import { requireText } from './params';
 import { rpcErrorText } from './rpc-errors';
 
 /**
- * Private invite links (`t.me/+hash`), the one Telegram address that names a
- * chat without naming its peer.
- *
- * A public username or a marked id is a durable address; an invite hash is a
- * bearer token that only Telegram can turn into a chat. `checkChatInvite`
- * answers three ways: the account is already in the chat (`chatInviteAlready`),
- * it once was and may still read until a date (`chatInvitePeek`), or it is not
- * and Telegram describes the chat without an id (`chatInvite`). Only the first
- * two can open a thread; the third is what the join card shows before the
- * reader commits, because joining is the account's own, irreversible write.
- */
+Private invite links (`t.me/+hash`), the one Telegram address that names a
+chat without naming its peer.
+
+A public username or a marked id is a durable address; an invite hash is a
+bearer token that only Telegram can turn into a chat. `checkChatInvite`
+answers three ways: the account is already in the chat (`chatInviteAlready`),
+it once was and may still read until a date (`chatInvitePeek`), or it is not
+and Telegram describes the chat without an id (`chatInvite`). Only the first
+two can open a thread; the third is what the join card shows before the
+reader commits, because joining is the account's own, irreversible write.
+*/
 
 /**
- * The hash Telegram accepts in `messages.checkChatInvite`: the part after the
- * `+` or `joinchat/`. Telegram's own regex is `[\w-]+`; the cap keeps a pasted
- * document from becoming a request.
- */
+The hash Telegram accepts in `messages.checkChatInvite`: the part after the
+`+` or `joinchat/`. Telegram's own regex is `[\w-]+`; the cap keeps a pasted
+document from becoming a request.
+*/
 const INVITE_HASH = /^[\w-]+$/;
 const MAX_INVITE_LENGTH = 256;
 
 /**
- * Telegram's three link forms, plus the bare hash the SPA carries.
- */
+Telegram's three link forms, plus the bare hash the SPA carries.
+*/
 const INVITE_LINK = /^(?:(?:https?:\/\/)?(?:www\.)?t(?:elegram)?\.(?:me|dog|org)\/(?:joinchat\/|\+))?([\w-]+)\/?$/i;
 
 /**
- * The failures that mean the link itself is dead, as opposed to a flood wait
- * or a privacy refusal.
- */
+The failures that mean the link itself is dead, as opposed to a flood wait
+or a privacy refusal.
+*/
 const EXPIRED_ERRORS = new Set(['INVITE_HASH_EXPIRED']);
 const INVALID_ERRORS = new Set(['INVITE_HASH_INVALID', 'INVITE_HASH_EMPTY']);
 
 /**
- * Resolves an invite link into the chat it names, or into the card Telegram
- * describes for a chat the account is not in.
- *
- * A resolved chat is stored in the peer cache before it is returned: a member
- * chat is normally a dialog, but the archive is read only when the reader asks
- * for it, so a link to an archived chat must not leave the following
- * `getHistory` with no access hash.
- */
+Resolves an invite link into the chat it names, or into the card Telegram
+describes for a chat the account is not in.
+
+A resolved chat is stored in the peer cache before it is returned: a member
+chat is normally a dialog, but the archive is read only when the reader asks
+for it, so a link to an archived chat must not leave the following
+`getHistory` with no access hash.
+*/
 export async function resolveInviteTarget(client: TelegramClient, params: Record<string, unknown>): Promise<ResolveInviteResult> {
   const hash = inviteHash(params);
   let result: tl.TypeChatInvite;
@@ -70,13 +70,13 @@ export async function resolveInviteTarget(client: TelegramClient, params: Record
 }
 
 /**
- * Joins the chat an invite names, or reports the outcome that needs the
- * reader: an admin's approval, or a guard bot's web view.
- *
- * Telegram answers `USER_ALREADY_PARTICIPANT` when the account joined between
- * the card and the tap. That is the state the caller wanted, so it resolves the
- * invite again instead of becoming an error.
- */
+Joins the chat an invite names, or reports the outcome that needs the
+reader: an admin's approval, or a guard bot's web view.
+
+Telegram answers `USER_ALREADY_PARTICIPANT` when the account joined between
+the card and the tap. That is the state the caller wanted, so it resolves the
+invite again instead of becoming an error.
+*/
 export async function joinInviteTarget(client: TelegramClient, params: Record<string, unknown>): Promise<JoinInviteResult> {
   const hash = inviteHash(params);
   let joined;
@@ -103,8 +103,8 @@ export async function joinInviteTarget(client: TelegramClient, params: Record<st
 }
 
 /**
- * The preview card's content, from the `chatInvite` Telegram answered with.
- */
+The preview card's content, from the `chatInvite` Telegram answered with.
+*/
 function invitePreview(invite: tl.RawChatInvite): ChatInvitePreviewDto {
   return {
     title: invite.title,
@@ -116,8 +116,8 @@ function invitePreview(invite: tl.RawChatInvite): ChatInvitePreviewDto {
 }
 
 /**
- * The invite hash a request carries, validated before Telegram is touched.
- */
+The invite hash a request carries, validated before Telegram is touched.
+*/
 function inviteHash(params: Record<string, unknown>): string {
   const invite = requireText(params.invite, MAX_INVITE_LENGTH).trim();
   const hash = INVITE_LINK.exec(invite)?.[1];
@@ -132,10 +132,10 @@ function inviteLink(hash: string): string {
 }
 
 /**
- * A dead link is its own answer, so the join card can say why it cannot be
- * joined; every other failure keeps its identity (a flood wait is not a
- * missing chat).
- */
+A dead link is its own answer, so the join card can say why it cannot be
+joined; every other failure keeps its identity (a flood wait is not a
+missing chat).
+*/
 function inviteFailure(error: unknown): unknown {
   const text = rpcErrorText(error);
   if (text !== null && EXPIRED_ERRORS.has(text)) {

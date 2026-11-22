@@ -1,16 +1,16 @@
 /**
- * The deployment's Digital Asset Links file.
- *
- * A Trusted Web Activity only hides the URL bar when the origin serves a
- * statement that names the Android package and the certificate it is signed
- * with. Both are deployment-specific: a fork picks its own package id and
- * keystore, so the file cannot be committed once and reused.
- *
- * The Pages build therefore reads the two public values (the package id and the
- * certificate fingerprint) from the environment and emits the file into the
- * bundle. Everything here is pure, so the node test project can assert it
- * without a build.
- */
+The deployment's Digital Asset Links file.
+
+A Trusted Web Activity only hides the URL bar when the origin serves a
+statement that names the Android package and the certificate it is signed
+with. Both are deployment-specific: a fork picks its own package id and
+keystore, so the file cannot be committed once and reused.
+
+The Pages build therefore reads the two public values (the package id and the
+certificate fingerprint) from the environment and emits the file into the
+bundle. Everything here is pure, so the node test project can assert it
+without a build.
+*/
 
 export interface AssetLinksConfig {
   readonly packageId: string;
@@ -37,8 +37,8 @@ const PACKAGE_ID_PATTERN = /^[a-z]\w*(?:\.[a-z]\w*)+$/i;
 const FINGERPRINT_PATTERN = /^(?:[0-9a-f]{2}:){31}[0-9a-f]{2}$/i;
 
 /**
- * Validates an Android application id.
- */
+Validates an Android application id.
+*/
 export function validatePackageId(value: string): string {
   const packageId = value.trim();
   if (!PACKAGE_ID_PATTERN.test(packageId)) {
@@ -48,9 +48,9 @@ export function validatePackageId(value: string): string {
 }
 
 /**
- * Validates a SHA-256 certificate fingerprint and returns it in the uppercase
- * form Chrome's verifier expects.
- */
+Validates a SHA-256 certificate fingerprint and returns it in the uppercase
+form Chrome's verifier expects.
+*/
 export function normalizeFingerprint(value: string): string {
   const fingerprint = value.trim().toUpperCase();
   if (!FINGERPRINT_PATTERN.test(fingerprint)) {
@@ -60,13 +60,13 @@ export function normalizeFingerprint(value: string): string {
 }
 
 /**
- * Reads the public Android configuration from the build environment.
- *
- * A deployment without an Android app has neither value set, so the plugin
- * emits nothing and the Pages build is unaffected. Setting one half without the
- * other is a mistake and fails the build rather than serving a statement that
- * can never verify.
- */
+Reads the public Android configuration from the build environment.
+
+A deployment without an Android app has neither value set, so the plugin
+emits nothing and the Pages build is unaffected. Setting one half without the
+other is a mistake and fails the build rather than serving a statement that
+can never verify.
+*/
 export function readAssetLinksConfig(env: NodeJS.ProcessEnv): AssetLinksConfig | null {
   const packageId = env.ANDROID_PACKAGE_ID?.trim() ?? '';
   const releaseFingerprint = env.ANDROID_CERT_SHA256?.trim() ?? '';
@@ -94,12 +94,12 @@ export function readAssetLinksConfig(env: NodeJS.ProcessEnv): AssetLinksConfig |
 }
 
 /**
- * Builds the statement list Chrome's Digital Asset Links verifier reads.
- *
- * The Play certificate is optional: a sideloaded APK is signed with the upload
- * key, while an install from Play is signed with the App Signing certificate,
- * and both have to be present for both install paths to verify.
- */
+Builds the statement list Chrome's Digital Asset Links verifier reads.
+
+The Play certificate is optional: a sideloaded APK is signed with the upload
+key, while an install from Play is signed with the App Signing certificate,
+and both have to be present for both install paths to verify.
+*/
 export function assetLinksStatements(config: AssetLinksConfig): AssetLinksStatement[] {
   if (config.fingerprints.length === 0) {
     throw new Error(`${PREFIX} at least one certificate fingerprint is required`);
@@ -118,9 +118,9 @@ export function assetLinksStatements(config: AssetLinksConfig): AssetLinksStatem
 }
 
 /**
- * Serializes the statements as the JSON document served from
- * `/.well-known/assetlinks.json`.
- */
+Serializes the statements as the JSON document served from
+`/.well-known/assetlinks.json`.
+*/
 export function buildAssetLinks(config: AssetLinksConfig): string {
   return `${JSON.stringify(assetLinksStatements(config), null, 2)}\n`;
 }

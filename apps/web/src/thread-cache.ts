@@ -6,11 +6,11 @@ import { OPEN_LIMIT } from './thread-window';
 import type { DialogDto, MessageDto, PeerId } from './types';
 
 /**
- * The last few fully-read threads, kept so reopening a chat paints its window
- * at once instead of waiting for another history read. The cache is memory
- * only: the server stays the truth, and a cached thread is a paint, not an
- * answer — `useThreadOpen` revalidates the newest page beside it.
- */
+The last few fully-read threads, kept so reopening a chat paints its window
+at once instead of waiting for another history read. The cache is memory
+only: the server stays the truth, and a cached thread is a paint, not an
+answer — `useThreadOpen` revalidates the newest page beside it.
+*/
 
 /**
 A reopen is instant, but a conversation moves on. A thread older than this is
@@ -30,11 +30,11 @@ interface CacheEntry {
 }
 
 /**
- * A small least-recently-used cache of opened threads. Only a thread that
- * reaches the chat's newest message with no focus anchor is worth painting:
- * an unread backlog or a linked-post jump has its own landing rule, and a
- * cached copy would have to be replaced rather than extended.
- */
+A small least-recently-used cache of opened threads. Only a thread that
+reaches the chat's newest message with no focus anchor is worth painting:
+an unread backlog or a linked-post jump has its own landing rule, and a
+cached copy would have to be replaced rather than extended.
+*/
 export class ThreadCache {
   readonly #entries = new Map<PeerId, CacheEntry>();
 
@@ -66,12 +66,12 @@ function cacheableThread(thread: ChatThread): boolean {
 }
 
 /**
- * The thread a reopen can paint before its read lands, or null when the cache
- * cannot serve this open. A chat with unread messages opens at its own divider,
- * not where the last visit left it, and a dialog whose newest message sits
- * beyond one opening page would leave a gap between the painted window and the
- * read that follows.
- */
+The thread a reopen can paint before its read lands, or null when the cache
+cannot serve this open. A chat with unread messages opens at its own divider,
+not where the last visit left it, and a dialog whose newest message sits
+beyond one opening page would leave a gap between the painted window and the
+read that follows.
+*/
 export function cachedOpen(cached: ChatThread | null, dialog: DialogDto): ChatThread | null {
   if (cached === null || cached.chat.id !== dialog.chat.id || dialog.unread > 0) return null;
   const newest = dialog.lastMessage?.id ?? 0;
@@ -95,13 +95,13 @@ export function cachedOpen(cached: ChatThread | null, dialog: DialogDto): ChatTh
 }
 
 /**
- * Folds the newest page a cached open revalidated into the painted thread. The
- * page is read without a cursor, so it may overlap the cached window or sit
- * beyond it after a burst of messages. An overlap extends the loaded range; a
- * page beyond a gap replaces it, keeping only the messages newer than the page
- * (a send or a live message that raced the read) and letting forward paging
- * fill the hole.
- */
+Folds the newest page a cached open revalidated into the painted thread. The
+page is read without a cursor, so it may overlap the cached window or sit
+beyond it after a burst of messages. An overlap extends the loaded range; a
+page beyond a gap replaces it, keeping only the messages newer than the page
+(a send or a live message that raced the read) and letting forward paging
+fill the hole.
+*/
 export function mergeCacheRefresh(
   current: ChatThread,
   fresh: readonly MessageDto[],

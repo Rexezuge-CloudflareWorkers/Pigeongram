@@ -2,12 +2,12 @@ import type { Plugin } from 'vite';
 import { escapeHtml, type Branding } from '../../branding';
 
 /**
- * Writes the product name into the document title.
- *
- * `index.html` carries `%APP_NAME%` rather than Vite's `%VITE_*%` syntax, so the
- * fallback is the same `branding.ts` default the manifest uses whether or not
- * the build supplied the variable.
- */
+Writes the product name into the document title.
+
+`index.html` carries `%APP_NAME%` rather than Vite's `%VITE_*%` syntax, so the
+fallback is the same `branding.ts` default the manifest uses whether or not
+the build supplied the variable.
+*/
 export function pwaBrandingPlugin(branding: Branding): Plugin {
   const title = escapeHtml(branding.name);
   return {

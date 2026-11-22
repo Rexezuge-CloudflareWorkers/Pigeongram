@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 
 /**
- * The app's dynamic color: a seed selection that re-themes the whole
- * `--md-sys-color-*` palette under `data-seed`, plus MD3's three contrast
- * levels under `data-contrast`. Mirrors `useTheme` — dark remains the default,
- * the choice persists in localStorage, and the attributes live on the same
- * `<html>` element as `data-theme`. The `theme-color` meta stays in step with
- * the active seed's dark surface (it is derived, not static).
- *
- * Seeds in `SEEDS`: the Telegram blue is the default (the brand, untouched
- * by any other code), the rest are material-tonal neighbours so the switch
- * is a pure token rename.
- */
+The app's dynamic color: a seed selection that re-themes the whole
+`--md-sys-color-*` palette under `data-seed`, plus MD3's three contrast
+levels under `data-contrast`. Mirrors `useTheme` — dark remains the default,
+the choice persists in localStorage, and the attributes live on the same
+`<html>` element as `data-theme`. The `theme-color` meta stays in step with
+the active seed's dark surface (it is derived, not static).
+
+Seeds in `SEEDS`: the Telegram blue is the default (the brand, untouched
+by any other code), the rest are material-tonal neighbours so the switch
+is a pure token rename.
+*/
 
 export type Seed = 'telegram' | 'indigo' | 'amber' | 'mint' | 'rose';
 export type Contrast = 'standard' | 'medium' | 'high';

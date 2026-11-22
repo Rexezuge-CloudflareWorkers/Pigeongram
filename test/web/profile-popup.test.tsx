@@ -4,12 +4,12 @@ import { ProfilePopup } from '../../apps/web/src/components/ProfilePopup';
 import type { ChatDto, ProfileDto } from '../../apps/web/src/types';
 
 /**
- * The peer's profile card.
- *
- * The card owns the modal behaviours the rest of the SPA expects: focus moves
- * into it, Tab stays inside, Escape and the scrim close it, and the opener
- * gets focus back.
- */
+The peer's profile card.
+
+The card owns the modal behaviours the rest of the SPA expects: focus moves
+into it, Tab stays inside, Escape and the scrim close it, and the opener
+gets focus back.
+*/
 
 afterEach(cleanup);
 

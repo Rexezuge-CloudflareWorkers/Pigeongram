@@ -5,10 +5,10 @@ import type { CallView } from '../../apps/web/src/calls/session';
 import type { ChatDto } from '../../apps/web/src/types';
 
 /**
- * The overlay the reader sees during a call. Each phase has its own controls,
- * its own status line and its own way out, so the tests walk the phases rather
- * than a single happy path.
- */
+The overlay the reader sees during a call. Each phase has its own controls,
+its own status line and its own way out, so the tests walk the phases rather
+than a single happy path.
+*/
 
 const ringtone = vi.hoisted(() => ({ start: vi.fn(), stop: vi.fn(async (): Promise<void> => {}) }));
 

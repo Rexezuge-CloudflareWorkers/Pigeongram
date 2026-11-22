@@ -1,13 +1,13 @@
 import { Button } from './Button';
 
 /**
- * The app's snackbar: the Material 3 notification surface. Dark `inverse-
- * surface` (snackbars keep their contrast against the app's own surface in
- * both themes), extra-small radius, inverse-on-surface message text and a
- * low-emphasis action. It stays in `Toasts`' flow — that owns the countdown,
- * its bar and the exit beat; this owns the paint, the progress strip and the
- * hover that pauses it.
- */
+The app's snackbar: the Material 3 notification surface. Dark `inverse-
+surface` (snackbars keep their contrast against the app's own surface in
+both themes), extra-small radius, inverse-on-surface message text and a
+low-emphasis action. It stays in `Toasts`' flow — that owns the countdown,
+its bar and the exit beat; this owns the paint, the progress strip and the
+hover that pauses it.
+*/
 
 export function Snackbar({
   message,
@@ -24,9 +24,9 @@ export function Snackbar({
   actionLabel?: string;
   onAction?: () => void;
   /**
-   * The share of the dismiss countdown still left, 1 down to 0. Omitted when
-   * the snackbar has no countdown (and no bar).
-   */
+  The share of the dismiss countdown still left, 1 down to 0. Omitted when
+  the snackbar has no countdown (and no bar).
+  */
   progress?: number;
   onPause?: () => void;
   onResume?: () => void;

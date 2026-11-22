@@ -14,10 +14,10 @@ interface MessageSkeletonProps {
 }
 
 /**
- * The loading bones shared by the thread and the comments screen. The chat
- * list draws its own row shape, but all three use the same sheen and the same
- * capped stagger, so the loading surfaces cannot drift apart.
- */
+The loading bones shared by the thread and the comments screen. The chat
+list draws its own row shape, but all three use the same sheen and the same
+capped stagger, so the loading surfaces cannot drift apart.
+*/
 export function MessageSkeleton({ label, rows = 5, avatars = false }: MessageSkeletonProps) {
   return (
     <>

@@ -5,10 +5,10 @@ import type { CommentsThread } from '../../apps/web/src/state';
 import type { MessageDto, MessagePollDto } from '../../apps/web/src/types';
 
 /**
- * The comments screen's poll handling: fold a fresh poll into the pinned post
- * or a loaded comment, recheck a short update, and cast votes through the
- * shared poll action.
- */
+The comments screen's poll handling: fold a fresh poll into the pinned post
+or a loaded comment, recheck a short update, and cast votes through the
+shared poll action.
+*/
 
 const api = vi.hoisted(() => ({ fetchPollResults: vi.fn(), sendVote: vi.fn() }));
 vi.mock('../../apps/web/src/api', () => api);

@@ -1,14 +1,14 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 /**
- * The app's buttons, in Material 3 shapes but built only from the MD3 tokens
- * (tokens.css). Filled is the high-emphasis commit; Text the quiet one;
- * Outlined the boundary one. Tone selects the role: `primary`/`danger`/
- * `accent` for filled, `danger` for text/outlined.
- *
- * These are visual wrappers only: behavior (disabled state, handlers) stays
- * on the native button, exactly as the call sites write it today.
- */
+The app's buttons, in Material 3 shapes but built only from the MD3 tokens
+(tokens.css). Filled is the high-emphasis commit; Text the quiet one;
+Outlined the boundary one. Tone selects the role: `primary`/`danger`/
+`accent` for filled, `danger` for text/outlined.
+
+These are visual wrappers only: behavior (disabled state, handlers) stays
+on the native button, exactly as the call sites write it today.
+*/
 
 type ButtonVariant = 'filled' | 'text' | 'outlined';
 type ButtonTone = 'primary' | 'danger' | 'accent';

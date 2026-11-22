@@ -7,11 +7,11 @@ import { resolveReplyPreviews } from '../../packages/backend-services/src/sessio
 import type { MessageDto } from '../../packages/shared/src/types';
 
 /**
- * Reply previews against a fake client: which headers ask for a read, and what
- * the resolved header carries. The snippets themselves come from the same
- * `toMessageDto` the thread uses, so a preview reads exactly like a loaded
- * original would.
- */
+Reply previews against a fake client: which headers ask for a read, and what
+the resolved header carries. The snippets themselves come from the same
+`toMessageDto` the thread uses, so a preview reads exactly like a loaded
+original would.
+*/
 
 const peers = PeersIndex.from({
   users: [

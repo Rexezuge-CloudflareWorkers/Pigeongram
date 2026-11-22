@@ -21,10 +21,10 @@ import type {
 import { batchResult, rpc, rpcBatch } from './request';
 
 /**
- * The chat-list half of the bridge: the dialogs, the archive that is a read of
- * its own, the combined boot read, a peer's profile, and the resolution of a
- * chat a link or a forward names.
- */
+The chat-list half of the bridge: the dialogs, the archive that is a read of
+its own, the combined boot read, a peer's profile, and the resolution of a
+chat a link or a forward names.
+*/
 
 export const fetchDialogs = (): Promise<GetDialogsResult> => rpc('getDialogs', { limit: 100 });
 
@@ -41,9 +41,9 @@ Moves a chat into the archive, or back out of it.
 export const setArchived = (chatId: PeerId, archived: boolean): Promise<SetArchivedResult> => rpc('setArchived', { chatId, archived });
 
 /**
- * Pins a chat in its list, or unpins it. Telegram keeps a pinned block per
- * peer folder, so the main list and the archive each have their own.
- */
+Pins a chat in its list, or unpins it. Telegram keeps a pinned block per
+peer folder, so the main list and the archive each have their own.
+*/
 export const setPinned = (chatId: PeerId, pinned: boolean): Promise<SetPinnedResult> => rpc('setPinned', { chatId, pinned });
 
 /**

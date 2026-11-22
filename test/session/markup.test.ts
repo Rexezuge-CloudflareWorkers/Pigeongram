@@ -4,9 +4,9 @@ import type { tl } from '@mtcute/core';
 import { toMessageMarkupDto } from '../../packages/backend-services/src/session/markup';
 
 /**
- * The inline keyboard mapper: every button kind Telegram can put on a
- * message, and the rows that do not survive the mapping.
- */
+The inline keyboard mapper: every button kind Telegram can put on a
+message, and the rows that do not survive the mapping.
+*/
 
 function message(markup: unknown): Message {
   return { markup } as unknown as Message;

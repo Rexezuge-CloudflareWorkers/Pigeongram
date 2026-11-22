@@ -8,55 +8,55 @@ import type { MediaViewerController } from './useMediaViewer';
 import type { Router } from './useRouter';
 
 /**
- * The signed-in navigation's contract, split from `useSignedInNavigation.ts`
- * to keep the hook under the god-file cap (the same shape as
- * `thread-view-props.ts`).
- */
+The signed-in navigation's contract, split from `useSignedInNavigation.ts`
+to keep the hook under the god-file cap (the same shape as
+`thread-view-props.ts`).
+*/
 
 /**
- * A chat the bridge resolved but the account has not joined: the thread reads
- * as a preview, with Join where the composer would be.
- *
- * It is memory-only, exactly like the transient dialogs beside it: a reload
- * has no dialog to resolve it again, because Telegram is the only source for
- * that and the account's own list does not carry the chat.
- */
+A chat the bridge resolved but the account has not joined: the thread reads
+as a preview, with Join where the composer would be.
+
+It is memory-only, exactly like the transient dialogs beside it: a reload
+has no dialog to resolve it again, because Telegram is the only source for
+that and the account's own list does not carry the chat.
+*/
 export interface ChatPreview {
   chatId: PeerId;
   /**
-   * The bridge address the chat was resolved by, so Join can address it the
-   * same way even when its username is not what the link carried.
-   */
+  The bridge address the chat was resolved by, so Join can address it the
+  same way even when its username is not what the link carried.
+  */
   target: TelegramChatTarget;
   /**
-   * A join request is in flight; the Join button is disabled.
-   */
+  A join request is in flight; the Join button is disabled.
+  */
   joining: boolean;
   /**
-   * Telegram accepted the join request and an admin has to approve it.
-   */
+  Telegram accepted the join request and an admin has to approve it.
+  */
   requested: boolean;
 }
 
 /**
- * A private invite link whose chat the account is not in.
- *
- * Telegram describes such a chat without an id, so there is nothing to open
- * before the join succeeds: the card is the reader's decision, and it sits
- * outside the route and the history on purpose. The link is kept beside the
- * preview because it is the only address a guard bot's web view can be handed
- * to the installed app with.
- */
+A private invite link whose chat the account is not in.
+
+Telegram describes such a chat without an id, so there is nothing to open
+before the join succeeds: the card is the reader's decision, and it sits
+outside the route and the history on purpose. The link is kept beside the
+preview because it is the only address a guard bot's web view can be handed
+to the installed app with.
+*/
 export interface PendingInvite {
   preview: ChatInvitePreviewDto;
   link: TelegramLink;
   /**
-   * A join is in flight; both actions are disabled.
-   */
+  A join is in flight; both actions are disabled.
+  */
   joining: boolean;
   /**
-   * Telegram accepted the join request and an admin has to approve it.
-   */
+  Telegram accepted the join request and an admin has to approve it.
+  */
   requested: boolean;
 }
 
@@ -88,77 +88,77 @@ export interface UseSignedInNavigationOptions {
 export interface SignedInNavigation {
   router: Router;
   /**
-   * Resolves the initial deep-link chat before the main dialog bootstrap is
-   * complete, allowing the thread to open while the sidebar loads.
-   */
+  Resolves the initial deep-link chat before the main dialog bootstrap is
+  complete, allowing the thread to open while the sidebar loads.
+  */
   prepareInitialRoute: (route: Route) => Promise<void>;
   /**
-   * Whether the route names something the signed-in account can open. The boot
-   * asks before it reads the archive for a shared link.
-   */
+  Whether the route names something the signed-in account can open. The boot
+  asks before it reads the archive for a shared link.
+  */
   canOpen: (route: Route) => boolean;
   viewer: MediaViewerController;
   openViewer: (source: 'thread' | 'comments', messageId: number) => void;
   closeViewer: () => void;
   openChat: (chat: ChatDto, target?: { postId?: number; commentId?: number }) => void;
   /**
-   * Opens a search hit: the message's chat at the message itself. A chat the
-   * loaded list does not carry (a global hit) is kept as a transient dialog
-   * for this session, so the route and the thread can resolve it.
-   */
+  Opens a search hit: the message's chat at the message itself. A chat the
+  loaded list does not carry (a global hit) is kept as a transient dialog
+  for this session, so the route and the thread can resolve it.
+  */
   openSearchResult: (chat: ChatDto, message: MessageDto) => void;
   openForwardOrigin: (forward: MessageForwardDto) => void;
   /**
-   * Opens a chat the new-message picker found. A chat outside the loaded list
-   * is resolved like a Telegram link, so a public chat the account has not
-   * joined opens as its preview.
-   */
+  Opens a chat the new-message picker found. A chat outside the loaded list
+  is resolved like a Telegram link, so a public chat the account has not
+  joined opens as its preview.
+  */
   openFoundChat: (chat: ChatDto) => void;
   openArchive: () => void;
   leaveArchive: () => void;
   handleTelegramLink: (url: string) => boolean;
   /**
-   * The open chat as a preview, or null when it is in the account's list. The
-   * thread renders Join instead of a composer then.
-   */
+  The open chat as a preview, or null when it is in the account's list. The
+  thread renders Join instead of a composer then.
+  */
   preview: ChatPreview | null;
   /**
-   * The private invite card, or null when none is open.
-   */
+  The private invite card, or null when none is open.
+  */
   invite: PendingInvite | null;
   /**
-   * Joins the chat the invite card describes. A successful join replaces the
-   * card with the chat Telegram returned and refreshes the list; a pending
-   * request or a guard bot's web view is reported.
-   */
+  Joins the chat the invite card describes. A successful join replaces the
+  card with the chat Telegram returned and refreshes the list; a pending
+  request or a guard bot's web view is reported.
+  */
   joinInvite: () => void;
   /**
-   * Closes the invite card without joining.
-   */
+  Closes the invite card without joining.
+  */
   dismissInvite: () => void;
   /**
-   * Joins the open preview chat. A successful join replaces the preview with
-   * the chat Telegram returned and refreshes the list; a pending request or a
-   * guard bot's web view stays on the preview and is reported.
-   */
+  Joins the open preview chat. A successful join replaces the preview with
+  the chat Telegram returned and refreshes the list; a pending request or a
+  guard bot's web view stays on the preview and is reported.
+  */
   joinPreview: () => void;
   markRead: (chatId: PeerId, maxId: number) => void;
   /**
-   * Marks the whole chat read, including an unread backlog the thread has not
-   * loaded. A no-op when the chat has nothing unread.
-   */
+  Marks the whole chat read, including an unread backlog the thread has not
+  loaded. A no-op when the chat has nothing unread.
+  */
   markAllRead: (chatId: PeerId) => void;
 }
 
 /**
- * What a resolved target should open, beyond the chat itself.
- */
+What a resolved target should open, beyond the chat itself.
+*/
 export interface ResolveRequest {
   postId?: number;
   commentId?: number;
   /**
-   * The link that asked for the chat, whose own address is the most faithful
-   * handoff when the bridge cannot resolve it.
-   */
+  The link that asked for the chat, whose own address is the most faithful
+  handoff when the bridge cannot resolve it.
+  */
   link?: TelegramLink;
 }

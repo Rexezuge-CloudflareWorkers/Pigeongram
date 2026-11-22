@@ -1,13 +1,13 @@
 /**
- * The settings window's switch: an MD3 track and thumb that report the next
- * value from one click. The visible row label names the switch, so the call
- * site passes the same text as the accessible name; the thumb is decorative.
- */
+The settings window's switch: an MD3 track and thumb that report the next
+value from one click. The visible row label names the switch, so the call
+site passes the same text as the accessible name; the thumb is decorative.
+*/
 interface ToggleSwitchProps {
   checked: boolean;
   /**
-   * The switch's accessible name, matching the visible label beside it.
-   */
+  The switch's accessible name, matching the visible label beside it.
+  */
   label: string;
   onChange: (checked: boolean) => void;
 }

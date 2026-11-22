@@ -27,10 +27,10 @@ const rawInvite = {
 } as unknown as tl.RawChatInvite;
 
 /**
- * A client whose invite check answers with the fixed constructor, whose join
- * records the address it was asked for, and whose peer cache records every
- * stored chat.
- */
+A client whose invite check answers with the fixed constructor, whose join
+records the address it was asked for, and whose peer cache records every
+stored chat.
+*/
 function fakeClient(options: { invite?: unknown; inviteError?: Error; join?: unknown; joinError?: Error } = {}) {
   const checked: string[] = [];
   const joined: string[] = [];

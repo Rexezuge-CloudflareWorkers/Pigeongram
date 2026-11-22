@@ -5,14 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { searchContacts } from '../../packages/backend-services/src/session/contacts';
 
 /**
- * The new-message picker's read: the address book on a blank query, and
- * Telegram's own contacts search otherwise.
- *
- * The sort is the picker's, not Telegram's: two reads of one address book must
- * list the same people in the same order. The filters matter for the same
- * reason a menu item matters — a deleted account and an incomplete chat cannot
- * be opened, so they must not be offered.
- */
+The new-message picker's read: the address book on a blank query, and
+Telegram's own contacts search otherwise.
+
+The sort is the picker's, not Telegram's: two reads of one address book must
+list the same people in the same order. The filters matter for the same
+reason a menu item matters — a deleted account and an incomplete chat cannot
+be opened, so they must not be offered.
+*/
 
 function rawUser(overrides: Partial<tl.RawUser> & Pick<tl.RawUser, 'id' | 'firstName'>): tl.RawUser {
   return {
@@ -53,9 +53,9 @@ interface FakeClientOptions {
 }
 
 /**
- * A client whose address book and search answer are fixed, recording the
- * search request so the clamp and the trimmed query can be asserted.
- */
+A client whose address book and search answer are fixed, recording the
+search request so the clamp and the trimmed query can be asserted.
+*/
 function fakeClient(options: FakeClientOptions = {}): { client: TelegramClient; calls: unknown[] } {
   const calls: unknown[] = options.calls ?? [];
   const users = options.contacts ?? [];

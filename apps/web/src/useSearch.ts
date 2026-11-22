@@ -4,20 +4,20 @@ import type { SearchNext, SearchScope } from './search';
 import type { ChatDto, MessageDto, SearchGlobalResult, SearchMessagesResult } from './types';
 
 /**
- * The search screen's controller: a debounced read, the pages after it, and
- * the two rules that keep a fast typist from seeing a stale answer — one
- * ticket per search, and a merge that never repeats a message.
- */
+The search screen's controller: a debounced read, the pages after it, and
+the two rules that keep a fast typist from seeing a stale answer — one
+ticket per search, and a merge that never repeats a message.
+*/
 
 /**
- * How long typing settles before a read is sent. One search is one Durable
- * Object event, so a keystroke must not become a request.
- */
+How long typing settles before a read is sent. One search is one Durable
+Object event, so a keystroke must not become a request.
+*/
 const DEBOUNCE_MS = 300;
 
 /**
- * How many results one page asks for; the engine caps a search page at 100.
- */
+How many results one page asks for; the engine caps a search page at 100.
+*/
 const PAGE_LIMIT = 50;
 
 interface SearchController {
@@ -26,28 +26,28 @@ interface SearchController {
   scope: SearchScope;
   setScope: (scope: SearchScope) => void;
   /**
-   * The loaded pages, newest first, de-duplicated by chat and message id.
-   */
+  The loaded pages, newest first, de-duplicated by chat and message id.
+  */
   messages: readonly MessageDto[];
   /**
-   * The chats the global pages named. A chat-only search answers none, because
-   * the caller already knows the chat it searched.
-   */
+  The chats the global pages named. A chat-only search answers none, because
+  the caller already knows the chat it searched.
+  */
   chats: readonly ChatDto[];
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
   /**
-   * Whether another page may exist.
-   */
+  Whether another page may exist.
+  */
   hasMore: boolean;
   loadMore: () => void;
 }
 
 interface UseSearchOptions {
   /**
-   * Whether the overlay is open. A closed overlay stops searching.
-   */
+  Whether the overlay is open. A closed overlay stops searching.
+  */
   active: boolean;
   initialScope: SearchScope;
   initialQuery?: string;
@@ -55,10 +55,10 @@ interface UseSearchOptions {
 
 interface SearchAnswer {
   /**
-   * The query and scope the answer belongs to. A late answer for an older
-   * search stays in state but is never shown, so the screen cannot describe a
-   * query the reader has already replaced.
-   */
+  The query and scope the answer belongs to. A late answer for an older
+  search stays in state but is never shown, so the screen cannot describe a
+  query the reader has already replaced.
+  */
   key: string;
   messages: MessageDto[];
   chats: ChatDto[];
@@ -193,11 +193,11 @@ function sameScope(left: SearchScope, right: SearchScope): boolean {
 }
 
 /**
- * The identity of one search: its scope and its trimmed query. The answer in
- * state is only shown while its key still matches the one on screen.
- */
+The identity of one search: its scope and its trimmed query. The answer in
+state is only shown while its key still matches the one on screen.
+*/
 function searchKey(scope: SearchScope, needle: string): string {
-  return `${scope.kind === 'chat' ? String(scope.chatId) : 'all'}\u0000${needle}`;
+  return `${scope.kind === 'chat' ? String(scope.chatId) : 'all'}\0${needle}`;
 }
 
 function messageKey(message: MessageDto): string {
@@ -205,10 +205,10 @@ function messageKey(message: MessageDto): string {
 }
 
 /**
- * Appends a page without repeating a message. Telegram's global cursor is
- * exclusive, but an album or an edited page can still overlap, and a repeated
- * React key is worse than a redundant read.
- */
+Appends a page without repeating a message. Telegram's global cursor is
+exclusive, but an album or an edited page can still overlap, and a repeated
+React key is worse than a redundant read.
+*/
 function mergeMessages(current: readonly MessageDto[], incoming: readonly MessageDto[]): MessageDto[] {
   const seen = new Set(current.map(messageKey));
   const merged = [...current];

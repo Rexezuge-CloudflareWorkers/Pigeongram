@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_DATA_SAVER, useDataSaverPreferences } from '../../apps/web/src/data-saver';
 
 /**
- * The device's data-saving choices: everything loads by default, the browser's
- * own hint starts the switches off, and an explicit choice is stored and wins
- * from then on.
- */
+The device's data-saving choices: everything loads by default, the browser's
+own hint starts the switches off, and an explicit choice is stored and wins
+from then on.
+*/
 
 const KEY = 'pigeongram-data-saver';
 

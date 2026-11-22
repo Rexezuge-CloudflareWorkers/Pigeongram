@@ -3,24 +3,24 @@ import { registerServiceWorker, type InstallPromptEvent } from './register';
 
 export interface PwaState {
   /**
-   * Whether the browser offered to install the client as an app.
-   */
+  Whether the browser offered to install the client as an app.
+  */
   readonly canInstall: boolean;
   /**
-   * Asks the browser to show its install prompt. Does nothing when there is
-   * no offer to show.
-   */
+  Asks the browser to show its install prompt. Does nothing when there is
+  no offer to show.
+  */
   readonly install: () => void;
 }
 
 /**
- * The installable side of the app.
- *
- * The browser decides whether the client is installable and raises the offer;
- * the app keeps that offer around so the account menu can hand it back when
- * the reader asks for it. The offer is spent once: the browser does not raise
- * it again, and the installed app is what the reader wanted anyway.
- */
+The installable side of the app.
+
+The browser decides whether the client is installable and raises the offer;
+the app keeps that offer around so the account menu can hand it back when
+the reader asks for it. The offer is spent once: the browser does not raise
+it again, and the installed app is what the reader wanted anyway.
+*/
 export function usePwa(): PwaState {
   const [canInstall, setCanInstall] = useState(false);
   const promptRef = useRef<InstallPromptEvent | null>(null);

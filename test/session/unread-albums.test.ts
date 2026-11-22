@@ -11,10 +11,10 @@ import type { MessageDto, UpdateEvent } from '../../packages/shared/src/types';
 import { createNodeSqlStorage, openNodeDatabase } from './node-sql';
 
 /**
- * The album ledger: Telegram counts every album member as a message, while
- * the badge counts the album once. The ledger knows the surplus, and the
- * bridge subtracts it from the counts it serves.
- */
+The album ledger: Telegram counts every album member as a message, while
+the badge counts the album once. The ledger knows the surplus, and the
+bridge subtracts it from the counts it serves.
+*/
 
 const rawUser = {
   _: 'user',
@@ -95,9 +95,9 @@ function dialog(overrides: Partial<Dialog> = {}): Dialog {
 }
 
 /**
- * A fake client whose chat list holds one dialog with three unread messages
- * and whose history answers with the album those three messages form.
- */
+A fake client whose chat list holds one dialog with three unread messages
+and whose history answers with the album those three messages form.
+*/
 function fakeClient(
   messages: readonly Message[] = [],
   overrides: Partial<Dialog> = {},

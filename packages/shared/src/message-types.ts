@@ -1,12 +1,12 @@
 /**
- * The message-write half of the JSON contract: the params and results of the
- * calls that change a chat's contents.
- *
- * Split from `rpc-types.ts` to stay under the god-file cap, and because a
- * write's shape is read beside the engine entry that runs it
- * (`session/rpc-messages.ts`) rather than the read half's. Re-exported from
- * `rpc-types.ts`, so the one copy stays reachable through the same import.
- */
+The message-write half of the JSON contract: the params and results of the
+calls that change a chat's contents.
+
+Split from `rpc-types.ts` to stay under the god-file cap, and because a
+write's shape is read beside the engine entry that runs it
+(`session/rpc-messages.ts`) rather than the read half's. Re-exported from
+`rpc-types.ts`, so the one copy stays reachable through the same import.
+*/
 
 import type { MessageDto, MessagePollDto, PeerId } from './types';
 
@@ -14,13 +14,13 @@ export interface SendMessageParams {
   chatId: PeerId;
   text: string;
   /**
-   * Id of the message to reply to, in the same chat.
-   */
+  Id of the message to reply to, in the same chat.
+  */
   replyTo?: number;
   /**
-   * Client-chosen Telegram `random_id` as a positive decimal 64-bit integer.
-   * A retry reuses it so an accepted send is not duplicated.
-   */
+  Client-chosen Telegram `random_id` as a positive decimal 64-bit integer.
+  A retry reuses it so an accepted send is not duplicated.
+  */
   randomId?: string;
 }
 
@@ -35,20 +35,20 @@ media caption, a poll and a link preview's edit are separate slices.
 export interface EditMessageParams {
   chatId: PeerId;
   /**
-   * Id of the message to edit, in that chat.
-   */
+  Id of the message to edit, in that chat.
+  */
   messageId: number;
   /**
-   * The message's new text. Telegram rejects a blank edit, so it must be
-   * non-empty.
-   */
+  The message's new text. Telegram rejects a blank edit, so it must be
+  non-empty.
+  */
   text: string;
 }
 
 export interface EditMessageResult {
   /**
-   * The message as Telegram now holds it, `editDate` included.
-   */
+  The message as Telegram now holds it, `editDate` included.
+  */
   message: MessageDto;
 }
 
@@ -63,19 +63,19 @@ export interface GetPinnedMessagesParams {
   chatId: PeerId;
   limit?: number;
   /**
-   * Pagination cursor: return pinned messages older than this message id.
-   */
+  Pagination cursor: return pinned messages older than this message id.
+  */
   offsetId?: number;
 }
 
 export interface GetPinnedMessagesResult {
   /**
-   * The page's messages, newest first (Telegram's order for a search).
-   */
+  The page's messages, newest first (Telegram's order for a search).
+  */
   messages: MessageDto[];
   /**
-   * The cursor for the next older page, when one exists.
-   */
+  The cursor for the next older page, when one exists.
+  */
   nextOffsetId?: number;
 }
 
@@ -89,8 +89,8 @@ export interface SetMessagePinnedParams {
   chatId: PeerId;
   messageId: number;
   /**
-   * `true` pins the message, `false` unpins it.
-   */
+  `true` pins the message, `false` unpins it.
+  */
   pinned: boolean;
 }
 
@@ -102,17 +102,17 @@ export interface SetMessagePinnedResult {
 
 export interface ForwardMessagesParams {
   /**
-   * The source chat the messages belong to.
-   */
+  The source chat the messages belong to.
+  */
   chatId: PeerId;
   /**
-   * The destination chat; the account must be allowed to post there.
-   */
+  The destination chat; the account must be allowed to post there.
+  */
   toChatId: PeerId;
   /**
-   * Ids of the messages to forward, in the source chat. An album forwards as
-   * its members; Telegram caps a forward at 100 messages.
-   */
+  Ids of the messages to forward, in the source chat. An album forwards as
+  its members; Telegram caps a forward at 100 messages.
+  */
   messageIds: number[];
 }
 
@@ -126,9 +126,9 @@ engine's session were ever re-created. The bridge does not offer it.
 export interface DeleteMessagesParams {
   chatId: PeerId;
   /**
-   * Ids of the messages to delete, in that chat. An album goes as its members;
-   * Telegram caps a delete at 100 messages.
-   */
+  Ids of the messages to delete, in that chat. An album goes as its members;
+  Telegram caps a delete at 100 messages.
+  */
   messageIds: number[];
 }
 
@@ -145,12 +145,12 @@ export interface SendReactionParams {
   chatId: PeerId;
   messageId: number;
   /**
-   * Unicode emoji to set, e.g. `👍`. Mutually exclusive with `customEmojiId`.
-   */
+  Unicode emoji to set, e.g. `👍`. Mutually exclusive with `customEmojiId`.
+  */
   emoji?: string | null;
   /**
-   * Decimal document id of a custom emoji to set.
-   */
+  Decimal document id of a custom emoji to set.
+  */
   customEmojiId?: string | null;
 }
 
@@ -186,26 +186,26 @@ export interface SendMessageResult {
 
 export interface ForwardMessagesResult {
   /**
-   * The forwarded copies, as Telegram returned them in the destination chat.
-   */
+  The forwarded copies, as Telegram returned them in the destination chat.
+  */
   messages: MessageDto[];
 }
 
 export interface DeleteMessagesResult {
   /**
-   * The chat the messages were deleted from.
-   */
+  The chat the messages were deleted from.
+  */
   chatId: PeerId;
   /**
-   * The ids Telegram accepted.
-   */
+  The ids Telegram accepted.
+  */
   messageIds: number[];
 }
 
 export interface SendReactionResult {
   /**
-   * The reacted message, when Telegram returned it; `null` otherwise.
-   */
+  The reacted message, when Telegram returned it; `null` otherwise.
+  */
   message: MessageDto | null;
 }
 

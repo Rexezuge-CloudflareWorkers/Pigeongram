@@ -21,9 +21,9 @@ import type {
 import { batchResult, rpc, rpcBatch } from './request';
 
 /**
- * The thread half of the bridge: a chat's window and its slash commands, the
- * sends and edits beside them, and the comments screen of a channel post.
- */
+The thread half of the bridge: a chat's window and its slash commands, the
+sends and edits beside them, and the comments screen of a channel post.
+*/
 
 /**
 Everything a chat screen needs, read in one request.
@@ -66,13 +66,13 @@ interface ChatScreen {
 }
 
 /**
- * Reads a chat screen: the window, the chat's slash commands and — when a
- * post is named — the post's comment thread.
- *
- * The reads are independent, so they travel together: one request, one
- * Durable Object event, and the Telegram calls inside it run at the same time
- * over the one connection.
- */
+Reads a chat screen: the window, the chat's slash commands and — when a
+post is named — the post's comment thread.
+
+The reads are independent, so they travel together: one request, one
+Durable Object event, and the Telegram calls inside it run at the same time
+over the one connection.
+*/
 export async function fetchChatScreen(
   chatId: PeerId,
   postId: number | null = null,

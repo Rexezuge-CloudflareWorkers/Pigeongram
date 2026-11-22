@@ -43,17 +43,17 @@ An open microphone. The caller either `stop`s it (a voice message) or
 */
 export interface VoiceRecording {
   /**
-   * Seconds captured so far, for the composer's timer.
-   */
+  Seconds captured so far, for the composer's timer.
+  */
   seconds(): number;
   /**
-   * Ends the capture and resolves with the encoded file, or `null` when the
-   * encoder produced nothing.
-   */
+  Ends the capture and resolves with the encoded file, or `null` when the
+  encoder produced nothing.
+  */
   stop(): Promise<RecordedVoice | null>;
   /**
-   * Ends the capture and discards it.
-   */
+  Ends the capture and discards it.
+  */
   cancel(): void;
 }
 

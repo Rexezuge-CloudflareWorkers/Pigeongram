@@ -33,14 +33,14 @@ matters once Access has let the caller in.
 export type AccessStatus = 'checking' | 'anonymous' | 'authenticated' | 'offline';
 
 /**
- * The sign-in side of the bridge: probes the Access session, polls the engine
- * while the account is not linked, auto-starts the QR login, and feeds the
- * operator's login code and cloud password back into the flow.
- *
- * `reportError` is exposed because the authenticated half of the app reports
- * its failures — including an expired Cloudflare Access session — through the
- * same two slots.
- */
+The sign-in side of the bridge: probes the Access session, polls the engine
+while the account is not linked, auto-starts the QR login, and feeds the
+operator's login code and cloud password back into the flow.
+
+`reportError` is exposed because the authenticated half of the app reports
+its failures — including an expired Cloudflare Access session — through the
+same two slots.
+*/
 interface LoginFlowState {
   state: EngineStateDto | null;
   access: AccessStatus;

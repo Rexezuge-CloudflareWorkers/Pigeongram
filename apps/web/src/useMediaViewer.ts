@@ -5,14 +5,14 @@ import type { ChatThread } from './thread-state';
 import type { MessageDto } from './types';
 
 /**
- * The full-page media viewer's state.
- *
- * The viewer belongs to the app rather than to a bubble so it can own a
- * browser-history layer: back closes the viewer instead of leaving the chat.
- * Only the source and message id are kept; the display group is derived from
- * the live thread/comments window on every render, so an edit that arrives
- * while the viewer is open is reflected in it.
- */
+The full-page media viewer's state.
+
+The viewer belongs to the app rather than to a bubble so it can own a
+browser-history layer: back closes the viewer instead of leaving the chat.
+Only the source and message id are kept; the display group is derived from
+the live thread/comments window on every render, so an edit that arrives
+while the viewer is open is reflected in it.
+*/
 
 type ViewerSource = 'thread' | 'comments';
 
@@ -26,8 +26,8 @@ export interface MediaViewerController {
   open: (source: ViewerSource, messageId: number) => void;
   close: () => void;
   /**
-   * Re-opens the last request, for browser forward into a viewer entry.
-   */
+  Re-opens the last request, for browser forward into a viewer entry.
+  */
   reopen: () => void;
 }
 
@@ -68,7 +68,7 @@ export function useMediaViewer({ thread, comments }: UseMediaViewerOptions): Med
           : groupOf([comments.post, ...comments.comments], request.messageId);
 
   return {
-    viewer: request !== null && messages !== null ? { messages, initialMessageId: request.messageId } : null,
+    viewer: request === null || messages === null ? null : { messages, initialMessageId: request.messageId },
     open,
     close,
     reopen,

@@ -18,16 +18,16 @@ import type { CallView } from '../../apps/web/src/calls/session';
 import { iceServersFor } from '../../apps/web/src/calls/webrtc';
 
 /**
- * The calls of the SPA.
- *
- * Three things are worth testing here: the state machine the overlay renders,
- * the arithmetic of the key exchange, and the packet envelope — the last one
- * because a mistake in it is invisible until two peers fail to talk.
- */
+The calls of the SPA.
+
+Three things are worth testing here: the state machine the overlay renders,
+the arithmetic of the key exchange, and the packet envelope — the last one
+because a mistake in it is invisible until two peers fail to talk.
+*/
 
 /**
- * A deterministic key, so a failure is reproducible.
- */
+A deterministic key, so a failure is reproducible.
+*/
 function key(seed: number): Uint8Array {
   const bytes = new Uint8Array(256);
   for (let index = 0; index < bytes.length; index += 1) {
@@ -143,12 +143,12 @@ describe('the key exchange', () => {
 });
 
 /**
- * A 2048-bit safe prime, with the generator Telegram's own configuration uses.
- *
- * It is the prime of RFC 3526's 2048-bit group, which is a safe prime with
- * 2 as its generator — the same shape Telegram's `messages.getDhConfig` hands
- * out, and enough to run a real exchange in a test.
- */
+A 2048-bit safe prime, with the generator Telegram's own configuration uses.
+
+It is the prime of RFC 3526's 2048-bit group, which is a safe prime with
+2 as its generator — the same shape Telegram's `messages.getDhConfig` hands
+out, and enough to run a real exchange in a test.
+*/
 function safePrime(): Uint8Array {
   const hex =
     'FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1' +

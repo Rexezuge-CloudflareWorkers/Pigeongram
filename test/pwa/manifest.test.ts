@@ -3,8 +3,8 @@ import { readBranding } from '../../apps/web/branding';
 import { createManifest } from '../../apps/web/build/pwa/manifest';
 
 /**
- * The web app manifest: what the browser needs to install the client.
- */
+The web app manifest: what the browser needs to install the client.
+*/
 const MANIFEST = createManifest(readBranding({}));
 
 describe('the web app manifest', () => {

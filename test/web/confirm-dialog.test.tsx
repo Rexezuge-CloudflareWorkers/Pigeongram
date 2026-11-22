@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmDialog } from '../../apps/web/src/components/ConfirmDialog';
 
 /**
- * The confirmation the SPA puts in front of a destructive action. Its modal
- * behaviours are the contract: focus lands on the safe choice, Tab stays in
- * the dialog, Escape and the scrim cancel, and focus goes back where it came
- * from.
- */
+The confirmation the SPA puts in front of a destructive action. Its modal
+behaviours are the contract: focus lands on the safe choice, Tab stays in
+the dialog, Escape and the scrim cancel, and focus goes back where it came
+from.
+*/
 
 function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
   const onConfirm = vi.fn();

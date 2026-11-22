@@ -6,35 +6,35 @@ import { useToastCountdown } from './useToastCountdown';
 
 interface ToastsProps {
   /**
-   The failure that is on screen, if any.
-   */
+  The failure that is on screen, if any.
+  */
   error: ToastMessage | null;
   /**
-   The notice that is on screen, if any.
-   */
+  The notice that is on screen, if any.
+  */
   notice: ToastMessage | null;
   /**
-   Clears the error after its countdown runs out or its Dismiss action is used.
-   */
+  Clears the error after its countdown runs out or its Dismiss action is used.
+  */
   onDismissError: () => void;
   /**
-   Clears the notice after its countdown runs out.
-   */
+  Clears the notice after its countdown runs out.
+  */
   onDismissNotice: () => void;
 }
 
 /**
- * How long each toast lives. A failure gets a longer read than a notice; both
- * show the same countdown bar, and hovering freezes it until the pointer
- * leaves.
- */
+How long each toast lives. A failure gets a longer read than a notice; both
+show the same countdown bar, and hovering freezes it until the pointer
+leaves.
+*/
 const NOTICE_MS = 4000;
 const ERROR_MS = 8000;
 
 /**
- * The exit beat of a toast that was replaced by a newer one. Matches the
- * `toast-out` keyframe in `styles/motion-overlay.css`.
- */
+The exit beat of a toast that was replaced by a newer one. Matches the
+`toast-out` keyframe in `styles/motion-overlay.css`.
+*/
 const EXIT_MS = 220;
 
 interface ToastSlotProps {
@@ -46,11 +46,11 @@ interface ToastSlotProps {
 }
 
 /**
- * One toast kind's slot. A newer arrival preempts what is on screen: the old
- * toast starts its exit beat at once and the new one mounts beside it, so the
- * reader never waits for the previous countdown to end. The old and new share
- * a grid cell while that beat runs, so the stack does not jump.
- */
+One toast kind's slot. A newer arrival preempts what is on screen: the old
+toast starts its exit beat at once and the new one mounts beside it, so the
+reader never waits for the previous countdown to end. The old and new share
+a grid cell while that beat runs, so the stack does not jump.
+*/
 function ToastSlot({ toast, role, durationMs, actionLabel, onDismiss }: ToastSlotProps) {
   // The message is kept after the slot empties so the exit animation still has
   // text to fade out.

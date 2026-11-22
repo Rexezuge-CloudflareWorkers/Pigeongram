@@ -2,30 +2,30 @@ import { useLayoutEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 
 /**
- * The rules of paging a loaded window by scrolling towards either edge.
- *
- * The next older page is fetched a viewport before the reader reaches the top,
- * and the next newer one a viewport before the end, so the content is usually
- * already there when they get there. Prepending a page shifts the loaded
- * messages down; the anchor below keeps the row the reader was looking at in
- * place. The list disables the browser's own scroll anchoring, so the
- * correction behaves the same in every browser.
- */
+The rules of paging a loaded window by scrolling towards either edge.
+
+The next older page is fetched a viewport before the reader reaches the top,
+and the next newer one a viewport before the end, so the content is usually
+already there when they get there. Prepending a page shifts the loaded
+messages down; the anchor below keeps the row the reader was looking at in
+place. The list disables the browser's own scroll anchoring, so the
+correction behaves the same in every browser.
+*/
 
 /**
- * How close to the top counts as asking for the older page: one viewport of
- * preload. The scroll container is passed rather than read from globals so the
- * thread and the comments screen share the rule.
- */
+How close to the top counts as asking for the older page: one viewport of
+preload. The scroll container is passed rather than read from globals so the
+thread and the comments screen share the rule.
+*/
 export function isNearTop(element: HTMLElement): boolean {
   return element.scrollTop < element.clientHeight;
 }
 
 /**
- * How close to the end counts as asking for the newer page: the same one
- * viewport of preload as the top. Appending needs no anchor — content added
- * below the viewport leaves the reader's rows where they are.
- */
+How close to the end counts as asking for the newer page: the same one
+viewport of preload as the top. Appending needs no anchor — content added
+below the viewport leaves the reader's rows where they are.
+*/
 export function isNearBottom(element: HTMLElement): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight < element.clientHeight;
 }
@@ -37,16 +37,16 @@ interface PrependAnchor {
 }
 
 /**
- * Keeps the viewport on the row it shows when older messages are prepended.
- *
- * `scope` names the list (a chat, a post's comments) and `oldestId` is its
- * first loaded message. When the first id moves backwards, the height the
- * older page added above the viewport is put back into `scrollTop`. The height
- * is recorded whenever the loaded list changes, so live messages that grew it
- * before the page arrived are not mistaken for the prepend. A new scope —
- * another chat, another post — starts from scratch, so an open never inherits
- * the previous window's correction.
- */
+Keeps the viewport on the row it shows when older messages are prepended.
+
+`scope` names the list (a chat, a post's comments) and `oldestId` is its
+first loaded message. When the first id moves backwards, the height the
+older page added above the viewport is put back into `scrollTop`. The height
+is recorded whenever the loaded list changes, so live messages that grew it
+before the page arrived are not mistaken for the prepend. A new scope —
+another chat, another post — starts from scratch, so an open never inherits
+the previous window's correction.
+*/
 export function usePrependAnchor(
   elementRef: RefObject<HTMLElement | null>,
   scope: string | number,

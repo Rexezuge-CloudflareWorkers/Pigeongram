@@ -4,11 +4,11 @@ import { request } from './api/request';
 import type { EngineStateDto } from './types';
 
 /**
- * The bridge client's public surface: the Access and login plane lives here,
- * and the chat, thread and media calls are re-exported from the modules beside
- * `api/`. Screens keep importing `./api`; the split is about file size, not
- * about a second calling convention.
- */
+The bridge client's public surface: the Access and login plane lives here,
+and the chat, thread and media calls are re-exported from the modules beside
+`api/`. Screens keep importing `./api`; the split is about file size, not
+about a second calling convention.
+*/
 
 export {
   fetchArchivedDialogs,

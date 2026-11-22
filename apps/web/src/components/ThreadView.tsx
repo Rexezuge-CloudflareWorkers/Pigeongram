@@ -20,9 +20,9 @@ import { ThreadPlaceholder } from './ThreadPlaceholder';
 import { ThreadUnavailable } from './ThreadUnavailable';
 
 /**
- * How long a read watermark is held back before it is reported: scrolling
- * advances it message by message, and every advance is a round trip.
- */
+How long a read watermark is held back before it is reported: scrolling
+advances it message by message, and every advance is a round trip.
+*/
 const READ_DEBOUNCE_MS = 250;
 
 export function ThreadView({

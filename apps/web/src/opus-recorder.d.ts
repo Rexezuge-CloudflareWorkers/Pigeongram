@@ -1,17 +1,17 @@
 /**
- * The slice of `opus-recorder` this app uses.
- *
- * The package ships no types of its own, and it is loaded lazily by
- * `recorder.ts` the first time the reader asks for the microphone, so a local
- * declaration is enough: only the constructor, the lifecycle methods and the
- * data callback are named here.
- */
+The slice of `opus-recorder` this app uses.
+
+The package ships no types of its own, and it is loaded lazily by
+`recorder.ts` the first time the reader asks for the microphone, so a local
+declaration is enough: only the constructor, the lifecycle methods and the
+data callback are named here.
+*/
 declare module 'opus-recorder' {
   export interface RecorderOptions {
     /**
-     * URL of the encoder worker script. Its WebAssembly binary is embedded in
-     * the script, so the build copies that one file to `/recorder/`.
-     */
+    URL of the encoder worker script. Its WebAssembly binary is embedded in
+    the script, so the build copies that one file to `/recorder/`.
+    */
     encoderPath?: string;
     bufferLength?: number;
     mediaTrackConstraints?: boolean | MediaTrackConstraints;
@@ -31,9 +31,9 @@ declare module 'opus-recorder' {
   export interface RecorderInstance {
     state: 'inactive' | 'loading' | 'recording' | 'paused';
     /**
-     * Samples encoded so far, at the encoder's 48 kHz rate. The finished
-     * recording's duration is this divided by 48000.
-     */
+    Samples encoded so far, at the encoder's 48 kHz rate. The finished
+    recording's duration is this divided by 48000.
+    */
     encodedSamplePosition: number;
     ondataavailable: (data: Uint8Array) => void;
     onstart: () => void;

@@ -12,14 +12,14 @@ interface AccessConfiguration {
 }
 
 /**
- * The deployment's Access application, or `null` when it is unusable.
- *
- * `TEAM_DOMAIN` is normalized to its https origin so a trailing slash cannot
- * make the issuer comparison fail; a path, query or non-https scheme is a
- * configuration error rather than something to silently drop. A comma-joined
- * audience is refused here too: the verifier would fail it with a message that
- * reads like a bad signature and sends an operator looking at their keys.
- */
+The deployment's Access application, or `null` when it is unusable.
+
+`TEAM_DOMAIN` is normalized to its https origin so a trailing slash cannot
+make the issuer comparison fail; a path, query or non-https scheme is a
+configuration error rather than something to silently drop. A comma-joined
+audience is refused here too: the verifier would fail it with a message that
+reads like a bad signature and sends an operator looking at their keys.
+*/
 function readAccessConfiguration(env: Env): AccessConfiguration | null {
   const rawTeamDomain = (env.TEAM_DOMAIN ?? '').trim();
   const audience = (env.POLICY_AUD ?? '').trim();
@@ -47,23 +47,23 @@ function isDevBypassEnabled(env: Env): boolean {
 let warnedAboutBypass = false;
 
 /**
- * The `/user/*` guards.
- *
- * The Access application in front of the Pages project is the allowlist; these
- * handlers are the worker's own last gate, because a misrouted Pages Function,
- * a direct service-binding call or a forged header must not reach the account's
- * MTProto session.
- */
+The `/user/*` guards.
+
+The Access application in front of the Pages project is the allowlist; these
+handlers are the worker's own last gate, because a misrouted Pages Function,
+a direct service-binding call or a forged header must not reach the account's
+MTProto session.
+*/
 export class MiddlewareHandlers {
   /**
-   * Fail closed before any request is authenticated.
-   *
-   * A deployment with no usable `TEAM_DOMAIN`/`POLICY_AUD` answers
-   * `503 access_config` rather than running unauthenticated, and a production
-   * deployment that still carries `ACCESS_DEV_BYPASS` does the same: the var is
-   * a local-development affordance, and honoring it in production would hand
-   * every request the dev identity.
-   */
+  Fail closed before any request is authenticated.
+  
+  A deployment with no usable `TEAM_DOMAIN`/`POLICY_AUD` answers
+  `503 access_config` rather than running unauthenticated, and a production
+  deployment that still carries `ACCESS_DEV_BYPASS` does the same: the var is
+  a local-development affordance, and honoring it in production would hand
+  every request the dev identity.
+  */
   public static accessConfiguration(): (c: ApiContext, next: Next) => Promise<Response | void> {
     return async (c: ApiContext, next: Next): Promise<Response | void> => {
       if (c.env.ACCESS_DEV_BYPASS === 'true' && isProduction(c.env)) {
@@ -95,15 +95,15 @@ export class MiddlewareHandlers {
   }
 
   /**
-   * Verify the request's Cloudflare Access assertion.
-   *
-   * `authenticateAccess` checks the signature, issuer, audience and expiry
-   * against the team's JWKS, refuses an assertion whose `email_verified` is
-   * `false`, and collapses every failure to one message so an unauthenticated
-   * caller cannot learn which part of a forged token they got right. The
-   * identity is discarded: this deployment is single-user and the Access
-   * application's policy is the allowlist.
-   */
+  Verify the request's Cloudflare Access assertion.
+  
+  `authenticateAccess` checks the signature, issuer, audience and expiry
+  against the team's JWKS, refuses an assertion whose `email_verified` is
+  `false`, and collapses every failure to one message so an unauthenticated
+  caller cannot learn which part of a forged token they got right. The
+  identity is discarded: this deployment is single-user and the Access
+  application's policy is the allowlist.
+  */
   public static authenticate(): (c: ApiContext, next: Next) => Promise<Response | void> {
     return async (c: ApiContext, next: Next): Promise<Response | void> => {
       const configuration = readAccessConfiguration(c.env);
@@ -124,14 +124,14 @@ export class MiddlewareHandlers {
   }
 
   /**
-   * Reject a cross-origin state-changing request.
-   *
-   * A browser request that carries the Access session is only acted on when its
-   * `Origin` (or `Referer` fallback) names a trusted host. The socket upgrade
-   * is included because a cross-origin page must not be able to open the
-   * account's update stream either. The Durable Object repeats the check, so a
-   * request that reaches it another way still fails.
-   */
+  Reject a cross-origin state-changing request.
+  
+  A browser request that carries the Access session is only acted on when its
+  `Origin` (or `Referer` fallback) names a trusted host. The socket upgrade
+  is included because a cross-origin page must not be able to open the
+  account's update stream either. The Durable Object repeats the check, so a
+  request that reaches it another way still fails.
+  */
   public static origin(): (c: ApiContext, next: Next) => Promise<Response | void> {
     return async (c: ApiContext, next: Next): Promise<Response | void> => {
       const isWebSocketUpgrade = c.req.method === 'GET' && new URL(c.req.url).pathname === '/user/updates';

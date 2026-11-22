@@ -3,27 +3,27 @@ import { Icon } from './Icon';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
 
 /**
- * The chat list's context menu: right-click a row, or hold it on touch, for the
- * actions that belong to the whole chat. Pin moves the chat into the pinned
- * block (or Unpin drops it back into the activity order); Mark As Read clears
- * an unread badge without opening the chat, and an already-read chat greys it
- * out because the action would have nothing left to settle.
- */
+The chat list's context menu: right-click a row, or hold it on touch, for the
+actions that belong to the whole chat. Pin moves the chat into the pinned
+block (or Unpin drops it back into the activity order); Mark As Read clears
+an unread badge without opening the chat, and an already-read chat greys it
+out because the action would have nothing left to settle.
+*/
 
 interface ChatMenuProps {
   /**
-   * The chat the menu was opened on, as it stood at the gesture.
-   */
+  The chat the menu was opened on, as it stood at the gesture.
+  */
   dialog: DialogDto;
   /**
-   * Viewport coordinates of the opening gesture.
-   */
+  Viewport coordinates of the opening gesture.
+  */
   x: number;
   y: number;
   onMarkRead: (chatId: PeerId) => void;
   /**
-   * Pins or unpins the chat in its list; absent where the list cannot write.
-   */
+  Pins or unpins the chat in its list; absent where the list cannot write.
+  */
   onSetPinned?: (chatId: PeerId, pinned: boolean) => void;
   onClose: () => void;
 }

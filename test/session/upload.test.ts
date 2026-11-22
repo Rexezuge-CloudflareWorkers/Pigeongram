@@ -11,10 +11,10 @@ vi.mock('../../packages/backend-services/src/session/dto', () => ({
 }));
 
 /**
- * The album send is a streaming problem, not an HTTP problem: one request body
- * has to become N exact byte ranges in the order mtcute consumes them. These
- * tests pin the splitter's bounds and the order/caption contract of the send.
- */
+The album send is a streaming problem, not an HTTP problem: one request body
+has to become N exact byte ranges in the order mtcute consumes them. These
+tests pin the splitter's bounds and the order/caption contract of the send.
+*/
 
 function stream(chunks: readonly (readonly number[])[]): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
@@ -37,7 +37,7 @@ async function readAll(body: ReadableStream<Uint8Array>): Promise<number[]> {
 
 function mediaFile(media: InputMediaLike): ReadableStream<Uint8Array> {
   const file = (media as { file?: unknown }).file;
-  if (!(file instanceof ReadableStream)) throw new Error('expected a stream-backed media');
+  if (!(file instanceof ReadableStream)) throw new TypeError('expected a stream-backed media');
   return file as ReadableStream<Uint8Array>;
 }
 
@@ -155,10 +155,10 @@ describe('sendUploadedMediaGroup', () => {
 });
 
 /**
- * The comment send is addressed by the thread root, which Telegram returns
- * last in `messages.getDiscussionMessage`'s newest-first window. These tests
- * pin the media paths to that root (and the first-comment fallback).
- */
+The comment send is addressed by the thread root, which Telegram returns
+last in `messages.getDiscussionMessage`'s newest-first window. These tests
+pin the media paths to that root (and the first-comment fallback).
+*/
 
 const CHANNEL_ID = -1_000_000_000_020;
 const GROUP_PEER = { _: 'inputPeerChannel', channelId: 30, accessHash: Long.fromNumber(30_000) };

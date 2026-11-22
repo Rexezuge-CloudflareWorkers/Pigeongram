@@ -1,12 +1,12 @@
 import type { Branding } from '../../branding';
 
 /**
- * The web app manifest: what the browser needs to install the client as an
- * app rather than a bookmark.
- *
- * One definition, used twice: the plugin writes it into the build, and the
- * dev server serves it, so the dev page and the built page agree.
- */
+The web app manifest: what the browser needs to install the client as an
+app rather than a bookmark.
+
+One definition, used twice: the plugin writes it into the build, and the
+dev server serves it, so the dev page and the built page agree.
+*/
 
 export interface ManifestIcon {
   src: string;
@@ -20,9 +20,9 @@ export interface PwaManifest {
   short_name: string;
   description: string;
   /**
-   * Where the installed app opens: the app's own root, which is public and
-   * decides between the intro and the chat list by itself.
-   */
+  Where the installed app opens: the app's own root, which is public and
+  decides between the intro and the chat list by itself.
+  */
   start_url: string;
   scope: string;
   id: string;
@@ -35,11 +35,11 @@ export interface PwaManifest {
 }
 
 /**
- * Builds the manifest for one deployment's branding.
- *
- * The name and short name come from `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`
- * (`apps/web/branding.ts`); the rest of the manifest is the same everywhere.
- */
+Builds the manifest for one deployment's branding.
+
+The name and short name come from `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`
+(`apps/web/branding.ts`); the rest of the manifest is the same everywhere.
+*/
 export function createManifest(branding: Branding): PwaManifest {
   return {
     name: branding.name,

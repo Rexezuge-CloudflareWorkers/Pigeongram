@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { RECORDER_ASSETS, readRecorderAssets, voiceRecorderPlugin } from '../../apps/web/build/recorder-plugin';
 
 /**
- * The voice recorder's encoder is one worker script, copied out of
- * `opus-recorder` rather than committed. Its WebAssembly binary is embedded in
- * the script as a data URI, so there is no sibling `.wasm` file. These cases
- * pin that the build carries the script and that its path matches the one
- * `recorder.ts` names.
- */
+The voice recorder's encoder is one worker script, copied out of
+`opus-recorder` rather than committed. Its WebAssembly binary is embedded in
+the script as a data URI, so there is no sibling `.wasm` file. These cases
+pin that the build carries the script and that its path matches the one
+`recorder.ts` names.
+*/
 
 interface EmittedAsset {
   type: 'asset';

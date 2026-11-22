@@ -4,10 +4,10 @@ import type { RecordedVoice } from '../../apps/web/src/recorder';
 import { useVoiceRecorder } from '../../apps/web/src/useVoiceRecorder';
 
 /**
- * The composer's microphone state machine: the permission wait, the live
- * clock, the automatic stop at the length cap and the two exits. The encoder
- * itself is faked (`test/web/recorder.test.ts` owns it).
- */
+The composer's microphone state machine: the permission wait, the live
+clock, the automatic stop at the length cap and the two exits. The encoder
+itself is faked (`test/web/recorder.test.ts` owns it).
+*/
 
 const microphone = vi.hoisted(() => ({
   seconds: 0,

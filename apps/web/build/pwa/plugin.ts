@@ -5,25 +5,25 @@ import { TILE_RADIUS_RATIO, renderIcon } from './mark';
 import { encodePng } from './png';
 
 /**
- * The icons the build writes next to the bundle.
- *
- * The three the manifest names are the ones the platforms ask for: a 192 and a
- * 512 for Chromium's install criteria, and a maskable 512 for Android's
- * adaptive icons. The fourth is iOS's touch icon, which iOS reads from the
- * document rather than from the manifest, and which must be opaque — iOS does
- * not composite a transparent icon.
- */
+The icons the build writes next to the bundle.
+
+The three the manifest names are the ones the platforms ask for: a 192 and a
+512 for Chromium's install criteria, and a maskable 512 for Android's
+adaptive icons. The fourth is iOS's touch icon, which iOS reads from the
+document rather than from the manifest, and which must be opaque — iOS does
+not composite a transparent icon.
+*/
 export interface IconSpec {
   readonly file: string;
   readonly size: number;
   /**
-   * The corner radius, as a fraction of the edge. Zero squares the tile off:
-   * the platform masks the icon itself.
-   */
+  The corner radius, as a fraction of the edge. Zero squares the tile off:
+  the platform masks the icon itself.
+  */
   readonly radius: number;
   /**
-   * The mark's size, as a fraction of the edge.
-   */
+  The mark's size, as a fraction of the edge.
+  */
   readonly scale: number;
 }
 
@@ -37,19 +37,19 @@ export const ICONS: readonly IconSpec[] = [
 ];
 
 /**
- * Renders one icon into PNG bytes.
- */
+Renders one icon into PNG bytes.
+*/
 export function iconBytes(icon: IconSpec): Uint8Array {
   const pixels = renderIcon(icon.size, { radius: icon.radius, scale: icon.scale });
   return encodePng(pixels, icon.size, icon.size);
 }
 
 /**
- * Writes the icons into the bundle and serves them in development.
- *
- * The assets are emitted during `generateBundle`, so they are part of the
- * bundle before workbox globs the output for its precache manifest.
- */
+Writes the icons into the bundle and serves them in development.
+
+The assets are emitted during `generateBundle`, so they are part of the
+bundle before workbox globs the output for its precache manifest.
+*/
 export function pwaIconsPlugin(branding: Branding): Plugin {
   return {
     name: 'pwa-icons',

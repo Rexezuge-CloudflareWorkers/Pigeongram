@@ -3,10 +3,10 @@ import { uploadFile, uploadGroup } from '../../apps/web/src/upload-api';
 import type { UploadGroupItem, UploadInput } from '../../apps/web/src/upload-api';
 
 /**
- * The raw-body upload transport. `fetch` cannot report upload progress, so
- * the client is XHR; these tests drive a fake one through every event the
- * transport listens for.
- */
+The raw-body upload transport. `fetch` cannot report upload progress, so
+the client is XHR; these tests drive a fake one through every event the
+transport listens for.
+*/
 
 type Listener = (event: { lengthComputable?: boolean; loaded?: number; total?: number }) => void;
 

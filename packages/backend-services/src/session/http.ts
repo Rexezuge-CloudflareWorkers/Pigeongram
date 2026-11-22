@@ -5,16 +5,16 @@ import { log } from './log';
 import { rpcErrorText, rpcErrorToEngineError } from './rpc-errors';
 
 /**
- * HTTP plumbing shared by the engine's bridge routes: request bodies in,
- * error responses out. Kept apart from the Durable Object so the class itself
- * stays about the session, not about JSON handling.
- */
+HTTP plumbing shared by the engine's bridge routes: request bodies in,
+error responses out. Kept apart from the Durable Object so the class itself
+stays about the session, not about JSON handling.
+*/
 
 /**
- * How large a JSON request body may be. The bridge's parameters are tiny by
- * contract — a chat id, a message id, a few flags — and parsing a large body
- * would spend the Free plan's 10 ms CPU budget on the attacker's input.
- */
+How large a JSON request body may be. The bridge's parameters are tiny by
+contract — a chat id, a message id, a few flags — and parsing a large body
+would spend the Free plan's 10 ms CPU budget on the attacker's input.
+*/
 export const MAX_JSON_BODY_BYTES = 256 * 1024;
 
 /**

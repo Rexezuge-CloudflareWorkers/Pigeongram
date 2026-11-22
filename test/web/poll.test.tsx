@@ -4,9 +4,9 @@ import { MessagePoll } from '../../apps/web/src/components/Poll';
 import type { MessageDto, MessagePollDto } from '../../apps/web/src/types';
 
 /**
- * The poll bubble. A vote replaces the whole selection, so each tap's payload
- * is the contract the engine receives; the rest is the results rendering.
- */
+The poll bubble. A vote replaces the whole selection, so each tap's payload
+is the contract the engine receives; the rest is the results rendering.
+*/
 
 function message(): MessageDto {
   return {

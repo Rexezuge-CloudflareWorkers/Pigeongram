@@ -9,14 +9,14 @@ import { correlationMiddleware, MiddlewareHandlers, securityHeadersMiddleware, U
 import type { ApiEnv } from '../types';
 
 /**
- * The API worker.
- *
- * The class owns composition only: middleware order and route registration.
- * Everything the routes do lives beside them, and the platform's error and
- * 404 boundaries live here so every response — including the ones no handler
- * wrote — leaves in the family's canonical `{Exception:{Type,Message}}`
- * envelope.
- */
+The API worker.
+
+The class owns composition only: middleware order and route registration.
+Everything the routes do lives beside them, and the platform's error and
+404 boundaries live here so every response — including the ones no handler
+wrote — leaves in the family's canonical `{Exception:{Type,Message}}`
+envelope.
+*/
 export class ApiWorker extends AbstractEntrypointWorker {
   private readonly app: Hono<ApiEnv>;
 
@@ -67,11 +67,11 @@ export class ApiWorker extends AbstractEntrypointWorker {
 }
 
 /**
- * Register one table entry.
- *
- * A switch rather than `app[route.method](…)`: the three Hono methods have
- * different overload sets, and a union of them is not callable without a cast.
- */
+Register one table entry.
+
+A switch rather than `app[route.method](…)`: the three Hono methods have
+different overload sets, and a union of them is not callable without a cast.
+*/
 function registerRoute(app: Hono<ApiEnv>, route: RouteDefinition): void {
   switch (route.method) {
     case 'get': {

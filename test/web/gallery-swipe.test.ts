@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { EDGE_RESISTANCE, followOffset, SWIPE_MIN_PX, swipeAxis, swipeDirection } from '../../apps/web/src/gallery-swipe';
 
 /**
- * The viewer's gallery swipe arithmetic. A wrong axis turns a vertical drag
- * into a navigation; a wrong threshold commits too early; a wrong edge factor
- * makes the ends feel like the media is stuck.
- */
+The viewer's gallery swipe arithmetic. A wrong axis turns a vertical drag
+into a navigation; a wrong threshold commits too early; a wrong edge factor
+makes the ends feel like the media is stuck.
+*/
 
 describe('swipeAxis', () => {
   it('waits for the slop before calling an axis', () => {

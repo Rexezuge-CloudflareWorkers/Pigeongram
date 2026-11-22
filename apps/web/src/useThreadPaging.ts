@@ -7,12 +7,12 @@ import type { ChatThread } from './thread-state';
 import { newerWindow, PAGE_LIMIT } from './thread-window';
 
 /**
- * The thread's two paging directions. Kept in their own hook so the controller
- * stays under the god-file cap and the "older" and "newer" cursors sit beside
- * each other: `loadOlder` prepends from the oldest row, while `loadNewer`
- * continues from the end of the contiguous window, not from whatever a send or
- * a held live message has appended beyond it.
- */
+The thread's two paging directions. Kept in their own hook so the controller
+stays under the god-file cap and the "older" and "newer" cursors sit beside
+each other: `loadOlder` prepends from the oldest row, while `loadNewer`
+continues from the end of the contiguous window, not from whatever a send or
+a held live message has appended beyond it.
+*/
 interface UseThreadPagingOptions {
   threadRef: RefObject<ChatThread | null>;
   setThread: Dispatch<SetStateAction<ChatThread | null>>;
@@ -25,10 +25,10 @@ interface ThreadPaging {
   loadOlder: () => Promise<void>;
   loadNewer: () => Promise<void>;
   /**
-   * Fast-forwards the loaded window to the chat's newest messages. A backlog
-   * window is replaced rather than walked page by page: the reader asked for
-   * the bottom, not for every message in between.
-   */
+  Fast-forwards the loaded window to the chat's newest messages. A backlog
+  window is replaced rather than walked page by page: the reader asked for
+  the bottom, not for every message in between.
+  */
   jumpToLatest: () => Promise<void>;
 }
 

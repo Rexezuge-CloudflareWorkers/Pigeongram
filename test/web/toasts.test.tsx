@@ -5,11 +5,11 @@ import { Toasts } from '../../apps/web/src/components/Toasts';
 import type { ToastMessage } from '../../apps/web/src/toast-message';
 
 /**
- * The toast surface's two lifetimes and their shared countdown bar. A notice
- * lives four seconds and an error eight; hovering freezes both the clock and
- * the bar, and the error can also be dismissed by hand. A newer toast preempts
- * the one on screen instead of queueing behind it.
- */
+The toast surface's two lifetimes and their shared countdown bar. A notice
+lives four seconds and an error eight; hovering freezes both the clock and
+the bar, and the error can also be dismissed by hand. A newer toast preempts
+the one on screen instead of queueing behind it.
+*/
 
 beforeEach(() => {
   vi.useFakeTimers();

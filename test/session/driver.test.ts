@@ -7,10 +7,10 @@ import { EngineError } from '../../packages/backend-services/src/session/errors'
 import { createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
 /**
- * The driver is the seam between the lifecycle and mtcute. Its factory is
- * injected, so these tests run the real delegation, mapping and teardown
- * decisions over a stand-in bundle: no wasm, no network, no Telegram account.
- */
+The driver is the seam between the lifecycle and mtcute. Its factory is
+injected, so these tests run the real delegation, mapping and teardown
+decisions over a stand-in bundle: no wasm, no network, no Telegram account.
+*/
 
 const media = vi.hoisted(() => ({
   streamMessageMedia: vi.fn(),
@@ -378,7 +378,7 @@ describe('TelegramDriver', () => {
     await expect(harness.driver.sendUpload(spec, body)).resolves.toBe(message);
     await expect(harness.driver.sendUploadGroup(group, body)).resolves.toBe(messages);
 
-    expect(media.streamMessageMedia).toHaveBeenCalledWith(harness.client, 2, 3, { thumb: true }, MEDIA_WINDOW_BYTES);
+    expect(media.streamMessageMedia).toHaveBeenCalledWith(harness.client, 2, 3, { thumb: true }, MEDIA_WINDOW_BYTES, expect.anything());
     expect(media.streamSticker).toHaveBeenCalledWith(harness.client, expect.anything(), '42', true);
     expect(media.readAvatar).toHaveBeenCalledWith(harness.client, 2, 'small');
     expect(media.readAvatarVersion).toHaveBeenCalledWith(harness.client, 2, 'big');

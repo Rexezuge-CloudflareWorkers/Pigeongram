@@ -4,9 +4,9 @@ import type { Route } from '../../apps/web/src/routes';
 import { useRouter } from '../../apps/web/src/useRouter';
 
 /**
- * The browser-history half of navigation: seeding the stack, pushing routes,
- * the viewer layer, and the popstate listener that keeps the screen in step.
- */
+The browser-history half of navigation: seeding the stack, pushing routes,
+the viewer layer, and the popstate listener that keeps the screen in step.
+*/
 
 const APP = 'telegram-web-client';
 

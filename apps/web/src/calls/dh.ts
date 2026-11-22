@@ -1,70 +1,70 @@
 /**
- * The Diffie-Hellman key exchange a call is built on.
- *
- * The exchange runs **in the page**, and that is not a stylistic choice: a
- * 2048-bit modular exponentiation costs tens of milliseconds of CPU, and the
- * Free plan allows a Worker ten milliseconds of CPU per invocation. Two
- * exponentiations would be five times over the budget. The browser has no
- * such limit, so the page does the arithmetic and the worker only carries
- * the public prime and generator down.
- *
- * The shared key never leaves the page either. What travels through the
- * bridge is what Telegram's protocol puts on the wire: the caller's
- * commitment (a hash of its public value), the two public values, and the
- * key's fingerprint.
- */
+The Diffie-Hellman key exchange a call is built on.
+
+The exchange runs **in the page**, and that is not a stylistic choice: a
+2048-bit modular exponentiation costs tens of milliseconds of CPU, and the
+Free plan allows a Worker ten milliseconds of CPU per invocation. Two
+exponentiations would be five times over the budget. The browser has no
+such limit, so the page does the arithmetic and the worker only carries
+the public prime and generator down.
+
+The shared key never leaves the page either. What travels through the
+bridge is what Telegram's protocol puts on the wire: the caller's
+commitment (a hash of its public value), the two public values, and the
+key's fingerprint.
+*/
 
 import { sha1, sha256 } from './hash';
 
 /**
- * How wide the prime and the public values are: 2048 bits.
- */
+How wide the prime and the public values are: 2048 bits.
+*/
 const DH_VALUE_BYTES = 256;
 
 /**
- * The public parameters of the exchange.
- */
+The public parameters of the exchange.
+*/
 export interface DhConfig {
   /**
-   * The generator. A small integer, so it crosses the bridge as a number.
-   */
+  The generator. A small integer, so it crosses the bridge as a number.
+  */
   g: number;
   /**
-   * The 2048-bit prime, big-endian.
-   */
+  The 2048-bit prime, big-endian.
+  */
   p: Uint8Array;
 }
 
 /**
- * One side's half of the exchange.
- */
+One side's half of the exchange.
+*/
 export interface DhKeyPair {
   /**
-   * The private exponent. It never leaves the page.
-   */
+  The private exponent. It never leaves the page.
+  */
   secret: bigint;
   /**
-   * The public value `g^secret mod p`, 256 bytes big-endian.
-   */
+  The public value `g^secret mod p`, 256 bytes big-endian.
+  */
   value: Uint8Array;
   /**
-   * SHA-256 over the public value: the commitment the caller sends.
-   */
+  SHA-256 over the public value: the commitment the caller sends.
+  */
   hash: Uint8Array;
 }
 
 /**
- * The validated configs, keyed by the prime's bytes.
- *
- * The checks below cost a handful of modular exponentiations, and the prime
- * hardly ever changes — so a second call in the same session reuses the
- * verdict instead of paying for it again.
- */
+The validated configs, keyed by the prime's bytes.
+
+The checks below cost a handful of modular exponentiations, and the prime
+hardly ever changes — so a second call in the same session reuses the
+verdict instead of paying for it again.
+*/
 const validated = new Map<string, DhConfig>();
 
 /**
- * Turns bytes into a big-endian integer.
- */
+Turns bytes into a big-endian integer.
+*/
 export function bytesToBigInt(bytes: Uint8Array): bigint {
   let value = 0n;
   for (const byte of bytes) {
@@ -74,8 +74,8 @@ export function bytesToBigInt(bytes: Uint8Array): bigint {
 }
 
 /**
- * Turns a non-negative integer into big-endian bytes of an exact length.
- */
+Turns a non-negative integer into big-endian bytes of an exact length.
+*/
 export function bigIntToBytes(value: bigint, length: number): Uint8Array {
   if (value < 0n) throw new Error('Negative Value');
   const out = new Uint8Array(length);
@@ -89,12 +89,12 @@ export function bigIntToBytes(value: bigint, length: number): Uint8Array {
 }
 
 /**
- * A modular exponentiation.
- *
- * Square-and-multiply, most significant bit first. The exponent's bits are
- * read through a string, because shifting a 2048-bit bigint one bit at a time
- * is far slower than shifting the exponent itself.
- */
+A modular exponentiation.
+
+Square-and-multiply, most significant bit first. The exponent's bits are
+read through a string, because shifting a 2048-bit bigint one bit at a time
+is far slower than shifting the exponent itself.
+*/
 export function modPow(base: bigint, exponent: bigint, modulus: bigint): bigint {
   if (modulus <= 0n) throw new Error('Modulus Must Be Positive');
   let result = 1n;
@@ -108,25 +108,25 @@ export function modPow(base: bigint, exponent: bigint, modulus: bigint): bigint 
 }
 
 /**
- * Lets the browser paint between two expensive steps.
- *
- * A modular exponentiation blocks the main thread for tens of milliseconds.
- * Yielding between the checks keeps the incoming-call screen alive while the
- * exchange runs.
- */
+Lets the browser paint between two expensive steps.
+
+A modular exponentiation blocks the main thread for tens of milliseconds.
+Yielding between the checks keeps the incoming-call screen alive while the
+exchange runs.
+*/
 function yieldToPaint(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /**
- * Miller-Rabin: is the number probably prime?
- *
- * Four rounds is a deliberate trade. A full test on a 2048-bit number costs
- * one modular exponentiation per round, and a false positive would mean
- * accepting a prime that is not one — the chance of a composite surviving
- * four small bases is small enough for a key exchange that Telegram's own
- * server supplies the parameters, and the group checks below catch the rest.
- */
+Miller-Rabin: is the number probably prime?
+
+Four rounds is a deliberate trade. A full test on a 2048-bit number costs
+one modular exponentiation per round, and a false positive would mean
+accepting a prime that is not one — the chance of a composite surviving
+four small bases is small enough for a key exchange that Telegram's own
+server supplies the parameters, and the group checks below catch the rest.
+*/
 function isProbablyPrime(candidate: bigint): boolean {
   if (candidate <= 3n) return candidate >= 2n;
   if (candidate % 2n === 0n) return false;
@@ -153,16 +153,16 @@ function isProbablyPrime(candidate: bigint): boolean {
 }
 
 /**
- * Checks the public parameters of the exchange.
- *
- * A man in the middle could hand over a prime of its own choosing, or a
- * generator that puts the exchange in a subgroup it controls. The checks are
- * the ones Telegram's own documentation asks for: the prime must be prime,
- * the generator must not have order one or two, and it must generate a
- * subgroup of the field.
- *
- * The verdict is cached, so a second call in the same session costs nothing.
- */
+Checks the public parameters of the exchange.
+
+A man in the middle could hand over a prime of its own choosing, or a
+generator that puts the exchange in a subgroup it controls. The checks are
+the ones Telegram's own documentation asks for: the prime must be prime,
+the generator must not have order one or two, and it must generate a
+subgroup of the field.
+
+The verdict is cached, so a second call in the same session costs nothing.
+*/
 export async function validateDhConfig(config: DhConfig): Promise<DhConfig> {
   const key = `${config.g}:${bytesToBigInt(config.p).toString(16)}`;
   const cached = validated.get(key);
@@ -194,13 +194,13 @@ export async function validateDhConfig(config: DhConfig): Promise<DhConfig> {
 }
 
 /**
- * Checks a peer's public value.
- *
- * The value must be in range, and it must live in the same subgroup as the
- * generator: when the generator has order `(p-1)/2` only the quadratic
- * residues are acceptable, and when it has the full order both residues and
- * non-residues are — but nothing else.
- */
+Checks a peer's public value.
+
+The value must be in range, and it must live in the same subgroup as the
+generator: when the generator has order `(p-1)/2` only the quadratic
+residues are acceptable, and when it has the full order both residues and
+non-residues are — but nothing else.
+*/
 export function checkPeerValue(config: DhConfig, value: Uint8Array): void {
   const p = bytesToBigInt(config.p);
   const v = bytesToBigInt(value);
@@ -221,11 +221,11 @@ export function checkPeerValue(config: DhConfig, value: Uint8Array): void {
 }
 
 /**
- * Makes this side's half of the exchange.
- *
- * The private exponent is 256 random bytes reduced into the range the
- * exchange allows, and it never leaves the page.
- */
+Makes this side's half of the exchange.
+
+The private exponent is 256 random bytes reduced into the range the
+exchange allows, and it never leaves the page.
+*/
 export async function createDhKeyPair(config: DhConfig): Promise<DhKeyPair> {
   const p = bytesToBigInt(config.p);
   const random = crypto.getRandomValues(new Uint8Array(DH_VALUE_BYTES));
@@ -237,8 +237,8 @@ export async function createDhKeyPair(config: DhConfig): Promise<DhKeyPair> {
 }
 
 /**
- * The shared key, from this side's secret and the peer's public value.
- */
+The shared key, from this side's secret and the peer's public value.
+*/
 export async function deriveSharedKey(config: DhConfig, secret: bigint, peerValue: Uint8Array): Promise<Uint8Array> {
   checkPeerValue(config, peerValue);
   const p = bytesToBigInt(config.p);
@@ -249,14 +249,14 @@ export async function deriveSharedKey(config: DhConfig, secret: bigint, peerValu
 }
 
 /**
- * The fingerprint of a shared key.
- *
- * Telegram's definition is the lower 64 bits of SHA1 over the key, and the
- * convention for the lower 64 bits of a SHA1 digest in MTProto is the first
- * eight bytes read little-endian — the same one the auth key's identifier
- * uses. It travels as a decimal string, because a signed 64-bit integer does
- * not fit in a JavaScript number.
- */
+The fingerprint of a shared key.
+
+Telegram's definition is the lower 64 bits of SHA1 over the key, and the
+convention for the lower 64 bits of a SHA1 digest in MTProto is the first
+eight bytes read little-endian — the same one the auth key's identifier
+uses. It travels as a decimal string, because a signed 64-bit integer does
+not fit in a JavaScript number.
+*/
 export async function keyFingerprint(key: Uint8Array): Promise<string> {
   const digest = await sha1(key);
   const view = new DataView(digest.buffer, digest.byteOffset, 8);

@@ -1,15 +1,15 @@
 /**
- * The pure geometry behind photo zoom. The viewer's hook owns React state and
- * gestures; this module only answers "what view does this zoom, anchor and pan
- * produce, and where may it stop?".
- *
- * A view is a scale plus a screen-space translation in pixels. The translation
- * is relative to the photo's layout centre, which is also its transform origin;
- * anchors and clamp bounds are therefore measured from that centre. Panning is
- * clamped to the photo's rendered content (the image's `object-fit: contain`
- * box), not to the stage, so a letterboxed photo cannot be dragged into empty
- * space.
- */
+The pure geometry behind photo zoom. The viewer's hook owns React state and
+gestures; this module only answers "what view does this zoom, anchor and pan
+produce, and where may it stop?".
+
+A view is a scale plus a screen-space translation in pixels. The translation
+is relative to the photo's layout centre, which is also its transform origin;
+anchors and clamp bounds are therefore measured from that centre. Panning is
+clamped to the photo's rendered content (the image's `object-fit: contain`
+box), not to the stage, so a letterboxed photo cannot be dragged into empty
+space.
+*/
 
 export const MIN_SCALE = 1;
 export const MAX_SCALE = 4;
@@ -35,9 +35,9 @@ export interface StoredView extends View {
 }
 
 /**
- * The next toolbar stop in the requested direction, or the nearest limit when
- * the wheel has landed between stops.
- */
+The next toolbar stop in the requested direction, or the nearest limit when
+the wheel has landed between stops.
+*/
 export function nextZoomStep(scale: number, direction: 1 | -1): number {
   return direction > 0
     ? (ZOOM_STEPS.find((value) => value > scale + APPROXIMATE) ?? MAX_SCALE)
@@ -45,9 +45,9 @@ export function nextZoomStep(scale: number, direction: 1 | -1): number {
 }
 
 /**
- * Zooms around `anchor`, keeping the content point under it fixed, then clamps
- * the result so the photo still fills its box.
- */
+Zooms around `anchor`, keeping the content point under it fixed, then clamps
+the result so the photo still fills its box.
+*/
 export function zoomAround(base: View, scale: number, anchor: Point, image: HTMLImageElement | null): View {
   const next = clamp(scale, MIN_SCALE, MAX_SCALE);
   if (next <= MIN_SCALE + APPROXIMATE) return IDENTITY;
@@ -63,9 +63,9 @@ export function zoomAround(base: View, scale: number, anchor: Point, image: HTML
 }
 
 /**
- * Keeps the photo's scaled content covering its layout box. The bounds are the
- * overflow of the rendered content on each axis; at 1x they collapse to zero.
- */
+Keeps the photo's scaled content covering its layout box. The bounds are the
+overflow of the rendered content on each axis; at 1x they collapse to zero.
+*/
 export function clampView(view: View, image: HTMLImageElement | null): View {
   const scale = clamp(view.scale, MIN_SCALE, MAX_SCALE);
   if (scale <= MIN_SCALE + APPROXIMATE) return IDENTITY;
@@ -83,10 +83,10 @@ export function clampView(view: View, image: HTMLImageElement | null): View {
 }
 
 /**
- * Converts a client-space point to coordinates relative to the photo's layout
- * centre. The stage's padding is symmetrical, so its rect centre is also the
- * photo's centre even while the photo is transformed.
- */
+Converts a client-space point to coordinates relative to the photo's layout
+centre. The stage's padding is symmetrical, so its rect centre is also the
+photo's centre even while the photo is transformed.
+*/
 export function anchorPoint(clientX: number, clientY: number, stage: HTMLElement | null): Point {
   const center = stageCenter(stage);
   return { x: clientX - center.x, y: clientY - center.y };

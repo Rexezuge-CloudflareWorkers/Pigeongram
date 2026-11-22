@@ -7,21 +7,21 @@ import type { PresenceDto } from '../types';
 interface AvatarProps {
   chatId: number;
   /**
-   * The DTO's avatar version token; null falls back to initials.
-   */
+  The DTO's avatar version token; null falls back to initials.
+  */
   photo: string | null;
   title: string;
   kind?: string;
   small?: boolean;
   /**
-   * The large variant: the profile photo of a modal, in the size the engine
-   * serves for it. Not combinable with `small`.
-   */
+  The large variant: the profile photo of a modal, in the size the engine
+  serves for it. Not combinable with `small`.
+  */
   big?: boolean;
   /**
-   * The peer's presence, when it has one. Only a person can be online, so the
-   * badge appears for an online user and for nobody else.
-   */
+  The peer's presence, when it has one. Only a person can be online, so the
+  badge appears for an online user and for nobody else.
+  */
   presence?: PresenceDto | null;
 }
 

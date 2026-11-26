@@ -18,6 +18,7 @@ import type {
 } from './types';
 import type { UploadRequest } from './upload';
 import type { MessageDeletion } from './useMessageDelete';
+import type { ScheduledMessagesController } from './useScheduledMessages';
 
 /**
 The chat thread's controller contract, split from `useThread.ts` to keep the
@@ -101,6 +102,11 @@ export interface ThreadController {
   */
   pinnedRevision: number;
   /**
+  The open chat's scheduled queue, folded from the socket but held outside the
+  thread's loaded window.
+  */
+  scheduled: ScheduledMessagesController;
+  /**
   Opens a chat at the dialog's read watermarks, reading the first window (a
   linked-post window, the unread boundary, or the newest messages), and answers
   with what it read, so a caller chasing that post (its comments) need not look
@@ -128,6 +134,11 @@ export interface ThreadController {
   jumpToLatest: () => Promise<void>;
   send: (text: string, replyTo?: number) => Promise<void>;
   /**
+  Queues a text message for a future time. Unlike a send it has no optimistic
+  row: the engine's echo folds it into the scheduled queue once accepted.
+  */
+  schedule: (text: string, scheduleDate: number, replyTo?: number) => Promise<void>;
+  /**
   The message this chat is editing, or null while the composer is composing a
   new message. Telegram edits one message at a time, so the view shows a single
   target.
@@ -139,6 +150,10 @@ export interface ThreadController {
   cancels the other.
   */
   startEdit: (message: MessageDto) => void;
+  /**
+  Edits a queued message, keeping its send time.
+  */
+  startScheduledEdit: (message: MessageDto) => void;
   cancelEdit: () => void;
   /**
   Replaces the edited message's text. The composer keeps its draft until

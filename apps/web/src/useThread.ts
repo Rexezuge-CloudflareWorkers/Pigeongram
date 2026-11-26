@@ -24,6 +24,7 @@ import { useMessageEdit } from './useMessageEdit';
 import { useMessageDelete } from './useMessageDelete';
 import { useOutbox } from './useOutbox';
 import { usePollVoting } from './usePollVoting';
+import { useScheduledMessages } from './useScheduledMessages';
 import { useThreadOpen } from './useThreadOpen';
 import { useThreadPaging } from './useThreadPaging';
 import { useThreadPinned } from './useThreadPinned';
@@ -59,7 +60,22 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
   // stale thread would miss it.
   const threadRef = useLatestLayout(thread);
 
-  const edit = useMessageEdit({ setThread, onEdited, onError });
+  const edit = useMessageEdit({
+    setThread,
+    onEdited,
+    onScheduledEdited: (message) => scheduledRef.current?.apply({ type: 'scheduled_edit', message }),
+    onError,
+  });
+  // The queue is folded from the same socket as the thread, but it holds no
+  // messages of the thread's window: a queued message is not in the history.
+  const scheduled = useScheduledMessages({
+    chatId: thread?.chat.id ?? null,
+    enabled: thread !== null && !unavailable,
+    onError,
+    onSent,
+    onEdit: edit.startScheduledEdit,
+  });
+  const scheduledRef = useLatestLayout(scheduled);
 
   // The socket handler is created once, so the deletion report is read through
   // a ref: the shell rebuilds its handler together with the dialogs.
@@ -229,8 +245,11 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
         return;
       }
       if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
+      if (update.type === 'scheduled_new' || update.type === 'scheduled_edit' || update.type === 'scheduled_deleted') {
+        scheduled.apply(update);
+      }
     },
-    [applyPoll, edit, pinned, refreshPoll],
+    [applyPoll, edit, pinned, refreshPoll, scheduled],
   );
 
   return {
@@ -247,6 +266,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     reactingIds,
     votingIds,
     pinnedRevision: pinned.revision,
+    scheduled,
     pressingButtonIds,
     open: openThread,
     close,
@@ -255,6 +275,8 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
     loadNewer,
     jumpToLatest,
     send,
+    schedule: scheduled.schedule,
+    startScheduledEdit: edit.startScheduledEdit,
     editing: edit.editing,
     startEdit: edit.startEdit,
     cancelEdit: edit.cancelEdit,

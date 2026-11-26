@@ -13,6 +13,7 @@ import { Icon } from './Icon';
 import { Presence } from './Presence';
 import { ComposerEdit, ComposerReply } from './ReplyQuote';
 import { ReplyKeyboard } from './ReplyKeyboard';
+import { ScheduleSendButton } from './ScheduleSendButton';
 import { StickerPicker } from './StickerPicker';
 import { UploadDialog } from './UploadDialog';
 import { VoiceRecordingStrip } from './VoiceRecordingStrip';
@@ -52,6 +53,7 @@ interface ComposerProps {
   onSaveEdit?: (text: string) => Promise<void>;
   onCancelEdit?: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
+  onSchedule?: (text: string, scheduleDate: number, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   /**
   Sends a sticker from the picker. The composer supplies the open reply
@@ -73,6 +75,7 @@ export function Composer({
   onSaveEdit,
   onCancelEdit,
   onSend,
+  onSchedule,
   onAttach,
   onSendSticker,
   onPressReplyKeyboard,
@@ -84,16 +87,16 @@ export function Composer({
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [replyKeyboardCollapsed, setReplyKeyboardCollapsed] = useState(true);
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const sendText = (text: string): void => {
+  const sendText = (text: string, at?: number): void => {
     const trimmed = text.trim();
     if (!trimmed) return;
     const replyTo = replyTarget?.id;
     setMenuOpen(false);
     setDraft('');
     textareaRef.current?.focus();
-    // The outbox owns failures: the pending bubble keeps the text and offers
-    // Retry, so restoring the draft here would duplicate the message.
-    void Promise.resolve(onSend(trimmed, replyTo)).catch(() => {});
+    // The outbox owns failures: its pending bubble keeps the text, so restoring
+    // the draft here would duplicate it. A scheduled send's failure is a toast.
+    void Promise.resolve(at === undefined ? onSend(trimmed, replyTo) : onSchedule?.(trimmed, at, replyTo)).catch(() => {});
   };
 
   const picker = useComposerPicker({
@@ -267,6 +270,7 @@ export function Composer({
                 <Icon name="attach" size={18} />
               </button>
             ) : null}
+            {editTarget === null && onSchedule ? <ScheduleSendButton draft={draft} onSchedule={(text, at) => sendText(text, at)} /> : null}
             {commands.showMenu ? (
               <CommandMenu
                 id={commands.listId}

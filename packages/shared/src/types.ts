@@ -831,6 +831,19 @@ Updates pushed over the `/user/updates` WebSocket.
 export type UpdateEvent =
   | { type: 'new_message'; message: MessageDto }
   | { type: 'edit_message'; message: MessageDto }
+  | { type: 'scheduled_new'; message: MessageDto }
+  | { type: 'scheduled_edit'; message: MessageDto }
+  | {
+      type: 'scheduled_deleted';
+      chatId: PeerId;
+      messageIds: number[];
+      /**
+      Live copies of messages that were sent, not merely dropped from the
+      queue. Telegram includes them in a `sendScheduled` answer; a raw delete
+      update names only ids, and the accompanying `new_message` carries the body.
+      */
+      sentMessages?: MessageDto[];
+    }
   | {
       type: 'pinned';
       /**

@@ -40,8 +40,9 @@ function mount() {
   const setThread = vi.fn();
   const onEdited = vi.fn();
   const onError = vi.fn();
-  const hook = renderHook(() => useMessageEdit({ setThread, onEdited, onError }));
-  return { ...hook, setThread, onEdited, onError };
+  const onScheduledEdited = vi.fn();
+  const hook = renderHook(() => useMessageEdit({ setThread, onEdited, onScheduledEdited, onError }));
+  return { ...hook, setThread, onEdited, onScheduledEdited, onError };
 }
 
 describe('useMessageEdit', () => {

@@ -1,6 +1,7 @@
 import type {
   BotCommandDto,
   DeleteMessagesResult,
+  DeleteScheduledMessagesResult,
   EditMessageResult,
   ForwardMessagesResult,
   GetBotCommandsResult,
@@ -8,12 +9,14 @@ import type {
   GetHistoryResult,
   GetPinnedMessagesResult,
   GetPollResultsResult,
+  GetScheduledMessagesResult,
   MessageDto,
   PeerId,
   PressCallbackButtonResult,
   RpcBatchCall,
   SendCommentResult,
   SendMessageResult,
+  SendScheduledResult,
   SendReactionResult,
   SendVoteResult,
   SetMessagePinnedResult,
@@ -155,12 +158,19 @@ export const fetchHistory = (
   options: { limit?: number; offsetId?: number; offsetDate?: number; addOffset?: number; anchorId?: number } = {},
 ): Promise<GetHistoryResult> => rpc('getHistory', { chatId, ...options });
 
-export const sendMessage = (chatId: PeerId, text: string, replyTo?: number, randomId?: string): Promise<SendMessageResult> =>
+export const sendMessage = (
+  chatId: PeerId,
+  text: string,
+  replyTo?: number,
+  randomId?: string,
+  scheduleDate?: number,
+): Promise<SendMessageResult> =>
   rpc('sendMessage', {
     chatId,
     text,
     ...(replyTo !== undefined && { replyTo }),
     ...(randomId !== undefined && { randomId }),
+    ...(scheduleDate !== undefined && { scheduleDate }),
   });
 
 /**
@@ -168,8 +178,27 @@ Replaces the text of one of the account's own messages. The answer is the
 message as Telegram now holds it, `editDate` included, so the caller folds the
 server truth rather than a guess.
 */
-export const editMessage = (chatId: PeerId, messageId: number, text: string): Promise<EditMessageResult> =>
-  rpc('editMessage', { chatId, messageId, text });
+export const editMessage = (chatId: PeerId, messageId: number, text: string, scheduleDate?: number): Promise<EditMessageResult> =>
+  rpc('editMessage', { chatId, messageId, text, ...(scheduleDate !== undefined && { scheduleDate }) });
+
+/**
+Reads the chat's scheduled queue. Like the pinned list, this is an on-demand
+read: opening a thread does not pay for a queue the reader never opens.
+*/
+export const fetchScheduledMessages = (chatId: PeerId): Promise<GetScheduledMessagesResult> => rpc('getScheduledMessages', { chatId });
+
+/**
+Drops scheduled messages without sending them.
+*/
+export const deleteScheduledMessages = (chatId: PeerId, messageIds: readonly number[]): Promise<DeleteScheduledMessagesResult> =>
+  rpc('deleteScheduledMessages', { chatId, messageIds: [...messageIds] });
+
+/**
+Sends scheduled messages ahead of their time. The answer carries the live
+copies so the requesting tab can fold them without waiting for a raw update.
+*/
+export const sendScheduled = (chatId: PeerId, messageIds: readonly number[]): Promise<SendScheduledResult> =>
+  rpc('sendScheduled', { chatId, messageIds: [...messageIds] });
 
 /**
 Forwards messages from their source chat into another chat. An album sends

@@ -173,6 +173,14 @@ export interface ThreadViewProps {
   onJumpToLatest: () => Promise<void>;
   onSend: (text: string, replyTo?: number) => Promise<void>;
   /**
+  Queues the draft for a future send time instead of sending it now.
+  */
+  onSchedule: (text: string, scheduleDate: number, replyTo?: number) => Promise<void>;
+  /**
+  Opens the chat's scheduled queue from the header's menu.
+  */
+  onOpenScheduled: () => void;
+  /**
   The message the composer is editing, or null when it is composing a new
   message.
   */

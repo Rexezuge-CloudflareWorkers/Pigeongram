@@ -65,6 +65,7 @@ function renderHeader(
     onSearch?: () => void;
     onCall?: () => void;
     callActive?: boolean;
+    onOpenScheduled?: () => void;
   } = {},
 ): void {
   render(
@@ -78,6 +79,7 @@ function renderHeader(
       onSearch={options.onSearch ?? (() => {})}
       onCall={options.onCall ?? (() => {})}
       callActive={options.callActive ?? false}
+      onOpenScheduled={options.onOpenScheduled ?? (() => {})}
     />,
   );
 }
@@ -194,6 +196,7 @@ describe('ThreadHeader', () => {
         onSearch={() => {}}
         onCall={() => {}}
         callActive={false}
+        onOpenScheduled={() => {}}
       />,
     );
 
@@ -214,6 +217,7 @@ describe('ThreadHeader', () => {
         onSearch={() => {}}
         onCall={() => {}}
         callActive={false}
+        onOpenScheduled={() => {}}
       />,
     );
 

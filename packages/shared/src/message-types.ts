@@ -22,6 +22,13 @@ export interface SendMessageParams {
   A retry reuses it so an accepted send is not duplicated.
   */
   randomId?: string;
+  /**
+  Unix milliseconds in UTC at which Telegram should send the message instead
+  of sending it now. The engine refuses a time that has passed or lies beyond
+  its scheduling horizon. A retry reuses the same `randomId` with the same
+  time, so a request Telegram already accepted cannot send twice.
+  */
+  scheduleDate?: number;
 }
 
 /**
@@ -43,6 +50,11 @@ export interface EditMessageParams {
   non-empty.
   */
   text: string;
+  /**
+  For an edit of a scheduled message, the new send time in unix milliseconds.
+  Omitting it keeps the message's current slot.
+  */
+  scheduleDate?: number;
 }
 
 export interface EditMessageResult {
@@ -50,6 +62,49 @@ export interface EditMessageResult {
   The message as Telegram now holds it, `editDate` included.
   */
   message: MessageDto;
+  /**
+  Whether the message belongs to the account's scheduled queue. The engine sets
+  it so other tabs can tell a scheduled write from an ordinary one.
+  */
+  scheduled?: boolean;
+}
+
+/**
+Reads one page of a chat's scheduled messages, newest first by send time.
+*/
+export interface GetScheduledMessagesParams {
+  chatId: PeerId;
+}
+
+export interface GetScheduledMessagesResult {
+  messages: MessageDto[];
+}
+
+/**
+Removes scheduled messages without sending them.
+*/
+export interface DeleteScheduledMessagesParams {
+  chatId: PeerId;
+  messageIds: number[];
+}
+
+export interface DeleteScheduledMessagesResult {
+  chatId: PeerId;
+  messageIds: number[];
+}
+
+/**
+Sends scheduled messages now. The answer carries the live copies Telegram made.
+*/
+export interface SendScheduledParams {
+  chatId: PeerId;
+  messageIds: number[];
+}
+
+export interface SendScheduledResult {
+  chatId: PeerId;
+  messageIds: number[];
+  messages: MessageDto[];
 }
 
 /**
@@ -182,6 +237,10 @@ export interface GetPollResultsParams {
 
 export interface SendMessageResult {
   message: MessageDto;
+  /**
+  Whether this is a queued message rather than one sent now.
+  */
+  scheduled?: boolean;
 }
 
 export interface ForwardMessagesResult {

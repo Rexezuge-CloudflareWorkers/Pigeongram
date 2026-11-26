@@ -26,6 +26,11 @@ interface MessageEditController {
   clears it before calling this.
   */
   startEdit: (message: MessageDto) => void;
+  /**
+  Edits a queued message: the same composer, but Save carries the message's
+  future send time back to the scheduled queue instead of the thread.
+  */
+  startScheduledEdit: (message: MessageDto) => void;
   cancelEdit: () => void;
   /**
   Replaces the edited message's text. The composer keeps its draft until this
@@ -54,11 +59,16 @@ interface UseMessageEditOptions {
   copy, exactly as a live edit from another device would repair it.
   */
   onEdited: (message: MessageDto) => void;
+  /**
+  An accepted edit of a queued message, folded into the scheduled queue.
+  */
+  onScheduledEdited: (message: MessageDto) => void;
   onError: (error: unknown) => void;
 }
 
-export function useMessageEdit({ setThread, onEdited, onError }: UseMessageEditOptions): MessageEditController {
+export function useMessageEdit({ setThread, onEdited, onScheduledEdited, onError }: UseMessageEditOptions): MessageEditController {
   const [editing, setEditing] = useState<MessageDto | null>(null);
+  const scheduledRef = useRef(false);
 
   // The socket handler is created once, so the edit target is read through a
   // ref: a live edit refreshes the open editor, and a delete closes it.
@@ -68,14 +78,22 @@ export function useMessageEdit({ setThread, onEdited, onError }: UseMessageEditO
   }, [editing]);
 
   const startEdit = useCallback((message: MessageDto): void => {
+    scheduledRef.current = false;
+    setEditing(message);
+  }, []);
+
+  const startScheduledEdit = useCallback((message: MessageDto): void => {
+    scheduledRef.current = true;
     setEditing(message);
   }, []);
 
   const cancelEdit = useCallback((): void => {
+    scheduledRef.current = false;
     setEditing(null);
   }, []);
 
   const reset = useCallback((): void => {
+    scheduledRef.current = false;
     setEditing(null);
   }, []);
 
@@ -84,10 +102,11 @@ export function useMessageEdit({ setThread, onEdited, onError }: UseMessageEditO
   }, []);
 
   const forget = useCallback((chatId: PeerId | null, messageIds: readonly number[]): void => {
-    setEditing((current) => {
-      if (current === null || !messageIds.includes(current.id)) return current;
-      return chatId === null || chatId === current.chatId ? null : current;
-    });
+    const target = editingRef.current;
+    if (target === null || !messageIds.includes(target.id)) return;
+    if (chatId !== null && chatId !== target.chatId) return;
+    scheduledRef.current = false;
+    setEditing(null);
   }, []);
 
   const saveEdit = useCallback(
@@ -102,18 +121,24 @@ export function useMessageEdit({ setThread, onEdited, onError }: UseMessageEditO
         setEditing(null);
         return Promise.resolve();
       }
-      return editMessage(target.chatId, target.id, next)
+      const scheduled = scheduledRef.current;
+      const saving = scheduled ? editMessage(target.chatId, target.id, next, target.date) : editMessage(target.chatId, target.id, next);
+      return saving
         .then((result) => {
-          setThread((current) => applyThreadEdit(current, result.message));
+          if (scheduled) onScheduledEdited(result.message);
+          else {
+            setThread((current) => applyThreadEdit(current, result.message));
+            onEdited(result.message);
+          }
+          scheduledRef.current = false;
           setEditing(null);
-          onEdited(result.message);
         })
         .catch((failure: unknown) => {
           onError(failure);
         });
     },
-    [setThread, onEdited, onError],
+    [setThread, onEdited, onScheduledEdited, onError],
   );
 
-  return { editing, startEdit, cancelEdit, saveEdit, reset, refresh, forget };
+  return { editing, startEdit, startScheduledEdit, cancelEdit, saveEdit, reset, refresh, forget };
 }

@@ -10,6 +10,7 @@ import {
   optionalInt,
   optionalMessageId,
   optionalRandomId,
+  optionalScheduleDate,
   optionalText,
   requireBoolean,
   requireCallbackData,
@@ -58,14 +59,13 @@ export const messagesRpcMethods = {
       const text = requireText(params.text);
       const replyTo = optionalMessageId(params.replyTo);
       const randomId = optionalRandomId(params.randomId);
-      return {
-        message: toMessageDto(
-          await context.client.sendText(chatId, text, {
-            ...(replyTo !== undefined && { replyTo }),
-            ...(randomId !== undefined && { randomId }),
-          }),
-        ),
-      };
+      const scheduleDate = optionalScheduleDate(params.scheduleDate);
+      const message = await context.client.sendText(chatId, text, {
+        ...(replyTo !== undefined && { replyTo }),
+        ...(randomId !== undefined && { randomId }),
+        ...(scheduleDate !== undefined && { schedule: new Date(scheduleDate) }),
+      });
+      return { message: toMessageDto(message), ...(scheduleDate !== undefined && { scheduled: true }) };
     },
   },
 
@@ -75,9 +75,14 @@ export const messagesRpcMethods = {
       const chatId = requirePeerId(params.chatId);
       const messageId = requireMessageId(params.messageId);
       const text = requireText(params.text);
-      return {
-        message: toMessageDto(await context.client.editMessage({ chatId, message: messageId, text })),
-      };
+      const scheduleDate = optionalScheduleDate(params.scheduleDate);
+      const message = await context.client.editMessage({
+        chatId,
+        message: messageId,
+        text,
+        ...(scheduleDate !== undefined && { scheduleDate: new Date(scheduleDate) }),
+      });
+      return { message: toMessageDto(message), ...(scheduleDate !== undefined && { scheduled: true }) };
     },
   },
 

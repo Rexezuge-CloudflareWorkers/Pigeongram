@@ -54,6 +54,10 @@ interface ThreadHeaderProps {
   Whether a call is already up; the button is disabled until it ends.
   */
   callActive: boolean;
+  /**
+  Opens the chat's scheduled queue.
+  */
+  onOpenScheduled: () => void;
 }
 
 /**
@@ -72,6 +76,7 @@ export function ThreadHeader({
   onSearch,
   onCall,
   callActive,
+  onOpenScheduled,
 }: ThreadHeaderProps) {
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -222,6 +227,18 @@ export function ThreadHeader({
           >
             <Icon name="person" className="text-muted" />
             <span>View Profile</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
+            onClick={() => {
+              setMenuOpen(false);
+              onOpenScheduled();
+            }}
+          >
+            <Icon name="schedule" className="text-muted" />
+            <span>Scheduled Messages</span>
           </button>
           {username ? (
             <button

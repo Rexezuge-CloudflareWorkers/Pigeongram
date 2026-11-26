@@ -5,7 +5,7 @@ import { EngineError } from './errors';
 import type { MediaRange } from './media-window';
 import { planWindow } from './media-window';
 import type { MediaTargetCache } from './media-targets';
-import { windowedStream } from './media-stream';
+import { DOWNLOAD_BUFFER_BYTES, RANGE_BUFFER_BYTES, windowedStream } from './media-stream';
 import type { StickerRegistry } from './sticker-registry';
 import { resolveQuality } from './media-quality';
 import { webPagePhoto } from './web-page';
@@ -240,7 +240,13 @@ function fullDownload(
   const fileSize = location.fileSize ?? null;
   const size = exactSize ? fileSize : null;
   return {
-    stream: windowedStream(client, location, { offset: 0, drop: 0, length: fileSize, onSourceError }),
+    stream: windowedStream(client, location, {
+      offset: 0,
+      drop: 0,
+      length: fileSize,
+      bufferBytes: DOWNLOAD_BUFFER_BYTES,
+      onSourceError,
+    }),
     mime,
     size,
     length: fileSize,
@@ -273,6 +279,7 @@ function rangedDownload(
       drop: plan.drop,
       length: plan.length,
       partSize: plan.partSize,
+      bufferBytes: Math.min(RANGE_BUFFER_BYTES, plan.length),
       onSourceError,
     }),
     mime,

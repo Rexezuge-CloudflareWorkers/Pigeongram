@@ -237,6 +237,32 @@ describe('uploadGroupResponse', () => {
     expect(sendUploadGroup.mock.calls[0]?.[1]).toBeInstanceOf(ReadableStream);
   });
 
+  it('400s a body longer than the manifest declares', async () => {
+    const sendUploadGroup = vi.fn(async (_spec: UploadGroupSpec, body: ReadableStream<Uint8Array>) => {
+      const reader = body.getReader();
+      try {
+        while (!(await reader.read()).done) {
+          // Drain so the counting stream sees the whole body.
+        }
+      } catch {
+        // The stream reports the mismatch as a typed 400.
+      }
+      return [];
+    });
+    const driver = { sendUploadGroup } as unknown as TelegramDriver;
+    const manifest = Buffer.from(JSON.stringify([{ kind: 'document', size: 2, fileName: 'a.txt', mime: 'text/plain' }])).toString(
+      'base64url',
+    );
+    const { url } = target(`/user/upload-group?chatId=1&manifest=${manifest}`);
+    const upload = new Request(url, {
+      method: 'POST',
+      body: 'a much longer body than the manifest declares',
+      headers: { 'content-type': 'application/octet-stream' },
+    });
+
+    await expect(uploadGroupResponse(driver, upload, url, { maxUploadBytes: 100 })).rejects.toMatchObject({ status: 400 });
+  });
+
   it('400s an invalid manifest before the driver sees it', async () => {
     const sendUploadGroup = vi.fn();
     const driver = { sendUploadGroup } as unknown as TelegramDriver;

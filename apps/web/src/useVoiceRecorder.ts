@@ -67,10 +67,17 @@ export function useVoiceRecorder({ onRecorded, onError, maxSeconds = VOICE_MAX_S
     recordingRef.current = null;
     setState('idle');
     setSeconds(0);
-    void recording.stop().then((voice) => {
-      if (!mounted.current) return;
-      if (voice !== null) recordedRef.current(voice);
-    });
+    void recording
+      .stop()
+      .then((voice) => {
+        if (!mounted.current) return;
+        if (voice !== null) recordedRef.current(voice);
+      })
+      .catch((failure: unknown) => {
+        // An encoder failure is a failed recording, not an unhandled
+        // rejection: the composer shows it in its inline alert.
+        if (mounted.current) errorRef.current(failure instanceof Error ? failure.message : String(failure));
+      });
   }, []);
 
   const cancel = useCallback((): void => {

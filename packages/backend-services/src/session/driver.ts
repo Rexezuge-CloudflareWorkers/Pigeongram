@@ -11,12 +11,14 @@ import type { AvatarImage } from './media';
 import { MediaTargetCache } from './media-targets';
 import { CallRegistry } from './call-registry';
 import { sendCallSignaling } from './call-rpc';
+import { log } from './log';
 import type { UploadGroupSpec, UploadSpec } from './upload-spec';
 import { sendUploadedMedia, sendUploadedMediaGroup } from './upload';
 import { createMtBundle } from '@pigeongram/provider-clients/mtproto/client';
 import type { MtBundle } from '@pigeongram/provider-clients/mtproto/client';
 import type { TransactionalStorageLike } from '@pigeongram/provider-clients/mtproto/sqlite';
 import { peerIdsIn, withPeerRetry } from './peers';
+import { CATCH_UP_TIMEOUT_MS } from './policy';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
 import { StickerRegistry } from './sticker-registry';
@@ -103,8 +105,11 @@ export class TelegramDriver {
       let mapped: UpdateEvent | null = null;
       try {
         mapped = mapRawUpdate(info, this.#calls);
-      } catch {
-        // A mapping failure must never break mtcute's update machinery.
+      } catch (error) {
+        // A mapping failure must never break mtcute's update machinery, but
+        // it must leave a queryable line: otherwise a silently dropped event
+        // looks like Telegram never sent one.
+        log.warn('update.map_failed', { error });
         mapped = null;
       }
       if (mapped?.type === 'call') {
@@ -131,15 +136,19 @@ export class TelegramDriver {
     if (corrected) {
       try {
         corrected = this.#albums.apply(corrected);
-      } catch {
-        // Keep the uncorrected event rather than dropping it.
+      } catch (error) {
+        // Keep the uncorrected event rather than dropping it, and report why
+        // the album ledger could not be applied.
+        log.warn('update.ledger_failed', { error });
       }
     }
     for (const listener of this.#listeners) {
       try {
         listener(corrected);
-      } catch {
-        // Listener failures are isolated the same way.
+      } catch (error) {
+        // Listener failures are isolated the same way, but the engine must
+        // still be able to see one in Workers Logs.
+        log.warn('update.listener_failed', { error });
       }
     }
   }
@@ -266,7 +275,7 @@ export class TelegramDriver {
   and the code marks the failure as retryable. It is diagnostic text only:
   the app-facing sentence is chosen where the failure is broadcast.
   */
-  async catchUp(timeoutMs = 25_000): Promise<void> {
+  async catchUp(timeoutMs = CATCH_UP_TIMEOUT_MS): Promise<void> {
     const { base } = this.#ensure();
     if (!base.isConnected) {
       throw new EngineError('Not connected to any DC', 503, 'unavailable');
@@ -284,12 +293,19 @@ export class TelegramDriver {
     const grace = setTimeout(() => {
       if (!catchingUp) settle();
     }, 3000);
+    // The timeout only releases the race; it must not keep a `waitUntil`
+    // event alive for the full 25 seconds after a fast, successful replay.
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<void>((resolve) => {
+      deadline = setTimeout(resolve, timeoutMs);
+    });
     try {
       await base.startUpdatesLoop();
       base.updates?.catchUp();
-      await Promise.race([settled, delay(timeoutMs)]);
+      await Promise.race([settled, timedOut]);
     } finally {
       clearTimeout(grace);
+      if (deadline !== undefined) clearTimeout(deadline);
       base.onConnectionState.remove(handler);
     }
   }
@@ -308,9 +324,6 @@ export class TelegramDriver {
     return result;
   }
 
-  /**
-  Relays one signalling packet to the other peer of a call.
-  */
   async sendCallSignaling(callId: string, data: Uint8Array): Promise<void> {
     await sendCallSignaling(this.#ensure().client, this.#calls, callId, data);
   }
@@ -338,9 +351,6 @@ export class TelegramDriver {
     return withPeerRetry(client, [chatId], () => readAvatar(client, chatId, size));
   }
 
-  /**
-  The version token of a profile photo, without reading its bytes.
-  */
   async readAvatarVersion(chatId: number, size: AvatarSize): Promise<string | null> {
     const { client } = this.#ensure();
     return withPeerRetry(client, [chatId], () => readAvatarVersion(client, chatId, size));
@@ -381,10 +391,4 @@ export class TelegramDriver {
       }
     }
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }

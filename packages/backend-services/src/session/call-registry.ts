@@ -3,6 +3,15 @@ import { EngineError } from './errors';
 import { callAccessHash } from './call-dto';
 
 /**
+How many call hashes a live isolate keeps.
+
+A call is remembered until it is discarded, but that discard is not
+guaranteed to arrive (a browser can disappear mid-call). An LRU bound keeps
+a long-lived isolate from accumulating every call the account has ever seen.
+*/
+const MAX_CALLS = 64;
+
+/**
 The calls the engine knows about.
 
 A call is addressed by its id and an access hash, and the access hash is
@@ -27,7 +36,15 @@ export class CallRegistry {
   remember(call: tl.TypePhoneCall): void {
     const accessHash = callAccessHash(call);
     if (accessHash === null) return;
-    this.#accessHashes.set(call.id.toString(), accessHash);
+    const key = call.id.toString();
+    // Map iteration order is insertion order, so the first key is the least
+    // recently used one. Re-inserting an existing key refreshes its position.
+    this.#accessHashes.delete(key);
+    if (this.#accessHashes.size >= MAX_CALLS) {
+      const oldest = this.#accessHashes.keys().next();
+      if (!oldest.done) this.#accessHashes.delete(oldest.value);
+    }
+    this.#accessHashes.set(key, accessHash);
   }
 
   /**
@@ -42,6 +59,10 @@ export class CallRegistry {
     if (accessHash === undefined) {
       throw new EngineError(`Unknown call: ${callId}`, 404);
     }
+    // A lookup is a use: refresh its position so a call still being signalled
+    // is not the one evicted when the registry fills.
+    this.#accessHashes.delete(callId);
+    this.#accessHashes.set(callId, accessHash);
     return accessHash;
   }
 

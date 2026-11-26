@@ -18,7 +18,7 @@ you are setting up an instance.
 ```bash
 pnpm run checks:fast  # typecheck, lint, formatting, and repository checks
 pnpm run test         # unit tests
-pnpm run build        # build all packages
+pnpm run build        # build the web app (the other workspace packages are type-checked only)
 ```
 
 ## Documentation

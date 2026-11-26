@@ -237,7 +237,8 @@ export const deleteMessages = (chatId: PeerId, messageIds: readonly number[]): P
 /**
 Presses an inline callback button. The payload is the base64 string the
 message's button carried; the bridge decodes it and forwards it unchanged.
-*/ export const pressCallbackButton = (chatId: PeerId, messageId: number, data: string): Promise<PressCallbackButtonResult> =>
+*/
+export const pressCallbackButton = (chatId: PeerId, messageId: number, data: string): Promise<PressCallbackButtonResult> =>
   rpc('pressCallbackButton', { chatId, messageId, data });
 
 /**

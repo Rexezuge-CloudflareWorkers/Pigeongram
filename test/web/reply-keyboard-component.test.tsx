@@ -61,6 +61,13 @@ describe('ReplyKeyboard', () => {
     expect(document.querySelector('iframe')).toBeNull();
   });
 
+  it('renders a bot-supplied unsafe web view URL as inert text', () => {
+    renderKeyboard([[{ text: 'Unsafe', style: null, kind: 'webview', url: 'javascript:alert(1)' }]]);
+
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('Unsafe').tagName).toBe('SPAN');
+  });
+
   it('applies the requested emphasis to a button', () => {
     renderKeyboard([
       [{ text: 'Go', style: 'primary', kind: 'text' }],

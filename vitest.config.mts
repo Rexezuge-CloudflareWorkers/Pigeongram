@@ -30,10 +30,10 @@ export default defineRepoVitestConfig({
   // regress below it.
   thresholds: {
     // Global safety net, ratcheted to the suite's current coverage.
-    lines: 94,
+    lines: 95,
     statements: 92,
-    branches: 85,
-    functions: 91,
+    branches: 87,
+    functions: 92,
 
     // Pure validation / DTO layer.
     'packages/shared/src/**': {
@@ -51,18 +51,13 @@ export default defineRepoVitestConfig({
       lines: 85,
     },
 
-    // Calls subsystem.
+    // Calls subsystem. Every call module lives at the session root and is
+    // covered by `call*.ts`; there is no `calls/` directory to gate.
     'packages/backend-services/src/session/call*.ts': {
       statements: 80,
       branches: 75,
       functions: 85,
       lines: 80,
-    },
-    'packages/backend-services/src/session/calls/**': {
-      statements: 90,
-      branches: 90,
-      functions: 90,
-      lines: 90,
     },
 
     // Driver (gateway-level tests).
@@ -95,6 +90,22 @@ export default defineRepoVitestConfig({
       branches: 70,
       functions: 75,
       lines: 75,
+    },
+
+    // The glob groups above are aggregates: a module at 0% can hide inside a
+    // passing group. These per-file floors name the modules that were weakest
+    // when the aggregate gates were introduced, so a regression in one of them
+    // fails the build instead of being averaged away. Phase 5 tests lift them.
+    perFile: {
+      'apps/web/src/recorder-loader.ts': { lines: 100, functions: 100 },
+      'apps/web/src/api/stickers.ts': { lines: 100, branches: 100, functions: 100 },
+      'apps/web/src/calls/api.ts': { functions: 100 },
+      'apps/web/src/useMessageEdit.ts': { lines: 100, branches: 90, functions: 90 },
+      'apps/web/src/useDeletionReport.ts': { lines: 100, functions: 100 },
+      'apps/web/src/components/CommandMenu.tsx': { lines: 60, functions: 60 },
+      'packages/backend-services/src/session/stats.ts': { lines: 95, branches: 70, functions: 100 },
+      'packages/backend-services/src/session/rpc-dialogs.ts': { lines: 85, branches: 85, functions: 65 },
+      'packages/backend-services/src/session/container.ts': { lines: 90, branches: 100, functions: 90 },
     },
   },
 });

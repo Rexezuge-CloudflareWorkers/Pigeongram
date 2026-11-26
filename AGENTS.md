@@ -6,10 +6,10 @@ file records the architecture, the load-bearing invariants, and the house conven
 ## Overview
 
 **Pigeongram** (repository `Telegram-Web-Client`; internal identifiers keep `telegram-web-client`) is an always-online
-Telegram web client on Cloudflare. The worker (`worker/`) is the backend —
+Telegram web client on Cloudflare. The worker (`apps/api/`) is the backend —
 a Hono API and a Durable Object (`SessionEngine`) that owns one Telegram account's MTProto session: a 5-minute alarm
 wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect (the always-reachable baseline), and
-while a browser socket is attached it holds the session live and pushes updates. The Pages app (`pages/`) is the Vite +
+while a browser socket is attached it holds the session live and pushes updates. The Pages app (`apps/web/`) is the Vite +
 React front end (public intro, QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
 and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
 One account, single user, Free-tier-first: the 10 ms CPU per invocation and the 100,000 rows written/day limits are the
@@ -21,18 +21,18 @@ configuration and first-deploy steps live in `docs/DEPLOYMENT.md`.
 House toolchain: Node 24 and pnpm 11.2.2 are Volta-managed (`~/.customrc` is sourced by the login shell; `volta run`
 honours the `packageManager` pin). Every command below also works as `volta run pnpm …`.
 
-| Command                           | What it does                                                                                                      |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `pnpm install`                    | Installs the workspace and runs `postinstall` → `pnpm run typegen`                                                |
-| `pnpm run typegen`                | Regenerates `worker-configuration.d.ts` from `worker/wrangler.template.jsonc`                                     |
-| `pnpm run typecheck`              | `pnpm -r typecheck` (worker, pages, test) + `typecheck:scripts` + `typecheck:functions` + `typecheck:pages-build` |
-| `pnpm run lint`                   | `eslint --fix --quiet .` under `--max-old-space-size=6144`                                                        |
-| `pnpm run format:check`           | `prettier --check .` (read-only; the CI formatting gate)                                                          |
-| `pnpm run check:god-files`        | 300-line warn / 400-line hard gate (`--fail-on-hard`), tests and `scripts/` exempt                                |
-| `pnpm run check:dead-code`        | `knip`: unused files, dependencies and exports (`knip.json` records the entries and the copied-script exemption)  |
-| `pnpm run test` / `test:coverage` | Vitest, both projects (worker under `node`, SPA under jsdom)                                                      |
-| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files + dead-code                                                           |
-| `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                                                   |
+| Command                           | What it does                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`                    | Installs the workspace and runs `postinstall` → `pnpm run typegen`                                                        |
+| `pnpm run typegen`                | Regenerates `worker-configuration.d.ts` from `apps/api/wrangler.template.jsonc`                                           |
+| `pnpm run typecheck`              | `pnpm -r typecheck` (all workspace packages + test) + `typecheck:scripts` + `typecheck:functions` + `typecheck:web-build` |
+| `pnpm run lint`                   | `eslint --fix --quiet .` under `--max-old-space-size=6144`                                                                |
+| `pnpm run format:check`           | `prettier --check .` (read-only; the CI formatting gate)                                                                  |
+| `pnpm run check:god-files`        | 300-line warn / 400-line hard gate (`--fail-on-hard`), tests and `scripts/` exempt                                        |
+| `pnpm run check:dead-code`        | `knip`: unused files, dependencies and exports (`knip.json` records the entries and the copied-script exemption)          |
+| `pnpm run test` / `test:coverage` | Vitest, both projects (worker under `node`, SPA under jsdom)                                                              |
+| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files + dead-code                                                                   |
+| `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                                                           |
 
 ## Local development
 
@@ -61,24 +61,24 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
 
 ### Layout
 
-- `worker/` — the API worker. `src/index.ts` is the Hono entry (public `/api/health`, the Cloudflare Access JWT gate on
-  `/user/*`, forwarding to the DO) and re-exports `SessionEngine`; wrangler discovers the DO class through that export.
-  `src/access.ts` verifies the Access assertion with `jose` (signature, issuer, AUD, expiry; JWKS cached per team
-  domain). `src/session/` holds the engine (`engine.ts`), its bridge modules (`rpc`, `dto`, `params`, `updates`,
-  `media`, `comments`, `stats`, `login-flow`, `driver`, `http`, `config`, `log`, `socket-hub`, `unread-albums`,
-  `resolve-chat`, `call-{rpc,dto,params,
-protocol,registry}`) and the mtcute integration
-  (`mtproto/{client,crypto,transport,sqlite,platform}.ts`). The bridge contract is `src/types.ts` (the DTOs) plus
-  `src/rpc-types.ts` (the RPC method shapes), both mirrored in the SPA; the calls' half is `src/call-types.ts`
-  (the call DTOs and the `call.*` method shapes), mirrored as `pages/src/call-types.ts`. `wrangler.template.jsonc`
-  declares the DO
+- `apps/api/` — the API worker. `src/index.ts` is the entry; `src/workers/ApiWorker.ts` owns the Hono app, `src/endpoints/`
+  the route table and handlers (`/api/health` public, `/user/*` behind the Access gate, then the DO proxy), and
+  `src/middleware/` the correlation, origin and Access checks. `apps/api/wrangler.template.jsonc` declares the DO
   binding (`SESSION_ENGINE`), the `v1` SQLite migration, `workers_dev: false` and `WAKE_INTERVAL_SECONDS`; the
   deployment-specific `TEAM_DOMAIN`/`POLICY_AUD` come from `WRANGLER_VARS_PATCH_JSON` and are declared in
-  `src/env.d.ts`.
-- `pages/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
+  `packages/backend-runtime/src/env.d.ts`. The worker re-exports `SessionEngine` so wrangler discovers the class.
+- `packages/` — `backend-services/src/session/` holds the engine (`engine.ts`) and its bridge modules (`rpc*`, `dto*`,
+  `params`, `updates`, `media*`, `comments`, `stats`, `login-*`, `driver*`, `http`, `config`, `log`, `socket-hub`,
+  `unread-albums`, `peers`, `archive`, `pin`, `call-*`); `provider-clients/src/mtproto/` holds the mtcute integration
+  (`client`, `crypto`, `transport`, `sqlite`, `platform`); `backend-runtime/src/` is the platform seam (`base`, `config`,
+  `di`, `constants`, `env.d.ts`); `shared/src/` is the single-sourced bridge contract (DTOs, RPC shapes, error codes,
+  search, chat links, stickers and calls), re-exported by thin barrels in the apps. The engine's constructor is the
+  DI composition root (`session/container.ts`): collaborators are bound once by branded token and resolved through the
+  container, with `EngineDeps` overriding the three test seams.
+- `apps/web/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, whose domain calls live in `api/`
-  and are re-exported from the barrel, `state.ts` the chat-list
-  reducers, `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
+  and are re-exported from the barrel, `state/index.ts` the chat-list folds (with the pure reaction and poll folds in
+  `state/reactions.ts` and `state/polls.ts`), `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
   and the archive move — `useNewChat.ts` the new-message picker's contacts and Telegram-wide search,
   `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is
@@ -99,7 +99,7 @@ protocol,registry}`) and the mtcute integration
   from `useLoginFlow`'s `access: 'checking' | 'anonymous' | 'authenticated' | 'offline'`. `App.tsx` is only that picker
   (the login flow, `usePwa` and the height cap); the signed-in plane is `components/SignedInShell.tsx`, whose routing —
   the route, the archive screen, the viewer layer, links and read receipts — is `useSignedInNavigation.ts`.
-  **UI chrome uses one icon set**: `pages/src/components/Icon.tsx` is the only place an interface
+  **UI chrome uses one icon set**: `apps/web/src/components/Icon.tsx` is the only place an interface
   icon is drawn — a filled 24-unit Material set, `currentColor`, `data-icon` for tests, decorative unless given a
   `label`. A new affordance adds an `IconName`, never another inline `<svg>`, a font glyph or an emoji; emoji are content
   (Telegram reactions and message text), not chrome. A successful
@@ -132,12 +132,13 @@ protocol,registry}`) and the mtcute integration
   assets.
 - `android/` — `twa-manifest.template.json`, the deployment-agnostic Trusted Web Activity shell. The generated Gradle
   project is produced under `android/build/` in CI and is never committed.
-- `functions/` — Pages Functions, always at the **repo root** (not under `pages/`), because the config wrangler reads
+- `functions/` — Pages Functions, always at the **repo root** (not under `apps/web/`), because the config wrangler reads
   for them is the materialized root `wrangler.jsonc`. `api/[[path]].ts` and `user/[[path]].ts` are pass-throughs to
   `env.API_WORKER`; they must not import workspace packages (Pages bundles them separately).
-- `docs/` — `session-engine.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
-  troubleshooting. `pwa.md`: the service worker's rules, the install build, the offline state, and how to verify it.
-  `android.md`: the per-deployment TWA build, signing, Play notes and trust model. `TELEGRAM_WIDGETS.md`: why a widget
+- `docs/` — `SESSION_ENGINE.md`: engine architecture, bridge API table, local dev, M1 spike + M2 soak runbooks,
+  troubleshooting. `PWA.md`: the service worker's rules, the install build, the offline state, and how to verify it.
+  `ANDROID.md`: the per-deployment TWA build, signing, Play notes and trust model. `DEPLOYMENT.md`: deployment config,
+  secrets/variables and required checks. `TELEGRAM_WIDGETS.md`: why a widget
   post arrives with no content, what the placeholder card is, and the layer-233 upgrade path.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
@@ -145,7 +146,7 @@ protocol,registry}`) and the mtcute integration
 - `scripts/` — copies of `@rexezuge/tooling`'s entrypoints (`check-god-files.ts`, `prepare-wrangler-config.ts`) plus their
   import closure (`lib/`, `wrangler-config/`). They are copies on purpose (the kit documents repository-local copies as the
   intended use) and carry two local adaptations, both marked with an "Adapted from the kit" comment:
-  1. `wrangler-config/types.ts` — the template default is `worker/wrangler.template.jsonc`.
+  1. `wrangler-config/types.ts` — the template default is `apps/api/wrangler.template.jsonc`.
   2. `prepare-wrangler-config.ts` — `provisionWranglerResources({})`, because this worker has no KV cache binding and must
      not have the family default (`CACHE`) added to its config.
      On a `@rexezuge/tooling` bump, diff and re-sync these files.
@@ -167,10 +168,10 @@ protocol,registry}`) and the mtcute integration
   forbid a third-party product from using “Telegram” in its name, so every user-visible brand surface — the document
   title, the PWA `name`/`short_name`, the intro and offline eyebrow, and the Android app/launcher defaults — reads
   `Pigeongram`. Descriptive references to the service (“Sign In To Telegram”, “Open In Telegram”) stay. The repository,
-  the `@telegram-web-client/*` packages, the worker and Pages project names,
+  the `@pigeongram/*` packages, the worker and Pages project names,
   `history.state.app === 'telegram-web-client'`, the `/api/health` `service` value and `TELEGRAM_API_*` are identifiers,
   not branding; renaming one is a migration. The Pages build resolves `VITE_APP_NAME`/`VITE_APP_SHORT_NAME` in
-  `pages/branding.ts` (default Pigeongram) and applies them through `pages/src/app-name.ts`, `createManifest` and
+  `apps/web/branding.ts` (default Pigeongram) and applies them through `apps/web/src/app-name.ts`, `createManifest` and
   `pwaBrandingPlugin`; CD passes the repository variables of the same names, and the Android workflow uses its own
   `ANDROID_APP_NAME`/`ANDROID_LAUNCHER_NAME` first, then those variables, then Pigeongram.
 - **`wrangler.jsonc` is materialized at the repo root, never committed.** Both templates and every path inside them are
@@ -220,7 +221,7 @@ protocol,registry}`) and the mtcute integration
 - **The service worker never caches the account plane.** The worker is registered at the root (`/sw.js`, scope `/`), so
   it sees every request the page makes, and it answers the API plane from the network only: `/user/*` carries the
   account's data and the Cloudflare Access session, and a cached response would put one account's chats where the next
-  reader could reach them. The rule lives in `pages/sw/routes.ts` as a pure function and is asserted by
+  reader could reach them. The rule lives in `apps/web/sw/routes.ts` as a pure function and is asserted by
   `test/pwa/routes.test.ts`. The navigation case matters most: `/user/login` is where Access runs its login flow, so a
   navigation to it must reach the edge — answering it with the precached shell would swallow the redirect and the
   sign-in would never happen. Every other navigation falls back to the precached `index.html`, which is the document
@@ -237,7 +238,7 @@ protocol,registry}`) and the mtcute integration
   browser's `online` event).
 - **The Android wrapper is a per-deployment TWA, not a bundled app.** The shell's host, package id and signing key are
   compiled into the APK, and Chrome only hides the URL bar when the origin serves a Digital Asset Links statement that
-  names the package and the certificate. `pages/build/pwa/assetlinks.ts` generates `/.well-known/assetlinks.json` during
+  names the package and the certificate. `apps/web/build/pwa/assetlinks.ts` generates `/.well-known/assetlinks.json` during
   the Pages build from `ANDROID_PACKAGE_ID` and `ANDROID_CERT_SHA256` (plus the optional Play certificate); the file is
   deliberately public and must stay outside the `/user*` Access scope. `android/twa-manifest.template.json` is the only
   committed Android config; `.github/workflows/android-build.yml` renders it, runs Bubblewrap and uploads APK/AAB
@@ -255,8 +256,8 @@ protocol,registry}`) and the mtcute integration
   rounded), and Chrome draws a scrollbar for that much overflow. The hook observes the root (`ResizeObserver`) and both
   the visual viewport's `resize` and `scroll` events, and `settleToBottom` re-pins both scroll views on the resulting
   host resize. Don't go back to `height: 100%` (the URL bar is then missed), and don't drop the cap either.
-- **Sends are optimistic, but the thread and the dialogs stay server truth.** `pages/src/outbox.ts` (the entry shape and
-  the chat-list overlay) and `pages/src/useOutbox.ts` (the bridge round trip) keep pending sends in their own layer: a
+- **Sends are optimistic, but the thread and the dialogs stay server truth.** `apps/web/src/outbox.ts` (the entry shape and
+  the chat-list overlay) and `apps/web/src/useOutbox.ts` (the bridge round trip) keep pending sends in their own layer: a
   `PendingMessage` renders beside the loaded messages (`components/PendingMessageRow.tsx`) and is folded over the
   dialogs for the sidebar preview only. Never inject a synthetic message into `ChatThread.messages` or
   `DialogDto.lastMessage`: message ids, read watermarks, unread counts and reply lookups are read from the server, and a
@@ -264,7 +265,7 @@ protocol,registry}`) and the mtcute integration
   chained per chat so rapid messages keep their order, uploads run independently so a large file never delays the next
   text, and a failed send stays as a "Not sent" bubble with Retry/Discard. A retry reuses the entry's `randomId`, so
   Telegram drops the duplicate if the first attempt actually landed — the engine validates that id like any other
-  parameter (`worker/src/session/params.ts`, and `worker/src/session/upload-spec.ts` for the upload query). An album
+  parameter (`packages/backend-services/src/session/params.ts`, and `packages/backend-services/src/session/upload-spec.ts` for the upload query). An album
   (`POST /user/upload-group`) has no client-chosen id: Telegram picks the group's, so a retried album is a new album.
 - **A delete is for everyone, and the chat list is repaired from the thread's own fold.** `deleteMessages` always
   passes `revoke: true`: Telegram's "delete for me" is session-scoped, so the message would reappear on the next read.
@@ -281,8 +282,9 @@ protocol,registry}`) and the mtcute integration
 - **The worker is not publicly routable.** `workers_dev: false` and no route: the only caller is the Pages Functions
   (`API_WORKER` service binding). The API surface is split by prefix: `/api/*` is public and carries only
   `GET /api/health`; everything account-scoped lives under `/user/*`, where every request verifies the Cloudflare
-  Access assertion (`Cf-Access-Jwt-Assertion`) in `worker/src/access.ts` — RS256 signature against
-  `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and expiry — before forwarding to the DO. The Access
+  Access assertion (`Cf-Access-Jwt-Assertion`) in `apps/api/src/middleware/MiddlewareHandlers.ts`, via the kit's
+  `authenticateAccess` — RS256 signature against `${TEAM_DOMAIN}/cdn-cgi/access/certs`, issuer, `POLICY_AUD`, and
+  expiry — before forwarding to the DO. The Access
   application's policy is the allowlist; the worker deliberately does not check the email. `/api/health` is public and
   carries no account data. When `TEAM_DOMAIN`/`POLICY_AUD` are absent or malformed, `/user/*` answers
   `503 {"code":"access_config"}` — never an unauthenticated fallback. At the edge, the Access application must be
@@ -313,14 +315,14 @@ protocol,registry}`) and the mtcute integration
   add a write to a read path, and never "clean up" tables while the budget is spent — deleting rows is itself a write.
 - **An album counts as one unread message.** Telegram counts every album member as a message, so an album of ten files
   arrives as an unread count of ten. The badge counts the album once, and the **album ledger**
-  (`worker/src/session/unread-albums.ts`) is what makes the two agree: it records the album members the update stream
+  (`packages/backend-services/src/session/unread-albums.ts`) is what makes the two agree: it records the album members the update stream
   delivered, drops the ones a read covered, and the surplus (the members beyond the first of their album) is
   subtracted from the count `getDialogs` serves and from the `unread` a `read` update carries. The ledger lives in the
   DO's SQLite because the engine sleeps between its wakes, and it learns from the update stream, so it costs no
   Telegram traffic. A fresh sign-in starts with an empty ledger, so the first `getDialogs` reconciles it: it reads the
   unread range of every chat with unread messages, once per sign-in. On the SPA side, `DialogMessageDto.groupedId`
   says that a new message continues the album the chat list already counted, and the optimistic read-through
-  subtracts albums rather than messages (`pages/src/groups.ts`).
+  subtracts albums rather than messages (`apps/web/src/groups.ts`).
 - **One request is one Durable Object event, and the DO hands out one event at a time.** Two bridge calls therefore cost
   two round trips in sequence, whatever the browser does — and each one costs a Telegram round trip on the far side.
   Inside one event mtcute's transport multiplexes, so the lever is **fewer events and more concurrency inside each
@@ -328,7 +330,7 @@ protocol,registry}`) and the mtcute integration
   concurrently, over the one connection. The whitelist is deliberate — a batch runs its calls concurrently, so a write
   would have no defined completion order, and `readHistory` is excluded because it moves the account's read watermark.
   Per-call failures are reported per call, so one broken read never takes the reads beside it down. When a screen needs
-  several reads, read them together in one batch (`pages/src/api.ts`: `fetchBootstrap`, `fetchChatScreen`) rather than
+  several reads, read them together in one batch (`apps/web/src/api.ts`: `fetchBootstrap`, `fetchChatScreen`) rather than
   chaining requests — a chained pair is exactly the waterfall the batch exists to remove.
 - **The archive is a peer folder, and a read of its own.** Telegram keeps the archived chats in the peer folder with
   the id `1`; every other chat is in folder `0`. `getDialogs` reads the chat list without the `archived` flag
@@ -336,7 +338,7 @@ protocol,registry}`) and the mtcute integration
   `folders.editPeerFolders` — the API the official clients use for the archive. The two reads stay apart on purpose: one
   limit over both would cost the chat list the chats the archive holds, and the archive is a screen the reader asks
   for, not one every list load pays for. On the SPA side the archive is a screen of its own (`/archived`, reached from
-  the account popup), and the chat list and the archive live in **one** list (`pages/src/useDialogs.ts`), so every
+  the account popup), and the chat list and the archive live in **one** list (`apps/web/src/useDialogs.ts`), so every
   lookup of a chat — the router, the thread, the read receipts, the forward picker — finds it in the same place. A chat
   opened from the archive keeps the archive list in the sidebar; bringing the open chat back out of the archive hands
   the sidebar back to the chat list, where the chat now lives. The archive bar's back leaves that list for the chat
@@ -348,7 +350,7 @@ protocol,registry}`) and the mtcute integration
   `updateDialogPinned` onto a `pinned` event and the SPA folds it into whichever list already holds the chat; the pin
   marker in the row stays a render of `DialogDto.pinned`, never a local-only flag.
 - **A sticker is named by an id the engine minted, and the picker is a popover.** The composer's emoji button opens
-  `pages/src/components/StickerPicker.tsx` (stickers) and `EmojiPicker.tsx` (emoji) above the composer — a popover,
+  `apps/web/src/components/StickerPicker.tsx` (stickers) and `EmojiPicker.tsx` (emoji) above the composer — a popover,
   not a `history.state` layer, so Back leaves the thread. The library (`getStickerLibrary`: recents, saved stickers and
   the installed regular packs, one engine event) is read the first time the sticker tab is shown; a _brief_ pack
   carries no stickers, so `getStickerSet` reads it in full when the reader opens it. A sticker crosses the bridge as
@@ -358,7 +360,7 @@ protocol,registry}`) and the mtcute integration
   not a Telegram round trip. Because the registry empties on a Durable Object restart, `sendSticker` also accepts the
   pack identity (`set: {id, accessHash}`) as the cold-start fallback. Installing a `t.me/addstickers` link is the
   whole action that link has (`installStickerSet`); it names no peer. Emoji are content, not chrome: the composer's
-  set is `pages/src/emoji.ts` (in-repo data with keywords, recents in `localStorage`), and a pick inserts at the caret
+  set is `apps/web/src/emoji.ts` (in-repo data with keywords, recents in `localStorage`), and a pick inserts at the caret
   and leaves the panel open, because a message is often several emoji. The picker button renders only when the composer
   was given `onSendSticker`, and the sticker tab is withheld while a message is being edited.
 
@@ -368,11 +370,11 @@ protocol,registry}`) and the mtcute integration
   viewer is), so Back leaves the thread, as it does for the forward picker. The profile is read on demand
   (`getProfile`, a read-only method on the batch whitelist) rather than with the chat screen: the reader asks for it
   by opening it, and a thread open would otherwise pay for a read nobody looks at. The popup lives in the thread header
-  (`pages/src/components/ThreadHeader.tsx`), so the signed-in shell does not grow.
+  (`apps/web/src/components/ThreadHeader.tsx`), so the signed-in shell does not grow.
 - **A min peer in mtcute's cache turns a valid chat into `PEER_ID_INVALID`.** Telegram's `min` user/channel carries a
   reduced access hash that only works inside an `inputPeer*FromMessage`, and mtcute's in-memory peer cache hands a
   cached peer back from `storage.peers.getById` without the `isMin` check its SQLite branch has
-  (`@mtcute/core@0.32.5`, `highlevel/storage/service/peers.js`), so `resolvePeer` can pass a min hash to a regular call.
+  (`@mtcute/core@0.32.8`, `highlevel/storage/service/peers.js`), so `resolvePeer` can pass a min hash to a regular call.
   A chat that is a dialog — a full peer in storage — starts failing that way after a min copy of it arrives from a
   group's or channel's message list, which is why the official app still opens it and a reload sometimes does.
   `session/peers.ts` is the guard: `withPeerRetry` wraps every peer-addressed bridge call (the batch's per-call dispatch,
@@ -383,7 +385,7 @@ protocol,registry}`) and the mtcute integration
   bounded by `DIALOG_SCAN_LIMIT = 500`, `dialogs`). The scan is what recovers a username-less channel: `channels.getChannels`
   refuses its zero access hash, and `findDialogs` throws through the same poisoned cache. `peer.refreshed` names the ids
   and the step; `via: none` means no step found the peer, so the chat really is gone from the account. A rejected peer was
-  never acted on, so the retry is safe for writes too. Do not try to solve this by upgrading mtcute (0.32.7 has the same
+  never acted on, so the retry is safe for writes too. Do not try to solve this by upgrading mtcute (0.32.8 has the same
   cache) or by guarding the peers repository alone — mtcute's `PeersService` caches the min input peer independently.
 - **The replay of the missed updates runs outside the input gate.** `session/lifecycle.ts` owns the wake and live modes;
   `startLive` connects and then hands the `getDifference` catch-up to `state.waitUntil`, because it is the longest event
@@ -394,7 +396,7 @@ protocol,registry}`) and the mtcute integration
   There is no token query parameter. `POST /user/upload` takes the file as the raw request body,
   streams it straight into mtcute's upload pool, and is capped by `UPLOAD_MAX_BYTES` (default 100 MB) — that var is
   also the upload-CPU affordability knob. The upload query is validated a second time in the outer worker (same
-  parser, `worker/src/index.ts`): workerd reads a request stream after its response when a Durable Object answers
+  parser, `apps/api/src/endpoints/upload.ts`): workerd reads a request stream after its response when a Durable Object answers
   without consuming the body (cloudflare/workerd#918), so malformed and oversized uploads must never reach it.
 - **Albums are one request body, not many.** `POST /user/upload-group` carries 2–10 files concatenated in the order
   the `manifest` query parameter (base64url JSON) declares, and `session/upload.ts` splits that one body back into the
@@ -403,24 +405,24 @@ protocol,registry}`) and the mtcute integration
   media class (photos/videos/GIFs together, documents together), and a total within `UPLOAD_MAX_BYTES`. The split
   streams use `highWaterMark: 0` on purpose — with the default of 1, Web Streams pulls every part at construction, so
   the later files would claim the shared reader before the earlier ones. The composer's upload dialog
-  (`pages/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
+  (`apps/web/src/components/UploadDialog.tsx`) is the review step: it caps the selection at 10, offers "Group Items"
   (checked by default when the selection can group) and sends ungrouped files one by one. It also offers "Send As
   File" (off by default, Telegram's own compression default): every item then goes as a `document` with its original
   bytes, name and MIME — no canvas JPEG conversion, no Telegram photo/video transcode — which is the only way an
   original survives, since a photo message has no original on Telegram's side. Its thumbnail column only
-  previews raster images (`previewMime` in `pages/src/upload.ts`, which keeps SVG out), and the preview blob is built
+  previews raster images (`previewMime` in `apps/web/src/upload.ts`, which keeps SVG out), and the preview blob is built
   with that MIME type, so the object URL behind it can never be read as a document. A paste into the composer opens
-  the same review step with the pasted files as the selection (`pages/src/clipboard.ts` reads the clipboard): the
+  the same review step with the pasted files as the selection (`apps/web/src/clipboard.ts` reads the clipboard): the
   draft rides along as the caption, exactly as it does for the file picker. Only a clipboard without text is taken
   over — a cell copied from a spreadsheet arrives as text _and_ an image of the cell, and there the text is what the
   user meant to paste, so the browser keeps it.
 - **A voice note is recorded in the browser and uploaded as one file.** The composer's empty-draft send button is the
-  microphone (`pages/src/components/Composer.tsx` and `useVoiceRecorder.ts`): pressing it opens the microphone, shows a
+  microphone (`apps/web/src/components/Composer.tsx` and `useVoiceRecorder.ts`): pressing it opens the microphone, shows a
   live timer with Cancel/Stop And Send, and hands the finished recording to the same file path an attachment takes, with
-  `kind: 'voice'` and the measured duration forced (`pages/src/upload.ts`, `pages/src/outbox.ts`). The encoder is
+  `kind: 'voice'` and the measured duration forced (`apps/web/src/upload.ts`, `apps/web/src/outbox.ts`). The encoder is
   `opus-recorder`, which produces the Ogg/Opus container Telegram's own clients use, and it is loaded lazily through
-  `pages/src/recorder-loader.ts` on the first press, so its WebAssembly bundle never rides the first paint. That one
-  worker script embeds the wasm as a data URI, so `pages/build/recorder-plugin.ts` copies only
+  `apps/web/src/recorder-loader.ts` on the first press, so its WebAssembly bundle never rides the first paint. That one
+  worker script embeds the wasm as a data URI, so `apps/web/build/recorder-plugin.ts` copies only
   `encoderWorker.min.js` into `recorder/` for the build and the dev server. The recording stops by itself at
   `VOICE_MAX_SECONDS` (300 s), the SPA clamps the duration it reports to `1..300`, and the shared parser
   (`session/upload-spec.ts`) refuses a `kind=voice` upload whose duration is absent or past the cap, before the body is
@@ -446,14 +448,14 @@ protocol,registry}`) and the mtcute integration
   tight, move the import behind a dynamic import rather than touching mtcute.
 - **A call's key exchange runs in the page, never in the worker.** A 2048-bit modular exponentiation costs ~29 ms of
   CPU and the caller's side needs two of them — 5.7× the Free plan's 10 ms per invocation. The worker only reads
-  `messages.getDhConfig` and hands `p`/`g` down; the browser does the arithmetic (`pages/src/calls/dh.ts`) and
+  `messages.getDhConfig` and hands `p`/`g` down; the browser does the arithmetic (`apps/web/src/calls/dh.ts`) and
   **keeps the shared key**. The worker never sees it, and must never be given it: the bytes that cross the bridge
   are only what Telegram's protocol puts on the wire (the commitment, the two public values, the fingerprint).
 - **The call's media never transits Cloudflare.** The audio is a WebRTC peer connection between the two browsers:
   Telegram's server hands out the relays (`phoneCall.connections`), the page turns the WebRTC ones into ICE servers,
   and the browser does the rest (Opus over DTLS-SRTP). What crosses Cloudflare is the _signalling_ — the session
   description and the ICE candidates — and that rides the `phone.sendSignalingData` relay, encrypted with the
-  call's shared key. The envelope is Telegram's documented one (`pages/src/calls/crypto.ts`): the per-message key
+  call's shared key. The envelope is Telegram's documented one (`apps/web/src/calls/crypto.ts`): the per-message key
   schedule, the 32-bit counter, the 64-message replay window. The `x` offset is anchored to the **caller**: the
   caller's packets use the outgoing offsets (0 transport / 128 signalling) and the callee's the incoming ones (8 /
   136), so both sides agree without negotiating it.
@@ -471,7 +473,7 @@ protocol,registry}`) and the mtcute integration
   it in the gap before the browser reconnects (`session/lifecycle.ts`).
 - **The call overlay is not a history layer.** Like the profile popup, it is a self-contained overlay: Back leaves
   the thread rather than closing the call. Only the media viewer is a `history.state` layer.
-- **Secrets and deployment-specific Access vars are declared by hand in `worker/src/env.d.ts`.** The generated
+- **Secrets and deployment-specific Access vars are declared by hand in `packages/backend-runtime/src/env.d.ts`.** The generated
   `worker-configuration.d.ts` only knows the bindings and vars in the template, so `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`
   (secrets) and `TEAM_DOMAIN`/`POLICY_AUD`/`ACCESS_DEV_BYPASS` (per-deployment configuration) are augmented there. The
   Access vars are not in the template because they are supplied through `WRANGLER_VARS_PATCH_JSON`; declaring them in a
@@ -484,13 +486,16 @@ protocol,registry}`) and the mtcute integration
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
   filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Dead Code`, `Unit Tests`, `Worker Bundle`,
   `Build Web App`) are the required-check names; keep them stable. `Worker Bundle` always reports (so it is safe as a required check) but only
-  installs and runs `wrangler deploy --dry-run` when the change set touches `apps/api/`, `packages/`, or the wrangler
-  config materializer.
+  installs and runs `wrangler deploy --dry-run` when the change set touches `apps/api/`, `packages/`, the wrangler
+  config materializer (`scripts/prepare-wrangler-config.ts`, `scripts/lib/`, `scripts/wrangler-config/`), or the
+  workspace/dependency manifests (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`).
 - **`pnpm run lint` uses `--fix`.** Run it locally and commit its fixes; CI's `--quiet` discards warnings, which is why the
   separate `format:check` job exists.
-- **The god-file allowlist holds exactly the two contract modules.** `scripts/god-files.allowlist.json` exempts
-  `worker/src/types.ts` and `pages/src/types.ts` from the hard cap: each is one mirrored contract (the SPA copy must stay
-  in sync by hand), so splitting one is a mirror-wide refactor rather than a per-file fix. The `rpc-types.ts` split from
+- **The god-file allowlist holds exactly one contract module.** `scripts/god-files.allowlist.json` exempts
+  `packages/shared/src/types.ts` from the hard cap: it is one mirrored contract, so splitting it is a contract-wide
+  refactor rather than a per-file fix. The SPA's `apps/web/src/types.ts` is a 14-line re-export barrel and needs no
+  exemption. The contract is single-sourced in `packages/shared/`, and `apps/web/src/types.ts` re-exports it, so a
+  change reaches both ends without a manual mirror. The `rpc-types.ts` split from
   `types.ts`, and the later `search-types.ts` and `chat-link-types.ts` splits from `rpc-types.ts`, were the last such
   splits; anything else over 400 is split before it lands.
 - **No speculative exports.** An export exists because a caller outside its module uses it: a helper only its own module
@@ -498,7 +503,7 @@ protocol,registry}`) and the mtcute integration
   here, because it false-positives on the mirrored contract modules — their exports are the contract, not dead code.
 - **No `backup-d1.yml`.** The family's database backup exports D1, which this repo does not have; the DO's SQLite is
   covered by Cloudflare's point-in-time recovery, and it holds only the mtcute session, update state and small caches.
-  The README's CI section says so where a reader would look for the workflow.
+  `docs/DEPLOYMENT.md` says so where a reader would look for the CI workflows.
 - **`minimumReleaseAge: 0` lives in `pnpm-workspace.yaml`.** pnpm 11 reads settings from there, not `.npmrc`; without it the
   default 24-hour window blocks installing a just-published `@rexezuge/tooling` release.
 
@@ -513,8 +518,8 @@ protocol,registry}`) and the mtcute integration
 | `scheduled-version-update.yml` | 1st and 15th                               | Stamps `.github/.version` with the current unix timestamp                                                                                                                                                                            |
 | `upstream-sync.yml`            | weekly, manual                             | Dormant here (`if: github.event.repository.fork`); a fork of this repo points it at this repo                                                                                                                                        |
 
-Secrets/variables and the branch-protection checklist live in `README.md` (required settings) and are mirrored in the
-workflow files themselves.
+Secrets/variables and the branch-protection checklist live in `docs/DEPLOYMENT.md` (required settings) and are mirrored
+in the workflow files themselves.
 
 ## Where this is going / out of scope
 
@@ -526,7 +531,7 @@ deployment is up; (3) the
 **`telegram-tt` fork** behind the existing bridge contract, once the Pages hostname is behind the Access application and
 its `TEAM_DOMAIN`/`POLICY_AUD` are set. Both acceptance milestones run per `docs/SESSION_ENGINE.md`. Later concerns:
 Secrets Store initialization, off-account DO storage backups (nothing to `d1 export`; the platform's
-point-in-time recovery is the current answer), coverage floors, integration tests, and
+point-in-time recovery is the current answer), further coverage ratchets, end-to-end tests beyond the current seams, and
 `@cloudflare/vitest-pool-workers` once real DO tests exist.
 
 **Voice calls are in place, with one honest gap.** The signalling plane (`phone.*` over the bridge, the call

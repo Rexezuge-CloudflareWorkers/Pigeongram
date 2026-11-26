@@ -1,5 +1,7 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchComments, readHistory } from './api';
+import { failureText } from './failure';
+import { useLatestLayout } from './useLatest';
 import type { CommentsController, PostKey, PrefetchedComments } from './comments-controller';
 import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
 import { applyCommentDeleted, applyCommentRestored, mergeMessages, updateCommentsThread } from './state';
@@ -33,10 +35,6 @@ function commentsCursor(result: GetCommentsResult): { id: number; date: number }
   return { id: result.nextOffsetId, date: result.nextOffsetDate };
 }
 
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
-}
-
 interface UseCommentsOptions {
   /**
   A comment the caller sent was accepted: bump the channel post's count in the
@@ -67,10 +65,7 @@ export function useComments({ onCommentSent, onError, onNotice }: UseCommentsOpt
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread; a layout effect runs with the commit, so no
   // event can observe a thread the state no longer describes.
-  const threadRef = useRef<CommentsThread | null>(null);
-  useLayoutEffect(() => {
-    threadRef.current = thread;
-  }, [thread]);
+  const threadRef = useLatestLayout(thread);
   // A page in flight, tracked outside React state so a scroll event and the
   // button cannot both start one before the disabled state paints.
   const loadingOlderRef = useRef(false);

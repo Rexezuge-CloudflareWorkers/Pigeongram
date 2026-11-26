@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { fetchProfile } from './api';
+import { failureText } from './failure';
 import type { PeerId, ProfileDto } from './types';
 
 /**
@@ -99,8 +100,4 @@ function remember(cache: Map<PeerId, ProfileDto>): void {
   const oldest = cache.keys().next();
   if (oldest.done) return;
   cache.delete(oldest.value);
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }

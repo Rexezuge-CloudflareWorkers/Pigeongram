@@ -1,5 +1,8 @@
 import { toDialogMessage } from '../dialog-message';
 import { continuesAlbum, countUnreadGroupsBetween } from '../groups';
+import { applyPollUpdate, findPollMessage } from './polls';
+import type { PollUpdateTarget } from './polls';
+import { applyReactionUpdate } from './reactions';
 import type { ChatThread } from '../thread-state';
 import type {
   BotCommandDto,
@@ -18,6 +21,8 @@ Pure list surgery for the SPA's chat and message state; DOM-free so it is unit-t
 */
 
 export * from './deleted';
+export * from './polls';
+export * from './reactions';
 
 /**
 Applies a live `new_message`; a message the dialog already shows or has read is
@@ -280,96 +285,6 @@ export function applyCommentCountDelta(messages: MessageDto[], postId: number): 
 
 export function findChatTitle(dialogs: DialogDto[], chatId: PeerId): string | null {
   return dialogs.find((dialog) => dialog.chat.id === chatId)?.chat.title ?? null;
-}
-
-/**
-Stable identity of a reaction aggregate: the unicode emoji, or the custom
-emoji document id.
-*/
-export function reactionKey(reaction: MessageReactionDto): string {
-  return reaction.emoji ?? `custom:${reaction.customEmojiId ?? ''}`;
-}
-
-/**
-Replaces one message's reaction aggregates. Reaction updates carry no full
-message, so the message is found by `chatId`/`messageId` and left untouched
-when it is not loaded.
-*/
-export function applyReactionUpdate(
-  messages: MessageDto[],
-  chatId: PeerId,
-  messageId: number,
-  reactions: MessageReactionDto[],
-): MessageDto[] {
-  return messages.map((message) => (message.chatId === chatId && message.id === messageId ? { ...message, reactions } : message));
-}
-
-/**
-Replaces one message's view count. View updates carry no full message either,
-so the message is found by `chatId`/`messageId` and left untouched when it is
-not loaded.
-*/
-export function applyViewsUpdate(messages: MessageDto[], chatId: PeerId, messageId: number, views: number): MessageDto[] {
-  return messages.map((message) => (message.chatId === chatId && message.id === messageId ? { ...message, views } : message));
-}
-
-/**
-Optimistic reaction toggle, applied before the RPC round trip: flips the tapped
-reaction on, clears the previously chosen one (Telegram allows one), and drops
-aggregates whose count reached zero.
-*/
-export function toggleReaction(reactions: MessageReactionDto[], reaction: MessageReactionDto): MessageReactionDto[] {
-  const key = reactionKey(reaction);
-  const exists = reactions.some((candidate) => reactionKey(candidate) === key);
-  const next = reactions.map((candidate) => {
-    if (reactionKey(candidate) === key) {
-      return { ...candidate, chosen: !candidate.chosen, count: candidate.count + (candidate.chosen ? -1 : 1) };
-    }
-    return candidate.chosen ? { ...candidate, chosen: false, count: candidate.count - 1 } : candidate;
-  });
-  if (!exists) {
-    next.push({
-      emoji: reaction.emoji,
-      customEmojiId: reaction.customEmojiId,
-      count: 1,
-      chosen: true,
-    });
-  }
-  return next.filter((candidate) => candidate.count > 0);
-}
-
-/**
-The poll a `poll` update points at: the chat and message when Telegram named
-them, plus the poll id, which is what a short update leaves to match on.
-*/
-export interface PollUpdateTarget {
-  chatId: PeerId | null;
-  messageId: number | null;
-  pollId: string;
-}
-
-/**
-The loaded message a poll update belongs to, or null when the poll is not on
-screen. The named ids win (they are authoritative when present); the poll id
-catches the short updates that name neither.
-*/
-export function findPollMessage(messages: readonly MessageDto[], target: PollUpdateTarget): MessageDto | null {
-  if (target.chatId !== null && target.messageId !== null) {
-    const named = messages.find((message) => message.chatId === target.chatId && message.id === target.messageId);
-    if (named?.poll) return named;
-  }
-  return messages.find((message) => message.poll?.id === target.pollId) ?? null;
-}
-
-/**
-Replaces one loaded message's poll. Poll updates carry no full message (they
-are how Telegram reports a vote or a close), so the message is found by the
-update's target and left untouched when it is not loaded.
-*/
-export function applyPollUpdate(messages: MessageDto[], target: PollUpdateTarget, poll: MessagePollDto): MessageDto[] {
-  const matched = findPollMessage(messages, target);
-  if (!matched) return messages;
-  return messages.map((message) => (message === matched ? { ...message, poll } : message));
 }
 
 /**

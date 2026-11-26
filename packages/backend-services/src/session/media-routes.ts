@@ -7,15 +7,13 @@ import type { MediaDownload } from './media';
 import type { MediaRange } from './media-window';
 import { requirePeerId } from './params';
 import { parseUploadGroupSpec, parseUploadSpec } from './upload-spec';
+import { MEDIA_CACHE_SECONDS } from './policy';
 
 /**
 HTTP shaping for the bridge's media routes (`/user/file`, `/user/avatar`,
 `/user/upload`, `/user/upload-group`). Kept out of the engine class so it
 stays about the session, not about query strings and headers.
 */
-
-const FILE_CACHE_SECONDS = 86_400;
-const AVATAR_CACHE_SECONDS = 86_400;
 
 export async function fileResponse(driver: TelegramDriver, request: Request, url: URL): Promise<Response> {
   const chatId = requirePeerId(parseNumber(url.searchParams.get('chatId')));
@@ -134,6 +132,18 @@ function countedUploadBody(request: Request, declared: number, cap: number): Rea
         return;
       }
       count += value.byteLength;
+      // A body longer than the declared sizes is a malformed manifest; fail
+      // on the first excess chunk instead of streaming the whole thing only
+      // to reject it at end-of-stream.
+      if (count > declared) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Already gone.
+        }
+        controller.error(new EngineError('Upload body length does not match the declared size', 400));
+        return;
+      }
       if (count > cap) {
         try {
           await reader.cancel();
@@ -174,7 +184,7 @@ function isInlineMime(mime: string): boolean {
 function mediaResponse(download: MediaDownload, isDownload: boolean, head: boolean): Response {
   const headers: Record<string, string> = {
     'content-type': download.mime,
-    'cache-control': `private, max-age=${FILE_CACHE_SECONDS}`,
+    'cache-control': `private, max-age=${MEDIA_CACHE_SECONDS}`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
     'cross-origin-resource-policy': 'same-origin',
@@ -217,7 +227,7 @@ function notModified(etag: string | null): Response {
     status: 304,
     headers: {
       ...(etag !== null && { etag }),
-      'cache-control': `private, max-age=${FILE_CACHE_SECONDS}`,
+      'cache-control': `private, max-age=${MEDIA_CACHE_SECONDS}`,
     },
   });
 }
@@ -245,7 +255,7 @@ function avatarBytes(mime: string, bytes: Uint8Array, head: boolean): Response {
   const headers = {
     'content-type': mime,
     'content-length': String(body.byteLength),
-    'cache-control': `private, max-age=${AVATAR_CACHE_SECONDS}`,
+    'cache-control': `private, max-age=${MEDIA_CACHE_SECONDS}`,
     'x-content-type-options': 'nosniff',
     'content-security-policy': 'sandbox',
     'cross-origin-resource-policy': 'same-origin',

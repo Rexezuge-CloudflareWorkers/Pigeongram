@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { stickerUrl } from './api';
+import { failureText } from './failure';
 import type { PendingMessage } from './outbox';
 import { localPreviewUrl, pendingMedia, pendingStickerMedia, randomMessageId, revokePreview } from './outbox';
 import type { MessageDto, PeerId, StickerDto } from './types';
@@ -93,10 +94,6 @@ interface OutboxController {
   retry: (key: string) => void;
   discard: (key: string) => void;
   clear: () => void;
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }
 
 export function useOutbox({ onError }: UseOutboxOptions): OutboxController {

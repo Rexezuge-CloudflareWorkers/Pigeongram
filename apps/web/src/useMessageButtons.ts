@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { pressCallbackButton } from './api';
 import { writeClipboard } from './clipboard';
+import { safeHref } from './safe-url';
 import type { MessageButtonDto, MessageDto } from './types';
 
 /**
@@ -40,7 +41,10 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
       setPressingIds((current) => new Set(current).add(message.id));
       void pressCallbackButton(message.chatId, message.id, button.data)
         .then((answer) => {
-          if (answer.url !== null && window.open(answer.url, '_blank', 'noopener,noreferrer') === null) {
+          // The answer comes from a bot. Only an allowlisted scheme may
+          // become a navigation; the rest is ignored, not opened.
+          const url = answer.url === null ? null : safeHref(answer.url);
+          if (url !== null && window.open(url, '_blank', 'noopener,noreferrer') === null) {
             onNotice('The Bot Asked To Open A Link; Allow Pop-Ups For This Site.');
           }
           if (answer.text !== null && answer.text.length > 0) {

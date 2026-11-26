@@ -63,6 +63,10 @@ export function useLoginFlow(): LoginFlowState {
   const [access, setAccess] = useState<AccessStatus>('checking');
   const [error, setError] = useState<ToastMessage | null>(null);
   const errorToken = useRef(0);
+  // The interval and a visibility change can both fire while a slow probe is
+  // still awaiting the bridge. Without this guard the second run can start a
+  // second QR login and rotate the code the reader is about to scan.
+  const inFlight = useRef(false);
 
   const reportError = useCallback((failure: unknown): void => {
     if (isAuthError(failure)) {
@@ -127,8 +131,13 @@ export function useLoginFlow(): LoginFlowState {
     if (access === 'anonymous' || access === 'offline' || authorized) return;
     let stopped = false;
     const run = async (): Promise<void> => {
-      if (stopped) return;
-      await refreshState();
+      if (stopped || inFlight.current) return;
+      inFlight.current = true;
+      try {
+        await refreshState();
+      } finally {
+        inFlight.current = false;
+      }
     };
     void run();
     const id = setInterval(() => void run(), POLL_INTERVAL_MS);

@@ -23,7 +23,7 @@ export type WebSocketConnect = (endpoint: WebSocketEndpoint, signal?: AbortSigna
 
 /**
 MTProto over WSS (`wss://{dc}.web.telegram.org/apiws`), adapted from
-`@mtcute/web`'s `WebSocketTransport` (mtcute 0.32.5, MIT licence).
+`@mtcute/web`'s `WebSocketTransport` (mtcute 0.32.8, MIT licence).
 
 The framing is obfuscated2 over the intermediate codec — the same one the
 official web clients speak. `connectWs` from `@fuman/net` wraps workerd's

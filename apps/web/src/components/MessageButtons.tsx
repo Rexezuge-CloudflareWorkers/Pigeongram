@@ -1,4 +1,5 @@
 import { miniAppDeepLink, launchTelegramApp } from '../links';
+import { safeHref } from '../safe-url';
 import { useTelegramLinkHandler } from '../telegram-links';
 import type { MessageButtonDto, MessageDto, MessageMarkupDto } from '../types';
 import { Spinner } from './Spinner';
@@ -60,16 +61,20 @@ function MessageButton({
 }) {
   const handleLink = useTelegramLinkHandler();
   const className = `button${button.style === null ? '' : ` ${button.style}`}`;
+  // The bot chose this URL. An unsafe scheme becomes an inert label rather
+  // than a live anchor; the button's text is still shown to the reader.
+  const href = button.kind === 'url' || button.kind === 'webview' ? safeHref(button.url) : null;
 
   if (button.kind === 'url') {
+    if (href === null) return <span className={className}>{button.text}</span>;
     return (
       <a
         className={className}
-        href={button.url}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(event) => {
-          if (handleLink?.(button.url)) event.preventDefault();
+          if (handleLink?.(href)) event.preventDefault();
         }}
       >
         {button.text}
@@ -78,17 +83,18 @@ function MessageButton({
   }
 
   if (button.kind === 'webview') {
-    const deepLink = miniAppDeepLink(button.url);
+    if (href === null) return <span className={className}>{button.text}</span>;
+    const deepLink = miniAppDeepLink(href);
     return (
       <a
         className={className}
-        href={button.url}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(event) => {
           if (deepLink === null) return;
           event.preventDefault();
-          launchTelegramApp(deepLink, button.url);
+          launchTelegramApp(deepLink, href);
         }}
       >
         {button.text}

@@ -1,3 +1,4 @@
+export * from './errors';
 export * from './types';
 export * from './rpc-types';
 export * from './chat-link-types';

@@ -7,9 +7,11 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./errors": "./src/errors.ts",
     "./types": "./src/types.ts",
     "./rpc-types": "./src/rpc-types.ts",
-    "./chat-link-types": "./src/chat-link-types.ts",
+    "./message-types": "./src/message-types.ts",
+    "./contact-types": "./src/contact-types.ts",
     "./search-types": "./src/search-types.ts",
     "./sticker-types": "./src/sticker-types.ts",
     "./call-types": "./src/call-types.ts"

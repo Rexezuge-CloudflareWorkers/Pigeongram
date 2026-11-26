@@ -226,6 +226,20 @@ describe('SessionLifecycle wake cadence', () => {
     expect(alarms).toEqual([1_300_000]);
   });
 
+  it('re-arms after a refused live start, whose alarm was already consumed', async () => {
+    // An anonymous client must never reach the updates loop, but refusing to
+    // go live cannot leave the object without an alarm: nothing else would
+    // wake it until a browser happened to open the app again.
+    const { lifecycle, driver, hub, alarms } = harness({ now: () => 1_000_000 });
+    driver.isAuthorized.mockResolvedValue(false);
+
+    await lifecycle.ensureLive();
+
+    expect(driver.connect).not.toHaveBeenCalled();
+    expect(hub.broadcast).toHaveBeenCalledWith({ type: 'error', message: 'Not signed in' });
+    expect(alarms).toEqual([1_300_000]);
+  });
+
   it('swallows a rejected alarm write, so the request still answers', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { lifecycle, alarms } = harness({ now: () => 1_000_000, failSetAlarm: true });

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { updatesSocketUrl } from './api';
+import { reconnectDelay } from './socket-backoff';
+import { useLatest } from './useLatest';
 import type { ClientSocketMessage, ServerSocketMessage, UpdateEvent } from './types';
 
 /**
@@ -23,17 +25,10 @@ export function useUpdatesSocket(
   onError: (message: string) => void = () => {},
 ): { connected: boolean; send: (message: ClientSocketMessage) => void } {
   const [connected, setConnected] = useState(false);
-  const updateRef = useRef(onUpdate);
-  const readyRef = useRef(onReady);
-  const errorRef = useRef(onError);
+  const updateRef = useLatest(onUpdate);
+  const readyRef = useLatest(onReady);
+  const errorRef = useLatest(onError);
   const socketRef = useRef<WebSocket | null>(null);
-
-  // Latest-callback refs, refreshed after each render.
-  useEffect(() => {
-    updateRef.current = onUpdate;
-    readyRef.current = onReady;
-    errorRef.current = onError;
-  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -96,11 +91,7 @@ export function useUpdatesSocket(
         if (socketRef.current === current) socketRef.current = null;
         if (stopped) return;
         retry += 1;
-        const base = Math.min(15_000, 500 * 2 ** Math.min(retry, 5));
-        // ±20% jitter, so a fleet reconnecting after an outage does not
-        // hammer the engine in lockstep.
-        const delay = Math.round(base * (0.8 + jitter() * 0.4));
-        retryTimer = setTimeout(connect, delay);
+        retryTimer = setTimeout(connect, reconnectDelay(retry, jitter()));
       });
       current.addEventListener('error', () => {
         // `close` (and thus the reconnect timer) follows a failed socket; make

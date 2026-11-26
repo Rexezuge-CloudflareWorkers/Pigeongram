@@ -31,6 +31,9 @@ interface UploadDialogProps {
 
 export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }: UploadDialogProps) {
   const [files, setFiles] = useState<File[]>(() => initialFiles.slice(0, MAX_UPLOAD_ITEMS));
+  // Two picks in the same tick must not read a stale render closure: the ref
+  // is the current selection, and the state exists only to render it.
+  const filesRef = useRef(files);
   const [notice, setNotice] = useState<string | null>(() =>
     initialFiles.length > MAX_UPLOAD_ITEMS ? overflowNotice(initialFiles.length - MAX_UPLOAD_ITEMS) : null,
   );
@@ -93,13 +96,17 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
 
   const addFiles = (picked: FileList | null): void => {
     if (!picked || picked.length === 0) return;
-    const merged = [...files, ...Array.from(picked)];
-    setFiles(merged.slice(0, MAX_UPLOAD_ITEMS));
+    const merged = [...filesRef.current, ...Array.from(picked)];
+    const next = merged.slice(0, MAX_UPLOAD_ITEMS);
+    filesRef.current = next;
+    setFiles(next);
     setNotice(merged.length > MAX_UPLOAD_ITEMS ? overflowNotice(merged.length - MAX_UPLOAD_ITEMS) : null);
   };
 
   const removeFile = (index: number): void => {
-    setFiles((current) => current.filter((_, position) => position !== index));
+    const next = filesRef.current.filter((_, position) => position !== index);
+    filesRef.current = next;
+    setFiles(next);
     setNotice(null);
   };
 

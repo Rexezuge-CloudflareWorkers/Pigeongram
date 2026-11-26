@@ -7,6 +7,7 @@ importing `./types` while there is exactly one copy of the contract in the
 workspace. The calls contract is mirrored the same way in `./call-types`.
 */
 
+export * from '@pigeongram/shared/errors';
 export * from '@pigeongram/shared/types';
 export * from '@pigeongram/shared/rpc-types';
 export * from '@pigeongram/shared/search-types';

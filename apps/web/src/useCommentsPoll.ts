@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import { fetchPollResults } from './api';
-import { findPollMessage, updateCommentsPoll } from './state';
+import { updateCommentsPoll } from './state';
 import type { CommentsThread, PollUpdateTarget } from './state';
 import type { MessagePollDto } from './types';
+import { usePollRefresh } from './usePollRefresh';
 import { usePollVoting } from './usePollVoting';
 import type { PollVoting } from './usePollVoting';
 
@@ -35,22 +35,10 @@ export function useCommentsPoll(
   post or comment it points at, if any, and fold that in. Failures stay silent
   — an out-of-date count settles on the next load or vote.
   */
-  const refreshPoll = useCallback(
-    (target: PollUpdateTarget): void => {
-      const open = threadRef.current;
-      if (!open) return;
-      const match = findPollMessage([open.post, ...open.comments], target);
-      if (!match) return;
-      void fetchPollResults(match.chatId, match.id)
-        .then((result) => {
-          applyPoll({ chatId: match.chatId, messageId: match.id, pollId: result.poll.id }, result.poll);
-        })
-        .catch(() => {
-          // Nothing to surface.
-        });
-    },
-    [applyPoll, threadRef],
-  );
+  const refreshPoll = usePollRefresh(() => {
+    const open = threadRef.current;
+    return open === null ? [] : [open.post, ...open.comments];
+  }, applyPoll);
 
   const { votingIds, vote } = usePollVoting(applyPoll, onError);
   return { applyPoll, refreshPoll, votingIds, vote };

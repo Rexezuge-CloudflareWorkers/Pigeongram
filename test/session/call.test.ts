@@ -207,6 +207,23 @@ describe('the registry of calls', () => {
     registry.forget('1000');
     expect(registry.knows('1000')).toBe(false);
   });
+
+  it('evicts the least recently used hash once the registry is full', () => {
+    // A browser can disappear without discarding, so the in-memory registry
+    // must not grow with every call the account has ever seen.
+    const registry = new CallRegistry();
+    for (let id = 1; id <= 64; id += 1) {
+      registry.remember({ ...waiting, id: Long.fromNumber(id) });
+    }
+    // Reading a call refreshes it: id 1 survives the next insertion, id 2
+    // is the one pushed out.
+    expect(registry.accessHash('1')).toBe('555');
+    registry.remember({ ...waiting, id: Long.fromNumber(65) });
+
+    expect(registry.knows('1')).toBe(true);
+    expect(registry.knows('2')).toBe(false);
+    expect(registry.knows('65')).toBe(true);
+  });
 });
 
 describe('the requestCall dispatch', () => {

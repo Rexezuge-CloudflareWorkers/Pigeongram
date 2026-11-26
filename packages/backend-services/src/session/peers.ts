@@ -35,7 +35,7 @@ either: mtcute's `PeersService` keeps an LruMap of input peers that it fills
 from the same `store()` call and reads before the repository, so the
 poisoning has to be repaired, not prevented.
 
-See `@mtcute/core@0.32.7` `highlevel/storage/service/peers.js` (`store`,
+See `@mtcute/core@0.32.8` `highlevel/storage/service/peers.js` (`store`,
 `getById`) and `highlevel/methods/users/resolve-peer.js`.
 */
 
@@ -98,8 +98,8 @@ export async function refreshPeer(client: TelegramClient, peerId: number): Promi
       await client.storage.peers.store(complete);
       return 'cache';
     }
-  } catch {
-    // Fall through to the next repair.
+  } catch (error) {
+    log.info('peer.heal_step_failed', { peerId, step: 'cache', error });
   }
 
   try {
@@ -110,8 +110,8 @@ export async function refreshPeer(client: TelegramClient, peerId: number): Promi
       await client.storage.peers.store(complete);
       return 'resolve';
     }
-  } catch {
-    // Fall through to the dialog scan.
+  } catch (error) {
+    log.info('peer.heal_step_failed', { peerId, step: 'resolve', error });
   }
 
   return scanDialogs(client, peerId);
@@ -136,8 +136,9 @@ async function scanDialogs(client: TelegramClient, peerId: number): Promise<Peer
       return 'dialogs';
     }
     if (seen === 0) return 'none';
-  } catch {
+  } catch (error) {
     // A dialog read can fail on its own; the retried call reports the original.
+    log.info('peer.heal_step_failed', { peerId, step: 'dialogs', error });
   }
   return 'none';
 }

@@ -1,5 +1,5 @@
 import { EnvParser } from '@pigeongram/backend-runtime/config';
-import { DEFAULT_MEDIA_RATE_LIMIT_PER_MINUTE, DEFAULT_RATE_LIMIT_PER_MINUTE } from '@pigeongram/backend-runtime/constants';
+import { DEFAULT_MEDIA_RATE_LIMIT_PER_MINUTE, DEFAULT_RATE_LIMIT_PER_MINUTE, MEDIA_PATHS } from '@pigeongram/backend-runtime/constants';
 import { rateLimit, securityHeaders, sensitivePaths } from '@rexezuge/http';
 import type { RateLimitHandler } from '@rexezuge/http';
 import type { MiddlewareHandler } from 'hono';
@@ -37,17 +37,11 @@ const MEDIA_LIMIT: RateLimitHandler = rateLimit({
 });
 
 /**
-The two side-effect-free media routes the bridge serves. They are named here
-rather than derived from the route table because this middleware runs on the
-whole `/user/*` prefix before a route is matched; a new media route has to be
-added here as well, and `test/worker.test.ts` pins the split.
-*/
-const MEDIA_PATHS: ReadonlySet<string> = new Set(['/user/file', '/user/avatar', '/user/sticker']);
-
-/**
-The `/user/*` throttle: the media routes draw on the media budget, everything
-else on the account budget. Two buckets, two key prefixes, so a burst of
-images can never spend an RPC call's allowance.
+The `/user/*` throttle: the media routes in the shared `MEDIA_PATHS` set draw
+on the media budget, everything else on the account budget. Two buckets, two
+key prefixes, so a burst of images can never spend an RPC call's allowance.
+This middleware runs on the prefix before a route is matched, so it reads the
+shared set rather than the route table.
 */
 export const USER_API_LIMIT: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const limiter = MEDIA_PATHS.has(c.req.path) ? MEDIA_LIMIT : ACCOUNT_LIMIT;

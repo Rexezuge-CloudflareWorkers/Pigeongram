@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { CallOverlay } from '../components/CallOverlay';
 import { useUpdatesSocket } from '../hooks';
+import { useLatest } from '../useLatest';
 import type { ChatDto, ClientSocketMessage, UpdateEvent } from '../types';
 import { useCalls } from './controller';
 
@@ -85,12 +86,8 @@ export function useCallHost({ enabled, onUpdate, onResync, findChat, onError }: 
   The app's handler, behind a ref: the socket's handler is created once,
   when the socket attaches, and must always see the latest one.
   */
-  const updateRef = useRef(onUpdate);
-  const resyncRef = useRef(onResync);
-  useEffect(() => {
-    updateRef.current = onUpdate;
-    resyncRef.current = onResync;
-  });
+  const updateRef = useLatest(onUpdate);
+  const resyncRef = useLatest(onResync);
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {

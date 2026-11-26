@@ -7,11 +7,10 @@ import type { UpdatesSocketHub } from './socket-hub';
 import type { EngineStore, WakeCountersDto, WakeRecord } from './stats';
 import { log } from './log';
 import type { ServerSocketMessage } from '../types';
+import { CATCH_UP_TIMEOUT_MS } from './policy';
+import { keepAlive } from './platform';
 
-/**
-How long a wake may spend catching up before it disconnects anyway.
-*/
-export const CATCH_UP_TIMEOUT_MS = 25_000;
+export { CATCH_UP_TIMEOUT_MS } from './policy';
 
 /**
 How long an idle session is kept for follow-up RPCs before the idle alarm
@@ -263,7 +262,6 @@ export class SessionLifecycle {
       // rides the same connection.
       this.catchUpTask = this.host.driver.catchUp(CATCH_UP_TIMEOUT_MS);
       this.background(this.catchUpTask);
-      await this.arm(this.host.config.wakeIntervalMs);
     } catch (error) {
       log.error('live.failed', { error });
       this.live = false;
@@ -275,6 +273,10 @@ export class SessionLifecycle {
         }
       }
       this.host.hub.broadcast(liveFailureFrame(error));
+    } finally {
+      // The alarm was consumed before `alarm()` called us. Every exit —
+      // including a refusal to go live or a socket that left mid-connect —
+      // must schedule the next wake, or an idle object sleeps forever.
       await this.arm(this.host.config.wakeIntervalMs);
     }
   }
@@ -286,16 +288,11 @@ export class SessionLifecycle {
   may be evicted, so the work still finishes — it just no longer holds the
   object hostage while it runs.
   */
-  private background(work: Promise<unknown>): void {
+  background(work: Promise<unknown>): void {
     const settled = work.catch((error) => {
       log.error('background.failed', { error });
     });
-    const holder = this.host.state as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
-    if (typeof holder.waitUntil === 'function') {
-      holder.waitUntil(settled);
-      return;
-    }
-    void settled;
+    keepAlive(this.host.state, settled);
   }
 
   /**

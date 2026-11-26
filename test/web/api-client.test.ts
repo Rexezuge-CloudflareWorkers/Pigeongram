@@ -116,6 +116,21 @@ describe('rpcBatch', () => {
     }
   });
 
+  it('maps the codes that used to fall through to a 500', () => {
+    for (const [code, status] of [
+      ['access_config', 503],
+      ['storage_write_quota', 503],
+      ['rate_limited', 429],
+    ] as const) {
+      try {
+        batchResult({ ok: false, error: 'Not now', code }, 'chat list');
+        expect.unreachable();
+      } catch (failure) {
+        expect(failure).toMatchObject({ status, type: code });
+      }
+    }
+  });
+
   it('returns the result of a successful outcome', () => {
     expect(batchResult<{ value: number }>({ ok: true, result: { value: 1 } }, 'chat list')).toEqual({ value: 1 });
   });

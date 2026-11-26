@@ -70,7 +70,7 @@ const defaultBindings: CryptoWasmBindings = {
 
 /**
 Crypto provider for workerd, adapted from `@mtcute/web`'s `WebCryptoProvider`
-(mtcute 0.32.5, MIT licence).
+(mtcute 0.32.8, MIT licence).
 
 The difference is WASM loading: instead of fetching the module over HTTP at
 `initialize()` time, Wrangler compiles the bundled `.wasm` import into a

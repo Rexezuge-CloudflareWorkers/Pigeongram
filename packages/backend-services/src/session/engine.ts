@@ -1,3 +1,4 @@
+import { CORRELATION_ID_HEADER, ENGINE_PATHS } from '@pigeongram/backend-runtime/constants';
 import type { EngineStateDto, MeDto, UpdateEvent } from '../types';
 import { AvatarCache } from './avatar-cache';
 import type { EngineConfig } from './config';
@@ -20,29 +21,6 @@ import type { StatsDto } from './stats';
 Name of the single Durable Object instance that owns the account.
 */
 export const ENGINE_OBJECT_NAME = 'main';
-
-/**
-The paths the engine serves. A request whose path is here but whose method
-is not is a 405, not a 404: the resource exists and the verb is wrong.
-*/
-const ENGINE_PATHS: ReadonlySet<string> = new Set([
-  '/user/updates',
-  '/user/state',
-  '/user/login/qr',
-  '/user/login/phone',
-  '/user/login/code',
-  '/user/login/password',
-  '/user/login/cancel',
-  '/user/logout',
-  '/user/rpc',
-  '/user/upload',
-  '/user/upload-group',
-  '/user/wake',
-  '/user/stats',
-  '/user/file',
-  '/user/avatar',
-  '/user/sticker',
-]);
 
 /**
 The collaborators a test may replace. Production builds them from the DO's
@@ -155,11 +133,11 @@ export class SessionEngine {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const correlationId = request.headers.get('x-correlation-id') ?? crypto.randomUUID();
+    const correlationId = request.headers.get(CORRELATION_ID_HEADER) ?? crypto.randomUUID();
     const isWebSocketUpgrade = request.method === 'GET' && url.pathname === '/user/updates';
     if ((request.method === 'POST' || isWebSocketUpgrade) && !isOriginAllowed(request, this.env)) {
       const response = originRejection();
-      response.headers.set('x-correlation-id', correlationId);
+      response.headers.set(CORRELATION_ID_HEADER, correlationId);
       return response;
     }
     try {
@@ -167,11 +145,11 @@ export class SessionEngine {
       // write left behind; an alarm that already exists is left alone.
       await this.lifecycle.ensureArmed();
       const response = await this.route(request, url);
-      response.headers.set('x-correlation-id', correlationId);
+      response.headers.set(CORRELATION_ID_HEADER, correlationId);
       return response;
     } catch (error) {
       const response = errorResponse(error, correlationId);
-      response.headers.set('x-correlation-id', correlationId);
+      response.headers.set(CORRELATION_ID_HEADER, correlationId);
       return response;
     }
   }

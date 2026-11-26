@@ -22,8 +22,9 @@ export const CONFIG_PATH = process.env['WRANGLER_CONFIG_PATH'] ?? path.join(proc
 /**
 The committed template the config is materialized from.
 */
-// The family layout: the worker lives at `apps/api`, and the materialized
-// config stays at the repo root so Pages discovers the root `functions/`.
+// Adapted from the kit: the family layout puts the worker at `apps/api`, and
+// the materialized config stays at the repo root so Pages discovers the root
+// `functions/`.
 export const TEMPLATE_PATH = process.env['WRANGLER_TEMPLATE_PATH'] ?? path.join(process.cwd(), 'apps/api/wrangler.template.jsonc');
 
 /**

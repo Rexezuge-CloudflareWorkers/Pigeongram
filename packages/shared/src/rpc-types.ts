@@ -4,6 +4,7 @@ The RPC half of the JSON contract: the method names exposed over
 and `chat-link-types.ts` to stay under the god-file cap.
 */
 
+import type { EngineErrorCode } from './errors';
 import type { BotCommandDto, DialogDto, MeDto, MessageDto, PeerId, ProfileDto } from './types';
 
 export type { SearchContactsParams, SearchContactsResult } from './contact-types';
@@ -159,7 +160,7 @@ export interface RpcBatchOutcome {
   caller can tell a chat Telegram no longer offers from a failed read without
   matching on prose.
   */
-  code?: string;
+  code?: EngineErrorCode;
 }
 
 export interface GetDialogsParams {

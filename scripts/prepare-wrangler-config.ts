@@ -9,14 +9,13 @@
  * names and write their real ids over the placeholders. This file is only the
  * order; it has nothing else to do.
  *
- * Run by the deploy job before `wrangler deploy`, and by the backup workflow
- * before `wrangler d1 export` — so the database a backup covers is resolved from
- * the same config the deploy targets, with no second `D1_DATABASE_ID` secret to
- * keep in sync.
+ * Run by the deploy job before `wrangler deploy` and `wrangler pages deploy`,
+ * so the materialized config is the one both builds target.
  *
- * The one thing it does beyond calling is publish what
- * `provisionWranglerResources` created, which the backup workflow reads to refuse
- * exporting a database that did not exist until this run.
+ * Adapted from the kit: the published `created` output is kept for the family
+ * shape, but this repository has no D1 database to back up. The Durable
+ * Object's SQLite is covered by Cloudflare's point-in-time recovery, so no
+ * backup workflow reads the output here.
  *
  * Usage, from the repo root:
  *
@@ -44,11 +43,8 @@ applyVarsPatch();
 // never declared one. See `provisionWranglerResources`'s `namespaceNames`.
 const created = provisionWranglerResources({});
 
-// Published as a step output rather than only printed. The backup workflow needs
-// to know whether the D1 database *existed* or was created moments ago: a fresh one
-// holds no user data, and uploading that empty dump every night is a false sense
-// of safety. The alternative — re-reading the placeholder id out of
-// `wrangler.jsonc` — is unreachable, because `provisionWranglerResources` patches
-// the placeholder away before the reader ever runs.
+// Published as a step output for the family workflow shape. This repository
+// declares no resources, so `created` is normally empty; the output is kept so
+// a future deployment that adds one does not need to change the step contract.
 setOutput('created', created.join(','));
 console.log('Wrangler configuration is ready.');

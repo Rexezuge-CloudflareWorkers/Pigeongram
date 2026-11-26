@@ -3,9 +3,9 @@ The JSON contract shared by the worker, the Pages proxy function and the SPA:
 the DTOs the bridge carries. The RPC method shapes — `RpcMethod`, each
 method's parameters and results — live in `rpc-types.ts`.
 
-The SPA keeps its own copy of these types (`apps/web/src/types.ts`) because it
-is a separate build with its own tsconfig; keep the two in sync when the
-contract changes.
+There is one copy of the contract: `apps/web/src/types.ts` is a thin barrel
+that re-exports these modules, so a change here reaches both ends of the
+bridge without a manual mirror.
 */
 
 import type { CallDto } from './call-types';

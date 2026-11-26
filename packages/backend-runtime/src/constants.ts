@@ -32,3 +32,38 @@ legitimately issues hundreds of them in a minute, while the same volume of
 RPC calls would be abuse.
 */
 export const DEFAULT_MEDIA_RATE_LIMIT_PER_MINUTE = 600;
+
+/**
+Every path the Durable Object serves.
+
+The edge and the engine must agree on this set: the edge forwards `/user/*`
+and validates uploads before forwarding, while the engine distinguishes an
+unknown path (404) from a known path with the wrong verb (405). One exported
+set keeps the two ends from drifting apart.
+*/
+export const ENGINE_PATHS: ReadonlySet<string> = new Set([
+  '/user/updates',
+  '/user/state',
+  '/user/login/qr',
+  '/user/login/phone',
+  '/user/login/code',
+  '/user/login/password',
+  '/user/login/cancel',
+  '/user/logout',
+  '/user/rpc',
+  '/user/upload',
+  '/user/upload-group',
+  '/user/wake',
+  '/user/stats',
+  '/user/file',
+  '/user/avatar',
+  '/user/sticker',
+]);
+
+/**
+The engine paths served without an RPC body: media bytes and cached images.
+
+The edge meters them in a separate rate-limit bucket, because one rendered
+chat list issues many of them. They stay a subset of {@link ENGINE_PATHS}.
+*/
+export const MEDIA_PATHS: ReadonlySet<string> = new Set(['/user/file', '/user/avatar', '/user/sticker']);

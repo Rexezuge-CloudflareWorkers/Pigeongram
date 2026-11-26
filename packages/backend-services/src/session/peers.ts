@@ -35,7 +35,7 @@ either: mtcute's `PeersService` keeps an LruMap of input peers that it fills
 from the same `store()` call and reads before the repository, so the
 poisoning has to be repaired, not prevented.
 
-See `@mtcute/core@0.32.7` `highlevel/storage/service/peers.js` (`store`,
+See `@mtcute/core@0.32.8` `highlevel/storage/service/peers.js` (`store`,
 `getById`) and `highlevel/methods/users/resolve-peer.js`.
 */
 

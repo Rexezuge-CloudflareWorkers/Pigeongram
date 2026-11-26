@@ -17,6 +17,7 @@ import { createMtBundle } from '@pigeongram/provider-clients/mtproto/client';
 import type { MtBundle } from '@pigeongram/provider-clients/mtproto/client';
 import type { TransactionalStorageLike } from '@pigeongram/provider-clients/mtproto/sqlite';
 import { peerIdsIn, withPeerRetry } from './peers';
+import { CATCH_UP_TIMEOUT_MS } from './policy';
 import { dispatchRpc } from './rpc';
 import { rpcErrorText } from './rpc-errors';
 import { StickerRegistry } from './sticker-registry';
@@ -266,7 +267,7 @@ export class TelegramDriver {
   and the code marks the failure as retryable. It is diagnostic text only:
   the app-facing sentence is chosen where the failure is broadcast.
   */
-  async catchUp(timeoutMs = 25_000): Promise<void> {
+  async catchUp(timeoutMs = CATCH_UP_TIMEOUT_MS): Promise<void> {
     const { base } = this.#ensure();
     if (!base.isConnected) {
       throw new EngineError('Not connected to any DC', 503, 'unavailable');

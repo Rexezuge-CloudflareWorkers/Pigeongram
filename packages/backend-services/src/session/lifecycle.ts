@@ -7,11 +7,9 @@ import type { UpdatesSocketHub } from './socket-hub';
 import type { EngineStore, WakeCountersDto, WakeRecord } from './stats';
 import { log } from './log';
 import type { ServerSocketMessage } from '../types';
+import { CATCH_UP_TIMEOUT_MS } from './policy';
 
-/**
-How long a wake may spend catching up before it disconnects anyway.
-*/
-export const CATCH_UP_TIMEOUT_MS = 25_000;
+export { CATCH_UP_TIMEOUT_MS } from './policy';
 
 /**
 How long an idle session is kept for follow-up RPCs before the idle alarm

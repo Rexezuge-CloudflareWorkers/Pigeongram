@@ -30,10 +30,10 @@ export default defineRepoVitestConfig({
   // regress below it.
   thresholds: {
     // Global safety net, ratcheted to the suite's current coverage.
-    lines: 94,
+    lines: 95,
     statements: 92,
-    branches: 85,
-    functions: 91,
+    branches: 87,
+    functions: 92,
 
     // Pure validation / DTO layer.
     'packages/shared/src/**': {
@@ -97,14 +97,15 @@ export default defineRepoVitestConfig({
     // when the aggregate gates were introduced, so a regression in one of them
     // fails the build instead of being averaged away. Phase 5 tests lift them.
     perFile: {
-      'apps/web/src/recorder-loader.ts': { lines: 0, functions: 0 },
-      'apps/web/src/api/stickers.ts': { lines: 40, branches: 20, functions: 10 },
-      'apps/web/src/calls/api.ts': { functions: 0 },
-      'apps/web/src/useMessageEdit.ts': { lines: 45, branches: 10, functions: 40 },
-      'apps/web/src/useDeletionReport.ts': { lines: 30, functions: 30 },
-      'apps/web/src/components/CommandMenu.tsx': { lines: 55, functions: 55 },
-      'packages/backend-services/src/session/stats.ts': { lines: 90, branches: 70, functions: 95 },
+      'apps/web/src/recorder-loader.ts': { lines: 100, functions: 100 },
+      'apps/web/src/api/stickers.ts': { lines: 100, branches: 100, functions: 100 },
+      'apps/web/src/calls/api.ts': { functions: 100 },
+      'apps/web/src/useMessageEdit.ts': { lines: 100, branches: 90, functions: 90 },
+      'apps/web/src/useDeletionReport.ts': { lines: 100, functions: 100 },
+      'apps/web/src/components/CommandMenu.tsx': { lines: 60, functions: 60 },
+      'packages/backend-services/src/session/stats.ts': { lines: 95, branches: 70, functions: 100 },
       'packages/backend-services/src/session/rpc-dialogs.ts': { lines: 85, branches: 85, functions: 65 },
+      'packages/backend-services/src/session/container.ts': { lines: 90, branches: 100, functions: 90 },
     },
   },
 });

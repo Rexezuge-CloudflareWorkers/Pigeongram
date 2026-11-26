@@ -72,11 +72,13 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   `unread-albums`, `peers`, `archive`, `pin`, `call-*`); `provider-clients/src/mtproto/` holds the mtcute integration
   (`client`, `crypto`, `transport`, `sqlite`, `platform`); `backend-runtime/src/` is the platform seam (`base`, `config`,
   `di`, `constants`, `env.d.ts`); `shared/src/` is the single-sourced bridge contract (DTOs, RPC shapes, error codes,
-  search, chat links, stickers and calls), re-exported by thin barrels in the apps.
+  search, chat links, stickers and calls), re-exported by thin barrels in the apps. The engine's constructor is the
+  DI composition root (`session/container.ts`): collaborators are bound once by branded token and resolved through the
+  container, with `EngineDeps` overriding the three test seams.
 - `apps/web/` — the SPA. `wrangler.template.jsonc` has the `pages_build_output_dir` and the `API_WORKER` service binding
   (consumed by `functions/`); `src/` is the React app (`api.ts` is the bridge client, whose domain calls live in `api/`
-  and are re-exported from the barrel, `state/index.ts` the chat-list
-  reducers, `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
+  and are re-exported from the barrel, `state/index.ts` the chat-list folds (with the pure reaction and poll folds in
+  `state/reactions.ts` and `state/polls.ts`), `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
   and the archive move — `useNewChat.ts` the new-message picker's contacts and Telegram-wide search,
   `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is

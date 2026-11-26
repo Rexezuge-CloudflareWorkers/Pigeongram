@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { fetchChatScreen } from './api';
+import { useDataSaver } from './data-saver';
 import { firstUnread } from './reading';
 import { foldKeyboardSeed } from './reply-keyboard';
 import { mergeMessages } from './state';
@@ -88,6 +89,7 @@ function keyboardCandidate(messages: readonly MessageDto[]): MessageDto | null {
 }
 
 export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, onUnavailable }: UseThreadOpenOptions): ThreadOpening {
+  const { loadPinnedMessages } = useDataSaver();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -144,6 +146,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
         const screen = await fetchChatScreen(chat.id, null, {
           limit: OPEN_LIMIT,
           withCommands: supportsCommands(chat.kind),
+          withPinned: loadPinnedMessages,
         });
         if (sequence !== ticket.current) return;
         setBotCommands(screen.commands);
@@ -158,7 +161,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
         report(failure, chat.id);
       }
     },
-    [setThread, setKeyboardSeed, report],
+    [setThread, setKeyboardSeed, report, loadPinnedMessages],
   );
 
   const open = useCallback(
@@ -222,6 +225,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
           ...(unread !== null && unread),
           withCommands: supportsCommands(chat.kind),
           withLatest: unread !== null,
+          withPinned: loadPinnedMessages,
         });
         if (sequence !== ticket.current) return { messages: [], comments: null, commentsError: null };
         setBotCommands(screen.commands);
@@ -264,7 +268,7 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
         if (sequence === ticket.current) setLoading(false);
       }
     },
-    [positions, refresh, setThread, setKeyboardSeed, report],
+    [positions, refresh, setThread, setKeyboardSeed, report, loadPinnedMessages],
   );
 
   return { open, reset, loading, error, setError, unavailable, botCommands, description };

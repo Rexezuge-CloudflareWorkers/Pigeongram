@@ -152,7 +152,7 @@ describe('usePinnedMessages', () => {
     pinnedRead
       .mockResolvedValueOnce({ messages: [message(9), message(7)], nextOffsetId: 7 })
       .mockResolvedValueOnce({ messages: [message(5)] });
-    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0 }));
+    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0, enabled: true }));
 
     act(() => result.current.openList());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -171,7 +171,7 @@ describe('usePinnedMessages', () => {
 
   it('re-reads the first page when the thread reports another device’s pin', async () => {
     pinnedRead.mockResolvedValueOnce({ messages: [message(9)] }).mockResolvedValueOnce({ messages: [message(12), message(9)] });
-    const { result, rerender } = renderHook(({ revision }) => usePinnedMessages({ chatId: 1, revision }), {
+    const { result, rerender } = renderHook(({ revision }) => usePinnedMessages({ chatId: 1, revision, enabled: true }), {
       initialProps: { revision: 0 },
     });
 
@@ -184,7 +184,7 @@ describe('usePinnedMessages', () => {
 
   it('resets and closes when the open chat changes', async () => {
     pinnedRead.mockResolvedValue({ messages: [message(9)] });
-    const { result, rerender } = renderHook(({ chatId }) => usePinnedMessages({ chatId, revision: 0 }), {
+    const { result, rerender } = renderHook(({ chatId }) => usePinnedMessages({ chatId, revision: 0, enabled: true }), {
       initialProps: { chatId: 1 as number | null },
     });
 
@@ -197,13 +197,13 @@ describe('usePinnedMessages', () => {
   });
 
   it('does not open without a chat and stays closed on close', async () => {
-    const closed = renderHook(() => usePinnedMessages({ chatId: null, revision: 0 }));
+    const closed = renderHook(() => usePinnedMessages({ chatId: null, revision: 0, enabled: true }));
     act(() => closed.result.current.openList());
     expect(closed.result.current.isOpen).toBe(false);
     expect(pinnedRead).not.toHaveBeenCalled();
 
     pinnedRead.mockResolvedValue({ messages: [message(9)] });
-    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0 }));
+    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0, enabled: true }));
     act(() => result.current.openList());
     await waitFor(() => expect(result.current.messages).toHaveLength(1));
     act(() => result.current.close());
@@ -212,7 +212,7 @@ describe('usePinnedMessages', () => {
 
   it('re-reads only while the list is open, and reports a failed older page', async () => {
     pinnedRead.mockResolvedValueOnce({ messages: [message(9)], nextOffsetId: 9 });
-    const { result, rerender } = renderHook(({ revision }) => usePinnedMessages({ chatId: 1, revision }), {
+    const { result, rerender } = renderHook(({ revision }) => usePinnedMessages({ chatId: 1, revision, enabled: true }), {
       initialProps: { revision: 0 },
     });
 
@@ -233,7 +233,7 @@ describe('usePinnedMessages', () => {
     pinnedRead
       .mockResolvedValueOnce({ messages: [message(9), message(7)], nextOffsetId: 7 })
       .mockResolvedValueOnce({ messages: [message(7), message(5)] });
-    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0 }));
+    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0, enabled: true }));
 
     act(() => result.current.openList());
     await waitFor(() => expect(result.current.hasMore).toBe(true));
@@ -243,10 +243,57 @@ describe('usePinnedMessages', () => {
 
   it('surfaces a failed read instead of pretending the chat has no pins', async () => {
     pinnedRead.mockRejectedValueOnce(new Error('The Pinned Messages Could Not Be Read'));
-    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0 }));
+    const { result } = renderHook(() => usePinnedMessages({ chatId: 1, revision: 0, enabled: true }));
 
     act(() => result.current.openList());
     await waitFor(() => expect(result.current.error).toBe('The Pinned Messages Could Not Be Read'));
     expect(result.current.messages).toEqual([]);
+  });
+
+  it('reads nothing and stays closed while pinned loads are off', async () => {
+    pinnedRead.mockResolvedValue({ messages: [message(9)] });
+    const { result, rerender } = renderHook(({ enabled }) => usePinnedMessages({ chatId: 1, revision: 0, enabled }), {
+      initialProps: { enabled: false },
+    });
+
+    act(() => result.current.openList());
+    rerender({ enabled: true });
+    act(() => result.current.openList());
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+
+    rerender({ enabled: false });
+    expect(result.current.isOpen).toBe(false);
+    expect(pinnedRead).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes a hidden list when pinned loads come back on', async () => {
+    pinnedRead.mockResolvedValue({ messages: [message(9)] });
+    const { result, rerender } = renderHook(({ enabled }) => usePinnedMessages({ chatId: 1, revision: 0, enabled }), {
+      initialProps: { enabled: true },
+    });
+
+    act(() => result.current.openList());
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+
+    rerender({ enabled: false });
+    expect(result.current.isOpen).toBe(false);
+
+    pinnedRead.mockResolvedValue({ messages: [message(12)] });
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.messages.map((entry) => entry.id)).toEqual([12]));
+    expect(result.current.isOpen).toBe(true);
+    expect(pinnedRead).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores a pin revision while pinned loads are off', async () => {
+    pinnedRead.mockResolvedValue({ messages: [message(9)] });
+    const { result, rerender } = renderHook(({ revision, enabled }) => usePinnedMessages({ chatId: 1, revision, enabled }), {
+      initialProps: { revision: 0, enabled: false },
+    });
+
+    rerender({ revision: 1, enabled: false });
+    expect(pinnedRead).not.toHaveBeenCalled();
+    act(() => result.current.openList());
+    expect(pinnedRead).not.toHaveBeenCalled();
   });
 });

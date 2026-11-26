@@ -1,5 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { fetchPollResults, sendReaction } from './api';
+import { useCallback, useMemo, useState } from 'react';
 import { activeReplyKeyboard, foldKeyboardSeed } from './reply-keyboard';
 import {
   applyCommentCountDelta,
@@ -7,27 +6,19 @@ import {
   applyThreadReadUpdate,
   applyViewsUpdate,
   deletionReport,
-  findPollMessage,
-  toggleReaction,
   updateThread,
   updateThreadPoll,
 } from './state';
 import type { PollUpdateTarget } from './state';
 import type { OpenThreadResult, ThreadController, UseThreadOptions } from './thread-controller';
 import { useThreadPositionMemory } from './thread-position';
+import { useLatestLayout } from './useLatest';
+import { usePollRefresh } from './usePollRefresh';
+import { useReactionToggle } from './useReactionToggle';
 import { applyThreadDeleted, applyThreadEdit, applyThreadNewMessage, applyThreadRestored } from './thread-state';
 import type { ChatThread } from './thread-state';
 import type { OpenThreadOptions } from './thread-window';
-import type {
-  ChatDto,
-  DialogDto,
-  MessageDto,
-  MessagePollDto,
-  MessageReactionDto,
-  MessageReplyKeyboardButtonDto,
-  PeerId,
-  UpdateEvent,
-} from './types';
+import type { ChatDto, DialogDto, MessageDto, MessagePollDto, MessageReplyKeyboardButtonDto, PeerId, UpdateEvent } from './types';
 import { useMessageButtons } from './useMessageButtons';
 import { useMessageEdit } from './useMessageEdit';
 import { useMessageDelete } from './useMessageDelete';
@@ -66,19 +57,13 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
   // The socket handler is created once (when the socket attaches) but must
   // always see the latest thread: a poll update names a loaded message, and a
   // stale thread would miss it.
-  const threadRef = useRef<ChatThread | null>(null);
-  useLayoutEffect(() => {
-    threadRef.current = thread;
-  }, [thread]);
+  const threadRef = useLatestLayout(thread);
 
   const edit = useMessageEdit({ setThread, onEdited, onError });
 
   // The socket handler is created once, so the deletion report is read through
   // a ref: the shell rebuilds its handler together with the dialogs.
-  const onDeletedRef = useRef(onDeleted);
-  useLayoutEffect(() => {
-    onDeletedRef.current = onDeleted;
-  }, [onDeleted]);
+  const onDeletedRef = useLatestLayout(onDeleted);
 
   // The chat shows the newest reply markup a message carried — even one the
   // loaded range cannot show yet, which is what the seed stands in for — and a
@@ -162,42 +147,16 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
 
   const deletion = useMessageDelete({ remove: removeMessages, restore: restoreMessages, onError });
 
-  const react = useCallback(
-    (message: MessageDto, reaction: MessageReactionDto): void => {
-      if (reactingIds.has(message.id)) return;
-      if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
-      const before = message.reactions;
-      const after = toggleReaction(before, reaction);
-      const apply = (list: MessageReactionDto[]): void => {
-        setThread((current) =>
-          updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, list)),
-        );
-      };
-      apply(after);
-      setReactingIds((current) => new Set(current).add(message.id));
-      const target = reaction.chosen
-        ? null
-        : reaction.emoji === null
-          ? { customEmojiId: reaction.customEmojiId as string }
-          : { emoji: reaction.emoji };
-      void sendReaction(message.chatId, message.id, target)
-        .then((result) => {
-          if (result.message) apply(result.message.reactions);
-        })
-        .catch((failure: unknown) => {
-          apply(before);
-          onError(failure);
-        })
-        .finally(() => {
-          setReactingIds((current) => {
-            const next = new Set(current);
-            next.delete(message.id);
-            return next;
-          });
-        });
+  const react = useReactionToggle({
+    reactingIds,
+    setReactingIds,
+    apply: (message, list) => {
+      setThread((current) =>
+        updateThread(current, message.chatId, (messages) => applyReactionUpdate(messages, message.chatId, message.id, list)),
+      );
     },
-    [reactingIds, onError],
-  );
+    onError,
+  });
 
   /**
   Folds a fresh poll into the open thread, wherever the update points: the
@@ -214,22 +173,8 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
   out-of-date count settles on the next load or vote, and a toast for it would
   interrupt for nothing.
   */
-  const refreshPoll = useCallback(
-    (target: PollUpdateTarget): void => {
-      const open = threadRef.current;
-      if (!open) return;
-      const match = findPollMessage(open.messages, target);
-      if (!match) return;
-      void fetchPollResults(match.chatId, match.id)
-        .then((result) => {
-          applyPoll({ chatId: match.chatId, messageId: match.id, pollId: result.poll.id }, result.poll);
-        })
-        .catch(() => {
-          // Nothing to surface.
-        });
-    },
-    [applyPoll],
-  );
+  const loadedMessages = useCallback((): readonly MessageDto[] => threadRef.current?.messages ?? [], [threadRef]);
+  const refreshPoll = usePollRefresh(loadedMessages, applyPoll);
 
   const { votingIds, vote } = usePollVoting(applyPoll, onError);
   const { pressingIds: pressingButtonIds, press: pressButton } = useMessageButtons(onNotice, onError);

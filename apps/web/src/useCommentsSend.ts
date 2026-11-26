@@ -1,14 +1,15 @@
 import { useCallback, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { sendComment, sendReaction } from './api';
+import { sendComment } from './api';
 import type { PostKey } from './comments-controller';
 import type { PendingMessage } from './outbox';
-import { applyCommentReactions, mergeMessages, toggleReaction, updateCommentsThread } from './state';
+import { applyCommentReactions, mergeMessages, updateCommentsThread } from './state';
 import type { CommentsThread } from './state';
 import type { MessageDto, MessageReactionDto, PeerId } from './types';
 import { sendUploadBatch } from './upload';
 import type { UploadRequest } from './upload';
 import { useOutbox } from './useOutbox';
+import { useReactionToggle } from './useReactionToggle';
 
 /**
 The comments screen's write half: the optimistic outbox behind sends and
@@ -163,42 +164,17 @@ export function useCommentsSend({ thread, setThread, refresh, onCommentSent, onE
     [thread, applySentComment, refresh, outbox],
   );
 
-  const react = useCallback(
-    (message: MessageDto, reaction: MessageReactionDto): void => {
-      if (!thread || reactingIds.has(message.id)) return;
-      if (!reaction.chosen && reaction.emoji === null && reaction.customEmojiId === null) return;
-      const before = message.reactions;
-      const after = toggleReaction(before, reaction);
-      // The reaction may be on a comment or on the pinned post; the fold picks
-      // the one the update names (the channel post or the discussion group).
-      const apply = (list: MessageReactionDto[]): void => {
-        setThread((current) => applyCommentReactions(current, message.chatId, message.id, list));
-      };
-      apply(after);
-      setReactingIds((current) => new Set(current).add(message.id));
-      const target = reaction.chosen
-        ? null
-        : reaction.emoji === null
-          ? { customEmojiId: reaction.customEmojiId as string }
-          : { emoji: reaction.emoji };
-      void sendReaction(message.chatId, message.id, target)
-        .then((result) => {
-          if (result.message) apply(result.message.reactions);
-        })
-        .catch((failure: unknown) => {
-          apply(before);
-          onError(failure);
-        })
-        .finally(() => {
-          setReactingIds((current) => {
-            const next = new Set(current);
-            next.delete(message.id);
-            return next;
-          });
-        });
+  // A reaction may be on a comment or on the pinned post; the fold picks the
+  // one the update names (the channel post or the discussion group).
+  const react = useReactionToggle({
+    enabled: thread !== null,
+    reactingIds,
+    setReactingIds,
+    apply: (message, list) => {
+      setThread((current) => applyCommentReactions(current, message.chatId, message.id, list));
     },
-    [thread, reactingIds, setThread, onError],
-  );
+    onError,
+  });
 
   return {
     pending: outbox.pending,

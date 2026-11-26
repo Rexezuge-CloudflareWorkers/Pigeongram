@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { ServiceError } from '@rexezuge/errors';
+import { failureText } from './failure';
 import { fetchChatScreen } from './api';
 import { useDataSaver } from './data-saver';
 import { firstUnread } from './reading';
@@ -60,10 +61,6 @@ interface ThreadOpening {
   unavailable: boolean;
   botCommands: readonly BotCommandDto[];
   description: string | null;
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }
 
 /**

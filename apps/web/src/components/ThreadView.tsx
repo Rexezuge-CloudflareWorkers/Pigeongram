@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { composerSends } from '../composer-sends';
 import { useDataSaver } from '../data-saver';
 import { formatDay, isSameDay } from '../format';
@@ -235,11 +235,15 @@ export function ThreadView({
     reportVisible(element);
   }, [chat, lastId, lastPendingKey, messages, loading, unreadDividerId, focusMessageId, atLatest, positions, reportVisible]);
 
+  // Grouping and the id index are pure functions of the loaded window. Scrolling
+  // changes `awayFromBottom` on every frame; recomputing them there was the
+  // most expensive part of a scroll render.
+  const messageById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages]);
+  const groups = useMemo(() => groupMessages(messages), [messages]);
+
   if (!chat) return <ThreadPlaceholder />;
 
   const replyTarget = replyingTo !== null && replyingTo.chatId === chat.id ? replyingTo.message : null;
-  const messageById = new Map(messages.map((message) => [message.id, message]));
-  const groups = groupMessages(messages);
   // The day a pending send falls on, when it is not the loaded list's last day.
   const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;
 

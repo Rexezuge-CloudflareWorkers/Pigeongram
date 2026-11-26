@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { searchGlobal, searchMessages } from './api';
+import { failureText } from './failure';
 import type { SearchNext, SearchScope } from './search';
 import type { ChatDto, MessageDto, SearchGlobalResult, SearchMessagesResult } from './types';
 
@@ -237,8 +238,4 @@ function mergeChats(current: readonly ChatDto[], incoming: readonly ChatDto[]): 
     merged.push(chat);
   }
   return merged;
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }

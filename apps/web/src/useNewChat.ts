@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { searchContacts } from './api';
+import { failureText } from './failure';
 import type { ChatDto } from './types';
 
 /**
@@ -143,8 +144,4 @@ export function useNewChat(): UseNewChatResult {
     error: current?.error ?? null,
     retry,
   };
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }

@@ -1,6 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// The wasm provider cannot instantiate under node; the route table never
+// reaches the crypto primitives.
+vi.mock('../packages/provider-clients/src/mtproto/crypto', () => ({
+  WorkerCryptoProvider: class {
+    initialize(): void {}
+    randomFill(buffer: Uint8Array): void {
+      crypto.getRandomValues(buffer as Uint8Array<ArrayBuffer>);
+    }
+  },
+}));
 import { ENGINE_PATHS, MEDIA_PATHS } from '../packages/backend-runtime/src/constants';
 import { allRoutes } from '../apps/api/src/endpoints/routeTable';
+import { SessionEngine } from '../packages/backend-services/src/session/engine';
+import { createNodeTransactionalStorage, openNodeDatabase } from './session/node-sql';
 
 /**
 The edge and the Durable Object disagree at their peril: a path the edge
@@ -23,5 +36,17 @@ describe('bridge path taxonomy', () => {
 
   it('recognises every engine path as an account path', () => {
     for (const path of ENGINE_PATHS) expect(path.startsWith('/user/')).toBe(true);
+  });
+
+  it('gives every declared engine path at least one handler', () => {
+    const transaction = createNodeTransactionalStorage(openNodeDatabase());
+    const state = {
+      storage: transaction,
+      getWebSockets: () => [],
+      blockConcurrencyWhile: async <T>(callback: () => Promise<T>): Promise<T> => callback(),
+    } as unknown as DurableObjectState;
+    const engine = new SessionEngine(state, {} as CloudflareEnv);
+    const served = new Set(engine.routeKeys.map((key) => key.split(' ', 2)[1]));
+    for (const path of ENGINE_PATHS) expect(served.has(path), `${path} has no handler`).toBe(true);
   });
 });

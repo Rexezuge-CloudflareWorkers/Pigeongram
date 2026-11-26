@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
 import { commentWebLink, messageWebLink } from '../links';
@@ -150,8 +150,8 @@ export function CommentsView({
   }, [thread.chat.id, thread.post.id]);
 
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;
-  const commentById = new Map(comments.map((comment) => [comment.id, comment]));
-  const groups = groupMessages(comments);
+  const commentById = useMemo(() => new Map(comments.map((comment) => [comment.id, comment])), [comments]);
+  const groups = useMemo(() => groupMessages(comments), [comments]);
   // The day a pending comment falls on, when it is not the loaded list's last
   // day.
   const lastGroupDate = groups.at(-1)?.[0]?.date ?? null;

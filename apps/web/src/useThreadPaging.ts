@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
+import { failureText } from './failure';
 import { fetchHistory } from './api';
 import { mergeMessages } from './state';
 import { threadReachesLatest } from './thread-state';
@@ -30,10 +31,6 @@ interface ThreadPaging {
   the bottom, not for every message in between.
   */
   jumpToLatest: () => Promise<void>;
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }
 
 export function useThreadPaging({ threadRef, setThread, setError }: UseThreadPagingOptions): ThreadPaging {

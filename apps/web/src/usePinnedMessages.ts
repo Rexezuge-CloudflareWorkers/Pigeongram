@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPinnedMessages } from './api';
+import { failureText } from './failure';
 import type { MessageDto, PeerId } from './types';
 
 /**
@@ -50,10 +51,6 @@ export interface PinnedMessagesController {
   openList: () => void;
   close: () => void;
   loadOlder: () => void;
-}
-
-function failureText(failure: unknown): string {
-  return failure instanceof Error ? failure.message : String(failure);
 }
 
 /**

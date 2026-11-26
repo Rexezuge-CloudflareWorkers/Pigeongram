@@ -6,6 +6,7 @@ import { parseBatchCalls } from './params';
 import { dialogsRpcMethods } from './rpc-dialogs';
 import { dispatchBatch } from './rpc-batch';
 import { messagesRpcMethods } from './rpc-messages';
+import { scheduledRpcMethods } from './rpc-scheduled';
 import { searchRpcMethods } from './rpc-search';
 import type { StickerRegistry } from './sticker-registry';
 import { stickerRpcMethods } from './stickers';
@@ -52,6 +53,7 @@ export const RPC_METHODS = {
   ...callRpcMethods,
   ...dialogsRpcMethods,
   ...messagesRpcMethods,
+  ...scheduledRpcMethods,
   ...searchRpcMethods,
   ...stickerRpcMethods,
 

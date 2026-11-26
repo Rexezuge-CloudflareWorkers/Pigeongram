@@ -7,7 +7,8 @@ import { readWatermark } from '../reading';
 import { isAtBottom, jumpToMessage, positionThread, readThreadPosition, settleToBottom } from '../thread-position';
 import { isNearBottom, isNearTop, usePrependAnchor } from '../thread-paging';
 import type { ThreadViewProps } from '../thread-view-props';
-import type { MessageDto, PeerId } from '../types';
+import { useReadWatermark } from '../useReadWatermark';
+import type { MessageDto } from '../types';
 import { JumpToLatest } from './JumpToLatest';
 import { MessageSkeleton } from './MessageSkeleton';
 import { PendingMessageRow } from './PendingMessageRow';
@@ -19,12 +20,6 @@ import { ThreadHeader } from './ThreadHeader';
 import { ThreadMessageRows } from './ThreadMessageRows';
 import { ThreadPlaceholder } from './ThreadPlaceholder';
 import { ThreadUnavailable } from './ThreadUnavailable';
-
-/**
-How long a read watermark is held back before it is reported: scrolling
-advances it message by message, and every advance is a round trip.
-*/
-const READ_DEBOUNCE_MS = 250;
 
 export function ThreadView({
   chat,
@@ -58,6 +53,8 @@ export function ThreadView({
   onLoadNewer,
   onJumpToLatest,
   onSend,
+  onSchedule,
+  onOpenScheduled,
   editing,
   onEdit,
   onPin,
@@ -91,58 +88,16 @@ export function ThreadView({
   // Position and read bookkeeping lives in refs so scrolling never re-renders.
   const positionedChat = useRef<number | null>(null);
   const positionedFocus = useRef<number | null>(null);
-  const readThrough = useRef(0);
-  const readTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pendingRead = useRef<{ chatId: number; maxId: number } | null>(null);
   // The reply target carries its chat id, so switching threads invalidates it
   // without an effect.
   const [replyingTo, setReplyingTo] = useState<{ chatId: number; message: MessageDto } | null>(null);
   // The jump control redraws only when this boolean flips, not on every scroll pixel.
   const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const watermarkDebounce = useReadWatermark(onReadThrough);
 
   // Older pages are prepended above the viewport; keep the row the reader was
   // looking at where it was instead of letting the new content push it down.
   usePrependAnchor(scrollRef, chat === null ? -1 : chat.id, messages[0]?.id ?? null, messages.length);
-
-  // The caller is refreshed every render (the `hooks.ts` pattern), so a read
-  // the debounce flushes still reaches it; the chat id captured with the
-  // watermark is what keeps a late report pointed at the right dialog.
-  const onReadThroughRef = useRef(onReadThrough);
-  useEffect(() => {
-    onReadThroughRef.current = onReadThrough;
-  });
-
-  const flushRead = useCallback((): void => {
-    readTimer.current = undefined;
-    const pending = pendingRead.current;
-    pendingRead.current = null;
-    if (pending) onReadThroughRef.current(pending.chatId, pending.maxId);
-  }, []);
-
-  const scheduleRead = useCallback(
-    (chatId: PeerId, maxId: number): void => {
-      if (maxId <= readThrough.current) return;
-      readThrough.current = maxId;
-      pendingRead.current = { chatId, maxId };
-      if (readTimer.current !== undefined) clearTimeout(readTimer.current);
-      readTimer.current = setTimeout(flushRead, READ_DEBOUNCE_MS);
-    },
-    [flushRead],
-  );
-
-  // A read still inside the debounce window must not be lost when the view
-  // goes away (the comments screen opens, sign-out, tab close).
-  useEffect(
-    () => () => {
-      if (readTimer.current === undefined) {
-        return;
-      }
-
-      clearTimeout(readTimer.current);
-      flushRead();
-    },
-    [flushRead],
-  );
 
   // Media loading after the first paint and the mobile keyboard both change the
   // list's height. A pinned view follows, so the end stays in view; once the
@@ -176,9 +131,9 @@ export function ThreadView({
         }
       }
       const watermark = readWatermark(messages, visible, atBottom);
-      if (watermark !== null && chat) scheduleRead(chat.id, watermark);
+      if (watermark !== null && chat) watermarkDebounce.schedule(chat.id, watermark);
     },
-    [chat, messages, scheduleRead],
+    [chat, messages, watermarkDebounce],
   );
 
   const lastId = messages.at(-1)?.id ?? 0;
@@ -215,7 +170,7 @@ export function ThreadView({
       if (loading || messages.length === 0) return;
       positionedChat.current = chat.id;
       positionedFocus.current = focusMessageId;
-      readThrough.current = 0;
+      watermarkDebounce.reset();
       // The comments screen unmounts this view without closing the thread, so
       // a remembered position wins over the linked post, divider and bottom.
       positionThread(element, {
@@ -283,6 +238,7 @@ export function ThreadView({
         onSearch={onSearch}
         onCall={onCall}
         callActive={callActive}
+        onOpenScheduled={onOpenScheduled}
       />
       {unavailable || !loadPinnedMessages || pinnedMessage === null ? null : (
         <PinnedBanner chat={chat} message={pinnedMessage} onOpen={onOpenPinned} />
@@ -388,6 +344,7 @@ export function ThreadView({
           onCancelEdit={onCancelEdit}
           onSaveEdit={onSaveEdit}
           onSend={send}
+          onSchedule={onSchedule}
           onAttach={attach}
           onSendSticker={sendSticker}
           onPressReplyKeyboard={pressReplyKeyboard}

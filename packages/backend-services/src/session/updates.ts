@@ -23,6 +23,9 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
     case 'updateNewChannelMessage': {
       return { type: 'new_message', message: toMessageDto(new Message(update.message, info.peers)) };
     }
+    case 'updateNewScheduledMessage': {
+      return { type: 'scheduled_new', message: toMessageDto(new Message(update.message, info.peers)) };
+    }
     case 'updateEditMessage':
     case 'updateEditChannelMessage': {
       return {
@@ -46,6 +49,17 @@ export function mapRawUpdate(info: RawUpdateInfo, calls?: CallRegistry): UpdateE
       // by matching the ids against the window it has loaded, and the next
       // read settles anything outside it.
       return { type: 'deleted', chatId: null, messageIds: update.messages };
+    }
+    case 'updateDeleteScheduledMessages': {
+      // Telegram names the chat here: the queue is per peer. `sentMessages`
+      // means the slot was fulfilled rather than cancelled; the live copies
+      // arrive through the ordinary new-message update, so only the ids are
+      // needed to retire the row in the queue.
+      return {
+        type: 'scheduled_deleted',
+        chatId: getMarkedPeerId(update.peer),
+        messageIds: update.messages,
+      };
     }
     case 'updateMessageReactions': {
       const chatId = getMarkedPeerId(update.peer);
@@ -223,13 +237,66 @@ export function messagePinnedEvent(result: unknown): UpdateEvent | null {
 }
 
 /**
+The `scheduled_new` event a successful scheduled send implies. The result
+carries the flag because a plain send's message can also carry a future date
+when Telegram's clock is ahead of the worker's.
+*/
+function scheduledMessageOf(result: unknown): MessageDto | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const { message, scheduled } = result as { message?: unknown; scheduled?: unknown };
+  if (scheduled !== true || typeof message !== 'object' || message === null) return null;
+  return message as MessageDto;
+}
+
+function scheduledNewEvent(result: unknown): UpdateEvent | null {
+  const message = scheduledMessageOf(result);
+  return message === null ? null : { type: 'scheduled_new', message };
+}
+
+/**
+The `scheduled_edit` event a successful edit of a queued message implies. A
+plain edit must keep its own `edit_message` event: the folds are different.
+*/
+function scheduledEditEvent(result: unknown): UpdateEvent | null {
+  const message = scheduledMessageOf(result);
+  return message === null ? null : { type: 'scheduled_edit', message };
+}
+
+/**
+The queue change a successful scheduled write implies. A `sendScheduled`
+answer carries the live copies as well as the ids, so other tabs can fold the
+sent messages even when Telegram answered this call with a quiet pts step.
+*/
+function scheduledDeletedEvent(result: unknown): UpdateEvent | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const { chatId, messageIds, messages } = result as { chatId?: unknown; messageIds?: unknown; messages?: unknown };
+  if (typeof chatId !== 'number' || !Array.isArray(messageIds)) return null;
+  const ids = messageIds.filter((id): id is number => typeof id === 'number');
+  if (ids.length === 0) return null;
+  const sentMessages = Array.isArray(messages)
+    ? messages.filter(
+        (message): message is MessageDto =>
+          typeof message === 'object' && message !== null && typeof (message as MessageDto).id === 'number',
+      )
+    : [];
+  return {
+    type: 'scheduled_deleted',
+    chatId,
+    messageIds: ids,
+    ...(sentMessages.length > 0 && { sentMessages }),
+  };
+}
+
+/**
 The event a successful write implies when mtcute swallowed Telegram's own
 update for it. The dispatcher names the method, so the driver does not have to
 remember which writes need the echo.
 */
 export function echoEvent(method: string, result: unknown): UpdateEvent | null {
   if (method === 'deleteMessages') return deletedEvent(result);
-  if (method === 'editMessage') return editedEvent(result);
+  if (method === 'sendMessage') return scheduledNewEvent(result);
+  if (method === 'editMessage') return scheduledEditEvent(result) ?? editedEvent(result);
   if (method === 'setMessagePinned') return messagePinnedEvent(result);
+  if (method === 'deleteScheduledMessages' || method === 'sendScheduled') return scheduledDeletedEvent(result);
   return null;
 }

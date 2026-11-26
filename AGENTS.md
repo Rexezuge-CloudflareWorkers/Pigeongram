@@ -10,7 +10,7 @@ Telegram web client on Cloudflare. The worker (`apps/api/`) is the backend —
 a Hono API and a Durable Object (`SessionEngine`) that owns one Telegram account's MTProto session: a 5-minute alarm
 wakes it to connect, replay `getDifference`, persist to DO SQLite and disconnect (the always-reachable baseline), and
 while a browser socket is attached it holds the session live and pushes updates. The Pages app (`apps/web/`) is the Vite +
-React front end (public intro, QR login, chat list, threads), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
+React front end (public intro, QR login, chat list, threads, scheduled messages), and the Pages Functions (`functions/`) proxy `/api/*` (public health)
 and `/user/*` (Access-gated user API) to the worker over a service binding so the worker never faces the internet.
 One account, single user, Free-tier-first: the 10 ms CPU per invocation and the 100,000 rows written/day limits are the
 constraints the session engine is measured against. `docs/SESSION_ENGINE.md` is the engine's runbook. Deployment
@@ -83,7 +83,9 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is
   `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send
-  layer, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread
+  layer, `useScheduledMessages.ts`/`scheduled-state.ts` the scheduled queue beside the thread (an on-demand read, not
+  an optimistic row), with `components/ScheduleSendButton.tsx` and `components/ScheduledMessagesDialog.tsx` as its
+  overlays, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread
   watermark with its read context) and the forward-paging rule, `thread-state.ts` the loaded-range cursors and the
   live/sent/edit folds, `useThreadPaging.ts` the older/newer reads, `thread-paging.ts` the scroll-driven paging at
   either edge and the prepend anchor, `reading.ts` the unread-position logic they share, `components/` the
@@ -267,6 +269,16 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   Telegram drops the duplicate if the first attempt actually landed — the engine validates that id like any other
   parameter (`packages/backend-services/src/session/params.ts`, and `packages/backend-services/src/session/upload-spec.ts` for the upload query). An album
   (`POST /user/upload-group`) has no client-chosen id: Telegram picks the group's, so a retried album is a new album.
+- **A scheduled message is server truth too, held in its own queue.** `getScheduledMessages` reads Telegram's queued
+  messages on demand (the header menu opens the list); they never enter `ChatThread.messages` or
+  `DialogDto.lastMessage`, because a message with a future date is not in the history yet and would poison ids,
+  watermarks and reply lookups. `scheduleDate` is unix milliseconds UTC, bounded at the engine to a 30-second minimum
+  lead and a one-year horizon; mtcute calls it `schedule` on a send and `scheduleDate` on an edit, and the engine owns
+  that translation. `sendMessage`/`editMessage` mark an accepted write `scheduled` so the engine echoes
+  `scheduled_new`/`scheduled_edit` instead of the ordinary thread events, and raw Telegram updates map to the same
+  variants on other sessions. `sendScheduled` echoes `scheduled_deleted` with the live copies, which the SPA folds
+  into the thread; a plain delete has only ids. There is no pending row for scheduling — the engine's echo is the
+  acknowledgement, and a refusal is a toast. A scheduled edit keeps the message's original send time.
 - **A delete is for everyone, and the chat list is repaired from the thread's own fold.** `deleteMessages` always
   passes `revoke: true`: Telegram's "delete for me" is session-scoped, so the message would reappear on the next read.
   The SPA deletes optimistically (`apps/web/src/useMessageDelete.ts`: the rows go before the answer, a refusal puts

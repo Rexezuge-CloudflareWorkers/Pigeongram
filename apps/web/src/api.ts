@@ -25,18 +25,21 @@ export {
 } from './api/chats';
 export {
   deleteMessages,
+  deleteScheduledMessages,
   editMessage,
   fetchChatScreen,
   fetchComments,
   fetchHistory,
   fetchPinnedMessages,
   fetchPollResults,
+  fetchScheduledMessages,
   forwardMessages,
   pressCallbackButton,
   readHistory,
   sendComment,
   sendMessage,
   sendReaction,
+  sendScheduled,
   sendVote,
   setMessagePinned,
 } from './api/threads';

@@ -8,6 +8,7 @@ import { usePinnedMessages } from '../usePinnedMessages';
 import { CommentsView } from './CommentsView';
 import { DeleteMessagesDialog } from './DeleteMessagesDialog';
 import { PinnedMessagesDialog } from './PinnedMessagesDialog';
+import { ScheduledMessagesDialog } from './ScheduledMessagesDialog';
 import { ThreadView } from './ThreadView';
 
 /**
@@ -199,6 +200,8 @@ export function ThreadPane({
           await threads.jumpToLatest();
         }}
         onSend={threads.send}
+        onSchedule={threads.schedule}
+        onOpenScheduled={() => threads.scheduled.openList()}
         editing={threads.editing}
         onEdit={threads.startEdit}
         onPin={threads.setPinned}
@@ -221,6 +224,7 @@ export function ThreadPane({
       />
       <DeleteMessagesDialog deletion={threads.deletion} />
       {selected === null ? null : <PinnedMessagesDialog chat={selected} controller={pinned} onOpenPost={onOpenPost} />}
+      {selected === null || preview !== null ? null : <ScheduledMessagesDialog controller={threads.scheduled} />}
     </>
   );
 }

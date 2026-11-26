@@ -118,6 +118,32 @@ export function optionalInt(value: unknown): number | undefined {
 }
 
 /**
+The shortest lead time the bridge accepts for a scheduled send. Telegram's own
+clients need a moment to queue the message, and a time already in the past
+would be sent immediately instead of at the time the caller asked for.
+*/
+const SCHEDULE_MIN_LEAD_MS = 30_000;
+
+/**
+The horizon of a scheduled send: one year, counted from the validating call.
+*/
+const SCHEDULE_MAX_LEAD_MS = 365 * 24 * 60 * 60 * 1000;
+
+/**
+A send time as unix milliseconds in UTC. `now` is a parameter so the bounds can
+be asserted without depending on the clock at test time.
+*/
+export function optionalScheduleDate(value: unknown, now = Date.now()): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+    throw new EngineError('scheduleDate must be unix milliseconds', 400);
+  }
+  if (value < now + SCHEDULE_MIN_LEAD_MS) throw new EngineError('scheduleDate must be in the future', 400);
+  if (value > now + SCHEDULE_MAX_LEAD_MS) throw new EngineError('scheduleDate is too far in the future', 400);
+  return value;
+}
+
+/**
 A boolean flag, or `undefined` when it was not provided. A flag that is there
 but is not a boolean is a 400: the bridge never guesses what the caller meant.
 */

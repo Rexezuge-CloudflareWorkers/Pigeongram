@@ -31,6 +31,8 @@ export type {
 export type {
   DeleteMessagesParams,
   DeleteMessagesResult,
+  DeleteScheduledMessagesParams,
+  DeleteScheduledMessagesResult,
   EditMessageParams,
   EditMessageResult,
   ForwardMessagesParams,
@@ -38,12 +40,16 @@ export type {
   GetPinnedMessagesParams,
   GetPinnedMessagesResult,
   GetPollResultsParams,
+  GetScheduledMessagesParams,
+  GetScheduledMessagesResult,
   GetPollResultsResult,
   PressCallbackButtonParams,
   PressCallbackButtonResult,
   ReadHistoryParams,
   SendMessageParams,
   SendMessageResult,
+  SendScheduledParams,
+  SendScheduledResult,
   SendReactionParams,
   SendReactionResult,
   SendVoteParams,
@@ -65,8 +71,11 @@ export type RpcMethod =
   | 'getDialogs'
   | 'getHistory'
   | 'getPinnedMessages'
+  | 'getScheduledMessages'
   | 'sendMessage'
   | 'editMessage'
+  | 'deleteScheduledMessages'
+  | 'sendScheduled'
   | 'setMessagePinned'
   | 'forwardMessages'
   | 'deleteMessages'
@@ -119,6 +128,7 @@ export type BatchableRpcMethod =
   | 'getDialogs'
   | 'getHistory'
   | 'getPinnedMessages'
+  | 'getScheduledMessages'
   | 'searchMessages'
   | 'searchGlobal'
   | 'getPollResults'

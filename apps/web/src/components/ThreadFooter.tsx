@@ -34,6 +34,7 @@ interface ThreadFooterProps {
   replyKeyboard: ActiveReplyKeyboard | null;
   onCancelReply: () => void;
   onSend: (text: string, replyTo?: number) => Promise<void>;
+  onSchedule: (text: string, scheduleDate: number, replyTo?: number) => Promise<void>;
   onAttach: (request: UploadRequest) => Promise<void>;
   onSendSticker: (sticker: StickerDto, set: { id: string; accessHash: string } | null, replyTo?: number) => Promise<void>;
   /**
@@ -55,6 +56,7 @@ export function ThreadFooter({
   replyKeyboard,
   onCancelReply,
   onSend,
+  onSchedule,
   onAttach,
   onSendSticker,
   onPressReplyKeyboard,
@@ -94,6 +96,7 @@ export function ThreadFooter({
         onCancelEdit={onCancelEdit}
         onSaveEdit={onSaveEdit}
         onSend={onSend}
+        onSchedule={onSchedule}
         onAttach={onAttach}
         onSendSticker={onSendSticker}
         onPressReplyKeyboard={onPressReplyKeyboard}

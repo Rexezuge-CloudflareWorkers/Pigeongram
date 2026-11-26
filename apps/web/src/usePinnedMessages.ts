@@ -79,6 +79,9 @@ export function usePinnedMessages({ chatId, revision, enabled }: UsePinnedMessag
   // A revision can move while the list is closed; the reader asked for nothing
   // then, so only an open list pays for the refresh.
   const openRef = useRef(false);
+  // Guards the same tick: state alone lets two scroll events start two pages
+  // before the first `loadingOlder` commit is visible.
+  const olderInFlight = useRef(false);
   const lastRevision = useRef<{ chatId: PeerId | null; revision: number; enabled: boolean }>({ chatId, revision, enabled });
 
   const openList = useCallback((): void => {
@@ -147,7 +150,18 @@ export function usePinnedMessages({ chatId, revision, enabled }: UsePinnedMessag
   }, []);
 
   const loadOlder = useCallback((): void => {
-    if (!enabled || chatId === null || view === null || view.chatId !== chatId || view.nextOffsetId === null || view.loadingOlder) return;
+    if (
+      !enabled ||
+      chatId === null ||
+      view === null ||
+      view.chatId !== chatId ||
+      view.nextOffsetId === null ||
+      view.loadingOlder ||
+      olderInFlight.current
+    ) {
+      return;
+    }
+    olderInFlight.current = true;
     const sequence = ticket.current;
     const offsetId = view.nextOffsetId;
     setView((current) => (current !== null && current.chatId === chatId ? { ...current, loadingOlder: true } : current));
@@ -170,6 +184,9 @@ export function usePinnedMessages({ chatId, revision, enabled }: UsePinnedMessag
         setView((current) =>
           current !== null && current.chatId === chatId ? { ...current, loadingOlder: false, error: failureText(failure) } : current,
         );
+      })
+      .finally(() => {
+        olderInFlight.current = false;
       });
   }, [chatId, view, enabled]);
 

@@ -103,6 +103,17 @@ describe('MessageButtons', () => {
     expect(document.querySelector('iframe')).toBeNull();
   });
 
+  it('renders a bot-supplied unsafe URL as inert text', () => {
+    renderButtons([
+      [{ kind: 'url', url: 'javascript:alert(1)', text: 'Unsafe', style: null }],
+      [{ kind: 'webview', url: 'data:text/html,<script>alert(1)</script>', text: 'Also Unsafe', style: null }],
+    ]);
+
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('Unsafe').tagName).toBe('SPAN');
+    expect(screen.getByText('Also Unsafe').getAttribute('href')).toBeNull();
+  });
+
   it('runs a callback button and reports the press', () => {
     const onPress = vi.fn();
     renderButtons([[{ kind: 'callback', data: 'payload', requiresPassword: false, text: 'Press', style: 'primary' }]], { onPress });

@@ -160,6 +160,25 @@ describe('CallOrchestrator.startCall', () => {
     await vi.waitFor(() => expect(rpc.requestCall).toHaveBeenCalledTimes(2));
   });
 
+  it('keeps an incoming call that arrived while an outgoing request was in flight', async () => {
+    const request = deferred<{ call: CallDto }>();
+    rpc.requestCall.mockReturnValue(request.promise);
+    const { orchestrator, dispatch, peers } = mount();
+
+    orchestrator.startCall(7);
+    await vi.waitFor(() => expect(rpc.requestCall).toHaveBeenCalledOnce());
+    // An update from Telegram can install a call while the DH config and the
+    // request are awaited. It must not be overwritten by the outgoing result.
+    orchestrator.handleUpdate({ type: 'call', call: callDto({ id: 'incoming', adminId: 99 }) });
+    request.resolve({ call: callDto() });
+    await request.promise;
+
+    await vi.waitFor(() => expect(rpc.discardCall).toHaveBeenCalledWith({ callId: '9', reason: 'hangup', duration: 0 }));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'incoming', callId: 'incoming', chatId: 99, peerId: 99 });
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'outgoing' }));
+    expect(peers).toHaveLength(1);
+  });
+
   it('drops a call requested after the page went away', async () => {
     const request = deferred<{ call: CallDto }>();
     rpc.requestCall.mockReturnValue(request.promise);

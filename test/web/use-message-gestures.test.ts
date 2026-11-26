@@ -44,6 +44,18 @@ describe('useMessageGestures', () => {
     expect(vibrate).toHaveBeenCalledWith(10);
   });
 
+  it('fires once per gesture even when the pointer keeps moving', () => {
+    const { result } = renderHook(() => useMessageGestures());
+    const onReply = vi.fn();
+
+    void act(() => result.current.dragReply(200, onReply));
+    void act(() => result.current.dragReply(220, onReply));
+    void act(() => result.current.dragReply(240, onReply));
+
+    expect(onReply).toHaveBeenCalledOnce();
+    expect(vibrate).toHaveBeenCalledOnce();
+  });
+
   it('ignores a drag in the other direction', () => {
     const { result } = renderHook(() => useMessageGestures());
     const onReply = vi.fn();

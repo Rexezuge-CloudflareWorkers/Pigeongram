@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
 The swipe-to-reply and reaction-burst state for a message row.
@@ -19,6 +19,10 @@ export function useMessageGestures(): {
 } {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [burstKey, setBurstKey] = useState<string | null>(null);
+  // A swipe is one gesture, not one event per pointermove: without the latch
+  // a slow drag fires the reply banner and the vibration on every frame after
+  // it crosses the threshold. The row clears it on pointer up/cancel.
+  const replied = useRef(false);
 
   useEffect(() => {
     if (burstKey === null) return;
@@ -30,9 +34,10 @@ export function useMessageGestures(): {
     if (dx <= 0) return;
     const offset = Math.min(dx * 0.35, SWIPE_REPLY_PX);
     setSwipeOffset(offset);
-    if (dx < SWIPE_REPLY_PX) {
+    if (dx < SWIPE_REPLY_PX || replied.current) {
       return;
     }
+    replied.current = true;
 
     onReply();
     setSwipeOffset(0);
@@ -41,7 +46,10 @@ export function useMessageGestures(): {
     }
   };
 
-  const resetSwipe = (): void => setSwipeOffset(0);
+  const resetSwipe = (): void => {
+    replied.current = false;
+    setSwipeOffset(0);
+  };
   const burst = (key: string): void => {
     setBurstKey(key);
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {

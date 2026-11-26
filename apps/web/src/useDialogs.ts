@@ -265,7 +265,15 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
         await setArchivedRpc(chatId, archived);
         onNotice(archived ? 'Chat Archived' : 'Chat Restored');
       } catch (failure) {
-        commit(before.main, before.archived);
+        // Undo the move against the *current* lists. A live update that arrived
+        // while the bridge call was in flight must survive the rollback.
+        const moved = ref.current.find((dialog) => dialog.chat.id === chatId);
+        if (moved) {
+          const back = moveDialog(mainRef.current, archivedRef.current, moved, !archived);
+          commit(back.main, back.archived);
+        } else {
+          commit(before.main, before.archived);
+        }
         onError(failure);
       }
     },
@@ -289,7 +297,9 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
         await setPinnedRpc(chatId, pinned);
         onNotice(pinned ? 'Chat Pinned' : 'Chat Unpinned');
       } catch (failure) {
-        commit(before.main, before.archived);
+        // Re-apply the inverse pin to the current lists, so an unrelated
+        // update folded during the call is not thrown away with the snapshot.
+        commit(applyPinnedDialog(mainRef.current, chatId, !pinned), applyPinnedDialog(archivedRef.current, chatId, !pinned));
         onError(failure);
       }
     },

@@ -73,6 +73,9 @@ export function useSearch({ active, initialScope, initialQuery = '' }: UseSearch
   // The key of the page being appended, if one is on its way. A plain boolean
   // would stay true when the reader changes the query mid-read.
   const [moreKey, setMoreKey] = useState<string | null>(null);
+  // State guards a render; the ref guards the same tick. Two rapid scrolls can
+  // both see `moreKey === null` before React commits, which would page twice.
+  const moreInFlight = useRef(false);
   // Every search takes a ticket; a slower answer that loses to a later query
   // must not put its page on screen.
   const sequence = useRef(0);
@@ -110,12 +113,13 @@ export function useSearch({ active, initialScope, initialQuery = '' }: UseSearch
   }, [active, query, scope]);
 
   const loadMore = useCallback((): void => {
-    if (current === null || current.next === null || moreKey !== null) return;
+    if (current === null || current.next === null || moreInFlight.current) return;
     const searched = query.trim();
     if (searched.length === 0) return;
     const ticket = sequence.current;
     const searchedKey = current.key;
     const nextPage = current.next;
+    moreInFlight.current = true;
     setMoreKey(searchedKey);
     void loadPage(searched, scope, nextPage)
       .then((page) => {
@@ -138,7 +142,10 @@ export function useSearch({ active, initialScope, initialQuery = '' }: UseSearch
           previous !== null && previous.key === searchedKey ? { ...previous, error: failureText(failure) } : previous,
         );
       })
-      .finally(() => setMoreKey(null));
+      .finally(() => {
+        moreInFlight.current = false;
+        setMoreKey(null);
+      });
   }, [current, moreKey, query, scope]);
 
   return {

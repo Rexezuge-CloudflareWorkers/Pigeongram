@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import type { ReactNode } from 'react';
+import { safeHref } from './safe-url';
 import type { MessageEntityDto } from './types';
 
 /**
@@ -23,7 +24,6 @@ interface OpenSpan {
   children: ReactNode[];
 }
 
-const SAFE_SCHEME = /^(?:https?|mailto|tel|tg):/i;
 const HAS_SCHEME = /^[a-z][\d+.a-z-]*:/i;
 const EMAIL = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 const USERNAME = /^\w{3,}$/i;
@@ -42,15 +42,6 @@ const FORMAT_TAG: Partial<Record<MessageEntityDto['kind'], 'b' | 'i' | 'u' | 's'
   pre: 'pre',
   blockquote: 'blockquote',
 };
-
-/**
-Only `http(s)`, `mailto`, `tel` and `tg` URLs become anchors — anything else
-(`javascript:`, `data:`) renders as plain text.
-*/
-function safeHref(url: string): string | null {
-  const trimmed = url.trim();
-  return SAFE_SCHEME.test(trimmed) ? trimmed : null;
-}
 
 function urlHref(text: string): string | null {
   return safeHref(HAS_SCHEME.test(text) ? text : `https://${text}`);

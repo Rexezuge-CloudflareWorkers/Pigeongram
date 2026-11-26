@@ -285,7 +285,7 @@ export function useThread({ onSent, onEdited, onError, onNotice, onDeleted, onUn
       }
       if (update.type === 'read') setThread((current) => applyThreadReadUpdate(current, update));
     },
-    [edit, pinned],
+    [applyPoll, edit, pinned, refreshPoll],
   );
 
   return {

@@ -145,7 +145,9 @@ export function CommentsView({
     const element = scrollRef.current;
     if (!element) return;
     return settleToBottom(element, () => stickToBottom.current);
-  }, []);
+    // The scroll node is keyed by the post and remounted on a switch; its
+    // observers must follow the new node, not stay on the detached one.
+  }, [thread.chat.id, thread.post.id]);
 
   const replyTarget = replyingTo !== null && replyingTo.postId === thread.post.id ? replyingTo.message : null;
   const commentById = new Map(comments.map((comment) => [comment.id, comment]));

@@ -82,9 +82,11 @@ export class CallOrchestrator {
           gAHash: toBase64(keyPair.hash),
           randomId: randomCallId(),
         });
-        if (this.#disposed) {
-          // The page went away while the request was in flight. Nobody would
-          // answer an overlay that no longer exists, so drop the call.
+        if (this.#disposed || this.#live !== null) {
+          // The page went away, or an incoming call was installed while the
+          // request was in flight. The overlay is a singleton: keep the call
+          // the reader can actually answer and drop the one just requested,
+          // rather than overwriting it and orphaning its peer connection.
           void this.#discard(result.call.id, 'hangup', 0);
           return;
         }

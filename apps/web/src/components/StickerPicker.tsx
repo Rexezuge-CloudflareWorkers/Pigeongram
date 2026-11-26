@@ -40,6 +40,15 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
   const [query, setQuery] = useState('');
   const [openSet, setOpenSet] = useState<StickerSetDto | null>(null);
   const [loadingSet, setLoadingSet] = useState(false);
+  // A brief pack triggers a second read. Without a ticket the slower answer
+  // can win the race, and an answer after unmount can update a dead picker.
+  const packTicket = useRef(0);
+  useEffect(
+    () => () => {
+      packTicket.current += 1;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!stickersEnabled || library !== null) return;
@@ -84,12 +93,19 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
       setOpenSet(set);
       return;
     }
+    const ticket = (packTicket.current += 1);
     setLoadingSet(true);
     setError(null);
     fetchStickerSet({ id: set.id, accessHash: set.accessHash })
-      .then(setOpenSet)
-      .catch((failure: unknown) => setError(failure instanceof Error ? failure.message : String(failure)))
-      .finally(() => setLoadingSet(false));
+      .then((result) => {
+        if (ticket === packTicket.current) setOpenSet(result);
+      })
+      .catch((failure: unknown) => {
+        if (ticket === packTicket.current) setError(failure instanceof Error ? failure.message : String(failure));
+      })
+      .finally(() => {
+        if (ticket === packTicket.current) setLoadingSet(false);
+      });
   }, []);
 
   const pickSticker = (sticker: StickerDto): void => {

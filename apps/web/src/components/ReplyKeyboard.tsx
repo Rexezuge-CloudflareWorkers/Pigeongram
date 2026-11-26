@@ -1,4 +1,5 @@
 import { launchTelegramApp, miniAppDeepLink } from '../links';
+import { safeHref } from '../safe-url';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { MessageReplyKeyboardButtonDto } from '../types';
 
@@ -42,17 +43,20 @@ function ReplyKeyboardButton({
   const className = replyButtonClass(button.style);
 
   if (button.kind === 'webview') {
-    const deepLink = miniAppDeepLink(button.url);
+    // A bot chooses this URL; an unsafe scheme is inert, not a live link.
+    const href = safeHref(button.url);
+    if (href === null) return <span className={className}>{button.text}</span>;
+    const deepLink = miniAppDeepLink(href);
     return (
       <a
         className={className}
-        href={button.url}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(event) => {
           if (deepLink === null) return;
           event.preventDefault();
-          launchTelegramApp(deepLink, button.url);
+          launchTelegramApp(deepLink, href);
         }}
       >
         {button.text}

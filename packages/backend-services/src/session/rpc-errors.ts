@@ -97,6 +97,20 @@ export function failureText(error: unknown): string {
 }
 
 /**
+The message a failed call inside a `batch` reports.
+
+The batch itself succeeds (`200`), so its failure texts do not pass through
+the HTTP boundary's masking. Without this helper an unexpected error's own
+message would reach the browser even though a direct call to the same method
+would have been masked to `Internal server error`.
+*/
+export function batchFailureText(error: unknown): string {
+  if (error instanceof EngineError) return error.message;
+  if (isStorageWriteQuotaError(error)) return STORAGE_WRITE_QUOTA_MESSAGE;
+  return rpcErrorToEngineError(error)?.message ?? 'Internal server error';
+}
+
+/**
 The bridge code a failed call reports.
 
 A batch answers each call separately, and a caller that has to tell "the

@@ -4,6 +4,7 @@ import { isOriginAllowed, originRejection } from './origin';
 import type { OriginEnv } from './origin';
 import { MAX_SIGNALING_BYTES } from './call-params';
 import { log } from './log';
+import { keepAlive } from './platform';
 
 /**
 The largest client frame the hub will parse. Signalling packets are capped
@@ -138,11 +139,6 @@ export class UpdatesSocketHub {
     const work = this.host.sendCallSignaling(callId, bytes).catch((error) => {
       log.error('call.signaling_failed', { error });
     });
-    const holder = this.state as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
-    if (typeof holder.waitUntil === 'function') {
-      holder.waitUntil(work);
-      return;
-    }
-    void work;
+    keepAlive(this.state, work);
   }
 }

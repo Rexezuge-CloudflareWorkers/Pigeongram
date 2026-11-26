@@ -47,6 +47,12 @@ export class LoginFlow {
     private readonly driver: TelegramDriver,
     private readonly onSettled: (me: MeDto) => void,
     private readonly onFailed: (error: string) => void,
+    /**
+    Keeps the long-running exchange alive in the Durable Object's
+    `waitUntil` set. Without it the object may hibernate while the operator
+    is scanning a QR code, taking the login with it.
+    */
+    private readonly background: (work: Promise<unknown>) => void = () => {},
   ) {}
 
   get running(): boolean {
@@ -206,11 +212,13 @@ export class LoginFlow {
     const abort = new AbortController();
     this.#abort = abort;
     this.#mode = mode;
-    this.#task = run(abort.signal).finally(() => {
+    const work = run(abort.signal).finally(() => {
       this.#task = null;
       this.#abort = null;
       this.#mode = null;
     });
+    this.#task = work;
+    this.background(work);
   }
 
   /**
@@ -251,12 +259,27 @@ export class LoginFlow {
 }
 
 const LOGIN_WAIT_TIMEOUT_MS = 10_000;
+const LOGIN_POLL_MS = 200;
 
+/**
+Waits for the first observable step of a login, without holding the object
+longer than the deadline. One interval is used rather than a chain of
+`setTimeout`s, so an early answer leaves at most one short timer pending.
+*/
 async function waitFor(predicate: () => boolean): Promise<void> {
-  const deadline = Date.now() + LOGIN_WAIT_TIMEOUT_MS;
-  while (!predicate() && Date.now() < deadline) {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 200);
-    });
-  }
+  await new Promise<void>((resolve) => {
+    if (predicate()) {
+      resolve();
+      return;
+    }
+    const deadline = Date.now() + LOGIN_WAIT_TIMEOUT_MS;
+    const timer = setInterval(() => {
+      if (!(predicate() || Date.now() >= deadline)) {
+        return;
+      }
+
+      clearInterval(timer);
+      resolve();
+    }, LOGIN_POLL_MS);
+  });
 }

@@ -292,6 +292,9 @@ function checkVoiceDuration(duration: number | null): void {
   if (duration === null) {
     throw new EngineError('a voice note requires its duration in seconds', 400);
   }
+  if (!Number.isFinite(duration) || duration < 1) {
+    throw new EngineError('a voice note requires a duration of at least one second', 400);
+  }
   if (duration > VOICE_MAX_SECONDS) {
     throw new EngineError(`a voice note may last at most ${String(VOICE_MAX_SECONDS)} seconds`, 400);
   }

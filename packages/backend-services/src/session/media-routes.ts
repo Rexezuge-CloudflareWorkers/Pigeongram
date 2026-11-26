@@ -132,6 +132,18 @@ function countedUploadBody(request: Request, declared: number, cap: number): Rea
         return;
       }
       count += value.byteLength;
+      // A body longer than the declared sizes is a malformed manifest; fail
+      // on the first excess chunk instead of streaming the whole thing only
+      // to reject it at end-of-stream.
+      if (count > declared) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Already gone.
+        }
+        controller.error(new EngineError('Upload body length does not match the declared size', 400));
+        return;
+      }
       if (count > cap) {
         try {
           await reader.cancel();

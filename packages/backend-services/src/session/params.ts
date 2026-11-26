@@ -70,7 +70,7 @@ Decodes a callback button's base64 payload. Telegram caps callback data at 64
 bytes; rejecting larger payloads keeps a malformed bridge call out of mtcute.
 */
 export function requireCallbackData(value: unknown): Uint8Array {
-  if (typeof value !== 'string' || value.length % 4 !== 0 || !/^[A-Z0-9+/]*={0,2}$/i.test(value)) {
+  if (typeof value !== 'string' || value.length === 0 || value.length % 4 !== 0 || !/^[A-Z0-9+/]*={0,2}$/i.test(value)) {
     throw new EngineError('data must be base64 of the button callback payload', 400);
   }
   let binary: string;

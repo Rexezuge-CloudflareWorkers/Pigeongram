@@ -58,7 +58,16 @@ user's DTO, the last error). Table names are prefixed `engine_` to stay out
 of mtcute's namespace.
 */
 export class EngineStore {
-  constructor(private readonly storage: SqlStorageLike) {
+  constructor(
+    private readonly storage: SqlStorageLike,
+    /**
+    The same clock the lifecycle reads. The wake timestamp and the duration
+    that produced it must come from one source, or a fake-clock test (and a
+    clock correction in production) can write a row whose timestamp disagrees
+    with its neighbours.
+    */
+    private readonly now: () => number = Date.now,
+  ) {
     this.storage.exec(CREATE_WAKES);
     this.storage.exec(CREATE_META);
   }
@@ -77,7 +86,7 @@ export class EngineStore {
   }
 
   recordWake(record: WakeRecord): void {
-    const ts = Date.now();
+    const ts = this.now();
     this.storage.exec(
       `insert into engine_wakes (ts, reason, duration_ms, updates, ok, error)
        values (?, ?, ?, ?, ?, ?)`,
@@ -112,7 +121,7 @@ export class EngineStore {
   }
 
   daily(days = 7): DayBucketDto[] {
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
+    const since = this.now() - days * 24 * 60 * 60 * 1000;
     const rows = this.storage
       .exec(
         `select strftime('%Y-%m-%d', ts / 1000, 'unixepoch') as day,

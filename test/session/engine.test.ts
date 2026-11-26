@@ -5,6 +5,7 @@ import { AvatarCache } from '../../packages/backend-services/src/session/avatar-
 import { readEngineConfig } from '../../packages/backend-services/src/session/config';
 import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
 import { SessionEngine } from '../../packages/backend-services/src/session/engine';
+import type { EngineDeps } from '../../packages/backend-services/src/session/engine';
 import { errorResponse } from '../../packages/backend-services/src/session/http';
 import { SessionLifecycle } from '../../packages/backend-services/src/session/lifecycle';
 import type { EngineStore, StatsDto } from '../../packages/backend-services/src/session/stats';
@@ -57,7 +58,7 @@ a socket list. The engine only ever touches these members, so the shape is
 enough — `WebSocketPair` (the one global workerd owns) is only reached on the
 `/user/updates` route, which these tests deliberately avoid.
 */
-function createHarness(env: TestEnv = {}, seed?: (db: DatabaseSync) => void): Harness {
+function createHarness(env: TestEnv = {}, seed?: (db: DatabaseSync) => void, deps: EngineDeps = {}): Harness {
   const db = openNodeDatabase();
   seed?.(db);
   const alarms: number[] = [];
@@ -88,7 +89,7 @@ function createHarness(env: TestEnv = {}, seed?: (db: DatabaseSync) => void): Ha
       void promise;
     },
   };
-  const engine = new SessionEngine(state as unknown as DurableObjectState, env as CloudflareEnv);
+  const engine = new SessionEngine(state as unknown as DurableObjectState, env as CloudflareEnv, deps);
   return { engine, alarms, sockets, db, prepared, backgrounded };
 }
 
@@ -478,9 +479,9 @@ describe('SessionEngine (updates socket protocol)', () => {
       { type: 'ready' },
       { type: 'error', message: 'Not signed in' },
     ]);
-    // No arm means the connect path was never entered: an anonymous client has
-    // no DC, and mtcute's updates loop would spin forever against one.
-    expect(alarms).toEqual([]);
+    // The refusal must still re-arm the cadence: the alarm was consumed to
+    // enter this code path, and an idle object with no alarm sleeps forever.
+    expect(alarms).toHaveLength(1);
   });
 
   it('disconnects and re-arms when the last socket closes', async () => {
@@ -518,6 +519,28 @@ describe('SessionEngine (alarm budget)', () => {
     alarms.length = 0;
     await engine.fetch(request('GET', '/user/state'));
     expect(alarms).toHaveLength(1);
+  });
+});
+
+describe('SessionEngine (idle release)', () => {
+  it('schedules the idle release even when a bridge call fails', async () => {
+    // A refused RPC used to skip the release entirely: the session then
+    // stayed connected until the next five-minute wake.
+    const driver = {
+      onEvent: () => () => {},
+      prepare: async () => {},
+      rpc: async () => {
+        throw new Error('Telegram went away');
+      },
+    } as unknown as TelegramDriver;
+    const { engine, alarms } = createHarness({}, undefined, { driver });
+    const response = await engine.fetch(request('POST', '/user/rpc', { method: 'getMe' }));
+
+    expect(response.status).toBe(500);
+    // The first alarm is the wake cadence; a refused call must still shorten
+    // the second one to the idle release instead of leaving the session up.
+    expect(alarms).toHaveLength(2);
+    expect(alarms[1]! - alarms[0]!).toBeLessThanOrEqual(-200_000);
   });
 });
 

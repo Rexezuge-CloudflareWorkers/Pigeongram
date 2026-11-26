@@ -1,6 +1,7 @@
 import type { TelegramClient } from '@mtcute/core/client.js';
 import type { MessageDto, MessageReplyDto } from '../types';
 import { toMessageDto } from './dto';
+import { log } from './log';
 
 /**
 Reply previews for originals outside the page being read.
@@ -122,7 +123,8 @@ async function fetchOriginals(client: TelegramClient, chatId: number, ids: numbe
   try {
     const found = await client.getMessages(chatId, ids);
     return found.filter((message) => message !== null).map(toMessageDto);
-  } catch {
+  } catch (error) {
+    log.warn('reply.preview_failed', { chatId, count: ids.length, error });
     return [];
   }
 }

@@ -111,8 +111,7 @@ describe('bridge parameter validation', () => {
 
   it('decodes callback data and rejects malformed or oversized payloads', () => {
     expect(Array.from(requireCallbackData('AQID'))).toEqual([1, 2, 3]);
-    expect(requireCallbackData('')).toEqual(new Uint8Array());
-    for (const bad of [undefined, null, 'AQI', '***', 'A===', 'A'.repeat(88)]) {
+    for (const bad of [undefined, null, '', 'AQI', '***', 'A===', 'A'.repeat(88)]) {
       expect(() => requireCallbackData(bad)).toThrow(EngineError);
     }
   });

@@ -98,8 +98,8 @@ export async function refreshPeer(client: TelegramClient, peerId: number): Promi
       await client.storage.peers.store(complete);
       return 'cache';
     }
-  } catch {
-    // Fall through to the next repair.
+  } catch (error) {
+    log.info('peer.heal_step_failed', { peerId, step: 'cache', error });
   }
 
   try {
@@ -110,8 +110,8 @@ export async function refreshPeer(client: TelegramClient, peerId: number): Promi
       await client.storage.peers.store(complete);
       return 'resolve';
     }
-  } catch {
-    // Fall through to the dialog scan.
+  } catch (error) {
+    log.info('peer.heal_step_failed', { peerId, step: 'resolve', error });
   }
 
   return scanDialogs(client, peerId);
@@ -136,8 +136,9 @@ async function scanDialogs(client: TelegramClient, peerId: number): Promise<Peer
       return 'dialogs';
     }
     if (seen === 0) return 'none';
-  } catch {
+  } catch (error) {
     // A dialog read can fail on its own; the retried call reports the original.
+    log.info('peer.heal_step_failed', { peerId, step: 'dialogs', error });
   }
   return 'none';
 }

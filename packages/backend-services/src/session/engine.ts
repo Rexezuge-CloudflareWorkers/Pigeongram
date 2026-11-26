@@ -10,6 +10,7 @@ import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
 import { SessionLifecycle } from './lifecycle';
 import { isOriginAllowed, originRejection } from './origin';
+import { prepareExclusively } from './platform';
 import { log } from './log';
 import { avatarResponse, fileResponse, stickerResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
@@ -21,6 +22,23 @@ import type { StatsDto } from './stats';
 Name of the single Durable Object instance that owns the account.
 */
 export const ENGINE_OBJECT_NAME = 'main';
+
+/**
+The routes that keep an idle session warm for a burst of follow-up calls.
+
+The idle release is scheduled in `fetch`'s `finally`, so a refused RPC or a
+broken media stream releases the connection just as a successful one does.
+The socket upgrade, the wake probe and the login routes are excluded: they
+own their own lifecycle.
+*/
+const ACTIVITY_PATHS: ReadonlySet<string> = new Set([
+  '/user/rpc',
+  '/user/upload',
+  '/user/upload-group',
+  '/user/file',
+  '/user/avatar',
+  '/user/sticker',
+]);
 
 /**
 The collaborators a test may replace. Production builds them from the DO's
@@ -67,7 +85,7 @@ export class SessionEngine {
     this.env = env;
     const now = deps.now ?? (() => Date.now());
     this.config = readEngineConfig(env);
-    this.store = deps.store ?? new EngineStore(state.storage.sql);
+    this.store = deps.store ?? new EngineStore(state.storage.sql, now);
     this.avatars = deps.avatars ?? new AvatarCache(state.storage.sql, now);
     this.driver = deps.driver ?? new TelegramDriver(env, state.storage, undefined, this.config);
     this.me = readStoredMe(this.store);
@@ -81,11 +99,15 @@ export class SessionEngine {
       (me) => {
         this.me = me;
         this.writeMeta('me', JSON.stringify(me));
-        void this.afterLogin();
+        // Disconnecting after a login is a background task: the DO must not
+        // drop it when the login request's event ends, and a rejection has to
+        // be logged rather than surfacing as an unhandled promise.
+        this.lifecycle.background(this.afterLogin());
       },
       (error) => {
         log.error('login.failed', { error });
       },
+      (work) => this.lifecycle.background(work),
     );
     this.loginApi = new LoginApi(this.login, () => this.stateSnapshot());
     this.lifecycle = new SessionLifecycle({
@@ -112,13 +134,7 @@ export class SessionEngine {
   the request path.
   */
   private warmUp(): void {
-    const blocking = this.state as unknown as { blockConcurrencyWhile?: <T>(callback: () => Promise<T>) => Promise<T> };
-    if (typeof blocking.blockConcurrencyWhile !== 'function') {
-      // The storage prepares itself lazily on the first call; the block is an
-      // optimization, not a requirement.
-      return;
-    }
-    void blocking.blockConcurrencyWhile(async () => {
+    prepareExclusively(this.state, async () => {
       try {
         await this.driver.prepare();
       } catch (error) {
@@ -144,9 +160,13 @@ export class SessionEngine {
       // A request is the only chance to repair a cadence that a failed alarm
       // write left behind; an alarm that already exists is left alone.
       await this.lifecycle.ensureArmed();
-      const response = await this.route(request, url);
-      response.headers.set(CORRELATION_ID_HEADER, correlationId);
-      return response;
+      try {
+        const response = await this.route(request, url);
+        response.headers.set(CORRELATION_ID_HEADER, correlationId);
+        return response;
+      } finally {
+        if (ACTIVITY_PATHS.has(url.pathname)) await this.lifecycle.afterActivity();
+      }
     } catch (error) {
       const response = errorResponse(error, correlationId);
       response.headers.set(CORRELATION_ID_HEADER, correlationId);
@@ -184,14 +204,10 @@ export class SessionEngine {
         return Response.json(await this.rpc(request));
       }
       case 'POST /user/upload': {
-        const response = await uploadResponse(this.driver, request, url, this.config);
-        await this.lifecycle.afterActivity();
-        return response;
+        return uploadResponse(this.driver, request, url, this.config);
       }
       case 'POST /user/upload-group': {
-        const response = await uploadGroupResponse(this.driver, request, url, this.config);
-        await this.lifecycle.afterActivity();
-        return response;
+        return uploadGroupResponse(this.driver, request, url, this.config);
       }
       case 'POST /user/wake': {
         return Response.json(await this.lifecycle.runWake('manual'));
@@ -201,21 +217,15 @@ export class SessionEngine {
       }
       case 'GET /user/file':
       case 'HEAD /user/file': {
-        const response = await fileResponse(this.driver, request, url);
-        await this.lifecycle.afterActivity();
-        return response;
+        return fileResponse(this.driver, request, url);
       }
       case 'GET /user/avatar':
       case 'HEAD /user/avatar': {
-        const response = await avatarResponse(this.driver, this.avatars, url, request.method);
-        await this.lifecycle.afterActivity();
-        return response;
+        return avatarResponse(this.driver, this.avatars, url, request.method);
       }
       case 'GET /user/sticker':
       case 'HEAD /user/sticker': {
-        const response = await stickerResponse(this.driver, url, request.method);
-        await this.lifecycle.afterActivity();
-        return response;
+        return stickerResponse(this.driver, url, request.method);
       }
       default: {
         if (ENGINE_PATHS.has(url.pathname)) {
@@ -249,9 +259,7 @@ export class SessionEngine {
     if (typeof method !== 'string' || method.length === 0) {
       throw new EngineError('method must be a non-empty string', 400);
     }
-    const result = await this.driver.rpc(method, body.params);
-    await this.lifecycle.afterActivity();
-    return result;
+    return this.driver.rpc(method, body.params);
   }
 
   private stats(url: URL): StatsDto {

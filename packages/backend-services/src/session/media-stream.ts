@@ -1,5 +1,27 @@
 import type { FileLocation } from '@mtcute/core';
 import { EngineError } from './errors';
+import { log } from './log';
+
+/**
+How far a response may read ahead of its consumer.
+
+A full download gets a whole megabyte: mtcute's six `upload.getFile` parts
+stay in flight while the browser writes the file, instead of every batch
+waiting for a fresh `pull()` on the Durable Object's single thread.
+
+A browser range gets much less. A paused or seeking player stops reading,
+and a large buffer would keep fetching the rest of its window — burning
+Telegram traffic and connection slots for bytes nobody will play.
+*/
+export const DOWNLOAD_BUFFER_BYTES = 1024 * 1024;
+export const RANGE_BUFFER_BYTES = 256 * 1024;
+
+/**
+A part this slow is almost always Telegram's `FLOOD_WAIT` being slept in
+full inside mtcute (`floodSleepThreshold: Infinity`), which is silent below
+five seconds. The log line makes that visible without reading mtcute.
+*/
+const SLOW_PART_MS = 1000;
 
 /**
 Byte-window streaming for the media routes.
@@ -39,6 +61,12 @@ export interface DownloadWindow {
   download agree without either side assuming the other's default.
   */
   partSize?: number;
+  /**
+  Bytes the response may hold before the download parks. Callers choose it
+  by intent: a full download reads ahead, a browser range stays tight so a
+  paused player stops the fetch.
+  */
+  bufferBytes: number;
   /**
   Called when the download itself fails. The engine uses it to evict a
   cached file location whose `file_reference` Telegram no longer accepts,
@@ -105,9 +133,9 @@ export function windowedStream(source: DownloadSource, location: FileLocation, w
         void iterator?.return?.(undefined).catch(() => {});
       },
     },
-    // One chunk of buffer: a download chunk is 64 KB–1 MB, and `throttle`
-    // parks the download while the queued one sits unread.
-    { highWaterMark: 1, size: (chunk) => chunk.byteLength },
+    // `size` is in bytes, so this is a real byte budget, not a chunk count.
+    // mtcute parks its parts once the budget is full and resumes on `pull()`.
+    { highWaterMark: window.bufferBytes, size: (chunk) => chunk.byteLength },
   );
 
   function stopIfCancelled(): void {
@@ -131,7 +159,14 @@ export function windowedStream(source: DownloadSource, location: FileLocation, w
       });
 
       while (remaining > 0 || drop > 0) {
+        const started = Date.now();
         const { done, value } = await iterator.next();
+        const elapsed = Date.now() - started;
+        if (elapsed > SLOW_PART_MS) {
+          // A full FLOOD_WAIT sleep inside mtcute looks exactly like a slow
+          // part; name it so a throttled download is queryable in Workers Logs.
+          log.warn('media.part_slow', { ms: elapsed, bytes: value?.byteLength ?? 0, offset: window.offset });
+        }
         if (done) break;
         let chunk = value;
         if (drop > 0) {

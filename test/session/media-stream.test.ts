@@ -1,6 +1,6 @@
 import type { FileLocation } from '@mtcute/core';
 import { downloadAsIterable } from '@mtcute/core/methods.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DownloadParams, DownloadSource } from '../../packages/backend-services/src/session/media-stream';
 import { windowedStream } from '../../packages/backend-services/src/session/media-stream';
 
@@ -85,7 +85,7 @@ function fakeSource(chunks: readonly Uint8Array[]): { source: DownloadSource; st
 describe('windowedStream', () => {
   it('serves the whole file when the window has no end', async () => {
     const { source, state } = fakeSource([bytes(1, 2, 3), bytes(4, 5)]);
-    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null });
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null, bufferBytes: 1 });
 
     await expect(collect(stream)).resolves.toEqual(bytes(1, 2, 3, 4, 5));
     expect(state.params).toMatchObject({ offset: 0, fileSize: 4096 * 32 });
@@ -95,7 +95,7 @@ describe('windowedStream', () => {
 
   it("serves Safari's two-byte range probe exactly", async () => {
     const { source, state } = fakeSource([bytes(10, 11, 12, 13), bytes(20, 21)]);
-    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 2 });
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 2, bufferBytes: 1 });
 
     await expect(collect(stream)).resolves.toEqual(bytes(10, 11));
     expect(state.pulled).toBe(1);
@@ -104,7 +104,7 @@ describe('windowedStream', () => {
   it('drops the alignment prefix and cuts the tail', async () => {
     // bytes=5-9 of a download that starts at the aligned offset 4.
     const { source, state } = fakeSource([bytes(1, 2, 3, 4), bytes(5, 6, 7, 8), bytes(9, 10)]);
-    const stream = windowedStream(source, LOCATION, { offset: 4, drop: 1, length: 5 });
+    const stream = windowedStream(source, LOCATION, { offset: 4, drop: 1, length: 5, bufferBytes: 1 });
 
     await expect(collect(stream)).resolves.toEqual(bytes(2, 3, 4, 5, 6));
     expect(state.params?.offset).toBe(4);
@@ -112,7 +112,7 @@ describe('windowedStream', () => {
 
   it('stops the download once the window is served', async () => {
     const { source, state } = fakeSource([bytes(1, 2, 3), bytes(4, 5, 6)]);
-    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 2 });
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 2, bufferBytes: 1 });
 
     await expect(collect(stream)).resolves.toEqual(bytes(1, 2));
     await tick();
@@ -120,16 +120,16 @@ describe('windowedStream', () => {
     expect(state.returned).toBe(true);
   });
 
-  it('paces the download to the consumer instead of prefetching the file', async () => {
+  it('parks the download when the byte budget is full', async () => {
     const chunks = Array.from({ length: 50 }, (_, index) => bytes(index));
     const { source, state } = fakeSource(chunks);
-    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null });
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null, bufferBytes: 1 });
     const reader = stream.getReader();
 
     await expect(reader.read()).resolves.toMatchObject({ value: bytes(0) });
     await tick();
-    // One buffered chunk plus the one the read released; never the 50-chunk
-    // file a player pausing on the first frame would otherwise pull.
+    // With a one-byte budget, one buffered chunk plus the one the read
+    // released is all the source ever fetches — never the 50-chunk file.
     expect(state.pulled).toBeLessThanOrEqual(2);
 
     await reader.cancel();
@@ -139,9 +139,56 @@ describe('windowedStream', () => {
     expect(state.pulled).toBeLessThanOrEqual(2);
   });
 
+  it('reads ahead to the budget without waiting for the consumer', async () => {
+    const { source, state } = fakeSource([bytes(1, 2, 3, 4), bytes(5, 6, 7, 8), bytes(9, 10, 11, 12)]);
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null, bufferBytes: 12 });
+    const reader = stream.getReader();
+
+    await tick();
+    // A full download keeps its parts in flight instead of waiting for a
+    // fresh pull on the engine's single thread after every batch.
+    expect(state.pulled).toBe(3);
+    await reader.cancel();
+  });
+
+  it('keeps a range budget bounded while the consumer is idle', async () => {
+    const { source, state } = fakeSource(Array.from({ length: 10 }, (_, index) => bytes(index)));
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: null, bufferBytes: 2, partSize: 128 });
+    const reader = stream.getReader();
+
+    await tick();
+    expect(state.pulled).toBe(2);
+    await expect(reader.read()).resolves.toMatchObject({ value: bytes(0) });
+    await tick();
+    expect(state.pulled).toBe(3);
+    await reader.cancel();
+  });
+
+  it('logs a part that stalled long enough to be a flood wait', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const slow: DownloadSource = {
+        downloadAsIterable() {
+          return (async function* () {
+            await new Promise((resolve) => setTimeout(resolve, 1100));
+            yield bytes(1);
+          })();
+        },
+      };
+      const stream = windowedStream(slow, LOCATION, { offset: 0, drop: 0, length: 1, bufferBytes: 1 });
+
+      await expect(collect(stream)).resolves.toEqual(bytes(1));
+      const line = warn.mock.calls.find((call) => String(call[0]).includes('"event":"media.part_slow"'));
+      expect(line).toBeDefined();
+      expect(JSON.parse(String(line?.[0]))).toMatchObject({ level: 'warn', event: 'media.part_slow', offset: 0 });
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('errors when the file ends inside the promised window', async () => {
     const { source } = fakeSource([bytes(1, 2)]);
-    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 4 });
+    const stream = windowedStream(source, LOCATION, { offset: 0, drop: 0, length: 4, bufferBytes: 1 });
 
     await expect(collect(stream)).rejects.toThrow('ended before the requested range');
   });
@@ -204,6 +251,7 @@ describe('windowedStream × mtcute', () => {
       offset: MIB,
       drop: 0,
       length: 2,
+      bufferBytes: 1,
     });
     const first = await stream.getReader().read();
 
@@ -220,6 +268,7 @@ describe('windowedStream × mtcute', () => {
       offset: MIB - 64 * 1024,
       drop: 0,
       length: 2,
+      bufferBytes: 1,
     });
 
     await expect(collect(stream)).rejects.toThrow('LIMIT_INVALID');

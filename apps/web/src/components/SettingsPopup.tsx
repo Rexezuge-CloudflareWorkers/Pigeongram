@@ -47,6 +47,12 @@ const DATA_SAVER_ROWS: ReadonlyArray<{ key: DataSaverKey; label: string; descrip
   { key: 'loadPreviews', label: 'Link Previews', description: 'Load Link Preview Thumbnails', icon: 'link' },
   { key: 'loadMedia', label: 'Photos & Videos', description: 'Fetch Photo And Video Thumbnails', icon: 'image' },
   { key: 'animateMedia', label: 'Autoplay Media', description: 'Play GIFs, Video Stickers And Animated Stickers', icon: 'gif' },
+  {
+    key: 'loadPinnedMessages',
+    label: 'Pinned Messages',
+    description: 'Load Pinned Messages When Opening A Chat',
+    icon: 'pin',
+  },
 ];
 
 export function SettingsPopup({

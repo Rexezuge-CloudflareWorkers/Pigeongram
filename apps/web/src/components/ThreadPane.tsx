@@ -1,4 +1,5 @@
 import type { CommentsController } from '../comments-controller';
+import { useDataSaver } from '../data-saver';
 import type { ThreadController } from '../thread-controller';
 import { threadReachesLatest } from '../thread-state';
 import type { ChatDto, MessageDto, PeerId, PresenceDto } from '../types';
@@ -115,7 +116,13 @@ export function ThreadPane({
 }: ThreadPaneProps) {
   // The pinned list is the pane's own overlay: it reads on demand and follows
   // the thread's pin revision, so it is instantiated before either branch.
-  const pinned = usePinnedMessages({ chatId: threads.thread?.chat.id ?? null, revision: threads.pinnedRevision });
+  // The device's data-saver choice gates both its reads and its visibility.
+  const { loadPinnedMessages } = useDataSaver();
+  const pinned = usePinnedMessages({
+    chatId: threads.thread?.chat.id ?? null,
+    revision: threads.pinnedRevision,
+    enabled: loadPinnedMessages,
+  });
   if (comments.thread) {
     return (
       <>

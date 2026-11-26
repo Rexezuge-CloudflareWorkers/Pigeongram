@@ -62,7 +62,7 @@ describe('SettingsPopup', () => {
     renderSettings(
       {},
       {
-        settings: { loadAvatars: false, loadPreviews: true, loadMedia: true, animateMedia: true },
+        settings: { loadAvatars: false, loadPreviews: true, loadMedia: true, animateMedia: true, loadPinnedMessages: false },
         setSetting,
       },
     );
@@ -76,6 +76,10 @@ describe('SettingsPopup', () => {
 
     fireEvent.click(screen.getByRole('switch', { name: 'Photos & Videos' }));
     expect(setSetting).toHaveBeenLastCalledWith('loadMedia', false);
+
+    expect(screen.getByRole('switch', { name: 'Pinned Messages' }).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByRole('switch', { name: 'Pinned Messages' }));
+    expect(setSetting).toHaveBeenLastCalledWith('loadPinnedMessages', true);
   });
 
   it('closes from Done, Escape and the scrim', () => {

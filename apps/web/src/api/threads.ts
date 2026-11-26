@@ -60,7 +60,8 @@ interface ChatScreen {
   /**
   The chat's newest pinned message, when it carries one. It rides beside the
   window so the thread's banner needs no extra request, and a failed read
-  degrades to no banner rather than failing the thread.
+  degrades to no banner rather than failing the thread. Null when the reader
+  opted out of pinned loads.
   */
   pinned: MessageDto | null;
 }
@@ -83,10 +84,11 @@ export async function fetchChatScreen(
     anchorId?: number;
     withCommands?: boolean;
     withLatest?: boolean;
+    withPinned?: boolean;
     commentsLimit?: number;
   } = {},
 ): Promise<ChatScreen> {
-  const { withCommands = false, withLatest = false, commentsLimit = 50, ...history } = options;
+  const { withCommands = false, withLatest = false, withPinned = true, commentsLimit = 50, ...history } = options;
   const calls: RpcBatchCall[] = [{ method: 'getHistory', params: { chatId, ...history } }];
   const commandsIndex = withCommands ? calls.length : undefined;
   if (withCommands) {
@@ -97,9 +99,12 @@ export async function fetchChatScreen(
     calls.push({ method: 'getComments', params: { chatId, messageId: postId, limit: commentsLimit } });
   }
   // The banner's message is one more independent read. It travels with the
-  // window so opening a thread never pays a second round trip for it.
-  const pinnedIndex = calls.length;
-  calls.push({ method: 'getPinnedMessages', params: { chatId, limit: 1 } });
+  // window so opening a thread never pays a second round trip for it. A
+  // reader who opted out of pinned loads skips it altogether.
+  const pinnedIndex = withPinned ? calls.length : undefined;
+  if (withPinned) {
+    calls.push({ method: 'getPinnedMessages', params: { chatId, limit: 1 } });
+  }
   // A window around an unread divider is not the newest page, but the chat's
   // reply keyboard is the newest message's. One more read, inside the same
   // event and over the same connection, answers which keyboard the chat shows.
@@ -115,7 +120,7 @@ export async function fetchChatScreen(
   const commandsOutcome = commandsIndex === undefined ? undefined : outcomes[commandsIndex];
   const menu = commandsOutcome?.ok ? (commandsOutcome.result as GetBotCommandsResult) : null;
   const commentsOutcome = commentsIndex === undefined ? undefined : outcomes[commentsIndex];
-  const pinnedOutcome = outcomes[pinnedIndex];
+  const pinnedOutcome = pinnedIndex === undefined ? undefined : outcomes[pinnedIndex];
   const latestOutcome = latestIndex === undefined ? undefined : outcomes[latestIndex];
   return {
     messages,

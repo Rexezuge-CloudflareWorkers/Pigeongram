@@ -1,6 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { createElement } from 'react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchPinnedMessages, setMessagePinned } from '../../apps/web/src/api';
+import { DataSaverProvider, DEFAULT_DATA_SAVER, type DataSaverControls } from '../../apps/web/src/data-saver';
 import type { ChatThread } from '../../apps/web/src/thread-state';
 import type { ChatDto, MessageDto } from '../../apps/web/src/types';
 import { useThreadPinned } from '../../apps/web/src/useThreadPinned';
@@ -75,13 +78,19 @@ function thread(overrides: Partial<ChatThread> = {}): ChatThread {
 The hook writes through the caller's `setThread`; a mutable holder stands in for
 React's state so a test can read what the fold produced.
 */
-function harness(initial: ChatThread | null = thread()) {
+function harness(initial: ChatThread | null = thread(), loadPinnedMessages = true) {
   let current = initial;
   const setThread = vi.fn((update: ChatThread | null | ((previous: ChatThread | null) => ChatThread | null)) => {
     current = typeof update === 'function' ? update(current) : update;
   });
   const onError = vi.fn();
-  const hook = renderHook(() => useThreadPinned({ setThread, threadRef: { current }, onError }));
+  const controls: DataSaverControls = {
+    settings: { ...DEFAULT_DATA_SAVER, loadPinnedMessages },
+    setSetting: () => {},
+  };
+  const hook = renderHook(() => useThreadPinned({ setThread, threadRef: { current }, onError }), {
+    wrapper: ({ children }: { children: ReactNode }) => createElement(DataSaverProvider, { value: controls, children }),
+  });
   return {
     ...hook,
     onError,
@@ -165,5 +174,26 @@ describe('useThreadPinned', () => {
 
     expect(model.thread?.messages.find((entry) => entry.id === 2)?.pinned).toBe(false);
     expect(model.result.current.revision).toBe(0);
+  });
+
+  it('folds a live pin without a banner read when pinned loads are off', () => {
+    const model = harness(thread(), false);
+
+    act(() => model.result.current.fold({ type: 'message_pinned', chatId: 1, messageIds: [2], pinned: true }));
+
+    expect(model.result.current.revision).toBe(1);
+    expect(model.thread?.messages.find((entry) => entry.id === 2)?.pinned).toBe(true);
+    expect(pinnedRead).not.toHaveBeenCalled();
+  });
+
+  it('still writes a pin without a banner read when pinned loads are off', async () => {
+    pinnedWrite.mockResolvedValue({ chatId: 1, messageId: 2, pinned: true });
+    const model = harness(thread(), false);
+
+    act(() => model.result.current.setPinned(message(2), true));
+    await waitFor(() => expect(model.thread?.messages.find((entry) => entry.id === 2)?.pinned).toBe(true));
+
+    expect(pinnedWrite).toHaveBeenCalledWith(1, 2, true);
+    expect(pinnedRead).not.toHaveBeenCalled();
   });
 });

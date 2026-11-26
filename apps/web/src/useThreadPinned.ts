@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { fetchPinnedMessages, setMessagePinned } from './api';
+import { useDataSaver } from './data-saver';
 import { applyThreadMessagePinned, applyThreadPinnedMessage } from './thread-state';
 import type { ChatThread } from './thread-state';
 import type { MessageDto, PeerId, UpdateEvent } from './types';
@@ -48,15 +49,18 @@ interface ThreadPins {
 }
 
 export function useThreadPinned({ setThread, threadRef, onError }: UseThreadPinnedOptions): ThreadPins {
+  const { loadPinnedMessages } = useDataSaver();
   const [revision, setRevision] = useState(0);
 
   /**
   Re-reads the chat's newest pinned message for its banner. The update and the
   write answer name ids only, so the body has to come from Telegram; a banner
-  is not worth an error toast, and the next open reads it again.
+  is not worth an error toast, and the next open reads it again. A reader who
+  opted out of pinned loads folds the ids without asking Telegram for a body.
   */
   const refresh = useCallback(
     (chatId: PeerId): void => {
+      if (!loadPinnedMessages) return;
       void fetchPinnedMessages(chatId, { limit: 1 })
         .then((result) => {
           setThread((current) => applyThreadPinnedMessage(current, chatId, result.messages[0] ?? null));
@@ -65,7 +69,7 @@ export function useThreadPinned({ setThread, threadRef, onError }: UseThreadPinn
           // A stale banner settles on the next open.
         });
     },
-    [setThread],
+    [setThread, loadPinnedMessages],
   );
 
   const fold = useCallback(

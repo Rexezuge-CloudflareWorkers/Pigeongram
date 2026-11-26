@@ -27,6 +27,11 @@ interface UsePinnedMessagesOptions {
   Moves on every `message_pinned` the thread folded.
   */
   revision: number;
+  /**
+  Whether the reader allows pinned reads. Off keeps the list closed and reads
+  nothing, even when a pin arrives while the thread is open.
+  */
+  enabled: boolean;
 }
 
 export interface PinnedMessagesController {
@@ -66,7 +71,7 @@ interface PinnedView {
   nextOffsetId: number | null;
 }
 
-export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions): PinnedMessagesController {
+export function usePinnedMessages({ chatId, revision, enabled }: UsePinnedMessagesOptions): PinnedMessagesController {
   const [view, setView] = useState<PinnedView | null>(null);
   // Every first-page read takes a ticket: a slow answer for a list the reader
   // already refreshed or left must not paint over the current one.
@@ -74,10 +79,10 @@ export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions
   // A revision can move while the list is closed; the reader asked for nothing
   // then, so only an open list pays for the refresh.
   const openRef = useRef(false);
-  const lastRevision = useRef<{ chatId: PeerId | null; revision: number }>({ chatId, revision });
+  const lastRevision = useRef<{ chatId: PeerId | null; revision: number; enabled: boolean }>({ chatId, revision, enabled });
 
   const openList = useCallback((): void => {
-    if (chatId === null) return;
+    if (!enabled || chatId === null) return;
     openRef.current = true;
     const sequence = ++ticket.current;
     setView({
@@ -109,15 +114,18 @@ export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions
           current !== null && current.chatId === chatId ? { ...current, loading: false, error: failureText(failure) } : current,
         );
       });
-  }, [chatId]);
+  }, [chatId, enabled]);
 
   // Another device pinned or unpinned something while the list is open. The
   // page is read in the background, so it keeps showing what it has until the
-  // fresh one lands.
+  // fresh one lands. A switch back on refreshes the hidden list before it
+  // reappears, so a pin made while it was off cannot show a stale page.
   useEffect(() => {
     const previous = lastRevision.current;
-    lastRevision.current = { chatId, revision };
-    if (chatId === null || !openRef.current || previous.chatId !== chatId || revision === previous.revision) return;
+    lastRevision.current = { chatId, revision, enabled };
+    if (!enabled || chatId === null || !openRef.current) return;
+    const reenabled = !previous.enabled && enabled;
+    if (!reenabled && (previous.chatId !== chatId || revision === previous.revision)) return;
     const sequence = ticket.current;
     void fetchPinnedMessages(chatId, { limit: PINNED_PAGE_LIMIT })
       .then((result) => {
@@ -131,7 +139,7 @@ export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions
       .catch(() => {
         // A stale list settles on the next open; the reader did not ask for this read.
       });
-  }, [revision, chatId]);
+  }, [revision, chatId, enabled]);
 
   const close = useCallback((): void => {
     openRef.current = false;
@@ -139,7 +147,7 @@ export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions
   }, []);
 
   const loadOlder = useCallback((): void => {
-    if (chatId === null || view === null || view.chatId !== chatId || view.nextOffsetId === null || view.loadingOlder) return;
+    if (!enabled || chatId === null || view === null || view.chatId !== chatId || view.nextOffsetId === null || view.loadingOlder) return;
     const sequence = ticket.current;
     const offsetId = view.nextOffsetId;
     setView((current) => (current !== null && current.chatId === chatId ? { ...current, loadingOlder: true } : current));
@@ -163,9 +171,11 @@ export function usePinnedMessages({ chatId, revision }: UsePinnedMessagesOptions
           current !== null && current.chatId === chatId ? { ...current, loadingOlder: false, error: failureText(failure) } : current,
         );
       });
-  }, [chatId, view]);
+  }, [chatId, view, enabled]);
 
-  const current = view !== null && view.chatId === chatId ? view : null;
+  // The switch hides the list without writing state: turning it back on finds
+  // the same view, refreshed by the effect above.
+  const current = enabled && view !== null && view.chatId === chatId ? view : null;
   return {
     isOpen: current?.open ?? false,
     messages: current?.messages ?? [],

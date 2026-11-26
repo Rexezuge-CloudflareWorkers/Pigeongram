@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { composerSends } from '../composer-sends';
+import { useDataSaver } from '../data-saver';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages } from '../groups';
 import { readWatermark } from '../reading';
@@ -82,6 +83,9 @@ export function ThreadView({
   positions,
   onReadThrough,
 }: ThreadViewProps) {
+  // A cached reopen can paint a banner before its refresh lands; hiding it
+  // here makes the switch take effect at once and keeps it off for that read.
+  const { loadPinnedMessages } = useDataSaver();
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   // Position and read bookkeeping lives in refs so scrolling never re-renders.
@@ -276,7 +280,9 @@ export function ThreadView({
         onCall={onCall}
         callActive={callActive}
       />
-      {unavailable || pinnedMessage === null ? null : <PinnedBanner chat={chat} message={pinnedMessage} onOpen={onOpenPinned} />}
+      {unavailable || !loadPinnedMessages || pinnedMessage === null ? null : (
+        <PinnedBanner chat={chat} message={pinnedMessage} onOpen={onOpenPinned} />
+      )}
       {unavailable ? <ThreadUnavailable onBack={onBack} /> : null}
       {unavailable ? null : (
         <div key={chat.id} className="relative flex min-h-0 flex-1 flex-col">

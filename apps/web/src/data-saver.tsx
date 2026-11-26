@@ -2,15 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react';
 
 /**
-The reader's data-saving choices: which media the app may download and play
-without being asked.
+The reader's data-saving choices: which optional content the app may download
+and play without being asked.
 
 Every switch is per device, like the theme and the dynamic-color choices, so
 it lives in `localStorage` under one key and never reaches the engine. The
-switches are read through a context because the components that own the
-loads — `Avatar`, `Media`, `Sticker`, `WebPagePreview` — sit deep in the
-thread and the chat list, and threading a prop through every screen would
-couple all of them to a preference only four of them use.
+switches are read through a context because the components and hooks that own
+the loads — `Avatar`, `Media`, `Sticker`, `WebPagePreview` and the pinned
+message reads — sit deep in the thread and the chat list, and threading a prop
+through every screen would couple them all to a preference only a few use.
 
 When nothing is stored yet, the browser's own hint decides: `saveData` (the
 Data Saver flag, which the user may have set system-wide) or a slow
@@ -36,9 +36,14 @@ interface DataSaverSettings {
   Play animations, GIFs, video stickers and TGS stickers. Off keeps stills.
   */
   animateMedia: boolean;
+  /**
+  Request the chat's pinned messages for the thread's banner and list. Off
+  skips every pinned read, so no banner is shown and the list is never fetched.
+  */
+  loadPinnedMessages: boolean;
 }
 
-const DATA_SAVER_KEYS = ['loadAvatars', 'loadPreviews', 'loadMedia', 'animateMedia'] as const;
+const DATA_SAVER_KEYS = ['loadAvatars', 'loadPreviews', 'loadMedia', 'animateMedia', 'loadPinnedMessages'] as const;
 
 export type DataSaverKey = (typeof DATA_SAVER_KEYS)[number];
 
@@ -47,6 +52,7 @@ export const DEFAULT_DATA_SAVER: DataSaverSettings = {
   loadPreviews: true,
   loadMedia: true,
   animateMedia: true,
+  loadPinnedMessages: true,
 };
 
 const SAVER_DATA_SAVER: DataSaverSettings = {
@@ -54,6 +60,7 @@ const SAVER_DATA_SAVER: DataSaverSettings = {
   loadPreviews: false,
   loadMedia: false,
   animateMedia: false,
+  loadPinnedMessages: false,
 };
 
 const STORAGE_KEY = 'pigeongram-data-saver';
@@ -152,7 +159,7 @@ export function DataSaverProvider({ value, children }: { value: DataSaverControl
 }
 
 /**
-The media-loading choices only, for the components that own the loads.
+The loading choices only, for the components and hooks that own the loads.
 */
 export function useDataSaver(): DataSaverSettings {
   return useContext(DataSaverContext).settings;

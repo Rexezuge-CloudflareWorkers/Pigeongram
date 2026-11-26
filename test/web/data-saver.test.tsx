@@ -42,6 +42,7 @@ describe('useDataSaverPreferences', () => {
       loadPreviews: false,
       loadMedia: false,
       animateMedia: false,
+      loadPinnedMessages: false,
     });
   });
 
@@ -70,6 +71,18 @@ describe('useDataSaverPreferences', () => {
     expect(result.current.settings.loadAvatars).toBe(false);
     expect(result.current.settings.loadMedia).toBe(true);
     expect(stored()).toEqual({ ...DEFAULT_DATA_SAVER, loadAvatars: false });
+  });
+
+  it('stores the pinned-message choice on its own', () => {
+    const { result } = renderHook(() => useDataSaverPreferences());
+
+    act(() => {
+      result.current.setSetting('loadPinnedMessages', false);
+    });
+
+    expect(result.current.settings.loadPinnedMessages).toBe(false);
+    expect(result.current.settings.loadMedia).toBe(true);
+    expect(stored()).toEqual({ ...DEFAULT_DATA_SAVER, loadPinnedMessages: false });
   });
 
   it('restores a stored choice over the browser hint', () => {

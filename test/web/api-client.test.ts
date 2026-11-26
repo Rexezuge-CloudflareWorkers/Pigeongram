@@ -1,7 +1,7 @@
 import { ServiceError } from '@rexezuge/errors';
 import { HttpStatusError } from '@rexezuge/web/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getState, isAuthError } from '../../apps/web/src/api';
+import { fetchChatScreen, getState, isAuthError } from '../../apps/web/src/api';
 import { batchResult, request, rpc, rpcBatch } from '../../apps/web/src/api/request';
 import type { RpcBatchOutcome } from '../../apps/web/src/types';
 
@@ -165,5 +165,40 @@ describe('isAuthError', () => {
     expect(isAuthError(new HttpStatusError(500, 'Boom', 'InternalError'))).toBe(false);
     expect(isAuthError(new TypeError('Failed to fetch'))).toBe(false);
     expect(isAuthError('not an error')).toBe(false);
+  });
+});
+
+describe('fetchChatScreen', () => {
+  function batchMethods(fetchMock: ReturnType<typeof vi.fn>): string[] {
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { params: { calls: { method: string }[] } };
+    return body.params.calls.map((call) => call.method);
+  }
+
+  function answer(): Response {
+    return json({
+      results: [
+        { ok: true, result: { messages: [] } },
+        { ok: true, result: { messages: [] } },
+      ],
+    });
+  }
+
+  it('rides the banner read with the chat window by default', async () => {
+    const fetchMock = installFetch(() => answer());
+
+    const screen = await fetchChatScreen(1);
+
+    expect(batchMethods(fetchMock)).toContain('getPinnedMessages');
+    expect(screen.pinned).toBeNull();
+  });
+
+  it('omits the banner read when pinned loads are off', async () => {
+    const fetchMock = installFetch(() => answer());
+
+    const screen = await fetchChatScreen(1, null, { withPinned: false });
+
+    expect(batchMethods(fetchMock)).not.toContain('getPinnedMessages');
+    expect(screen.pinned).toBeNull();
   });
 });

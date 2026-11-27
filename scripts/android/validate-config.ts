@@ -4,7 +4,7 @@
  * Everything here is validated before a keystore is decoded or a URL fetched, so
  * a typo in a repository variable fails in seconds with the variable's name
  * instead of after an Android build with a manifest merger error. The rules are
- * the TWA's own: an https origin with no path, a reverse-DNS package id, and an
+ * the app's own: an https origin with no path, a reverse-DNS package id, and an
  * Android version name/code pair.
  */
 

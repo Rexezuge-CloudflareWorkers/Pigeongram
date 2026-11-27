@@ -1,7 +1,9 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { gradleArgs, gradleArtifactPaths } from '../../scripts/android/build-app';
 import { renderBuildSummary } from '../../scripts/android/write-summary';
 import {
   formatFingerprint,
@@ -10,17 +12,22 @@ import {
   parseKeytoolFingerprint,
 } from '../../scripts/android/fingerprint';
 import { readBuildConfig, resolveVersionName } from '../../scripts/android/validate-config';
-import { fetchOk, isPng, readManifestName, validateAssetLinks, verifyDeployment } from '../../scripts/android/verify-deployment';
-import { renderTwaManifest, serializeTwaManifest } from '../../scripts/android/render-manifest';
+import { fetchOk, readManifestName, verifyDeployment } from '../../scripts/android/verify-deployment';
+import {
+  escapeXml,
+  LAUNCHER_ICONS,
+  packagePath,
+  propertiesValue,
+  renderAndroidProject,
+  substitute,
+} from '../../scripts/android/render-android-project';
 import { resolveSdkRoot } from '../../scripts/android/setup-sdk';
-import { assertLaunchActivityDeclared, dumpManifestArgs, findApksigner } from '../../scripts/android/verify-signatures';
+import { assertLauncherActivityDeclared, dumpManifestArgs, findApksigner } from '../../scripts/android/verify-signatures';
 
 const RELEASE_FINGERPRINT = '16:9F:F8:BE:66:C3:DF:9E:7F:48:B0:4B:5C:10:E0:51:98:BE:ED:1B:71:28:50:49:E9:98:06:B2:FC:AD:FC:BA';
 const CANONICAL_RELEASE_FINGERPRINT = RELEASE_FINGERPRINT.replaceAll(':', '');
-const PLAY_FINGERPRINT = `BB:${'CC:'.repeat(30)}DD`.toUpperCase();
-const CANONICAL_PLAY_FINGERPRINT = PLAY_FINGERPRINT.replaceAll(':', '');
 
-const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+const TEMPLATE_DIRECTORY = fileURLToPath(new URL('../../android/template', import.meta.url));
 
 function buildEnv(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
   return {
@@ -37,21 +44,6 @@ function buildEnv(overrides: Record<string, string | undefined> = {}): NodeJS.Pr
     INPUT_VERSION_CODE: '42',
     ...overrides,
   };
-}
-
-function assetLinks(fingerprints: readonly string[], packageId = 'com.example.telegramweb'): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(
-    JSON.stringify([
-      {
-        relation: ['delegate_permission/common.handle_all_urls'],
-        target: {
-          namespace: 'android_app',
-          package_name: packageId,
-          sha256_cert_fingerprints: fingerprints,
-        },
-      },
-    ]),
-  );
 }
 
 describe('the Android build configuration', () => {
@@ -141,7 +133,7 @@ describe('certificate fingerprints', () => {
   it('reads keytool’s indented SHA256 line', () => {
     const output = [
       'Certificate fingerprints:',
-      `\t SHA1: 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00`,
+      '\t SHA1: 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
       `\t SHA256: ${RELEASE_FINGERPRINT}`,
       'Signature algorithm name: SHA256withRSA',
     ].join('\n');
@@ -156,77 +148,10 @@ describe('certificate fingerprints', () => {
 });
 
 describe('the live deployment preflight', () => {
-  const expectations = {
-    origin: 'https://tg.example.com',
-    packageId: 'com.example.telegramweb',
-    fingerprint: CANONICAL_RELEASE_FINGERPRINT,
-  } as const;
-
   it('reads the PWA manifest name', () => {
     expect(readManifestName(new TextEncoder().encode('{"name":"Pigeongram"}'))).toBe('Pigeongram');
     expect(() => readManifestName(new TextEncoder().encode('not json'))).toThrow('The live web manifest is not valid JSON');
     expect(() => readManifestName(new TextEncoder().encode('{"short_name":"x"}'))).toThrow('The live web manifest has no name');
-  });
-
-  it('recognizes the PNG signature', () => {
-    expect(isPng(PNG_BYTES)).toBe(true);
-    expect(isPng(new TextEncoder().encode('<html>'))).toBe(false);
-  });
-
-  it('accepts a statement naming the package and the release certificate', () => {
-    expect(() => validateAssetLinks(assetLinks([RELEASE_FINGERPRINT]), expectations)).not.toThrow();
-  });
-
-  it('accepts the Play certificate when the deployment configures it', () => {
-    expect(() =>
-      validateAssetLinks(assetLinks([RELEASE_FINGERPRINT, PLAY_FINGERPRINT]), {
-        ...expectations,
-        playFingerprint: CANONICAL_PLAY_FINGERPRINT,
-      }),
-    ).not.toThrow();
-  });
-
-  it('rejects a statement for another package', () => {
-    expect(() => validateAssetLinks(assetLinks([RELEASE_FINGERPRINT], 'com.example.other'), expectations)).toThrow(
-      'The live assetlinks.json does not name com.example.telegramweb',
-    );
-  });
-
-  it('rejects a statement without the URL-handling permission', () => {
-    const bytes = new TextEncoder().encode(
-      JSON.stringify([
-        {
-          relation: ['delegate_permission/common.get_login_creds'],
-          target: {
-            namespace: 'android_app',
-            package_name: 'com.example.telegramweb',
-            sha256_cert_fingerprints: [RELEASE_FINGERPRINT],
-          },
-        },
-      ]),
-    );
-    expect(() => validateAssetLinks(bytes, expectations)).toThrow('The live assetlinks statement does not handle all URLs');
-  });
-
-  it('rejects a statement missing the keystore certificate', () => {
-    expect(() => validateAssetLinks(assetLinks([PLAY_FINGERPRINT]), expectations)).toThrow(
-      'The live assetlinks.json does not contain the keystore fingerprint',
-    );
-  });
-
-  it('rejects a statement missing the configured Play certificate', () => {
-    expect(() =>
-      validateAssetLinks(assetLinks([RELEASE_FINGERPRINT]), {
-        ...expectations,
-        playFingerprint: CANONICAL_PLAY_FINGERPRINT,
-      }),
-    ).toThrow('does not contain every configured certificate fingerprint');
-  });
-
-  it('rejects a statement naming a certificate the deployment does not configure', () => {
-    expect(() => validateAssetLinks(assetLinks([RELEASE_FINGERPRINT, PLAY_FINGERPRINT]), expectations)).toThrow(
-      'names unexpected certificate fingerprints',
-    );
   });
 
   it('requires a direct 200', async () => {
@@ -234,95 +159,144 @@ describe('the live deployment preflight', () => {
     await expect(fetchOk('https://tg.example.com/', redirecting)).rejects.toThrow('https://tg.example.com/ returned HTTP 302');
   });
 
-  it('fetches and validates every resource in one pass', async () => {
+  it('fetches the document and manifest in one pass', async () => {
     const requests: string[] = [];
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       requests.push(url);
-      if (url.endsWith('/.well-known/assetlinks.json')) {
-        return new Response(assetLinks([RELEASE_FINGERPRINT]), { status: 200 });
-      }
       if (url.endsWith('/manifest.webmanifest')) {
         return new Response('{"name":"Pigeongram"}', { status: 200 });
-      }
-      if (url.endsWith('.png')) {
-        return new Response(PNG_BYTES.buffer as ArrayBuffer, { status: 200 });
       }
       return new Response('<!doctype html>', { status: 200 });
     }) as typeof fetch;
 
-    await expect(verifyDeployment({ ...expectations, fetchImpl })).resolves.toBeUndefined();
-    expect(requests.toSorted()).toEqual([
-      'https://tg.example.com/',
-      'https://tg.example.com/.well-known/assetlinks.json',
-      'https://tg.example.com/icon-512.png',
-      'https://tg.example.com/icon-maskable-512.png',
-      'https://tg.example.com/manifest.webmanifest',
+    await expect(verifyDeployment({ origin: 'https://tg.example.com', fetchImpl })).resolves.toBeUndefined();
+    expect(requests.toSorted()).toEqual(['https://tg.example.com/', 'https://tg.example.com/manifest.webmanifest']);
+  });
+});
+
+describe('the committed native template', () => {
+  it('names the WebView launcher activity in the manifest', () => {
+    const manifest = readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    expect(manifest).toContain('android:name=".MainActivity"');
+    expect(manifest).toContain('android.intent.category.LAUNCHER');
+  });
+
+  it('keeps the deployment placeholders in the Java and Gradle sources', () => {
+    expect(readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'build.gradle'), 'utf8')).toContain("applicationId '__PACKAGE_ID__'");
+    expect(
+      readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'), 'utf8'),
+    ).toContain('package __PACKAGE_ID__;');
+  });
+});
+
+describe('the rendered Android project', () => {
+  function render(outputDirectory: string): void {
+    renderAndroidProject(TEMPLATE_DIRECTORY, outputDirectory, {
+      origin: 'https://tg.example.com',
+      packageId: 'com.example.telegramweb',
+      appName: 'Pigeon & Co',
+      launcherName: 'Pigeon',
+      versionName: '1.2.3',
+      versionCode: 42,
+      keystorePath: '/runner/temp/android-release.jks',
+      keystorePassword: 'store pass',
+      keyAlias: 'telegram',
+      keyPassword: 'key=pass',
+      sdkRoot: '/sdk',
+    });
+  }
+
+  it('fills the identity into the Gradle build and the Java package', () => {
+    const outputDirectory = mkdtempSync(path.join(os.tmpdir(), 'android-project-'));
+    render(outputDirectory);
+
+    const gradle = readFileSync(path.join(outputDirectory, 'app', 'build.gradle'), 'utf8');
+    expect(gradle).toContain("applicationId 'com.example.telegramweb'");
+    expect(gradle).toContain('versionCode 42');
+    expect(gradle).toContain("versionName '1.2.3'");
+    expect(existsSync(path.join(outputDirectory, 'app', 'src', 'main', 'java', 'com', 'example', 'telegramweb', 'MainActivity.java'))).toBe(
+      true,
+    );
+  });
+
+  it('escapes resource values and writes the signing properties', () => {
+    const outputDirectory = mkdtempSync(path.join(os.tmpdir(), 'android-project-'));
+    render(outputDirectory);
+
+    const strings = readFileSync(path.join(outputDirectory, 'app', 'src', 'main', 'res', 'values', 'strings.xml'), 'utf8');
+    expect(strings).toContain('<string name="app_name">Pigeon &amp; Co</string>');
+    expect(strings).toContain('<string name="start_url">https://tg.example.com/</string>');
+
+    const signing = readFileSync(path.join(outputDirectory, 'keystore.properties'), 'utf8');
+    expect(signing).toContain('storeFile=/runner/temp/android-release.jks');
+    expect(signing).toContain(String.raw`keyPassword=key\=pass`);
+    expect(readFileSync(path.join(outputDirectory, 'local.properties'), 'utf8')).toBe('sdk.dir=/sdk\n');
+  });
+
+  it('draws a launcher icon at every density', () => {
+    const outputDirectory = mkdtempSync(path.join(os.tmpdir(), 'android-project-'));
+    render(outputDirectory);
+
+    expect(LAUNCHER_ICONS.map((icon) => icon.density)).toEqual(['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']);
+    for (const icon of LAUNCHER_ICONS) {
+      const file = path.join(outputDirectory, 'app', 'src', 'main', 'res', `mipmap-${icon.density}`, 'ic_launcher.png');
+      expect([...readFileSync(file).subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    }
+  });
+
+  it('refuses a placeholder with no value', () => {
+    expect(substitute('id=__PACKAGE_ID__', { PACKAGE_ID: 'com.example.app' })).toBe('id=com.example.app');
+    expect(() => substitute('id=__PACKAGE_ID__ name=__APP_NAME__', { PACKAGE_ID: 'com.example.app' })).toThrow(
+      'Unresolved Android template placeholder __APP_NAME__',
+    );
+  });
+
+  it('derives the Java package path and escapes XML and properties values', () => {
+    expect(packagePath('com.example.app')).toBe('com/example/app');
+    expect(escapeXml('A & B <C> "D" \'E\'')).toBe('A &amp; B &lt;C&gt; &quot;D&quot; &apos;E&apos;');
+    expect(propertiesValue(String.raw`a:b=c\d`)).toBe(String.raw`a\:b\=c\\d`);
+  });
+
+  it('refuses a non-positive version code', () => {
+    expect(() =>
+      renderAndroidProject(TEMPLATE_DIRECTORY, mkdtempSync(path.join(os.tmpdir(), 'android-project-')), {
+        origin: 'https://tg.example.com',
+        packageId: 'com.example.telegramweb',
+        appName: 'Pigeongram',
+        launcherName: 'Pigeon',
+        versionName: '1.2.3',
+        versionCode: 0,
+        keystorePath: '/runner/temp/android-release.jks',
+        keystorePassword: 'storepass',
+        keyAlias: 'telegram',
+        keyPassword: 'keypass',
+        sdkRoot: '/sdk',
+      }),
+    ).toThrow('versionCode must be a positive integer');
+  });
+});
+
+describe('the Gradle build', () => {
+  it('runs both tasks without leaving a daemon behind', () => {
+    expect(gradleArgs(['assembleRelease', 'bundleRelease'])).toEqual([
+      '--no-daemon',
+      '--warning-mode=all',
+      'assembleRelease',
+      'bundleRelease',
+    ]);
+  });
+
+  it('copies Gradle’s outputs to the published artifact names', () => {
+    expect(gradleArtifactPaths('/build').map((artifact) => [artifact.from, artifact.to])).toEqual([
+      ['/build/app/build/outputs/apk/release/app-release.apk', '/build/app-release-signed.apk'],
+      ['/build/app/build/outputs/bundle/release/app-release.aab', '/build/app-release-bundle.aab'],
     ]);
   });
 });
 
-describe('the committed TWA template', () => {
-  const template = JSON.parse(readFileSync(new URL('../../android/twa-manifest.template.json', import.meta.url), 'utf8')) as Record<
-    string,
-    unknown
-  >;
-
-  // Bubblewrap only declares ManageDataLauncherActivity when this is true, but
-  // androidbrowserhelper 2.7.x toggles that component on every launch. Without
-  // the declaration the APK builds and then crashes before the site opens.
-  it('keeps the site-settings activity the helper enables on launch', () => {
-    expect(template.enableSiteSettingsShortcut).toBe(true);
-  });
-});
-
-describe('the rendered TWA manifest', () => {
-  const template = {
-    packageId: 'com.example.placeholder',
-    name: 'Placeholder',
-    enableNotifications: false,
-    shortcuts: [],
-  };
-  const input = {
-    origin: 'https://tg.example.com',
-    host: 'tg.example.com',
-    packageId: 'com.example.telegramweb',
-    appName: 'Pigeongram',
-    launcherName: 'Pigeon',
-    versionName: '1.2.3',
-    versionCode: 42,
-    keystorePath: '/runner/temp/android-release.jks',
-    keyAlias: 'telegram',
-  };
-
-  it('fills the deployment identity and keeps the template’s shared fields', () => {
-    const manifest = renderTwaManifest(template, input);
-
-    expect(manifest).toMatchObject({
-      packageId: input.packageId,
-      host: input.host,
-      name: input.appName,
-      launcherName: input.launcherName,
-      appVersion: input.versionName,
-      appVersionCode: input.versionCode,
-      signingKey: { path: input.keystorePath, alias: 'telegram' },
-      iconUrl: 'https://tg.example.com/icon-512.png',
-      maskableIconUrl: 'https://tg.example.com/icon-maskable-512.png',
-      webManifestUrl: 'https://tg.example.com/manifest.webmanifest',
-      fullScopeUrl: 'https://tg.example.com/',
-      enableNotifications: false,
-      shortcuts: [],
-    });
-    expect(template.packageId).toBe('com.example.placeholder');
-  });
-
-  it('serializes with a trailing newline', () => {
-    expect(serializeTwaManifest({ a: 1 })).toBe('{\n  "a": 1\n}\n');
-  });
-});
-
 describe('the built APK manifest', () => {
-  const activity = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
+  const activity = 'com.example.telegramweb.MainActivity';
 
   it('asks aapt2 for the manifest through --file', () => {
     expect(dumpManifestArgs('/build/app-release-signed.apk')).toEqual([
@@ -334,12 +308,23 @@ describe('the built APK manifest', () => {
     ]);
   });
 
-  it('accepts a manifest declaring the site-settings activity', () => {
-    expect(() => assertLaunchActivityDeclared(`A: android:name(0x01010003)="${activity}"`)).not.toThrow();
+  it('accepts a manifest declaring the launcher activity', () => {
+    const xmlTree = [
+      `A: android:name(0x01010003)="${activity}"`,
+      'A: android:name(0x01010003)="android.intent.action.MAIN"',
+      'A: android:name(0x01010003)="android.intent.category.LAUNCHER"',
+    ].join('\n');
+    expect(() => assertLauncherActivityDeclared(xmlTree, 'com.example.telegramweb')).not.toThrow();
   });
 
-  it('rejects a manifest that would crash on launch', () => {
-    expect(() => assertLaunchActivityDeclared('E: manifest')).toThrow(/does not declare/);
+  it('rejects a manifest that does not declare the activity', () => {
+    expect(() => assertLauncherActivityDeclared('E: manifest', 'com.example.telegramweb')).toThrow(/does not declare/);
+  });
+
+  it('rejects a manifest whose activity is not the launcher', () => {
+    expect(() => assertLauncherActivityDeclared(`A: android:name="${activity}"`, 'com.example.telegramweb')).toThrow(
+      /as the launcher activity/,
+    );
   });
 });
 

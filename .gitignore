@@ -14,8 +14,8 @@ coverage/
 *.log
 *.tsbuildinfo
 
-# The Android TWA project is rendered from android/twa-manifest.template.json in
-# CI. Only the template belongs in the repository; the keystore never does.
+# The Android WebView project is rendered from android/template in CI. Only the
+# template belongs in the repository; the keystore and signing properties never do.
 android/build/
 *.jks
 *.jks.*

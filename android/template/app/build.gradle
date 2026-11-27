@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The render step writes keystore.properties beside this project with mode
+// 0600. It is gitignored with the rest of android/build, and the workflow
+// deletes the decoded keystore after the run.
+def signingProperties = new Properties()
+def signingFile = rootProject.file('keystore.properties')
+if (!signingFile.exists()) {
+    throw new GradleException('keystore.properties is missing; render the project before building')
+}
+signingFile.withInputStream { signingProperties.load(it) }
+
+android {
+    namespace '__PACKAGE_ID__'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId '__PACKAGE_ID__'
+        minSdk 24
+        targetSdk 36
+        versionCode __VERSION_CODE__
+        versionName '__VERSION_NAME__'
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file(signingProperties.getProperty('storeFile'))
+            storePassword signingProperties.getProperty('storePassword')
+            keyAlias signingProperties.getProperty('keyAlias')
+            keyPassword signingProperties.getProperty('keyPassword')
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

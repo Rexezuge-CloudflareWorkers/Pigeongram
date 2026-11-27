@@ -13,7 +13,7 @@ import { readBuildConfig, resolveVersionName } from '../../scripts/android/valid
 import { fetchOk, isPng, readManifestName, validateAssetLinks, verifyDeployment } from '../../scripts/android/verify-deployment';
 import { renderTwaManifest, serializeTwaManifest } from '../../scripts/android/render-manifest';
 import { resolveSdkRoot } from '../../scripts/android/setup-sdk';
-import { assertLaunchActivityDeclared, findApksigner } from '../../scripts/android/verify-signatures';
+import { assertLaunchActivityDeclared, dumpManifestArgs, findApksigner } from '../../scripts/android/verify-signatures';
 
 const RELEASE_FINGERPRINT = '16:9F:F8:BE:66:C3:DF:9E:7F:48:B0:4B:5C:10:E0:51:98:BE:ED:1B:71:28:50:49:E9:98:06:B2:FC:AD:FC:BA';
 const CANONICAL_RELEASE_FINGERPRINT = RELEASE_FINGERPRINT.replaceAll(':', '');
@@ -323,6 +323,16 @@ describe('the rendered TWA manifest', () => {
 
 describe('the built APK manifest', () => {
   const activity = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
+
+  it('asks aapt2 for the manifest through --file', () => {
+    expect(dumpManifestArgs('/build/app-release-signed.apk')).toEqual([
+      'dump',
+      'xmltree',
+      '--file',
+      'AndroidManifest.xml',
+      '/build/app-release-signed.apk',
+    ]);
+  });
 
   it('accepts a manifest declaring the site-settings activity', () => {
     expect(() => assertLaunchActivityDeclared(`A: android:name(0x01010003)="${activity}"`)).not.toThrow();

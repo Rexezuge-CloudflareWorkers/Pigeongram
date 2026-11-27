@@ -20,6 +20,15 @@ import { normalizeFingerprint, parseApksignerFingerprint, parseKeytoolFingerprin
 
 const APK_NAME = 'app-release-signed.apk';
 const AAB_NAME = 'app-release-bundle.aab';
+const ANDROID_MANIFEST = 'AndroidManifest.xml';
+
+/**
+ * `aapt2 dump xmltree` requires the archive entry in a `--file` flag; passing it
+ * as a positional argument fails with "missing required flag --file".
+ */
+export function dumpManifestArgs(apk: string): readonly string[] {
+  return ['dump', 'xmltree', '--file', ANDROID_MANIFEST, apk];
+}
 const MANAGE_DATA_ACTIVITY = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
 
 /**
@@ -114,7 +123,7 @@ if (isEntrypoint(import.meta.url)) {
     if (!existsSync(aapt2)) {
       throw new Error('aapt2 not found beside apksigner');
     }
-    assertLaunchActivityDeclared(run(aapt2, ['dump', 'xmltree', apk, 'AndroidManifest.xml']));
+    assertLaunchActivityDeclared(run(aapt2, dumpManifestArgs(apk)));
 
     // `jarsigner` prints its verdict on stdout and warnings on stderr; the exit
     // status is the check, so only the warnings are worth showing.

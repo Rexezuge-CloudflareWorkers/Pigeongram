@@ -25,3 +25,13 @@ if (globalThis.localStorage === undefined) {
   } satisfies Storage;
   Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
 }
+
+// The SPA's i18next instance, initialized from the real catalogue. Components
+// translate through `useTranslation`, so without this every assertion would
+// read raw key paths instead of the copy. The language is pinned to English
+// regardless of the runner's locale, because the suites assert English copy.
+document.documentElement.lang = 'en';
+export {};
+
+await import('../../apps/web/src/i18n');
+await (await import('i18next')).default.changeLanguage('en');

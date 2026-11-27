@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ringtone } from '../calls/ringtone';
@@ -64,6 +66,7 @@ export function CallOverlay({
   onDismiss,
   exiting = false,
 }: CallOverlayProps) {
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement>(null);
   const ringtone = useRef<Ringtone | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -116,7 +119,7 @@ export function CallOverlay({
     return () => clearTimeout(timer);
   }, [view.phase, onDismiss]);
 
-  const title = chat?.title ?? 'Unknown';
+  const title = chat?.title ?? t('calls.unknown', 'Unknown');
   const incoming = view.direction === 'incoming';
   const ringing = view.phase === 'ringing';
 
@@ -129,13 +132,16 @@ export function CallOverlay({
       <div className="flex flex-col items-center gap-1">
         <h2 className="text-2xl font-semibold">{title}</h2>
         <p className="text-[15px] text-muted" role="status">
-          {statusOf(view, incoming, seconds)}
+          {statusOf(t, view, incoming, seconds)}
         </p>
       </div>
       {view.error ? <p className="max-w-[40ch] text-sm text-danger">{view.error}</p> : null}
       {view.fingerprint ? (
-        <p className="font-mono text-xs text-muted" title="The fingerprint both sides compare to be sure they share the same key">
-          Key {view.fingerprint}
+        <p
+          className="font-mono text-xs text-muted"
+          title={t('a11y.keyFingerprint', 'The fingerprint both sides compare to be sure they share the same key')}
+        >
+          {t('calls.key', 'Key')} {view.fingerprint}
         </p>
       ) : null}
 
@@ -145,7 +151,7 @@ export function CallOverlay({
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onDecline}
-            aria-label="Decline The Call"
+            aria-label={t('calls.decline', 'Decline The Call')}
           >
             <Icon name="call-end" size={28} />
           </button>
@@ -153,7 +159,7 @@ export function CallOverlay({
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-online text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onAccept}
-            aria-label="Answer The Call"
+            aria-label={t('calls.answer', 'Answer The Call')}
           >
             <Icon name="call" size={28} />
           </button>
@@ -165,13 +171,13 @@ export function CallOverlay({
           type="button"
           className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onHangUp}
-          aria-label="Cancel The Call"
+          aria-label={t('calls.cancel', 'Cancel The Call')}
         >
           <Icon name="call-end" size={28} />
         </button>
       ) : null}
 
-      {view.phase === 'connecting' ? <Spinner size={28} label="Connecting The Call…" /> : null}
+      {view.phase === 'connecting' ? <Spinner size={28} label={t('calls.connectingLabel', 'Connecting The Call…')} /> : null}
 
       {view.phase === 'active' ? (
         <div className="flex items-center gap-6">
@@ -180,7 +186,7 @@ export function CallOverlay({
             className="flex size-16 items-center justify-center rounded-full bg-panel-2 text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onToggleMute}
             aria-pressed={view.muted}
-            aria-label={view.muted ? 'Unmute The Microphone' : 'Mute The Microphone'}
+            aria-label={view.muted ? t('calls.unmute', 'Unmute The Microphone') : t('calls.mute', 'Mute The Microphone')}
           >
             {view.muted ? <Icon name="mic-off" size={28} /> : <Icon name="mic" size={28} />}
           </button>
@@ -188,7 +194,7 @@ export function CallOverlay({
             type="button"
             className="flex size-16 items-center justify-center rounded-full bg-danger text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={onHangUp}
-            aria-label="End The Call"
+            aria-label={t('calls.end', 'End The Call')}
           >
             <Icon name="call-end" size={28} />
           </button>
@@ -201,7 +207,7 @@ export function CallOverlay({
           className="rounded-full bg-panel-2 px-5 py-2 text-[15px] text-fg transition-colors hover:bg-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onDismiss}
         >
-          Close
+          {t('common.close', 'Close')}
         </button>
       ) : null}
     </div>,
@@ -212,11 +218,11 @@ export function CallOverlay({
 /**
 The line under the peer's name.
 */
-function statusOf(view: CallView, incoming: boolean, seconds: number): string {
-  if (view.phase === 'ended') return 'The Call Ended';
-  if (view.phase === 'connecting') return 'Connecting…';
+function statusOf(t: TFunction, view: CallView, incoming: boolean, seconds: number): string {
+  if (view.phase === 'ended') return t('calls.ended', 'The Call Ended');
+  if (view.phase === 'connecting') return t('calls.connecting', 'Connecting…');
   if (view.phase === 'active') return formatDuration(seconds);
-  return incoming ? 'Incoming Call' : 'Calling…';
+  return incoming ? t('calls.incoming', 'Incoming Call') : t('calls.calling', 'Calling…');
 }
 
 /**

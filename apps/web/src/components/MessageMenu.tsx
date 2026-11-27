@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { downloadMedia, isDownloadable } from '../media-download';
 import { reactionFor } from '../reactions';
@@ -99,6 +100,7 @@ export function MessageMenu({
   link = null,
   onClose,
 }: MessageMenuProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { menuRef, position, onKeyDown } = useAnchoredMenu({
     open: true,
@@ -131,14 +133,19 @@ export function MessageMenu({
   };
 
   const items: Array<{ label: string; icon: IconName; run: () => void }> = [];
-  if (canReply) items.push({ label: 'Reply', icon: 'reply', run: () => onReply?.(message) });
-  if (canEdit) items.push({ label: 'Edit', icon: 'edit', run: () => onEdit?.(message) });
-  if (canPin) items.push({ label: message.pinned ? 'Unpin' : 'Pin', icon: 'pin', run: () => onPin?.(message, !message.pinned) });
-  if (canForward) items.push({ label: 'Forward', icon: 'forward', run: () => onForward?.(messages) });
-  if (canCopy) items.push({ label: 'Copy Text', icon: 'copy', run: () => void copyToClipboard(message.text) });
-  if (link !== null) items.push({ label: 'Copy Link', icon: 'link', run: () => void copyToClipboard(link) });
-  if (canDownload) items.push({ label: 'Download', icon: 'download', run: () => downloadMedia(message) });
-  if (canDelete) items.push({ label: 'Delete', icon: 'delete', run: () => onDelete?.(messages) });
+  if (canReply) items.push({ label: t('messages.reply', 'Reply'), icon: 'reply', run: () => onReply?.(message) });
+  if (canEdit) items.push({ label: t('common.edit', 'Edit'), icon: 'edit', run: () => onEdit?.(message) });
+  if (canPin)
+    items.push({
+      label: message.pinned ? t('chats.unpin', 'Unpin') : t('chats.pin', 'Pin'),
+      icon: 'pin',
+      run: () => onPin?.(message, !message.pinned),
+    });
+  if (canForward) items.push({ label: t('messages.forward', 'Forward'), icon: 'forward', run: () => onForward?.(messages) });
+  if (canCopy) items.push({ label: t('messages.copyText', 'Copy Text'), icon: 'copy', run: () => void copyToClipboard(message.text) });
+  if (link !== null) items.push({ label: t('messages.copyLink', 'Copy Link'), icon: 'link', run: () => void copyToClipboard(link) });
+  if (canDownload) items.push({ label: t('messages.download', 'Download'), icon: 'download', run: () => downloadMedia(message) });
+  if (canDelete) items.push({ label: t('common.delete', 'Delete'), icon: 'delete', run: () => onDelete?.(messages) });
 
   return (
     <AnchoredMenu
@@ -146,7 +153,7 @@ export function MessageMenu({
       position={position}
       onKeyDown={onKeyDown}
       className="message-menu"
-      label="Message actions"
+      label={t('a11y.messageActions', 'Message actions')}
       onContextMenu={(event) => {
         // A right-click inside the open menu must not reopen it through the
         // bubble's handler (portal events bubble up the React tree).

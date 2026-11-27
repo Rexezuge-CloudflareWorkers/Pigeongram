@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
-import { loginPhaseMessage } from '../api';
+import { useTranslation } from 'react-i18next';
+import { loginPhaseMessage } from '../login-copy';
 import type { EngineStateDto } from '../types';
 import { Spinner } from './Spinner';
 import { TextField } from './TextField';
@@ -22,6 +23,7 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry }: LoginScreenProps) {
+  const { t } = useTranslation();
   // Which of the two sign-in paths the operator picked; the engine's phase
   // overrides it whenever a code is already in flight (e.g. after a reload).
   const [usePhone, setUsePhone] = useState(false);
@@ -30,11 +32,13 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
   const phoneForm = usePhone && !awaitingCode && phase !== 'password';
   const qrVisible = !awaitingCode && !phoneForm && phase !== 'password';
   const statusBusy = !phoneForm && (state === null || phase === 'unauthorized' || phase === 'scanned');
-  const statusText = phoneForm ? 'Enter Your Phone Number — Telegram Will Send A Login Code.' : loginPhaseMessage(state);
+  const statusText = phoneForm
+    ? t('login.phoneEntry', 'Enter Your Phone Number — Telegram Will Send A Login Code.')
+    : loginPhaseMessage(state);
   return (
     <main className="login">
       <section className="card">
-        <h1>Sign In To Telegram</h1>
+        <h1>{t('login.title', 'Sign In To Telegram')}</h1>
         {qrVisible ? <QrPanel state={state} /> : null}
         <p className="status">{statusBusy ? <Spinner inline size={14} label={statusText} /> : statusText}</p>
         {phoneForm ? <PhoneForm onSubmit={onPhone} onBack={() => setUsePhone(false)} /> : null}
@@ -43,17 +47,19 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
         {error ? <p className="error">{error}</p> : null}
         {phase === 'error' || error ? (
           <button type="button" className="ghost" onClick={onRetry}>
-            Start Over
+            {t('login.startOver', 'Start Over')}
           </button>
         ) : null}
         {qrVisible ? (
           <button type="button" className="ghost" onClick={() => setUsePhone(true)}>
-            Use A Phone Number Instead
+            {t('login.usePhone', 'Use A Phone Number Instead')}
           </button>
         ) : null}
         <p className="muted small">
-          Session Engine: Cloudflare Durable Object, MTProto Over WSS. The Client Only Holds Your Session; Messages Are Fetched Live From
-          Telegram.
+          {t(
+            'login.footnote',
+            'Session Engine: Cloudflare Durable Object, MTProto Over WSS. The Client Only Holds Your Session; Messages Are Fetched Live From Telegram.',
+          )}
         </p>
       </section>
     </main>
@@ -61,6 +67,7 @@ export function LoginScreen({ state, error, onPhone, onCode, onPassword, onRetry
 }
 
 function QrPanel({ state }: { state: EngineStateDto | null }) {
+  const { t } = useTranslation();
   // `rendered` pairs the QR payload with its image: when the engine rotates
   // the URL, the stale image is ignored instead of being briefly shown.
   const [rendered, setRendered] = useState<{ url: string; dataUrl: string } | null>(null);
@@ -101,7 +108,7 @@ function QrPanel({ state }: { state: EngineStateDto | null }) {
   return (
     <>
       {dataUrl ? (
-        <img className="qr" src={dataUrl} alt="Telegram login QR code" width={256} height={256} />
+        <img className="qr" src={dataUrl} alt={t('a11y.loginQrCode', 'Telegram login QR code')} width={256} height={256} />
       ) : (
         <div className="qr placeholder grid place-items-center" aria-hidden="true">
           <Spinner size={32} />
@@ -109,14 +116,17 @@ function QrPanel({ state }: { state: EngineStateDto | null }) {
       )}
       <p className="muted small">
         {dataUrl && expiresIn !== null
-          ? `Code Valid For ${Math.max(expiresIn, 0)}s — Telegram Login Codes Live ~30 Seconds, So Scan As Soon As It Appears.`
-          : 'Waiting For A Fresh QR Code…'}
+          ? t('login.qrValid', 'Code Valid For {{seconds}}s — Telegram Login Codes Live ~30 Seconds, So Scan As Soon As It Appears.', {
+              seconds: Math.max(expiresIn, 0),
+            })
+          : t('login.qrWaiting', 'Waiting For A Fresh QR Code…')}
       </p>
     </>
   );
 }
 
 function PhoneForm({ onSubmit, onBack }: { onSubmit: (phone: string) => Promise<void>; onBack: () => void }) {
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,23 +142,23 @@ function PhoneForm({ onSubmit, onBack }: { onSubmit: (phone: string) => Promise<
       <TextField
         type="tel"
         value={phone}
-        placeholder="+15551234567"
+        placeholder={t('login.phonePlaceholder', '+15551234567')}
         autoComplete="tel"
         autoFocus
-        aria-label="Phone number"
+        aria-label={t('a11y.phoneNumber', 'Phone number')}
         onChange={(event) => setPhone(event.target.value)}
       />
       <button type="submit" disabled={submitting || phone.trim().length < 5} aria-busy={submitting}>
         {submitting ? (
           <>
-            <Spinner inline size={14} color="currentColor" /> Sending…
+            <Spinner inline size={14} color="currentColor" /> {t('login.sending', 'Sending…')}
           </>
         ) : (
-          'Send Code'
+          t('common.sendCode', 'Send Code')
         )}
       </button>
       <button type="button" className="ghost" onClick={onBack} disabled={submitting}>
-        Use A QR Code Instead
+        {t('login.useQr', 'Use A QR Code Instead')}
       </button>
     </form>
   );
@@ -163,6 +173,7 @@ function CodeForm({
   onSubmit: (code: string) => Promise<void>;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -181,30 +192,33 @@ function CodeForm({
         type="text"
         inputMode="numeric"
         value={code}
-        placeholder="Login Code"
+        placeholder={t('login.codePlaceholder', 'Login Code')}
         autoComplete="one-time-code"
         autoFocus
-        aria-label="Login code"
+        aria-label={t('a11y.loginCode', 'Login code')}
         onChange={(event) => setCode(event.target.value)}
       />
-      {state?.codeInvalid ? <p className="error">That Code Was Rejected — Check The Latest Message And Try Again.</p> : null}
+      {state?.codeInvalid ? (
+        <p className="error">{t('login.codeRejected', 'That Code Was Rejected — Check The Latest Message And Try Again.')}</p>
+      ) : null}
       <button type="submit" disabled={submitting || code.trim().length === 0} aria-busy={submitting}>
         {submitting ? (
           <>
-            <Spinner inline size={14} color="currentColor" /> Checking…
+            <Spinner inline size={14} color="currentColor" /> {t('login.checking', 'Checking…')}
           </>
         ) : (
-          'Submit Code'
+          t('common.submitCode', 'Submit Code')
         )}
       </button>
       <button type="button" className="ghost" onClick={onRetry}>
-        Start Over
+        {t('login.startOver', 'Start Over')}
       </button>
     </form>
   );
 }
 
 function PasswordForm({ invalid, onSubmit }: { invalid: boolean; onSubmit: (password: string) => Promise<void> }) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -222,20 +236,20 @@ function PasswordForm({ invalid, onSubmit }: { invalid: boolean; onSubmit: (pass
       <TextField
         type="password"
         value={password}
-        placeholder="Cloud Password"
+        placeholder={t('login.passwordPlaceholder', 'Cloud Password')}
         autoComplete="current-password"
         autoFocus
-        aria-label="Cloud password"
+        aria-label={t('a11y.cloudPassword', 'Cloud password')}
         onChange={(event) => setPassword(event.target.value)}
       />
-      {invalid ? <p className="error">That Password Was Rejected — Try Again.</p> : null}
+      {invalid ? <p className="error">{t('login.passwordRejected', 'That Password Was Rejected — Try Again.')}</p> : null}
       <button type="submit" disabled={submitting || password.length === 0} aria-busy={submitting}>
         {submitting ? (
           <>
-            <Spinner inline size={14} color="currentColor" /> Checking…
+            <Spinner inline size={14} color="currentColor" /> {t('login.checking', 'Checking…')}
           </>
         ) : (
-          'Submit'
+          t('common.submit', 'Submit')
         )}
       </button>
     </form>

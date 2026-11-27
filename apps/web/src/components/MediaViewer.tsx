@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { fileUrl } from '../api';
 import { useDataSaver } from '../data-saver';
 import { formatBytes, mediaPreview } from '../format';
@@ -50,6 +52,7 @@ interface MediaViewerProps {
 }
 
 export function MediaViewer({ messages, initialMessageId, exiting = false, onClose }: MediaViewerProps) {
+  const { t } = useTranslation();
   const items = messages.filter((message) => isViewableMedia(message.media));
   const itemCount = items.length;
   const initialIndex = Math.max(
@@ -206,7 +209,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
       className={`media-viewer${exiting ? ' is-exiting' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Media viewer"
+      aria-label={t('a11y.mediaViewer', 'Media viewer')}
       onPointerDown={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
@@ -225,43 +228,67 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
             className="media-viewer-tool media-viewer-download"
             href={downloadSrc}
             download={downloadName}
-            aria-label="Download Original"
-            title="Download Original"
+            aria-label={t('media.downloadOriginal', 'Download Original')}
+            title={t('media.downloadOriginal', 'Download Original')}
           >
             <Icon name="download" size={18} />
           </a>
           {showQuality ? (
             <label className="media-viewer-quality">
-              <span className="sr-only">Video quality</span>
+              <span className="sr-only">{t('a11y.videoQuality', 'Video quality')}</span>
               <Select
-                aria-label="Video quality"
+                aria-label={t('a11y.videoQuality', 'Video quality')}
                 value={selectedQuality === 'auto' ? 'auto' : String(selectedQuality)}
                 onChange={(event) => changeQuality(event.currentTarget.value)}
               >
-                <option value="auto">Auto</option>
+                <option value="auto">{t('media.qualityAuto', 'Auto')}</option>
                 {qualities.map((quality) => (
                   <option key={quality.index} value={String(quality.index)}>
-                    {qualityLabel(quality)}
+                    {qualityLabel(t, quality)}
                   </option>
                 ))}
               </Select>
             </label>
           ) : null}
           {photo ? (
-            <div className="media-viewer-zoom" role="group" aria-label="Zoom">
-              <button type="button" className="media-viewer-tool" aria-label="Zoom Out" disabled={!canZoomOut} onClick={zoomOut}>
+            <div className="media-viewer-zoom" role="group" aria-label={t('a11y.zoom', 'Zoom')}>
+              <button
+                type="button"
+                className="media-viewer-tool"
+                aria-label={t('a11y.zoomOut', 'Zoom Out')}
+                disabled={!canZoomOut}
+                onClick={zoomOut}
+              >
                 <Icon name="minus" size={18} />
               </button>
-              <button type="button" className="media-viewer-tool percent" aria-label="Reset Zoom" disabled={!zoomed} onClick={resetZoom}>
+              <button
+                type="button"
+                className="media-viewer-tool percent"
+                aria-label={t('a11y.resetZoom', 'Reset Zoom')}
+                disabled={!zoomed}
+                onClick={resetZoom}
+              >
                 {percent}%
               </button>
-              <button type="button" className="media-viewer-tool" aria-label="Zoom In" disabled={!canZoomIn} onClick={zoomIn}>
+              <button
+                type="button"
+                className="media-viewer-tool"
+                aria-label={t('a11y.zoomIn', 'Zoom In')}
+                disabled={!canZoomIn}
+                onClick={zoomIn}
+              >
                 <Icon name="plus" size={18} />
               </button>
             </div>
           ) : null}
         </div>
-        <button ref={closeRef} type="button" className="media-viewer-close" aria-label="Close Media Viewer" onClick={onClose}>
+        <button
+          ref={closeRef}
+          type="button"
+          className="media-viewer-close"
+          aria-label={t('a11y.closeMediaViewer', 'Close Media Viewer')}
+          onClick={onClose}
+        >
           <Icon name="close" size={24} />
         </button>
       </header>
@@ -336,7 +363,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
             <button
               type="button"
               className="media-viewer-nav prev"
-              aria-label="Previous Media"
+              aria-label={t('a11y.previousMedia', 'Previous Media')}
               disabled={index === 0}
               onClick={() => navigate(-1)}
             >
@@ -345,7 +372,7 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
             <button
               type="button"
               className="media-viewer-nav next"
-              aria-label="Next Media"
+              aria-label={t('a11y.nextMedia', 'Next Media')}
               disabled={index === itemCount - 1}
               onClick={() => navigate(1)}
             >
@@ -364,8 +391,8 @@ export function MediaViewer({ messages, initialMessageId, exiting = false, onClo
   );
 }
 
-function qualityLabel(quality: VideoQualityDto): string {
+function qualityLabel(t: TFunction, quality: VideoQualityDto): string {
   if (quality.height) return `${quality.height}p`;
   if (quality.width) return `${quality.width}w`;
-  return `Quality ${quality.index + 1}`;
+  return t('media.qualityNumber', 'Quality {{number}}', { number: quality.index + 1 });
 }

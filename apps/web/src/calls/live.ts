@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { DhConfig, DhKeyPair } from './dh';
 import type { CallPeerSession } from './peer';
 
@@ -49,5 +50,5 @@ export function randomCallId(): string {
 The message of a failure, in the reader's words where possible.
 */
 export function messageOf(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'The Call Could Not Be Set Up';
+  return error instanceof Error && error.message ? error.message : t('errors.callSetupFailed', 'The Call Could Not Be Set Up');
 }

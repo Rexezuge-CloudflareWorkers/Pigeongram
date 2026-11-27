@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useRef, useState } from 'react';
 import { readClipboard } from '../clipboard';
 import type { RecordedVoice } from '../recorder';
@@ -8,7 +9,7 @@ import { useComposerCommands } from '../useComposerCommands';
 import { useEditDraft } from '../useEditDraft';
 import { useComposerPicker } from '../useComposerPicker';
 import { useVoiceRecorder } from '../useVoiceRecorder';
-import { CommandMenu } from './CommandMenu';
+import { ComposerActions } from './ComposerActions';
 import { Icon } from './Icon';
 import { Presence } from './Presence';
 import { ComposerEdit, ComposerReply } from './ReplyQuote';
@@ -80,6 +81,7 @@ export function Composer({
   onSendSticker,
   onPressReplyKeyboard,
 }: ComposerProps) {
+  const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -229,62 +231,25 @@ export function Composer({
         )}
         {voice.state === 'idle' ? (
           <>
-            {(botCommands?.length ?? 0) > 0 && editTarget === null ? (
-              <button
-                type="button"
-                className="slash"
-                data-icon-only
-                aria-label="Bot Commands"
-                title="Bot Commands"
-                aria-haspopup="listbox"
-                aria-expanded={commands.showMenu}
-                aria-controls={commands.showMenu ? commands.listId : undefined}
-                onClick={commands.toggleMenu}
-              >
-                <Icon name="slash" size={18} />
-              </button>
-            ) : null}
-            {onSendSticker === undefined ? null : (
-              <button
-                type="button"
-                className="attach"
-                data-icon-only
-                aria-label="Sticker and emoji picker"
-                title="Stickers And Emoji"
-                aria-haspopup="dialog"
-                aria-expanded={picker.open}
-                onClick={picker.toggle}
-              >
-                <Icon name="emoji" size={18} />
-              </button>
-            )}
-            {editTarget === null ? (
-              <button
-                type="button"
-                className="attach"
-                data-icon-only
-                aria-label="Attach Files"
-                title="Attach Files"
-                onClick={() => fileRef.current?.click()}
-              >
-                <Icon name="attach" size={18} />
-              </button>
-            ) : null}
-            {editTarget === null && onSchedule ? <ScheduleSendButton draft={draft} onSchedule={(text, at) => sendText(text, at)} /> : null}
-            {commands.showMenu ? (
-              <CommandMenu
-                id={commands.listId}
-                commands={commands.matches}
-                active={commands.active}
-                onActive={commands.setActiveCommand}
-                onPick={commands.pick}
-              />
-            ) : null}
+            <ComposerActions
+              commands={commands}
+              showCommands={(botCommands?.length ?? 0) > 0 && editTarget === null}
+              showSticker={onSendSticker !== undefined}
+              showAttach={editTarget === null}
+              pickerOpen={picker.open}
+              onTogglePicker={picker.toggle}
+              onAttach={() => fileRef.current?.click()}
+              schedule={
+                editTarget === null && onSchedule ? (
+                  <ScheduleSendButton draft={draft} onSchedule={(text, at) => sendText(text, at)} />
+                ) : null
+              }
+            />
             <textarea
               ref={textareaRef}
               value={draft}
               rows={1}
-              placeholder={editTarget === null ? placeholder : 'Edit Message'}
+              placeholder={editTarget === null ? placeholder : t('composer.editPlaceholder', 'Edit Message')}
               aria-autocomplete="list"
               aria-expanded={commands.showMenu}
               aria-controls={commands.showMenu ? commands.listId : undefined}
@@ -350,8 +315,16 @@ export function Composer({
                 type="button"
                 className="slash"
                 data-icon-only
-                aria-label={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
-                title={replyKeyboardCollapsed ? 'Show Bot Keyboard' : 'Hide Bot Keyboard'}
+                aria-label={
+                  replyKeyboardCollapsed
+                    ? t('composer.botKeyboardShow', 'Show Bot Keyboard')
+                    : t('composer.botKeyboardHide', 'Hide Bot Keyboard')
+                }
+                title={
+                  replyKeyboardCollapsed
+                    ? t('composer.botKeyboardShow', 'Show Bot Keyboard')
+                    : t('composer.botKeyboardHide', 'Hide Bot Keyboard')
+                }
                 aria-expanded={!replyKeyboardCollapsed}
                 onClick={() => setReplyKeyboardCollapsed((collapsed) => !collapsed)}
               >
@@ -360,8 +333,20 @@ export function Composer({
             ) : null}
             <button
               type={canRecord ? 'button' : 'submit'}
-              aria-label={canRecord ? 'Record Voice Message' : editTarget === null ? 'Send' : 'Save'}
-              title={canRecord ? 'Record Voice Message' : editTarget === null ? 'Send' : 'Save'}
+              aria-label={
+                canRecord
+                  ? t('composer.recordVoice', 'Record Voice Message')
+                  : editTarget === null
+                    ? t('common.send', 'Send')
+                    : t('common.save', 'Save')
+              }
+              title={
+                canRecord
+                  ? t('composer.recordVoice', 'Record Voice Message')
+                  : editTarget === null
+                    ? t('common.send', 'Send')
+                    : t('common.save', 'Save')
+              }
               data-icon-only
               className={`send-morph${canRecord ? ' is-mic' : ''}`}
               disabled={editTarget !== null && emptyDraft}

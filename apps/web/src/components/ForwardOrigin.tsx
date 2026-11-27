@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useForwardOriginHandler } from '../telegram-links';
 import type { MessageForwardDto } from '../types';
 import { Icon } from './Icon';
@@ -9,25 +10,26 @@ Only the origin's name is a control: the arrow and the prefix stay text. A
 hidden forward has no addressable origin, so its name stays text too.
 */
 export function ForwardOrigin({ forward }: { forward: MessageForwardDto }) {
+  const { t } = useTranslation();
   const open = useForwardOriginHandler();
-  const label = forward.senderName ?? 'A Hidden User';
+  const label = forward.senderName ?? t('thread.hiddenUser', 'A Hidden User');
   const target = forward.senderId ?? forward.fromChatId;
   if (open === null || target === null) {
     return (
       <span className="forward-origin">
         <Icon name="north-east" size={12} className="mr-1" />
-        Forwarded From {label}
+        {t('thread.forwardedFrom', 'Forwarded From')} {label}
       </span>
     );
   }
   return (
     <span className="forward-origin">
       <Icon name="north-east" size={12} className="mr-1" />
-      Forwarded From{' '}
+      {t('thread.forwardedFrom', 'Forwarded From')}{' '}
       <button
         type="button"
         className="forward-origin-link"
-        title={`Open ${label}`}
+        title={t('thread.openLabel', 'Open {{label}}', { label })}
         onClick={(event) => {
           event.stopPropagation();
           open(forward);

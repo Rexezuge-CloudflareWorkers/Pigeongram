@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { writeClipboard } from '../clipboard';
 import { launchTelegramApp, usernameAppLink } from '../links';
@@ -78,6 +79,7 @@ export function ThreadHeader({
   callActive,
   onOpenScheduled,
 }: ThreadHeaderProps) {
+  const { t } = useTranslation();
   const { profile, loading, error, read } = useProfile(chat.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -159,7 +161,7 @@ export function ThreadHeader({
   return (
     <>
       <header className="thread-head">
-        <button type="button" className="back" onClick={onBack} aria-label="Back To Chat List">
+        <button type="button" className="back" onClick={onBack} aria-label={t('a11y.backToChatList', 'Back To Chat List')}>
           <Icon name="arrow-left" />
         </button>
         {/* The picture and the name are two ways to the same profile, and each
@@ -168,7 +170,7 @@ export function ThreadHeader({
           type="button"
           className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={(event) => openProfile(event.currentTarget)}
-          aria-label={`View The Profile Of ${chat.title}`}
+          aria-label={t('thread.viewProfileOf', 'View The Profile Of {{title}}', { title: chat.title })}
         >
           <Avatar chatId={chat.id} photo={chat.photo} title={chat.title} kind={chat.kind} small presence={presence} />
         </button>
@@ -185,11 +187,16 @@ export function ThreadHeader({
           {presenceLabel === null ? null : <span className={`thread-presence${isOnline ? ' online' : ''}`}>{presenceLabel}</span>}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <IconButton size="small" onClick={onSearch} aria-label={`Search In ${chat.title}`}>
+          <IconButton size="small" onClick={onSearch} aria-label={t('thread.searchIn', 'Search In {{title}}', { title: chat.title })}>
             <Icon name="search" />
           </IconButton>
           {chat.kind === 'user' ? (
-            <IconButton size="small" onClick={onCall} disabled={callActive} aria-label={`Call ${chat.title}`}>
+            <IconButton
+              size="small"
+              onClick={onCall}
+              disabled={callActive}
+              aria-label={t('thread.callFor', 'Call {{title}}', { title: chat.title })}
+            >
               <Icon name="call" />
             </IconButton>
           ) : null}
@@ -200,7 +207,7 @@ export function ThreadHeader({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-controls={menuId}
-            aria-label={`Menu For ${chat.title}`}
+            aria-label={t('thread.menuFor', 'Menu For {{title}}', { title: chat.title })}
           >
             <Icon name="more-vertical" />
           </IconButton>
@@ -214,7 +221,7 @@ export function ThreadHeader({
           onKeyDown={onKeyDown}
           id={menuId}
           className="w-[220px] max-w-[calc(100vw-16px)] p-2"
-          label={`Menu For ${chat.title}`}
+          label={t('thread.menuFor', 'Menu For {{title}}', { title: chat.title })}
         >
           <button
             type="button"
@@ -226,7 +233,7 @@ export function ThreadHeader({
             }}
           >
             <Icon name="person" className="text-muted" />
-            <span>View Profile</span>
+            <span>{t('thread.viewProfile', 'View Profile')}</span>
           </button>
           <button
             type="button"
@@ -238,7 +245,7 @@ export function ThreadHeader({
             }}
           >
             <Icon name="schedule" className="text-muted" />
-            <span>Scheduled Messages</span>
+            <span>{t('thread.scheduledMessages', 'Scheduled Messages')}</span>
           </button>
           {username ? (
             <button
@@ -248,7 +255,13 @@ export function ThreadHeader({
               onClick={() => void copyUsername()}
             >
               <Icon name="copy" className="text-muted" />
-              <span>{copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy Failed' : `Copy @${username}`}</span>
+              <span>
+                {copyState === 'copied'
+                  ? t('thread.copied', 'Copied')
+                  : copyState === 'failed'
+                    ? t('thread.copyFailed', 'Copy Failed')
+                    : t('thread.copyUsername', 'Copy @{{username}}', { username })}
+              </span>
             </button>
           ) : null}
           {username ? (
@@ -259,7 +272,7 @@ export function ThreadHeader({
               onClick={openInTelegram}
             >
               <Icon name="open-in-new" className="text-muted" />
-              <span>Open In Telegram</span>
+              <span>{t('thread.openInTelegram', 'Open In Telegram')}</span>
             </button>
           ) : null}
           {canArchive ? (
@@ -275,7 +288,7 @@ export function ThreadHeader({
                 onClick={requestArchive}
               >
                 <Icon name={archived ? 'unarchive' : 'archive'} className="text-muted" />
-                <span>{archived ? 'Unarchive Chat' : 'Archive Chat'}</span>
+                <span>{archived ? t('thread.unarchiveChat', 'Unarchive Chat') : t('thread.archiveChatMenu', 'Archive Chat')}</span>
               </button>
             </>
           ) : null}
@@ -298,16 +311,22 @@ export function ThreadHeader({
       <Presence visible={archiveConfirmOpen}>
         {archiveConfirmOpen ? (
           <ConfirmDialog
-            title={archived ? 'Bring The Chat Back?' : 'Archive This Chat?'}
+            title={
+              archived ? t('thread.unarchiveConfirmTitle', 'Bring The Chat Back?') : t('thread.archiveConfirmTitle', 'Archive This Chat?')
+            }
             message={
               archived
-                ? `${chat.title} Comes Back To The Chat List.`
-                : `${chat.title} Leaves The Chat List And Goes To The Archive. You Can Bring It Back At Any Time.`
+                ? t('thread.unarchiveConfirmBody', '{{title}} Comes Back To The Chat List.', { title: chat.title })
+                : t(
+                    'thread.archiveConfirmBody',
+                    '{{title}} Leaves The Chat List And Goes To The Archive. You Can Bring It Back At Any Time.',
+                    { title: chat.title },
+                  )
             }
-            confirmLabel={archived ? 'Unarchive' : 'Archive'}
+            confirmLabel={archived ? t('thread.unarchive', 'Unarchive') : t('thread.archive', 'Archive')}
             tone={archived ? 'accent' : 'danger'}
             busy={archiving}
-            busyLabel={archived ? 'Unarchiving…' : 'Archiving…'}
+            busyLabel={archived ? t('thread.unarchiving', 'Unarchiving…') : t('thread.archiving', 'Archiving…')}
             onConfirm={() => void confirmArchive()}
             onCancel={() => setArchiveConfirmOpen(false)}
             returnFocus={() => triggerRef.current?.focus()}

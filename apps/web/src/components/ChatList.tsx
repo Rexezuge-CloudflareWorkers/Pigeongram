@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { formatListStamp, previewOf } from '../format';
 import { mediaIcon } from '../media-icons';
@@ -70,16 +71,9 @@ function ChatPreviewBody({ message }: { message: DialogMessageDto }) {
   );
 }
 
-export function ChatList({
-  dialogs,
-  activeChatId,
-  loading,
-  pending = [],
-  onSelect,
-  onMarkRead,
-  onSetPinned,
-  emptyLabel = 'No Chats Yet.',
-}: ChatListProps) {
+export function ChatList({ dialogs, activeChatId, loading, pending = [], onSelect, onMarkRead, onSetPinned, emptyLabel }: ChatListProps) {
+  const { t } = useTranslation();
+  const emptyText = emptyLabel ?? t('chats.empty', 'No Chats Yet.');
   /**
   The open context menu, named by chat rather than by dialog: a live update
   can replace the row's DTO while the menu is open, and the disabled state
@@ -110,7 +104,7 @@ export function ChatList({
     return (
       <>
         <span role="status" className="sr-only">
-          Loading chats…
+          {t('a11y.loadingChats', 'Loading chats…')}
         </span>
         <ul className="chat-skeleton" aria-hidden="true">
           {Array.from({ length: 7 }, (_, index) => (
@@ -128,7 +122,7 @@ export function ChatList({
   }
   const rows = pending.length === 0 ? dialogs : withPendingDialogs(dialogs, pending, activeChatId);
   if (rows.length === 0) {
-    return <p className="muted pad">{emptyLabel}</p>;
+    return <p className="muted pad">{emptyText}</p>;
   }
   const menuDialog = menu === null ? null : (rows.find((dialog) => dialog.chat.id === menu.chatId) ?? null);
   const cancelPress = (): void => {
@@ -160,7 +154,7 @@ export function ChatList({
                         setSwipeOffset(0);
                       }}
                     >
-                      <Icon name="check" size={14} /> Read
+                      <Icon name="check" size={14} /> {t('chats.read', 'Read')}
                     </button>
                   </div>
                 ) : null}

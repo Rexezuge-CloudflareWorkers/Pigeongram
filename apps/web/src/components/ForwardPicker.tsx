@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DialogDto, MessageDto, PeerId } from '../types';
@@ -33,6 +34,7 @@ interface ForwardPickerProps {
 }
 
 export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting = false }: ForwardPickerProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<PeerId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +76,10 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
     }
   };
 
-  const label = messages.length === 1 ? 'Forward message' : `Forward ${String(messages.length)} messages`;
+  const label =
+    messages.length === 1
+      ? t('a11y.forwardMessage', 'Forward message')
+      : t('a11y.forwardMessages', 'Forward {{count}} messages', { count: messages.length });
 
   return createPortal(
     <div
@@ -94,13 +99,17 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold">Forward To…</h2>
-            <p className="m-0 text-xs text-muted">{messages.length === 1 ? '1 Message' : `${String(messages.length)} Messages`}</p>
+            <h2 className="m-0 text-base font-semibold">{t('forward.title', 'Forward To…')}</h2>
+            <p className="m-0 text-xs text-muted">
+              {messages.length === 1
+                ? t('forward.oneMessage', '1 Message')
+                : t('forward.manyMessages', '{{count}} Messages', { count: messages.length })}
+            </p>
           </div>
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
-            aria-label="Close Forward Picker"
+            aria-label={t('forward.close', 'Close Forward Picker')}
             disabled={busy}
             onClick={onClose}
           >
@@ -112,8 +121,8 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
             ref={searchRef}
             type="search"
             value={query}
-            placeholder="Search Chats"
-            aria-label="Search chats"
+            placeholder={t('forward.placeholder', 'Search Chats')}
+            aria-label={t('a11y.searchChats', 'Search chats')}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== 'ArrowDown') return;
@@ -124,7 +133,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
             }}
           />
         </div>
-        <ul ref={listRef} className="m-0 flex-1 list-none overflow-y-auto p-2" aria-label="Destination chats">
+        <ul ref={listRef} className="m-0 flex-1 list-none overflow-y-auto p-2" aria-label={t('a11y.destinationChats', 'Destination chats')}>
           {destinations.map((dialog) => (
             <li key={dialog.chat.id}>
               <button
@@ -141,14 +150,16 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
                     {dialog.chat.username ? ` · @${dialog.chat.username}` : ''}
                   </span>
                 </span>
-                {busyId === dialog.chat.id ? <span className="text-xs text-muted">Forwarding…</span> : null}
+                {busyId === dialog.chat.id ? <span className="text-xs text-muted">{t('forward.forwarding', 'Forwarding…')}</span> : null}
               </button>
             </li>
           ))}
         </ul>
         {destinations.length === 0 ? (
           <p className="m-0 px-4 pb-3 text-sm text-muted">
-            {query.trim().length > 0 ? `No Chats Match “${query.trim()}”.` : 'No Chats You Can Write To.'}
+            {query.trim().length > 0
+              ? t('forward.noMatches', 'No Chats Match “{{query}}”.', { query: query.trim() })
+              : t('forward.noDestinations', 'No Chats You Can Write To.')}
           </p>
         ) : null}
         {error ? (

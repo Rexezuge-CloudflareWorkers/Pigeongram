@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { MessageDto, MessagePollDto } from '../types';
 import { Icon } from './Icon';
 
@@ -26,17 +28,18 @@ interface MessagePollProps {
 }
 
 export function MessagePoll({ message, poll, onVote, voting = false }: MessagePollProps) {
+  const { t } = useTranslation();
   const chosen = chosenIndexes(poll);
   const results = poll.answers.some((answer) => answer.voters !== null);
   // Closed polls and votes that may no longer change render as plain rows.
   const interactive = onVote !== undefined && !poll.closed && !(poll.revotingDisabled && chosen.length > 0);
-  const meta = metaText(poll, results);
+  const meta = metaText(t, poll, results);
 
   return (
     <div className="poll">
       <div className="poll-kind">
-        {poll.quiz ? 'Quiz' : 'Poll'}
-        {poll.multiple ? ' · Multiple Choice' : ''}
+        {poll.quiz ? t('poll.quiz', 'Quiz') : t('poll.poll', 'Poll')}
+        {poll.multiple ? t('poll.multipleChoice', ' · Multiple Choice') : ''}
       </div>
       <div className="poll-question">{poll.question}</div>
       {poll.answers.map((answer, index) => {
@@ -46,12 +49,12 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
             {percent === null ? null : <span className="poll-bar" style={{ width: `${percent}%` }} aria-hidden="true" />}
             <span className="poll-answer-text">{answer.text}</span>
             {answer.correct === true ? (
-              <span className="poll-mark correct" title="Correct answer">
+              <span className="poll-mark correct" title={t('a11y.correctAnswer', 'Correct answer')}>
                 <Icon name="check" size={12} />
               </span>
             ) : null}
             {answer.correct === false && answer.chosen ? (
-              <span className="poll-mark wrong" title="Wrong answer">
+              <span className="poll-mark wrong" title={t('a11y.wrongAnswer', 'Wrong answer')}>
                 <Icon name="close" size={12} />
               </span>
             ) : null}
@@ -71,7 +74,11 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
             type="button"
             className={`poll-answer${answer.chosen ? ' chosen' : ''}`}
             disabled={voting}
-            aria-label={`Vote for ${answer.text}${percent === null ? '' : ` (${String(percent)}%)`}`}
+            aria-label={
+              percent === null
+                ? t('a11y.voteFor', 'Vote for {{answer}}', { answer: answer.text })
+                : t('a11y.voteForPercent', 'Vote for {{answer}} ({{percent}}%)', { answer: answer.text, percent })
+            }
             aria-pressed={answer.chosen}
             onClick={() => {
               const next = nextSelection(poll, index);
@@ -89,7 +96,7 @@ export function MessagePoll({ message, poll, onVote, voting = false }: MessagePo
           <span>{meta}</span>
           {interactive && chosen.length > 0 ? (
             <button type="button" className="poll-retract" disabled={voting} onClick={() => onVote(message, null)}>
-              Retract Vote
+              {t('poll.retractVote', 'Retract Vote')}
             </button>
           ) : null}
         </div>
@@ -124,11 +131,13 @@ The meta line: the tally once the results are known, why they are missing when
 the poll hides them, and nothing at all when Telegram simply has not shared
 them with this account yet (a quiz before answering, typically).
 */
-function metaText(poll: MessagePollDto, results: boolean): string | null {
+function metaText(t: TFunction, poll: MessagePollDto, results: boolean): string | null {
   if (results && poll.totalVoters !== null) {
-    return poll.totalVoters === 1 ? '1 Vote' : `${String(poll.totalVoters)} Votes`;
+    return poll.totalVoters === 1
+      ? t('poll.voteCountOne', '{{count}} Vote', { count: poll.totalVoters })
+      : t('poll.voteCount', '{{count}} Votes', { count: poll.totalVoters });
   }
-  if (poll.closed) return 'Poll Closed';
-  if (poll.hideResultsUntilClose) return 'Results Hidden Until The Poll Closes';
+  if (poll.closed) return t('poll.closed', 'Poll Closed');
+  if (poll.hideResultsUntilClose) return t('poll.resultsHidden', 'Results Hidden Until The Poll Closes');
   return null;
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { formatCount, formatTime } from '../format';
 import type { MessageDto } from '../types';
 import { Icon } from './Icon';
@@ -23,21 +24,27 @@ interface MessageMetaProps {
 }
 
 export function MessageMeta({ message, showStatus, read }: MessageMetaProps) {
+  const { t } = useTranslation();
   return (
     <span className="meta">
       {message.views === null ? null : (
-        <span className="views" title={`${message.views.toLocaleString()} views`}>
+        <span className="views" title={t('a11y.views', '{{views}} views', { views: message.views.toLocaleString() })}>
           <Icon name="eye" size={12} /> {formatCount(message.views)}
         </span>
       )}
       {formatTime(message.date)}
       {message.editDate === null ? null : (
-        <span className="edited" title="Edited message">
-          Edited
+        <span className="edited" title={t('a11y.editedMessage', 'Edited message')}>
+          {t('thread.edited', 'Edited')}
         </span>
       )}
       {showStatus ? (
-        <span className={`ticks${read ? ' read' : ''}`} role="img" aria-label={read ? 'Read' : 'Sent'} title={read ? 'Read' : 'Sent'}>
+        <span
+          className={`ticks${read ? ' read' : ''}`}
+          role="img"
+          aria-label={read ? t('thread.sendStatusRead', 'Read') : t('thread.sendStatusSent', 'Sent')}
+          title={read ? t('thread.sendStatusRead', 'Read') : t('thread.sendStatusSent', 'Sent')}
+        >
           <Icon name={read ? 'done-all' : 'check'} size={14} />
         </span>
       ) : null}

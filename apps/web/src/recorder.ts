@@ -1,4 +1,5 @@
 import type { RecorderConstructor, RecorderInstance } from 'opus-recorder';
+import { t } from './i18n';
 import { loadOpusRecorder } from './recorder-loader';
 import { VOICE_MAX_SECONDS } from './types';
 
@@ -81,11 +82,11 @@ async function loadRecorder(): Promise<RecorderConstructor> {
   try {
     module = (await loadOpusRecorder()) as RecorderModule;
   } catch {
-    throw new VoiceRecordingError("Voice Recording Isn't Supported In This Browser.");
+    throw new VoiceRecordingError(t('errors.voiceUnsupported', "Voice Recording Isn't Supported In This Browser."));
   }
   const Recorder = module.default as RecorderConstructor | undefined;
   if (typeof Recorder !== 'function' || !Recorder.isRecordingSupported()) {
-    throw new VoiceRecordingError("Voice Recording Isn't Supported In This Browser.");
+    throw new VoiceRecordingError(t('errors.voiceUnsupported', "Voice Recording Isn't Supported In This Browser."));
   }
   return Recorder;
 }
@@ -108,7 +109,7 @@ export async function startVoiceRecording(): Promise<VoiceRecording> {
       streamPages: false,
     });
   } catch {
-    throw new VoiceRecordingError("Voice Recording Isn't Supported In This Browser.");
+    throw new VoiceRecordingError(t('errors.voiceUnsupported', "Voice Recording Isn't Supported In This Browser."));
   }
   recorder.ondataavailable = (data) => {
     chunks.push(data);
@@ -203,10 +204,10 @@ Turns the browser's capture failure into the sentence the reader sees.
 function microphoneError(error: unknown): VoiceRecordingError {
   const name = error instanceof Error ? error.name : '';
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
-    return new VoiceRecordingError('Microphone Access Was Denied.');
+    return new VoiceRecordingError(t('errors.micDenied', 'Microphone Access Was Denied.'));
   }
   if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
-    return new VoiceRecordingError('No Microphone Was Found.');
+    return new VoiceRecordingError(t('errors.micNotFound', 'No Microphone Was Found.'));
   }
-  return new VoiceRecordingError('The Microphone Could Not Be Started.');
+  return new VoiceRecordingError(t('errors.micStartFailed', 'The Microphone Could Not Be Started.'));
 }

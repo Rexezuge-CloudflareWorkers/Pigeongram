@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 
 /**
@@ -13,19 +14,23 @@ interface ThreadUnavailableProps {
 }
 
 export function ThreadUnavailable({ onBack }: ThreadUnavailableProps) {
+  const { t } = useTranslation();
   return (
     <section className="thread empty" aria-labelledby="thread-unavailable-title">
       <span className="thread-empty-mark" aria-hidden="true">
         <Icon name="info" size={44} />
       </span>
       <h2 className="thread-empty-title" id="thread-unavailable-title">
-        This Chat Is No Longer Available
+        {t('thread.unavailableTitle', 'This Chat Is No Longer Available')}
       </h2>
       <p className="muted thread-empty-hint max-w-[46ch] text-center">
-        Telegram Does Not Offer This Chat To Your Account Anymore. It May Have Been Deleted, Or Your Account May Have Left It.
+        {t(
+          'thread.unavailableBody',
+          'Telegram Does Not Offer This Chat To Your Account Anymore. It May Have Been Deleted, Or Your Account May Have Left It.',
+        )}
       </p>
       <button type="button" className="ghost" onClick={onBack}>
-        Back To Chats
+        {t('thread.backToChats', 'Back To Chats')}
       </button>
     </section>
   );

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useId, useRef, useState } from 'react';
 import type { PwaState } from '../pwa/usePwa';
 import type { MeDto } from '../types';
@@ -65,6 +66,7 @@ export function UserMenu({
   contrast = 'standard',
   onSetContrast,
 }: UserMenuProps) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -136,7 +138,7 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         aria-controls={menuId}
-        aria-label={`Account menu for ${displayName}`}
+        aria-label={t('a11y.accountMenuFor', 'Account menu for {{name}}', { name: displayName })}
         onClick={() => setMenuOpen((open) => !open)}
       >
         <span className="relative inline-flex shrink-0">
@@ -151,7 +153,9 @@ export function UserMenu({
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <strong className="truncate">{displayName}</strong>
-          <span className="text-xs text-muted">{connected ? 'Online' : 'Connecting…'}</span>
+          <span className="text-xs text-muted">
+            {connected ? t('format.presenceOnline', 'Online') : t('account.connecting', 'Connecting…')}
+          </span>
         </span>
         <Icon name="chevron-down" size={16} className={`text-muted transition-transform${menuOpen ? ' rotate-180' : ''}`} />
       </button>
@@ -163,7 +167,7 @@ export function UserMenu({
           onKeyDown={onKeyDown}
           id={menuId}
           className="w-[280px] max-w-[calc(100vw-16px)] p-2"
-          label="Account menu"
+          label={t('a11y.accountMenu', 'Account menu')}
         >
           <div className="flex min-w-0 flex-col gap-0.5 px-3 pt-2 pb-3">
             <strong className="truncate font-semibold">{displayName}</strong>
@@ -177,7 +181,7 @@ export function UserMenu({
             onClick={requestArchive}
           >
             <Icon name="archive" className="text-muted" />
-            <span>Archived Chats</span>
+            <span>{t('account.archivedChats', 'Archived Chats')}</span>
           </button>
           {pwa.canInstall ? (
             <button
@@ -187,7 +191,7 @@ export function UserMenu({
               onClick={requestInstall}
             >
               <Icon name="download" className="text-muted" />
-              <span>Install App</span>
+              <span>{t('account.installApp', 'Install App')}</span>
             </button>
           ) : null}
           <div className="my-1 h-px bg-line" role="separator" />
@@ -198,7 +202,7 @@ export function UserMenu({
             onClick={requestSettings}
           >
             <Icon name="settings" className="text-muted" />
-            <span>Settings</span>
+            <span>{t('account.settings', 'Settings')}</span>
           </button>
           <button
             type="button"
@@ -207,7 +211,7 @@ export function UserMenu({
             onClick={requestSignOut}
           >
             <Icon name="logout" />
-            <span>Sign Out</span>
+            <span>{t('account.signOut', 'Sign Out')}</span>
           </button>
         </AnchoredMenu>
       ) : null}
@@ -230,11 +234,11 @@ export function UserMenu({
       <Presence visible={confirmOpen}>
         {confirmOpen ? (
           <ConfirmDialog
-            title="Sign Out Of Telegram?"
-            message="This Ends The Session On This Client. You'll Need To Sign In Again To Use The App."
-            confirmLabel="Sign Out"
+            title={t('account.signOutTitle', 'Sign Out Of Telegram?')}
+            message={t('account.signOutBody', "This Ends The Session On This Client. You'll Need To Sign In Again To Use The App.")}
+            confirmLabel={t('account.signOut', 'Sign Out')}
             busy={signingOut}
-            busyLabel="Signing Out…"
+            busyLabel={t('account.signingOut', 'Signing Out…')}
             onConfirm={() => void confirmSignOut()}
             onCancel={() => setConfirmOpen(false)}
             returnFocus={focusTrigger}

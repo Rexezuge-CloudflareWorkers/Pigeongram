@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MessageReactionDto } from '../types';
 import { ALL_REACTIONS, QUICK_REACTIONS, reactionFor } from '../reactions';
 import { Icon } from './Icon';
@@ -44,9 +45,10 @@ interface ReactionPickerProps {
 }
 
 export function ReactionPicker({ reactions, expanded, disabled = false, onToggle, onPick }: ReactionPickerProps) {
+  const { t } = useTranslation();
   return (
     <div className="message-menu-reactions">
-      <div className="message-menu-quick" role="group" aria-label="Common reactions">
+      <div className="message-menu-quick" role="group" aria-label={t('a11y.commonReactions', 'Common reactions')}>
         {QUICK_REACTIONS.map((emoji) => (
           <ReactionOption key={emoji} emoji={emoji} chosen={reactionFor(reactions, emoji).chosen} disabled={disabled} onPick={onPick} />
         ))}
@@ -57,15 +59,15 @@ export function ReactionPicker({ reactions, expanded, disabled = false, onToggle
           data-message-menu-item
           disabled={disabled}
           aria-expanded={expanded}
-          aria-label={expanded ? 'Hide All Reactions' : 'Show All Reactions'}
-          title={expanded ? 'Hide All Reactions' : 'Show All Reactions'}
+          aria-label={expanded ? t('reactions.hideAll', 'Hide All Reactions') : t('reactions.showAll', 'Show All Reactions')}
+          title={expanded ? t('reactions.hideAll', 'Hide All Reactions') : t('reactions.showAll', 'Show All Reactions')}
           onClick={onToggle}
         >
           <Icon name={expanded ? 'close' : 'add-reaction'} size={18} />
         </button>
       </div>
       {expanded ? (
-        <div className="message-menu-reaction-grid" role="group" aria-label="All reactions">
+        <div className="message-menu-reaction-grid" role="group" aria-label={t('a11y.allReactions', 'All reactions')}>
           {GRID_REACTIONS.map((emoji) => (
             <ReactionOption key={emoji} emoji={emoji} chosen={reactionFor(reactions, emoji).chosen} disabled={disabled} onPick={onPick} />
           ))}
@@ -83,7 +85,8 @@ interface ReactionOptionProps {
 }
 
 function ReactionOption({ emoji, chosen, disabled, onPick }: ReactionOptionProps) {
-  const label = `React with ${emoji}`;
+  const { t } = useTranslation();
+  const label = t('a11y.reactWith', 'React with {{emoji}}', { emoji });
   return (
     <button
       type="button"

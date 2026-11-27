@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
@@ -26,6 +27,7 @@ function defaultTime(): string {
 }
 
 export function ScheduleSendButton({ draft, onSchedule }: ScheduleSendButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(defaultTime);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function ScheduleSendButton({ draft, onSchedule }: ScheduleSendButtonProp
   const confirm = (): void => {
     const scheduleDate = new Date(value).getTime();
     if (!Number.isFinite(scheduleDate) || scheduleDate <= Date.now()) {
-      setError('Choose A Future Time.');
+      setError(t('scheduled.futureTime', 'Choose A Future Time.'));
       return;
     }
     setError(null);
@@ -48,8 +50,8 @@ export function ScheduleSendButton({ draft, onSchedule }: ScheduleSendButtonProp
         type="button"
         className="attach"
         data-icon-only
-        aria-label="Schedule message"
-        title="Schedule Message"
+        aria-label={t('a11y.scheduleMessage', 'Schedule message')}
+        title={t('scheduled.schedule', 'Schedule Message')}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => {
@@ -62,22 +64,22 @@ export function ScheduleSendButton({ draft, onSchedule }: ScheduleSendButtonProp
       </button>
       {open ? (
         <Dialog
-          title="Schedule Message"
+          title={t('scheduled.schedule', 'Schedule Message')}
           className="max-w-[420px]"
           onClose={() => setOpen(false)}
           actions={
             <>
               <Button variant="text" onClick={() => setOpen(false)} data-dialog-cancel>
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button onClick={confirm} disabled={value.length === 0}>
-                Send Later
+                {t('scheduled.sendLater', 'Send Later')}
               </Button>
             </>
           }
         >
           <label className="flex flex-col gap-2 text-sm">
-            Send At
+            {t('scheduled.sendAt', 'Send At')}
             <input
               type="datetime-local"
               className="rounded-lg border border-outline bg-surface px-3 py-2 text-on-surface"

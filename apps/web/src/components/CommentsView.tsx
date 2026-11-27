@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { groupMessages, messageRowSelector } from '../groups';
@@ -110,6 +111,7 @@ export function CommentsView({
   onPressReplyKeyboard,
   onOpenMedia,
 }: CommentsViewProps) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   // Like the thread, the reply target carries its post id so switching to
@@ -183,12 +185,12 @@ export function CommentsView({
   return (
     <section className="thread comments">
       <header className="thread-head">
-        <button type="button" className="back" onClick={onBack} aria-label="Back To The Channel">
+        <button type="button" className="back" onClick={onBack} aria-label={t('a11y.backToChannel', 'Back To The Channel')}>
           <Icon name="arrow-left" />
         </button>
         <Avatar chatId={thread.chat.id} photo={thread.chat.photo} title={thread.chat.title} kind={thread.chat.kind} small />
         <div className="thread-title">
-          <strong>Comments</strong>
+          <strong>{t('thread.comments', 'Comments')}</strong>
           <span className="muted small">{thread.chat.title}</span>
         </div>
       </header>
@@ -222,15 +224,27 @@ export function CommentsView({
             onOpenMedia={onOpenMedia}
           />
         </div>
-        <div className="day">{commentCountLabel(thread.count)}</div>
+        <div className="day">
+          {thread.count === 1
+            ? t('thread.commentCountOne', '{{count}} Comment', { count: thread.count })
+            : t('thread.commentCount', '{{count}} Comments', { count: thread.count })}
+        </div>
         {comments.length > 0 && thread.nextOffset ? (
           <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
-            {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Comments'}
+            {loadingOlder ? (
+              <Spinner inline size={14} label={t('common.loading', 'Loading…')} />
+            ) : (
+              t('thread.loadOlderComments', 'Load Older Comments')
+            )}
           </button>
         ) : null}
-        {loading && comments.length === 0 ? <MessageSkeleton label="Loading Comments…" avatars /> : null}
+        {loading && comments.length === 0 ? <MessageSkeleton label={t('thread.loadingComments', 'Loading Comments…')} avatars /> : null}
         {!loading && comments.length === 0 ? (
-          <p className="muted pad">{thread.count === 0 ? 'No Comments Yet — Be The First.' : 'No Comments Loaded.'}</p>
+          <p className="muted pad">
+            {thread.count === 0
+              ? t('thread.noComments', 'No Comments Yet — Be The First.')
+              : t('thread.noCommentsLoaded', 'No Comments Loaded.')}
+          </p>
         ) : null}
         {groups.map((group, index) => {
           const anchor = group[0];
@@ -278,7 +292,7 @@ export function CommentsView({
       </div>
       {error ? <p className="error pad">{error}</p> : null}
       <Composer
-        placeholder={replyKeyboard?.keyboard.placeholder ?? 'Comment'}
+        placeholder={replyKeyboard?.keyboard.placeholder ?? t('a11y.commentPlaceholder', 'Comment')}
         replyTarget={replyTarget}
         botCommands={thread.botCommands}
         replyKeyboard={replyKeyboard}
@@ -306,8 +320,4 @@ function quoteVisible(comment: MessageDto, thread: CommentsThread, commentsById:
     return commentsById.has(reply.messageId) || reply.text !== '' || reply.mediaKind !== null;
   }
   return true;
-}
-
-function commentCountLabel(count: number): string {
-  return count === 1 ? '1 Comment' : `${count} Comments`;
 }

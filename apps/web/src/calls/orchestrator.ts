@@ -1,5 +1,6 @@
 import type { CallDto } from '../call-types';
 import type { UpdateEvent } from '../types';
+import { t } from '../i18n';
 import * as callRpc from './api';
 import { fromBase64, toBase64 } from './base64';
 import { CallCipher } from './crypto';
@@ -69,7 +70,7 @@ export class CallOrchestrator {
     if (this.#starting) {
       // The overlay does not exist yet, so the failure has nowhere to
       // render: report it through the app's banner.
-      this.#onError(new Error('A Call Is Already In Progress'));
+      this.#onError(new Error(t('errors.callInProgress', 'A Call Is Already In Progress')));
       return;
     }
     this.#starting = true;
@@ -237,7 +238,7 @@ export class CallOrchestrator {
       onStream: (stream) => this.#setRemoteStream(stream),
       onConnected: () => this.#dispatch({ type: 'phase', callId, phase: 'active' }),
       onFailed: () => {
-        this.#dispatch({ type: 'failed', callId, error: 'The Call Could Not Be Connected' });
+        this.#dispatch({ type: 'failed', callId, error: t('errors.callConnectFailed', 'The Call Could Not Be Connected') });
         this.#teardown();
       },
     });

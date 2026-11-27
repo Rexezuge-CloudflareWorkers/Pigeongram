@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { formatPresence } from '../format';
@@ -47,6 +48,7 @@ interface ProfilePopupProps {
 }
 
 export function ProfilePopup({ chat, profile, loading, error, onClose, returnFocus, exiting = false }: ProfilePopupProps) {
+  const { t } = useTranslation();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -120,7 +122,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
           type="button"
           className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           onClick={onClose}
-          aria-label="Close The Profile"
+          aria-label={t('a11y.closeProfile', 'Close The Profile')}
         >
           <Icon name="close" />
         </button>
@@ -134,10 +136,16 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
             {username ? <p className="truncate text-[15px] text-muted">@{username}</p> : null}
           </div>
           {presence ? <p className="text-sm text-muted">{presence}</p> : null}
-          {loading ? <Spinner inline size={16} label="Loading The Profile…" /> : null}
+          {loading ? <Spinner inline size={16} label={t('profile.loading', 'Loading The Profile…')} /> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {!loading && !error && profile?.about ? <p className="max-w-[46ch] text-[15px] text-muted">{profile.about}</p> : null}
-          {loading || error || members === null ? null : <p className="text-sm text-muted">{members.toLocaleString()} Members</p>}
+          {loading || error || members === null ? null : (
+            <p className="text-sm text-muted">
+              {members === 1
+                ? t('profile.memberCountOne', '{{members}} Member', { members: members.toLocaleString() })
+                : t('profile.memberCount', '{{members}} Members', { members: members.toLocaleString() })}
+            </p>
+          )}
         </div>
       </div>
     </div>,

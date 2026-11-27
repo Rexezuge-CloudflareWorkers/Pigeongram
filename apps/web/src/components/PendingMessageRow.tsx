@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { formatBytes, formatTime } from '../format';
 import type { PendingMessage } from '../outbox';
@@ -22,6 +24,7 @@ interface PendingMessageRowProps {
 }
 
 export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageRowProps) {
+  const { t } = useTranslation();
   const message = pendingAsMessage(entry);
   // A plain single-file send renders without the bubble; its outbox status and
   // time float on hover/focus. A caption, reply, album count, or a failed send
@@ -36,14 +39,14 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
   const meta = (
     <span className="meta pending-meta" role="status" aria-live="polite">
       {entry.status === 'failed' ? null : <Spinner inline size={11} color="currentColor" />}
-      {statusLabel(entry)}
+      {statusLabel(t, entry)}
       {formatTime(entry.createdAt)}
     </span>
   );
   return (
     <div className={`message own pending${bare ? ' bare' : ''}`}>
       {message.reply ? <MessageReplyQuote reply={message.reply} original={entry.replyPreview} /> : null}
-      {entry.media ? <PendingMedia entry={entry} media={entry.media} /> : null}
+      {entry.media ? <PendingMedia entry={entry} media={entry.media} t={t} /> : null}
       {entry.text ? (
         <div className="text">
           <MessageText text={entry.text} entities={[]} />
@@ -63,10 +66,10 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
             </span>
           ) : null}
           <button type="button" onClick={() => onRetry(entry.key)}>
-            Retry
+            {t('messages.retry', 'Retry')}
           </button>
           <button type="button" className="discard" onClick={() => onDiscard(entry.key)}>
-            Discard
+            {t('messages.discard', 'Discard')}
           </button>
         </div>
       ) : null}
@@ -74,16 +77,16 @@ export function PendingMessageRow({ entry, onRetry, onDiscard }: PendingMessageR
   );
 }
 
-function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageMediaDto }) {
+function PendingMedia({ entry, media, t }: { entry: PendingMessage; media: MessageMediaDto; t: TFunction }) {
   const [failed, setFailed] = useState(false);
   const source = entry.previewUrl;
 
   if (source === null || failed) {
     return (
       <span className="pending-file">
-        <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
+        <Icon name="attach" size={14} /> {media.fileName ?? t('media.file', 'File')}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
-        {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} Files` : ''}
+        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count}} Files', { count: entry.fileCount })}` : ''}
       </span>
     );
   }
@@ -96,17 +99,17 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
   if (media.kind === 'document' || media.kind === 'audio') {
     return (
       <span className="pending-file">
-        <Icon name="attach" size={14} /> {media.fileName ?? 'File'}
+        <Icon name="attach" size={14} /> {media.fileName ?? t('media.file', 'File')}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
-        {entry.fileCount > 1 ? ` · ${String(entry.fileCount)} Files` : ''}
+        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count}} Files', { count: entry.fileCount })}` : ''}
       </span>
     );
   }
   if (media.kind === 'photo') {
-    return <img className="photo" src={source} alt={media.fileName ?? 'Photo'} onError={onError} />;
+    return <img className="photo" src={source} alt={media.fileName ?? t('a11y.photoAlt', 'Photo')} onError={onError} />;
   }
   if (media.kind === 'sticker') {
-    return <img className="sticker" src={source} alt="Sticker" onError={onError} />;
+    return <img className="sticker" src={source} alt={t('media.stickerAlt', 'Sticker')} onError={onError} />;
   }
   if (media.kind === 'video') {
     return <video className="video" src={source} controls preload="metadata" onError={onError} />;
@@ -114,12 +117,14 @@ function PendingMedia({ entry, media }: { entry: PendingMessage; media: MessageM
   return <video className="video" src={source} autoPlay loop muted playsInline preload="metadata" onError={onError} />;
 }
 
-function statusLabel(entry: PendingMessage): string {
-  if (entry.status === 'failed') return 'Not Sent · ';
-  if (entry.status === 'preparing') return 'Preparing… · ';
+function statusLabel(t: TFunction, entry: PendingMessage): string {
+  if (entry.status === 'failed') return t('messages.notSentLabel', 'Not Sent · ');
+  if (entry.status === 'preparing') return t('messages.preparingLabel', 'Preparing… · ');
   if (entry.status === 'uploading') {
     const progress = entry.progress;
-    return progress === null || progress >= 1 ? 'Uploading… · ' : `Uploading ${Math.round(progress * 100)}% · `;
+    return progress === null || progress >= 1
+      ? t('messages.uploadingLabel', 'Uploading… · ')
+      : t('messages.uploadingPercentLabel', 'Uploading {{percent}}% · ', { percent: Math.round(progress * 100) });
   }
-  return 'Sending… · ';
+  return t('messages.sendingLabel', 'Sending… · ');
 }

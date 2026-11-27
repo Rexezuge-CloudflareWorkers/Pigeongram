@@ -16,11 +16,13 @@
     "@rexezuge/errors": "1.9.4",
     "@rexezuge/shared": "1.9.4",
     "@rexezuge/web": "1.9.4",
+    "i18next": "^27.1.1",
     "lottie-web": "^5.13.0",
     "opus-recorder": "8.0.5",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-i18next": "^17.1.0",
     "tailwindcss": "^4.3.5"
   },
   "devDependencies": {

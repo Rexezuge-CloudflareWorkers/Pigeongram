@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { BotCommandDto } from '../types';
 
 /**
@@ -17,8 +18,9 @@ interface CommandMenuProps {
 }
 
 export function CommandMenu({ id, commands, active, onActive, onPick }: CommandMenuProps) {
+  const { t } = useTranslation();
   return (
-    <div className="command-menu" id={id} role="listbox" aria-label="Bot Commands">
+    <div className="command-menu" id={id} role="listbox" aria-label={t('a11y.botCommands', 'Bot Commands')}>
       {commands.map((command, index) => (
         <button
           key={command.command}

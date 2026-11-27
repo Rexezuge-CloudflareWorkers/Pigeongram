@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Fragment } from 'react';
 import { formatDay, isSameDay } from '../format';
 import { messageWebLink } from '../links';
@@ -82,6 +83,7 @@ export function ThreadMessageRows({
   onOpenComments,
   onOpenMedia,
 }: ThreadMessageRowsProps) {
+  const { t } = useTranslation();
   return (
     <>
       {groups.map((group, index) => {
@@ -91,7 +93,7 @@ export function ThreadMessageRows({
             {index === 0 || !isSameDay(groups[index - 1][0].date, anchor.date) ? <div className="day">{formatDay(anchor.date)}</div> : null}
             {group.some((message) => message.id === unreadDividerId) ? (
               <div className="unread-divider" data-unread-divider>
-                Unread Messages
+                {t('thread.unreadMessages', 'Unread Messages')}
               </div>
             ) : null}
             <MessageRow

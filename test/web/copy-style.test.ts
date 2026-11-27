@@ -1,26 +1,32 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { loginPhaseMessage } from '../../apps/web/src/api';
+import { loginPhaseMessage } from '../../apps/web/src/login-copy';
 import { formatListStamp, formatPresence, mediaPreview, pollPreview, previewOf } from '../../apps/web/src/format';
 import type { MessagePollDto, PresenceDto } from '../../apps/web/src/types';
 
 /**
 The visible-copy style: every word of authored, user-visible text is
 capitalised, including articles, prepositions and conjunctions. Accessible
-only copy (`aria-label`, `title`, `alt`, `sr-only`) keeps sentence case,
-because it is not visible text.
+only copy keeps sentence case, because it is not visible text.
 
-The guard parses the SPA's TSX with the TypeScript AST: JSX text nodes, the
-static half of a template, and `placeholder` values are all checked. Dynamic
-values (chat titles, dates, counters, units) belong to their own casing and
-are skipped token by token.
+The copy now lives in `apps/web/src/locales/en/translation.json` rather than
+in JSX text nodes, so the guard reads the catalogue. Two rules:
+
+- A key outside the `a11y` namespace is **visible** copy and must be Title
+  Case. That is where a translator or an extractor landing here would slip.
+- A key inside `a11y` is **accessible-only** copy (`aria-label`, `title`,
+  `alt`, spinner labels) and must *not* be forced into Title Case.
+
+Dynamic values (chat titles, dates, counters, units) are interpolated, so a
+`{{placeholder}}` token is skipped by the casing walk exactly as a JSX
+expression used to be.
 */
 
 // The suite's working directory is the repository root (Vitest's `root`), and
 // an `import.meta.url` under the test transform is not a file URL.
 const WEB_SRC = path.resolve(process.cwd(), 'apps/web/src');
+const CATALOGUE = path.resolve(WEB_SRC, 'locales/en/translation.json');
 
 /**
 Unit suffixes that legitimately follow a dynamic value: `${n}s`, `${n}m`.
@@ -29,6 +35,8 @@ const UNIT_SUFFIXES = new Set(['s', 'm', 'h', 'd']);
 
 function isTitleCased(text: string): boolean {
   for (const rawToken of text.split(/\s+/)) {
+    // An interpolation is data, not authored copy.
+    if (rawToken.includes('{{')) continue;
     const start = rawToken.search(/[\p{L}\p{N}]/u);
     if (start === -1) continue;
     const token = rawToken.slice(start);
@@ -50,98 +58,33 @@ function hasCopy(text: string): boolean {
   return /\p{L}/u.test(text);
 }
 
-function srOnly(node: ts.JsxOpeningElement | ts.JsxSelfClosingElement): boolean {
-  return node.attributes.properties.some((attribute) => {
-    if (!ts.isJsxAttribute(attribute) || attribute.name.getText() !== 'className') return false;
-    const initializer = attribute.initializer;
-    if (initializer === undefined) return false;
-    if (ts.isStringLiteral(initializer)) return initializer.text.split(/\s+/).includes('sr-only');
-    if (ts.isJsxExpression(initializer) && initializer.expression) {
-      return initializer.expression.getText().includes('sr-only');
-    }
-    return false;
-  });
+interface CatalogueEntry {
+  /**
+  Dotted key, `namespace.name`.
+  */
+  key: string;
+  value: string;
 }
 
-function staticStrings(expression: ts.Expression): string[] {
-  let node = expression;
-  while (ts.isParenthesizedExpression(node)) node = node.expression;
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text];
-  if (ts.isTemplateExpression(node)) {
-    return [node.head.text, ...node.templateSpans.map((span) => span.literal.text)];
+/**
+Every leaf of the catalogue, with its dotted key.
+*/
+function entries(node: Record<string, unknown>, prefix = '', out: CatalogueEntry[] = []): CatalogueEntry[] {
+  for (const [name, value] of Object.entries(node)) {
+    const key = prefix ? `${prefix}.${name}` : name;
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) entries(value as Record<string, unknown>, key, out);
+    else if (typeof value === 'string') out.push({ key, value });
   }
-  if (ts.isConditionalExpression(node)) {
-    return [...staticStrings(node.whenTrue), ...staticStrings(node.whenFalse)];
-  }
-  return [];
+  return out;
 }
 
-function walkSourceFile(sourceFile: ts.SourceFile, source: string, visit: (text: string, node: ts.Node) => void): void {
-  const walk = (node: ts.Node, inSrOnly: boolean): void => {
-    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
-      const opening = ts.isJsxElement(node) ? node.openingElement : node;
-      const children = ts.isJsxElement(node) ? node.children : undefined;
-      const nextSrOnly = inSrOnly || srOnly(opening);
-      if (children !== undefined) {
-        for (const child of children) walk(child, nextSrOnly);
-      }
-      return;
-    }
-    if (inSrOnly) return;
-    if (ts.isJsxText(node)) {
-      // `getStart()`/`getEnd()` keep the original whitespace; `node.text` has
-      // already had the JSX whitespace rules applied.
-      visit(source.slice(node.getStart(sourceFile), node.getEnd()), node);
-      return;
-    }
-    if (ts.isJsxExpression(node)) {
-      if (node.expression === undefined) return;
-      const parent = node.parent;
-      const isChild = parent !== undefined && ts.isJsxElement(parent) && parent.children.includes(node);
-      if (!isChild) return;
-      for (const text of staticStrings(node.expression)) visit(text, node);
-      return;
-    }
-    ts.forEachChild(node, (child) => walk(child, inSrOnly));
-  };
-  walk(sourceFile, false);
+const CATALOGUE_ENTRIES = entries(JSON.parse(readFileSync(CATALOGUE, 'utf8')) as Record<string, unknown>);
 
-  // Placeholders are visible inside their inputs, so they carry the same rule.
-  const visitPlaceholders = (node: ts.Node): void => {
-    if (ts.isJsxAttribute(node) && node.name.getText() === 'placeholder' && node.initializer !== undefined) {
-      const initializer = node.initializer;
-      if (ts.isStringLiteral(initializer)) {
-        visit(initializer.text, node);
-      } else if (ts.isJsxExpression(initializer) && initializer.expression) {
-        for (const text of staticStrings(initializer.expression)) visit(text, node);
-      }
-    }
-    ts.forEachChild(node, visitPlaceholders);
-  };
-  visitPlaceholders(sourceFile);
-}
-
-function tsxFiles(directory: string): string[] {
-  const files: string[] = [];
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...tsxFiles(entryPath));
-    else if (entry.isFile() && entry.name.endsWith('.tsx')) files.push(entryPath);
-  }
-  return files;
-}
-
-function offendersInFile(file: string): string[] {
-  const source = readFileSync(file, 'utf8');
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const offenders: string[] = [];
-  walkSourceFile(sourceFile, source, (text, node) => {
-    const collapsed = text.replaceAll(/\s+/g, ' ').trim();
-    if (collapsed === '' || !hasCopy(collapsed) || isTitleCased(collapsed)) return;
-    const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-    offenders.push(`${file.slice(WEB_SRC.length)}:${String(line + 1)} — ${collapsed}`);
-  });
-  return offenders;
+/**
+Whether a key is accessible-only copy, and so outside the Title Case rule.
+*/
+function isAccessibleOnly(key: string): boolean {
+  return key.startsWith('a11y.');
 }
 
 function presence(lastSeenAt: number | null, status: PresenceDto['status']): PresenceDto {
@@ -162,9 +105,25 @@ const POLL: MessagePollDto = {
 };
 
 describe('visible copy style', () => {
-  it('title-cases every JSX text node and placeholder under apps/web/src', () => {
-    const failures = tsxFiles(WEB_SRC).flatMap(offendersInFile);
-    expect(failures).toEqual([]);
+  it('reads a catalogue that actually carries copy', () => {
+    // A guard over an empty or unreadable catalogue would pass forever.
+    expect(CATALOGUE_ENTRIES.length).toBeGreaterThan(150);
+    expect(CATALOGUE_ENTRIES.every((entry) => entry.value.length > 0)).toBe(true);
+  });
+
+  it('title-cases every visible catalogue value', () => {
+    const offenders = CATALOGUE_ENTRIES.filter(
+      (entry) => !isAccessibleOnly(entry.key) && hasCopy(entry.value) && !isTitleCased(entry.value),
+    ).map((entry) => `${entry.key} — ${entry.value}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps accessible-only copy under the a11y namespace rather than title-casing it', () => {
+    // The boundary is the namespace, not a heuristic: a new `aria-label` key
+    // added outside `a11y` would be held to the visible rule, and one added
+    // inside it is deliberately exempt.
+    const accessible = CATALOGUE_ENTRIES.filter((entry) => isAccessibleOnly(entry.key));
+    expect(accessible.length).toBeGreaterThan(20);
   });
 
   it('title-cases authored presence and preview helpers', () => {

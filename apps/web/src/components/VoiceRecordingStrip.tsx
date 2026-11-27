@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { elapsedLabel } from '../recorder';
 import type { VoiceRecorderState } from '../useVoiceRecorder';
 import { Icon } from './Icon';
@@ -20,21 +21,24 @@ interface VoiceRecordingStripProps {
 }
 
 export function VoiceRecordingStrip({ state, seconds, onCancel, onStop }: VoiceRecordingStripProps) {
+  const { t } = useTranslation();
   return (
-    <div className="recording-strip" role="group" aria-label="Voice Recording">
+    <div className="recording-strip" role="group" aria-label={t('a11y.voiceRecording', 'Voice Recording')}>
       <span className="recording-dot" aria-hidden="true" />
       <span className="recording-time" aria-hidden="true">
         {state === 'starting' ? '0:00' : elapsedLabel(seconds)}
       </span>
       <span className="recording-status" role="status">
-        {state === 'starting' ? 'Starting Microphone…' : 'Recording Voice Message…'}
+        {state === 'starting'
+          ? t('composer.startingMicrophone', 'Starting Microphone…')
+          : t('composer.recordingVoice', 'Recording Voice Message…')}
       </span>
       <button
         type="button"
         className="recording-action"
         data-icon-only
-        aria-label="Cancel Recording"
-        title="Cancel Recording"
+        aria-label={t('composer.cancelRecording', 'Cancel Recording')}
+        title={t('composer.cancelRecording', 'Cancel Recording')}
         onClick={onCancel}
       >
         <Icon name="delete" size={18} />
@@ -43,8 +47,8 @@ export function VoiceRecordingStrip({ state, seconds, onCancel, onStop }: VoiceR
         type="button"
         className="recording-action recording-stop"
         data-icon-only
-        aria-label="Stop And Send"
-        title="Stop And Send"
+        aria-label={t('composer.stopAndSend', 'Stop And Send')}
+        title={t('composer.stopAndSend', 'Stop And Send')}
         disabled={state === 'starting'}
         onClick={onStop}
       >

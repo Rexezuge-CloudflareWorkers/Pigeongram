@@ -1,9 +1,23 @@
+import { i18n, t } from './i18n';
 import type { MessageMediaDto, MessagePollDto, PresenceDto } from './types';
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+/**
+The language the display helpers format in.
+
+`undefined` would follow the browser's locale, which is how the app used to
+behave; reading i18next's language instead means a chosen language reaches the
+dates and times too, not only the sentences around them.
+*/
+function formatLocale(): string | undefined {
+  return i18n.language || undefined;
+}
+
+function timeFormatter(): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(formatLocale(), { hour: '2-digit', minute: '2-digit' });
+}
 
 export function formatTime(timestamp: number): string {
-  return timeFormatter.format(timestamp);
+  return timeFormatter().format(timestamp);
 }
 
 /**
@@ -11,19 +25,19 @@ Short stamp for the chat list: `now`, `5m`, `3h`, or `Mar 4`.
 */
 export function formatListStamp(timestamp: number, now = Date.now()): string {
   const diff = now - timestamp;
-  if (diff < 60_000) return 'Now';
+  if (diff < 60_000) return t('format.now', 'Now');
   if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(timestamp);
+  return new Intl.DateTimeFormat(formatLocale(), { month: 'short', day: 'numeric' }).format(timestamp);
 }
 
 export function formatDay(timestamp: number, now = Date.now()): string {
   const date = new Date(timestamp);
   const today = new Date(now);
-  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === today.toDateString()) return t('format.today', 'Today');
   const yesterday = new Date(now - 86_400_000);
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return date.toLocaleDateString(undefined, {
+  if (date.toDateString() === yesterday.toDateString()) return t('format.yesterday', 'Yesterday');
+  return date.toLocaleDateString(formatLocale(), {
     month: 'short',
     day: 'numeric',
     ...(date.getFullYear() !== today.getFullYear() && { year: 'numeric' }),
@@ -44,20 +58,23 @@ export function formatPresence(presence: PresenceDto | null): string | null {
   if (!presence) return null;
   switch (presence.status) {
     case 'online': {
-      return 'Online';
+      return t('format.presenceOnline', 'Online');
     }
     case 'offline': {
-      if (presence.lastSeenAt === null) return 'Last Seen Recently';
-      return `Last Seen ${formatDay(presence.lastSeenAt)} At ${formatTime(presence.lastSeenAt)}`;
+      if (presence.lastSeenAt === null) return t('format.presenceRecently', 'Last Seen Recently');
+      return t('format.presenceLastSeen', 'Last Seen {{day}} At {{time}}', {
+        day: formatDay(presence.lastSeenAt),
+        time: formatTime(presence.lastSeenAt),
+      });
     }
     case 'recently': {
-      return 'Last Seen Recently';
+      return t('format.presenceRecently', 'Last Seen Recently');
     }
     case 'within_week': {
-      return 'Last Seen Within A Week';
+      return t('format.presenceWeek', 'Last Seen Within A Week');
     }
     case 'within_month': {
-      return 'Last Seen Within A Month';
+      return t('format.presenceMonth', 'Last Seen Within A Month');
     }
   }
 }
@@ -88,7 +105,7 @@ Label for a poll, when only the poll is known — its question is the closest
 thing it has to a message body.
 */
 export function pollPreview(poll: MessagePollDto): string {
-  return `Poll: ${poll.question}`;
+  return t('format.pollPreview', 'Poll: {{question}}', { question: poll.question });
 }
 
 /**
@@ -99,20 +116,43 @@ A sticker also carries the emoji Telegram associated with it, which is what the
 official clients put on the chat list's preview line.
 */
 export function mediaPreview(kind: MessageMediaDto['kind'], emoji?: string): string {
-  if (kind === 'sticker' && emoji) return `${emoji} Sticker`;
-  return MEDIA_PREVIEWS[kind];
+  if (kind === 'sticker' && emoji) return t('format.stickerWithEmoji', '{{emoji}} Sticker', { emoji });
+  return mediaLabel(kind);
 }
 
-const MEDIA_PREVIEWS: Record<MessageMediaDto['kind'], string> = {
-  photo: 'Photo',
-  video: 'Video',
-  animation: 'GIF',
-  audio: 'Audio',
-  voice: 'Voice Message',
-  sticker: 'Sticker',
-  document: 'Document',
-  unsupported: 'Unsupported Message',
-};
+/**
+The label a media kind is described by. Keys are spelled out per kind rather
+than composed, because the kit's call-site check reads literal translation
+keys and a computed one would be invisible to it.
+*/
+function mediaLabel(kind: MessageMediaDto['kind']): string {
+  switch (kind) {
+    case 'photo': {
+      return t('format.media.photo', 'Photo');
+    }
+    case 'video': {
+      return t('format.media.video', 'Video');
+    }
+    case 'animation': {
+      return t('format.media.animation', 'GIF');
+    }
+    case 'audio': {
+      return t('format.media.audio', 'Audio');
+    }
+    case 'voice': {
+      return t('format.media.voice', 'Voice Message');
+    }
+    case 'sticker': {
+      return t('format.media.sticker', 'Sticker');
+    }
+    case 'document': {
+      return t('format.media.document', 'Document');
+    }
+    case 'unsupported': {
+      return t('format.media.unsupported', 'Unsupported Message');
+    }
+  }
+}
 
 /**
 Human-readable byte size, e.g. `824 KB`; empty for unknown sizes.

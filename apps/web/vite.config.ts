@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import { defineWebViteConfig } from '@rexezuge/tooling/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readBranding } from './branding';
-import { pwaAssetLinksPlugin } from './build/pwa/assetlinks-plugin';
 import { pwaBrandingPlugin } from './build/pwa/branding-plugin';
 import { createManifest } from './build/pwa/manifest';
 import { pwaIconsPlugin } from './build/pwa/plugin';
@@ -26,9 +25,6 @@ export default defineWebViteConfig({
     pwaBrandingPlugin(branding),
     // The icons the manifest points at, drawn from the favicon's own geometry.
     pwaIconsPlugin(branding),
-    // The Digital Asset Links statement for this deployment's Android build.
-    // It is emitted only when the deployment supplies the Android variables.
-    pwaAssetLinksPlugin(),
     // The Ogg/Opus encoder worker the voice recorder loads on demand.
     voiceRecorderPlugin(),
     VitePWA({

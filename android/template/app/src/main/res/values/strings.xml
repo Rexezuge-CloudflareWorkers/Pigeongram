@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">__APP_NAME__</string>
+    <string name="launcher_name">__LAUNCHER_NAME__</string>
+    <string name="start_url">__START_URL__</string>
+    <string name="choose_files">Choose Files</string>
+</resources>

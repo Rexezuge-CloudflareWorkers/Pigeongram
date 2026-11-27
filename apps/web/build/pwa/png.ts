@@ -71,7 +71,7 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
 function crc32(bytes: Uint8Array): number {
   let value = 0xff_ff_ff_ff;
   for (const byte of bytes) {
-    value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
+    value = (CRC_TABLE[(value ^ byte) & 0xff] ?? 0) ^ (value >>> 8);
   }
   return (value ^ 0xff_ff_ff_ff) >>> 0;
 }

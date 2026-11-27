@@ -1,0 +1,6 @@
+// The Android Gradle plugin is resolved here so the app module needs no
+// plugin-management block of its own. The version moves with the SDK levels
+// below when Play raises its target requirement.
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+}

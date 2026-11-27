@@ -1,19 +1,14 @@
 /**
- * Installs the Android platform and build tools this Bubblewrap release targets.
+ * Installs the Android platform and build tools the Gradle build targets.
  *
  * The `ubuntu-latest` image carries an SDK, but not necessarily the packages
- * `bubblewrap build` needs. Two details are load-bearing:
- *
- * - Build-tools `36.1.0` is the release Bubblewrap `1.27.0` pins; installing it
- *   up front keeps the build from fetching it itself.
- * - Bubblewrap `1.27.0` predates the `cmdline-tools`-only layout: `doctor` and
- *   `build` both require `<sdk>/tools` or `<sdk>/bin`, and the runner image has
- *   neither. Exposing `cmdline-tools/latest/bin` as `<sdk>/bin` satisfies the
- *   check and gives Bubblewrap the `sdkmanager` fallback it expects.
+ * the Android Gradle plugin needs. Installing them up front keeps the build
+ * from fetching them itself and makes a missing license fail here, with a
+ * useful message, rather than halfway through a compile.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { accessSync, constants, existsSync, symlinkSync } from 'node:fs';
+import { accessSync, constants, existsSync } from 'node:fs';
 import path from 'node:path';
 import { isEntrypoint } from '../lib/entrypoint.ts';
 import { appendEnv, commandFailure, runStep } from './actions.ts';
@@ -21,10 +16,10 @@ import { appendEnv, commandFailure, runStep } from './actions.ts';
 /** The SDK location the GitHub-hosted Linux image uses. */
 export const DEFAULT_SDK_ROOT = '/usr/local/lib/android/sdk';
 
-/** The platform Bubblewrap `1.27.0` compiles against. */
+/** The platform the app compiles against. */
 export const ANDROID_PLATFORM = 'android-36';
 
-/** The build-tools release that Bubblewrap `1.27.0` pins. */
+/** The build-tools release that ships the `apksigner` the signature check uses. */
 export const BUILD_TOOLS_VERSION = '36.1.0';
 
 function isExecutable(file: string): boolean {
@@ -36,19 +31,13 @@ function isExecutable(file: string): boolean {
   }
 }
 
-/**
- * Chooses the SDK root, preferring the runner's own variable over the default.
- */
+/** Chooses the SDK root, preferring the runner's own variable over the default. */
 export function resolveSdkRoot(env: NodeJS.ProcessEnv): string {
   return env.ANDROID_SDK_ROOT?.trim() || env.ANDROID_HOME?.trim() || DEFAULT_SDK_ROOT;
 }
 
 /**
  * Finds `sdkmanager`: the SDK's bundled copy first, then whatever is on `PATH`.
- *
- * The bundled path is checked explicitly because the runner image sets neither
- * `ANDROID_SDK_ROOT` nor a `cmdline-tools` symlink consistently, and `PATH` may
- * hold a wrapper that points somewhere else.
  */
 export function findSdkManager(sdkRoot: string, env: NodeJS.ProcessEnv): string {
   const bundled = path.join(sdkRoot, 'cmdline-tools', 'latest', 'bin', 'sdkmanager');
@@ -91,10 +80,6 @@ if (isEntrypoint(import.meta.url)) {
       );
     } catch (error) {
       throw new Error(`sdkmanager could not install the Android packages: ${commandFailure(error)}`);
-    }
-
-    if (!existsSync(path.join(sdkRoot, 'bin')) && !existsSync(path.join(sdkRoot, 'tools'))) {
-      symlinkSync(path.dirname(sdkManager), path.join(sdkRoot, 'bin'), 'dir');
     }
 
     appendEnv({ ANDROID_SDK_ROOT: sdkRoot });

@@ -1,7 +1,7 @@
 /**
  * Verifies that both artifacts carry this deployment's signing certificate.
  *
- * Bubblewrap signs the APK with `apksigner` and the AAB with `jarsigner`, so the
+ * Gradle signs the APK with `apksigner` and the AAB with `jarsigner`, so the
  * two are checked through the tool that produced them. The comparison uses the
  * canonical fingerprint form because the tools disagree about separators:
  * `apksigner` prints bare hex, `keytool` prints colon-separated groups.
@@ -29,19 +29,22 @@ const ANDROID_MANIFEST = 'AndroidManifest.xml';
 export function dumpManifestArgs(apk: string): readonly string[] {
   return ['dump', 'xmltree', '--file', ANDROID_MANIFEST, apk];
 }
-const MANAGE_DATA_ACTIVITY = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
+const MAIN_ACTION = 'android.intent.action.MAIN';
+const LAUNCHER_CATEGORY = 'android.intent.category.LAUNCHER';
 
 /**
- * androidbrowserhelper 2.7.x enables or disables `ManageDataLauncherActivity` on
- * every TWA launch, and `PackageManager.setComponentEnabledSetting()` throws
- * when the APK does not declare that activity. Bubblewrap only emits the
- * declaration when `enableSiteSettingsShortcut` is true, so a manifest that
- * builds cleanly can still crash on the first launch. Check the built APK, not
- * the source template.
+ * The launcher activity is what makes the icon open the app's own WebView
+ * instead of nothing at all. A missing declaration is an installable APK with
+ * no entry point, so it is checked on the built artifact rather than trusted
+ * from the template.
  */
-export function assertLaunchActivityDeclared(xmlTree: string): void {
-  if (!xmlTree.includes(MANAGE_DATA_ACTIVITY)) {
-    throw new Error(`The APK manifest does not declare ${MANAGE_DATA_ACTIVITY}, so the app crashes on launch`);
+export function assertLauncherActivityDeclared(xmlTree: string, packageId: string): void {
+  const activity = `${packageId}.MainActivity`;
+  if (!xmlTree.includes(`"${activity}"`)) {
+    throw new Error(`The APK manifest does not declare ${activity}`);
+  }
+  if (!xmlTree.includes(MAIN_ACTION) || !xmlTree.includes(LAUNCHER_CATEGORY)) {
+    throw new Error(`The APK manifest does not declare ${activity} as the launcher activity`);
   }
 }
 
@@ -123,7 +126,7 @@ if (isEntrypoint(import.meta.url)) {
     if (!existsSync(aapt2)) {
       throw new Error('aapt2 not found beside apksigner');
     }
-    assertLaunchActivityDeclared(run(aapt2, dumpManifestArgs(apk)));
+    assertLauncherActivityDeclared(run(aapt2, dumpManifestArgs(apk)), requiredEnv('ANDROID_PACKAGE_ID'));
 
     // `jarsigner` prints its verdict on stdout and warnings on stderr; the exit
     // status is the check, so only the warnings are worth showing.

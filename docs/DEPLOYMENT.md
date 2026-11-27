@@ -88,7 +88,7 @@ Account routes live under `/user/*`; only `/api/health` is public.
 
 - **Continuous Integration** runs typecheck, lint, formatting, repository checks, tests, and build checks.
 - **Continuous Deployment** deploys the Worker and Pages after CI succeeds on `main`.
-- **Android Build** is manual and creates a deployment-specific Trusted Web Activity.
+- **Android Build** is manual and creates a deployment-specific in-app WebView shell.
 - **Backup Main Branch** is optional and mirrors the repository when its destination secrets are configured.
 
 After the first successful CI run, configure branch protection on `main` with the required checks:
@@ -98,20 +98,20 @@ After the first successful CI run, configure branch protection on `main` with th
 
 ## Android app (optional)
 
-The Android wrapper is a Trusted Web Activity for one deployment; it is not a generic Pigeongram release. Follow the
-[Android runbook](ANDROID.md) to choose a package ID, create a signing key, configure asset links, deploy Pages, and run
+The Android wrapper is a native WebView shell for one deployment; it is not a generic Pigeongram release. Follow the
+[Android runbook](ANDROID.md) to choose a package ID, create a signing key, deploy Pages, and run
 **Actions → Android Build → Run workflow**.
 
-Build Pages before Android so the live origin serves the correct `/.well-known/assetlinks.json`. Never share a
-deployment's keystore or install an APK signed for another deployment.
+Build Pages before Android so the live origin serves the SPA the shell loads. Never share a deployment's keystore or
+install an APK signed for another deployment.
 
 ## Troubleshooting
 
 **`/user/*` returns `access_config`.** Check `TEAM_DOMAIN` and `POLICY_AUD`, then redeploy the Worker.
 
-**Access gates the intro or asset links.** Change the Access application path from the whole hostname to `/user*`.
+**Access gates the intro or the web manifest.** Change the Access application path from the whole hostname to `/user*`.
 
-**The Android app shows a URL bar.** Verify that the live asset-links file returns `200` without a redirect and names
-the exact package ID and signing certificate. Then reinstall the app to clear Chrome's verification cache.
+**The Android app opens a browser or shows a blank page.** Install the current run's APK and check that the deployment
+still serves the origin and manifest; the shell loads them live and never hands navigation to a browser.
 
 For backend wake behavior, bridge methods, and production acceptance checks, see [SESSION_ENGINE.md](SESSION_ENGINE.md).

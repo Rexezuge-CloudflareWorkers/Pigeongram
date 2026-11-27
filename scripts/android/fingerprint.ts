@@ -30,20 +30,6 @@ export function normalizeFingerprint(value: string): string {
 }
 
 /**
- * Normalizes a value that came from a document we do not control.
- *
- * The assetlinks file is served by the deployment and may hold something that is
- * not a fingerprint at all. This form is for *comparison* only: an unexpected
- * value then shows up in the rejection instead of aborting the whole preflight
- * with a parse error that names no key.
- */
-export function looseFingerprint(value: unknown): string {
-  return String(value)
-    .replace(/[^0-9A-Fa-f]/g, '')
-    .toUpperCase();
-}
-
-/**
  * Formats a canonical fingerprint the way `keytool -list -v` prints it, which is
  * the form the runbook and the repository variable use.
  */

@@ -1,13 +1,13 @@
 # The Android app
 
-The SPA can also be shipped as a **Trusted Web Activity (TWA)**: a thin Android shell that opens the deployed origin in
-the user's browser. There is no bundled web code. This is the runbook for building one **per deployment**.
+The SPA can also be shipped as a **native WebView shell**: a thin Android activity that renders the deployed origin
+inside the app. There is no bundled web code and no browser hand-off — the PWA, its service worker and its updates socket
+all run in the app's own WebView, whatever the reader's default browser is. This is the runbook for building one **per
+deployment**.
 
 ## Why every deployment builds its own
 
-A TWA is not a generic browser. Its manifest bakes in the host, the Android package id and the signing key, and Chrome
-only hides the URL bar when the origin serves a Digital Asset Links statement that names the package and the certificate.
-Those values belong to one deployment:
+The APK bakes in the host, the Android package id and the signing key. Those values belong to one deployment:
 
 - A package id is unique on a device. Two deployments that reuse one collide at install time.
 - A signing key is the update authority. An APK signed by somebody else cannot be trusted with your Telegram session.
@@ -19,21 +19,20 @@ variables and secrets, and runs **Actions → Android Build → Run workflow**. 
 
 ## What requires a rebuild
 
-| Change                                                    | Rebuild the Android app?                         |
-| --------------------------------------------------------- | ------------------------------------------------ |
-| Web UI, API, service worker, chats, calls, uploads        | No — the shell loads the live origin             |
-| App name, launcher name, launcher icon, theme colours     | Yes — baked into the APK                         |
-| Deployment origin or host                                 | Yes — the host is compiled into the TWA manifest |
-| Package id                                                | Yes — and it is effectively a new app            |
-| Signing key                                               | Yes — an update must be signed by the same key   |
-| Bubblewrap, AGP, target SDK                               | Deliberately, usually once a year                |
-| Access policy, Telegram credentials, account data         | No — server-side                                 |
-| Play App Signing certificate (`ANDROID_PLAY_CERT_SHA256`) | No — update the variable and redeploy Pages      |
-| Version name and version code                             | Every build; the workflow renders them           |
+| Change                                                | Rebuild the Android app?                       |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| Web UI, API, service worker, chats, calls, uploads    | No — the shell loads the live origin           |
+| App name, launcher name, launcher icon, theme colours | Yes — baked into the APK                       |
+| Deployment origin or host                             | Yes — the origin is compiled into the WebView  |
+| Package id                                            | Yes — and it is effectively a new app          |
+| Signing key                                           | Yes — an update must be signed by the same key |
+| Android Gradle plugin, Gradle, target SDK             | Deliberately, usually once a year              |
+| Access policy, Telegram credentials, account data     | No — server-side                               |
+| Version name and version code                         | Every build; the workflow renders them         |
 
-The web app changes often; the native shell changes rarely. That is why the generated Android project is not committed:
-the workflow renders it from `android/twa-manifest.template.json` on each run, so it stays aligned with the pinned
-Bubblewrap version without a large, stale tree in the repository.
+The web app changes often; the native shell changes rarely. That is why the generated Gradle project is not committed:
+the workflow renders it from `android/template/` on each run, so it stays aligned with the pinned toolchain without a
+large, stale tree in the repository.
 
 ## One-time setup
 
@@ -80,7 +79,8 @@ keytool -list -v -keystore release.jks -alias telegram \
   | sed -n 's/^[[:space:]]*SHA256: //p'
 ```
 
-The value is a colon-separated, uppercase SHA-256 fingerprint. It is public configuration, not a secret.
+The value is a colon-separated, uppercase SHA-256 fingerprint. It is public configuration, not a secret. The workflow
+compares it with the keystore before building and with both signed artifacts afterwards.
 
 ### 3. Set the deployment's variables and secrets
 
@@ -91,35 +91,28 @@ Set these in the fork that deploys the site (Settings → Secrets and variables 
 | Variable | `ANDROID_PWA_ORIGIN`                         | `https://tg.example.com` (no path or port; trailing `/` ok)                       |
 | Variable | `ANDROID_PACKAGE_ID`                         | `com.example.pigeongram`                                                          |
 | Variable | `ANDROID_CERT_SHA256`                        | The keystore's SHA-256 fingerprint                                                |
-| Variable | `ANDROID_PLAY_CERT_SHA256`                   | Optional Play App Signing certificate fingerprint                                 |
 | Variable | `ANDROID_APP_NAME` / `ANDROID_LAUNCHER_NAME` | Optional; fall back to `VITE_APP_NAME` / `VITE_APP_SHORT_NAME`, then `Pigeongram` |
 | Secret   | `ANDROID_KEYSTORE_BASE64`                    | The base64 of `release.jks`                                                       |
 | Secret   | `ANDROID_KEYSTORE_PASSWORD`                  | The store password                                                                |
 | Secret   | `ANDROID_KEY_ALIAS`                          | `telegram`                                                                        |
 | Secret   | `ANDROID_KEY_PASSWORD`                       | The key password                                                                  |
 
-The two certificate variables are public. The keystore and its passwords are secrets; never commit them, share them, or
-reuse another deployment's key.
-
-`ANDROID_PACKAGE_ID` and `ANDROID_CERT_SHA256` also drive the **Pages** build: the Vite plugin writes
-`/.well-known/assetlinks.json` from them. A deployment without an Android app leaves all of these unset, and the Pages
-build emits no assetlinks file.
+`ANDROID_CERT_SHA256` is public: it is checked against the keystore and the built artifacts. The keystore and its
+passwords are secrets; never commit them, share them, or reuse another deployment's key. There is no Digital Asset Links
+variable — the shell does not use browser verification.
 
 ### 4. Deploy Pages before building Android
 
-The TWA validates against the live origin and downloads its manifest and icons from it. Deploy the Pages project after
-setting the variables, then verify the generated file:
+The app loads the live origin, so the site has to be up when the build's preflight runs. Deploy the Pages project first,
+then confirm it serves the SPA and its manifest:
 
 ```bash
-curl -fsS https://tg.example.com/.well-known/assetlinks.json
+curl -fsS https://tg.example.com/
+curl -fsS https://tg.example.com/manifest.webmanifest
 ```
 
-It must return `200` directly (no redirect) with an `android_app` statement for your package id and the keystore's
-fingerprint. The Access application must remain path-scoped to `/user*`: `/.well-known/assetlinks.json` is public, and
-gating it would make the TWA verification fail.
-
-If the file is missing, the Pages deployment predates the variables; push to `main` (or rerun the Pages deployment) and
-check again.
+Both must return `200` directly. The Access application must stay path-scoped to `/user*`: the document, the manifest,
+the icons and the service worker stay public, while the account API and `/user/login` are gated.
 
 ### 5. Run the build
 
@@ -132,15 +125,16 @@ inputs are:
 
 The workflow:
 
-1. validates the configuration and the live origin, manifest, icons and assetlinks, including rejecting certificate
-   fingerprints the deployment no longer configures;
-2. renders `android/build/twa-manifest.json` from `android/twa-manifest.template.json`;
-3. runs Bubblewrap `update` and `build` with the pinned `1.27.0` release;
-4. verifies both signatures against the keystore fingerprint and that the APK declares the launch activity;
-5. uploads `app-release-signed.apk`, `app-release-bundle.aab` and `SHA256SUMS`.
+1. validates the configuration and the live origin, manifest and certificate fingerprint;
+2. decodes the keystore into `$RUNNER_TEMP` with mode `0600`;
+3. renders `android/build/` from `android/template/`, including the launcher icons drawn from the same paper-plane mark
+   the SPA uses;
+4. builds the APK and AAB with the pinned Gradle `8.14.3` and Android Gradle plugin `8.13.0`;
+5. verifies both signatures against the keystore fingerprint and that the APK declares the WebView launcher activity;
+6. uploads `app-release-signed.apk`, `app-release-bundle.aab` and `SHA256SUMS`.
 
-The step logic lives in `scripts/android/`, one script per step (`setup-sdk.ts`, `configure-bubblewrap.ts`,
-`validate-config.ts`, `decode-keystore.ts`, `verify-deployment.ts`, `render-manifest.ts`, `verify-signatures.ts`,
+The step logic lives in `scripts/android/`, one script per step (`setup-sdk.ts`, `validate-config.ts`,
+`decode-keystore.ts`, `verify-deployment.ts`, `render-android-project.ts`, `build-app.ts`, `verify-signatures.ts`,
 `write-summary.ts`), so the workflow itself is only the sequence of commands. The rules the scripts enforce are covered
 by `test/android/`.
 
@@ -156,11 +150,12 @@ sha256sum -c SHA256SUMS
 adb install -r app-release-signed.apk
 ```
 
-Open the app. The first paint is the deployment's own splash; after that, Chrome opens the site **without an address
-bar** if the assetlinks check passed. Sign in through Cloudflare Access; the Access login opens in a Custom Tab and
-returns to the app. Then check the chat list, a thread, an image, a video and the live updates socket.
+Open the app. The first paint is the deployment's splash, then the chat list or the intro — all inside the app, with no
+address bar and no browser switch. Sign in through Cloudflare Access; the login completes in the WebView. Then check a
+thread, an image, a video, the live updates socket, an attachment upload and a voice note.
 
-If the URL bar is visible, see the troubleshooting section below.
+Nothing about the app depends on the default browser: set it to any browser you like and the app still renders the PWA
+itself.
 
 ## Versioning
 
@@ -178,66 +173,49 @@ The first build of a new package id has no previous code to beat; the default ru
 ## Google Play
 
 - Upload the **AAB**, not the APK. The APK is for sideloading and device testing.
-- Play App Signing re-signs the bundle with Google's app signing key. After enrolment, copy the **App signing key
-  certificate** SHA-256 from Play Console → Test and release → Setup → App signing into `ANDROID_PLAY_CERT_SHA256` and
-  redeploy Pages. The assetlinks file then lists both your upload key and Google's signing key, so installs from Play and
-  sideloaded builds both verify.
+- Play App Signing re-signs the bundle with Google's app signing key. The workflow verifies the upload-key certificate;
+  a Play-signed install is no longer byte-identical to the artifact, which is expected.
 - Access is a login wall. Google's reviewers need a way through it; provide test credentials or an Access policy that
   admits the reviewer, or the review may be rejected for requiring an inaccessible login.
 - Use your own app name and iconography. Do not imply that the app is an official Telegram product, and do not use
   “Telegram” in the product or launcher name: Telegram's Terms of Service forbid it. The defaults use `Pigeongram`.
-- The shell supports Android 7.0 (API 24) and newer. `androidbrowserhelper:2.7.4`, the library Bubblewrap `1.27.0`
-  generates, declares API 24 as its minimum, so `android/twa-manifest.template.json` sets `minSdkVersion` to 24;
-  lowering it makes the manifest merger fail the build.
-- Play raises the required target SDK over time. Bubblewrap `1.27.0` targets SDK 36; when Play's requirement moves,
-  bump Bubblewrap deliberately, rebuild and re-verify. The workflow also installs the build-tools release Bubblewrap
-  pins (`36.1.0`); a Bubblewrap bump moves that pin and the workflow's install list together.
-- Notification delegation is disabled (`enableNotifications: false`). The web app does not use web push; if that changes,
-  enabling delegation also changes the native manifest and requires a rebuild.
+- The shell supports Android 7.0 (API 24) and newer, targets SDK 36, and compiles with Java 17. When Play raises its
+  target requirement, bump the plugin/Gradle pins in `android/template/build.gradle` and the workflow together and
+  rebuild deliberately.
+- The web app does not use web push. Nothing needs notification delegation in the native shell.
 
 ## Troubleshooting
 
-**The app closes immediately after it is opened.** `androidbrowserhelper` 2.7.4, which Bubblewrap 1.27.0 uses, toggles
-`ManageDataLauncherActivity` on every launch. Android throws `IllegalArgumentException: Component class ...ManageDataLauncherActivity
-does not exist` when the APK manifest does not declare it. Bubblewrap emits that declaration only when
-`enableSiteSettingsShortcut` is `true`, so the committed template keeps it on and the build checks the APK manifest. Do not set it
-to `false` in a fork's template; if a device still has an older APK installed, reinstall with `adb install -r` and confirm the
-version with `adb shell dumpsys package <package-id> | grep versionCode`. `adb logcat -b crash -d` shows the exception.
+**The app opens the browser instead of the PWA.** That is the old Trusted Web Activity fallback (or an APK from another
+deployment). This shell has no browser hand-off for `http(s)` navigation; install the current run's APK and confirm the
+package id with `adb shell dumpsys package <package-id> | grep versionCode`.
 
-**The URL bar is visible.** The assetlinks check failed. Confirm the URL returns `200` with no redirect, names the exact
-package id, and contains the exact keystore fingerprint. Re-deploy Pages after changing `ANDROID_PACKAGE_ID` or
-`ANDROID_CERT_SHA256`. Chrome caches verification; uninstall/reinstall the app or clear Chrome's data for the origin
-before retrying.
+**The app shows a blank page.** The preflight only proves the origin was up at build time. Check the current deployment
+and the Access path scope; the WebView loads the live origin on every launch and has no cached shell of its own beyond
+the service worker.
 
-**The preflight says the live assetlinks do not name the package.** The Pages deployment has not run with the current
-variables. Set them, deploy Pages, and rerun the Android build.
+**Voice notes do not record.** The SPA needs microphone access that a browser normally asks for. The shell requests
+`RECORD_AUDIO` on the first recording; grant it in Android's permission dialog. If it was denied permanently, enable it
+in Android Settings → Apps → Pigeongram → Permissions.
 
-**The preflight says a fingerprint is missing.** For `ANDROID_CERT_SHA256`, the variable and the keystore secret
-disagree; read the fingerprint from the keystore again, update the variable, redeploy Pages, and rerun. For
-`ANDROID_PLAY_CERT_SHA256`, the Pages deployment predates the variable or was built with a different value; update it and
-redeploy Pages.
+**Attachments do not open the file picker.** The shell uses the system document picker with multiple selection enabled.
+A device with no file manager cannot show one; install one and retry.
 
-**The preflight says the assetlinks name unexpected fingerprints.** The live file still trusts a key this deployment no
-longer configures, often a rotated upload key or an old Play certificate. Redeploy Pages with the current variables so the
-file is regenerated; if a variable still names the old key, update it first. Do not leave a stale key in place: it can
-still sign an update that Chrome treats as this app.
+**Back leaves the app instead of closing the thread.** Back walks the WebView's own history first, so an in-app link goes
+back one page before it can exit. The SPA's viewer and popup layers are same-URL history layers, so they close at the
+right step.
 
 **`INSTALL_FAILED_UPDATE_INCOMPATIBLE`.** The same package id is installed but signed with a different key. Uninstall the
 old app first, or choose a new package id (which makes it a new app).
 
 **`INSTALL_FAILED_VERSION_DOWNGRADE`.** The new APK's version code is lower than the installed one. Raise `version_code`.
 
-**The build fails fetching an icon or the manifest.** The origin is not live, the icon is not a 512×512 PNG, or Access is
-gating the asset. The workflow's preflight names the URL and status.
+**The build fails fetching the origin or the manifest.** The deployment is not live, or Access is gating a public asset.
+The preflight names the URL and status.
 
-**Bubblewrap prompts for paths or passwords.** In CI the workflow writes `~/.bubblewrap/config.json` and sets
-`BUBBLEWRAP_KEYSTORE_PASSWORD` / `BUBBLEWRAP_KEY_PASSWORD`. Locally, run `bubblewrap doctor` and `bubblewrap updateConfig`
-once.
-
-**`doctor` says the `androidSdkPath` is not correct.** Bubblewrap `1.27.0` still validates the pre-`cmdline-tools` SDK
-layout and requires `<sdk>/tools` or `<sdk>/bin` to exist, even though modern SDKs ship neither. The workflow exposes
-`cmdline-tools/latest/bin` as `<sdk>/bin` before writing the config, which also gives Bubblewrap the `sdkmanager` fallback
-it expects. Do the same locally, or point it at an SDK root that already has one of those folders.
+**Gradle cannot find the SDK or the keystore.** The render step writes `local.properties` and `keystore.properties` from
+the workflow's environment. Confirm `ANDROID_SDK_ROOT` and the decoded keystore path exist; locally, run the steps in
+`scripts/android/` in the same order as the workflow.
 
 **The AAB will not install with `adb install`.** That is expected; AABs are for Play. Use the APK for device testing, or
 `bundletool` to generate APKs from the bundle.
@@ -251,4 +229,5 @@ reset; otherwise you need a new package id and a fresh install.
 - Never share the keystore or its passwords. The signing key is the app's update authority.
 - The workflow's artifacts are for the deployment that ran it. There is deliberately no upstream release asset to
   mistake for a generic app.
-- Inspect the workflow and the template before trusting them; both are small and reviewed in the repository.
+- Inspect the workflow and the template before trusting them; both are small and reviewed in the repository. The WebView
+  renders the live origin over HTTPS and the worker is the only API surface, so the app has no privileged local bridge.

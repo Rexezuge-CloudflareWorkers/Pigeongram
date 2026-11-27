@@ -20,6 +20,21 @@ import { normalizeFingerprint, parseApksignerFingerprint, parseKeytoolFingerprin
 
 const APK_NAME = 'app-release-signed.apk';
 const AAB_NAME = 'app-release-bundle.aab';
+const MANAGE_DATA_ACTIVITY = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
+
+/**
+ * androidbrowserhelper 2.7.x enables or disables `ManageDataLauncherActivity` on
+ * every TWA launch, and `PackageManager.setComponentEnabledSetting()` throws
+ * when the APK does not declare that activity. Bubblewrap only emits the
+ * declaration when `enableSiteSettingsShortcut` is true, so a manifest that
+ * builds cleanly can still crash on the first launch. Check the built APK, not
+ * the source template.
+ */
+export function assertLaunchActivityDeclared(xmlTree: string): void {
+  if (!xmlTree.includes(MANAGE_DATA_ACTIVITY)) {
+    throw new Error(`The APK manifest does not declare ${MANAGE_DATA_ACTIVITY}, so the app crashes on launch`);
+  }
+}
 
 function run(command: string, args: readonly string[]): string {
   try {
@@ -94,6 +109,12 @@ if (isEntrypoint(import.meta.url)) {
     if (apkFingerprint !== expected) {
       throw new Error('The APK signer fingerprint does not match the keystore');
     }
+
+    const aapt2 = path.join(path.dirname(apksigner), 'aapt2');
+    if (!existsSync(aapt2)) {
+      throw new Error('aapt2 not found beside apksigner');
+    }
+    assertLaunchActivityDeclared(run(aapt2, ['dump', 'xmltree', apk, 'AndroidManifest.xml']));
 
     // `jarsigner` prints its verdict on stdout and warnings on stderr; the exit
     // status is the check, so only the warnings are worth showing.

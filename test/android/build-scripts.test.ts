@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +13,7 @@ import { readBuildConfig, resolveVersionName } from '../../scripts/android/valid
 import { fetchOk, isPng, readManifestName, validateAssetLinks, verifyDeployment } from '../../scripts/android/verify-deployment';
 import { renderTwaManifest, serializeTwaManifest } from '../../scripts/android/render-manifest';
 import { resolveSdkRoot } from '../../scripts/android/setup-sdk';
-import { findApksigner } from '../../scripts/android/verify-signatures';
+import { assertLaunchActivityDeclared, findApksigner } from '../../scripts/android/verify-signatures';
 
 const RELEASE_FINGERPRINT = '16:9F:F8:BE:66:C3:DF:9E:7F:48:B0:4B:5C:10:E0:51:98:BE:ED:1B:71:28:50:49:E9:98:06:B2:FC:AD:FC:BA';
 const CANONICAL_RELEASE_FINGERPRINT = RELEASE_FINGERPRINT.replaceAll(':', '');
@@ -262,6 +262,20 @@ describe('the live deployment preflight', () => {
   });
 });
 
+describe('the committed TWA template', () => {
+  const template = JSON.parse(readFileSync(new URL('../../android/twa-manifest.template.json', import.meta.url), 'utf8')) as Record<
+    string,
+    unknown
+  >;
+
+  // Bubblewrap only declares ManageDataLauncherActivity when this is true, but
+  // androidbrowserhelper 2.7.x toggles that component on every launch. Without
+  // the declaration the APK builds and then crashes before the site opens.
+  it('keeps the site-settings activity the helper enables on launch', () => {
+    expect(template.enableSiteSettingsShortcut).toBe(true);
+  });
+});
+
 describe('the rendered TWA manifest', () => {
   const template = {
     packageId: 'com.example.placeholder',
@@ -304,6 +318,18 @@ describe('the rendered TWA manifest', () => {
 
   it('serializes with a trailing newline', () => {
     expect(serializeTwaManifest({ a: 1 })).toBe('{\n  "a": 1\n}\n');
+  });
+});
+
+describe('the built APK manifest', () => {
+  const activity = 'com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity';
+
+  it('accepts a manifest declaring the site-settings activity', () => {
+    expect(() => assertLaunchActivityDeclared(`A: android:name(0x01010003)="${activity}"`)).not.toThrow();
+  });
+
+  it('rejects a manifest that would crash on launch', () => {
+    expect(() => assertLaunchActivityDeclared('E: manifest')).toThrow(/does not declare/);
   });
 });
 

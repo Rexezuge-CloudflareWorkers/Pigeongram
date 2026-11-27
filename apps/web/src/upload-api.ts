@@ -1,4 +1,5 @@
 import { HttpStatusError } from '@rexezuge/web/api';
+import { t } from './i18n';
 import type { PeerId, SendMessageResult, SendUploadGroupResult, UploadKind } from './types';
 
 /**
@@ -122,8 +123,8 @@ function sendUpload<T>(path: string, body: Blob, onProgress?: (fraction: number)
       }
       reject(uploadFailure(xhr.status, payload));
     });
-    xhr.addEventListener('error', () => reject(new HttpStatusError(0, 'Upload Failed — Network Error', null)));
-    xhr.addEventListener('abort', () => reject(new HttpStatusError(0, 'Upload Cancelled', null)));
+    xhr.addEventListener('error', () => reject(new HttpStatusError(0, t('errors.uploadNetwork', 'Upload Failed — Network Error'), null)));
+    xhr.addEventListener('abort', () => reject(new HttpStatusError(0, t('errors.uploadCancelled', 'Upload Cancelled'), null)));
     xhr.send(body);
   });
 }

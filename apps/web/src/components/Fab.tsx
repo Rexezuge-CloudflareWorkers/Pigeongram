@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 
 /**
@@ -21,13 +22,14 @@ export function JumpToLatestButton({
   busy?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-busy={busy}
-      aria-label={busy ? 'Jump In Progress' : 'Jump To Latest And Mark As Read'}
+      aria-label={busy ? t('a11y.jumpInProgress', 'Jump In Progress') : t('a11y.jumpToLatest', 'Jump To Latest And Mark As Read')}
       data-icon-only
       className={`fab-jump inline-flex size-10 items-center justify-center rounded-full border border-outline-variant bg-surface-container-high text-on-surface shadow-lg transition-colors hover:bg-surface-container-highest focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-50${className ? ` ${className}` : ''}`}
     >

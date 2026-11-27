@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 
 interface ArchiveBarProps {
@@ -21,17 +22,18 @@ is showing — otherwise the list below would look like the chat list with fewer
 chats in it.
 */
 export function ArchiveBar({ count, onBack }: ArchiveBarProps) {
+  const { t } = useTranslation();
   return (
     <div className="archive-bar flex items-center gap-2 border-b border-line px-3 py-2">
       <button
         type="button"
         onClick={onBack}
-        aria-label="Back To Chats"
+        aria-label={t('a11y.backToChats', 'Back To Chats')}
         className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Icon name="arrow-left" />
       </button>
-      <strong className="min-w-0 truncate text-sm">Archived Chats</strong>
+      <strong className="min-w-0 truncate text-sm">{t('chats.archived', 'Archived Chats')}</strong>
       <span className="ml-auto shrink-0 text-xs text-muted">{count}</span>
     </div>
   );

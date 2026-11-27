@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { EMOJI_CATEGORIES, readRecentEmoji, rememberRecentEmoji, searchEmoji } from '../emoji';
 
@@ -14,6 +16,7 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ onPick }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [recents, setRecents] = useState<string[]>(() => readRecentEmoji());
   const [category, setCategory] = useState(0);
@@ -29,21 +32,21 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
       <input
         type="search"
         value={query}
-        placeholder="Search Emoji"
-        aria-label="Search emoji"
+        placeholder={t('stickers.searchEmoji', 'Search Emoji')}
+        aria-label={t('a11y.searchEmoji', 'Search emoji')}
         className="w-full rounded-lg border border-line bg-panel px-3 py-1.5 text-sm text-fg outline-none focus-visible:border-accent"
         onChange={(event) => setQuery(event.target.value)}
       />
       {query.trim() === '' && recents.length > 0 ? (
         <div className="shrink-0">
-          <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">Recent</p>
+          <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{t('stickers.recent', 'Recent')}</p>
           <div className="flex flex-wrap gap-0.5">
             {recents.map((char) => (
               <button
                 key={`recent-${char}`}
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-md text-xl hover:bg-panel-2 focus-visible:bg-panel-2 focus-visible:outline-none"
-                aria-label={`Emoji ${char}`}
+                aria-label={t('a11y.emojiLabel', 'Emoji {{emoji}}', { emoji: char })}
                 onClick={() => pick(char)}
               >
                 {char}
@@ -53,7 +56,7 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
         </div>
       ) : null}
       {query.trim() === '' ? (
-        <div className="flex shrink-0 gap-1 overflow-x-auto" role="tablist" aria-label="Emoji categories">
+        <div className="flex shrink-0 gap-1 overflow-x-auto" role="tablist" aria-label={t('a11y.emojiCategories', 'Emoji categories')}>
           {EMOJI_CATEGORIES.map((entry, index) => (
             <button
               key={entry.name}
@@ -65,14 +68,14 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
               }`}
               onClick={() => setCategory(index)}
             >
-              {entry.name}
+              {categoryLabel(t, entry.name)}
             </button>
           ))}
         </div>
       ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {query.trim() !== '' && results.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">No Emoji Found.</p>
+          <p className="py-6 text-center text-sm text-muted">{t('stickers.noEmoji', 'No Emoji Found.')}</p>
         ) : (
           <div className="grid grid-cols-8 gap-0.5">
             {(query.trim() === '' ? (EMOJI_CATEGORIES[category]?.emoji ?? []) : results).map((entry) => (
@@ -92,4 +95,44 @@ export function EmojiPicker({ onPick }: EmojiPickerProps) {
       </div>
     </div>
   );
+}
+
+/**
+The category tab's label. Spelled out per category rather than composed from
+the data's name: the kit's call-site check reads literal translation keys, and
+a computed one would be invisible to it.
+*/
+function categoryLabel(t: TFunction, name: string): string {
+  switch (name) {
+    case 'Smileys': {
+      return t('stickers.categorySmileys', 'Smileys');
+    }
+    case 'Gestures': {
+      return t('stickers.categoryGestures', 'Gestures');
+    }
+    case 'People': {
+      return t('stickers.categoryPeople', 'People');
+    }
+    case 'Animals': {
+      return t('stickers.categoryAnimals', 'Animals');
+    }
+    case 'Food': {
+      return t('stickers.categoryFood', 'Food');
+    }
+    case 'Activities': {
+      return t('stickers.categoryActivities', 'Activities');
+    }
+    case 'Travel': {
+      return t('stickers.categoryTravel', 'Travel');
+    }
+    case 'Objects': {
+      return t('stickers.categoryObjects', 'Objects');
+    }
+    case 'Symbols': {
+      return t('stickers.categorySymbols', 'Symbols');
+    }
+    default: {
+      return name;
+    }
+  }
 }

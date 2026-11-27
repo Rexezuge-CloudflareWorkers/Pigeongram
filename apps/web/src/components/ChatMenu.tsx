@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { DialogDto, PeerId } from '../types';
 import { Icon } from './Icon';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
@@ -29,6 +30,7 @@ interface ChatMenuProps {
 }
 
 export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: ChatMenuProps) {
+  const { t } = useTranslation();
   const { menuRef, position, onKeyDown } = useAnchoredMenu({
     open: true,
     onClose,
@@ -43,7 +45,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: Cha
       position={position}
       onKeyDown={onKeyDown}
       className="min-w-[180px] p-1"
-      label="Chat actions"
+      label={t('a11y.chatActions', 'Chat actions')}
       onContextMenu={(event) => {
         // A right-click inside the open menu must not reopen it through the
         // row's handler (portal events bubble up the React tree).
@@ -63,7 +65,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: Cha
           }}
         >
           <Icon name="pin" className="text-muted" size={18} />
-          <span>{dialog.pinned ? 'Unpin' : 'Pin'}</span>
+          <span>{dialog.pinned ? t('chats.unpin', 'Unpin') : t('chats.pin', 'Pin')}</span>
         </button>
       ) : null}
       <button
@@ -72,7 +74,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: Cha
         className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-panel focus-visible:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-40"
         data-chat-menu-item
         disabled={read}
-        title={read ? 'Already read' : undefined}
+        title={read ? t('a11y.alreadyRead', 'Already read') : undefined}
         aria-disabled={read}
         onClick={() => {
           onMarkRead(dialog.chat.id);
@@ -80,7 +82,7 @@ export function ChatMenu({ dialog, x, y, onMarkRead, onSetPinned, onClose }: Cha
         }}
       >
         <Icon name="done-all" className="text-muted" size={18} />
-        <span>Mark As Read</span>
+        <span>{t('chats.markAsRead', 'Mark As Read')}</span>
       </button>
     </AnchoredMenu>
   );

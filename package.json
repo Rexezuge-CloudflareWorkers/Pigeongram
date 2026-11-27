@@ -6,7 +6,7 @@
     "postinstall": "pnpm run typegen",
     "build": "pnpm -r build",
     "checks": "pnpm run checks:fast && pnpm run test:coverage",
-    "checks:fast": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run check:god-files && pnpm run check:dead-code",
+    "checks:fast": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run check:god-files && pnpm run check:dead-code && pnpm run validate:locales",
     "prettier": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck && pnpm run typecheck:scripts && pnpm run typecheck:functions && pnpm run typecheck:web-build",
@@ -18,7 +18,8 @@
     "test": "NODE_ENV=test vitest run",
     "test:coverage": "NODE_ENV=test vitest run --coverage",
     "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint --fix --quiet .",
-    "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv"
+    "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv",
+    "validate:locales": "tsx scripts/validate-locales.ts"
   },
   "devDependencies": {
     "@rexezuge/tooling": "1.9.4",

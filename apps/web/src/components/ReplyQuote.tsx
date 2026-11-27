@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { mediaPreview, pollPreview, previewOf } from '../format';
 import type { MessageDto, MessageReplyDto } from '../types';
@@ -28,7 +29,14 @@ export function MessageReplyQuote({
   */
   onJump?: (messageId: number) => void;
 }) {
-  const name = original ? (original.outgoing ? 'You' : original.senderName) : reply.outgoing ? 'You' : reply.senderName;
+  const { t } = useTranslation();
+  const name = original
+    ? original.outgoing
+      ? t('thread.you', 'You')
+      : original.senderName
+    : reply.outgoing
+      ? t('thread.you', 'You')
+      : reply.senderName;
   let body: ReactNode;
   if (reply.quote && reply.text) {
     body = <MessageText text={reply.text} entities={reply.entities} />;
@@ -43,7 +51,7 @@ export function MessageReplyQuote({
   } else if (reply.mediaKind) {
     body = mediaPreview(reply.mediaKind);
   } else {
-    body = 'Quoted Content Unavailable';
+    body = t('thread.quotedUnavailable', 'Quoted Content Unavailable');
   }
 
   const jumpTarget = original && reply.origin === 'same_chat' ? reply.messageId : null;
@@ -58,21 +66,33 @@ export function MessageReplyQuote({
     return <div className="reply-quote">{content}</div>;
   }
   return (
-    <button type="button" className="reply-quote jumpable" title="Go To The Replied Message" onClick={() => onJump(jumpTarget)}>
+    <button
+      type="button"
+      className="reply-quote jumpable"
+      title={t('thread.goToReplied', 'Go To The Replied Message')}
+      onClick={() => onJump(jumpTarget)}
+    >
       {content}
     </button>
   );
 }
 
 export function ComposerReply({ message, onCancel }: { message: MessageDto; onCancel: () => void }) {
-  const name = message.outgoing ? 'You' : (message.senderName ?? 'Message');
+  const { t } = useTranslation();
+  const name = message.outgoing ? t('thread.you', 'You') : (message.senderName ?? t('search.messageFallback', 'Message'));
   return (
     <div className="composer-reply">
       <div className="composer-reply-body">
-        <span className="reply-name">Reply To {name}</span>
+        <span className="reply-name">{t('thread.replyToName', 'Reply To {{name}}', { name })}</span>
         <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
       </div>
-      <button type="button" className="reply-cancel" aria-label="Cancel Reply" title="Cancel Reply" onClick={onCancel}>
+      <button
+        type="button"
+        className="reply-cancel"
+        aria-label={t('thread.cancelReply', 'Cancel Reply')}
+        title={t('thread.cancelReply', 'Cancel Reply')}
+        onClick={onCancel}
+      >
         ×
       </button>
     </div>
@@ -84,13 +104,20 @@ The composer's edit banner: the same shell as a reply, labelled for the edit it
 is, so the composer never looks like it is about to send a second message.
 */
 export function ComposerEdit({ message, onCancel }: { message: MessageDto; onCancel: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="composer-reply">
       <div className="composer-reply-body">
-        <span className="reply-name">Editing Message</span>
+        <span className="reply-name">{t('thread.editingMessage', 'Editing Message')}</span>
         <span className="reply-text">{previewOf(message.text, message.media, message.poll)}</span>
       </div>
-      <button type="button" className="reply-cancel" aria-label="Cancel Edit" title="Cancel Edit" onClick={onCancel}>
+      <button
+        type="button"
+        className="reply-cancel"
+        aria-label={t('thread.cancelEdit', 'Cancel Edit')}
+        title={t('thread.cancelEdit', 'Cancel Edit')}
+        onClick={onCancel}
+      >
         ×
       </button>
     </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { composerSends } from '../composer-sends';
 import { useDataSaver } from '../data-saver';
@@ -80,6 +81,7 @@ export function ThreadView({
   positions,
   onReadThrough,
 }: ThreadViewProps) {
+  const { t } = useTranslation();
   // A cached reopen can paint a banner before its refresh lands; hiding it
   // here makes the switch take effect at once and keeps it off for that read.
   const { loadPinnedMessages } = useDataSaver();
@@ -273,10 +275,14 @@ export function ThreadView({
           >
             {messages.length > 0 && (loadingOlder || hasMoreOlder) ? (
               <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
-                {loadingOlder ? <Spinner inline size={14} label="Loading…" /> : 'Load Older Messages'}
+                {loadingOlder ? (
+                  <Spinner inline size={14} label={t('common.loading', 'Loading…')} />
+                ) : (
+                  t('thread.loadOlderMessages', 'Load Older Messages')
+                )}
               </button>
             ) : null}
-            {loading && messages.length === 0 ? <MessageSkeleton label="Loading Messages…" /> : null}
+            {loading && messages.length === 0 ? <MessageSkeleton label={t('thread.loadingMessages', 'Loading Messages…')} /> : null}
             {!loading && messages.length === 0 ? <ThreadEmpty description={description} preview={preview !== null} /> : null}
             <ThreadMessageRows
               chat={chat}
@@ -311,7 +317,11 @@ export function ThreadView({
             />
             {!atLatest && messages.length > 0 ? (
               <button type="button" className="load-newer" disabled={loadingNewer} aria-busy={loadingNewer} onClick={onLoadNewer}>
-                {loadingNewer ? <Spinner inline size={14} label="Loading…" /> : 'Load Newer Messages'}
+                {loadingNewer ? (
+                  <Spinner inline size={14} label={t('common.loading', 'Loading…')} />
+                ) : (
+                  t('thread.loadNewerMessages', 'Load Newer Messages')
+                )}
               </button>
             ) : null}
             {pendingForChat.map((entry, index) => (

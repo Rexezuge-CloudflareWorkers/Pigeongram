@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 interface LaunchScreenProps {
   error: string | null;
   onRetry: () => void;
@@ -17,6 +19,7 @@ instead of masquerading as a signed-out visitor. The mark dims and pauses so
 the failure reads as a state, not as a broken animation.
 */
 export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
+  const { t } = useTranslation();
   return (
     <main className={`launch${error ? ' launch--error' : ''}`}>
       <div className="launch-stage" aria-hidden="true">
@@ -30,17 +33,17 @@ export function LaunchScreen({ error, onRetry }: LaunchScreenProps) {
       </div>
       {error ? (
         <section className="launch-error">
-          <h1>Connection Failed</h1>
+          <h1>{t('launch.connectionFailed', 'Connection Failed')}</h1>
           <p className="status" role="alert">
             {error}
           </p>
           <button type="button" className="ghost" onClick={onRetry}>
-            Try Again
+            {t('launch.tryAgain', 'Try Again')}
           </button>
         </section>
       ) : (
         <p className="sr-only" role="status">
-          Checking access…
+          {t('a11y.checkingAccess', 'Checking access…')}
         </p>
       )}
     </main>

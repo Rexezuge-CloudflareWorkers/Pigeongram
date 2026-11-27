@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { formatListStamp, previewOf } from '../format';
@@ -43,6 +44,7 @@ interface SearchOverlayProps {
 }
 
 export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenResult, onClose, exiting = false }: SearchOverlayProps) {
+  const { t } = useTranslation();
   const { query, setQuery, scope, setScope, messages, chats, loading, loadingMore, error, hasMore, loadMore } = useSearch({
     active: true,
     initialScope,
@@ -51,7 +53,11 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
   const inputRef = useRef<HTMLInputElement>(null);
   const needle = query.trim();
   const inChat = scope.kind === 'chat';
-  const scopeLabel = inChat ? `In ${chat?.title ?? 'This Chat'}` : 'In All Chats';
+  const scopeLabel = inChat
+    ? chat
+      ? t('search.inThisChat', 'In {{title}}', { title: chat.title })
+      : t('search.inThisChatFallback', 'In This Chat')
+    : t('search.inAllChats', 'In All Chats');
 
   useEffect(() => {
     const previous = document.activeElement;
@@ -93,18 +99,20 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search messages"
+        aria-label={t('a11y.searchMessages', 'Search messages')}
         className={`dialog-panel flex max-h-[min(640px,80vh,calc(var(--app-height,100dvh)-2rem))] w-full max-w-md flex-col overflow-hidden rounded-xl-increased border border-outline-variant bg-surface-container shadow-2xl${exiting ? ' is-exiting' : ''}`}
       >
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold">Search</h2>
-            <p className="m-0 text-xs text-muted">Messages {scopeLabel}</p>
+            <h2 className="m-0 text-base font-semibold">{t('search.title', 'Search')}</h2>
+            <p className="m-0 text-xs text-muted">
+              {t('search.messagesTab', 'Messages')} {scopeLabel}
+            </p>
           </div>
           <button
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-panel-2 hover:text-fg"
-            aria-label="Close Search"
+            aria-label={t('a11y.closeSearch', 'Close Search')}
             onClick={onClose}
           >
             <Icon name="close" />
@@ -115,34 +123,40 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
             ref={inputRef}
             type="search"
             value={query}
-            placeholder="Search Messages"
-            aria-label="Search messages"
+            placeholder={t('search.placeholder', 'Search Messages')}
+            aria-label={t('a11y.searchMessages', 'Search messages')}
             onChange={(event) => setQuery(event.target.value)}
           />
           {chat === null ? null : (
-            <div role="group" aria-label="Search scope" className="mt-2 flex gap-1">
+            <div role="group" aria-label={t('a11y.searchScope', 'Search scope')} className="mt-2 flex gap-1">
               <ScopeButton active={inChat} onClick={() => setScope({ kind: 'chat', chatId: chat.id })}>
-                This Chat
+                {t('search.thisChat', 'This Chat')}
               </ScopeButton>
               <ScopeButton active={!inChat} onClick={() => setScope({ kind: 'all' })}>
-                All Chats
+                {t('search.allChats', 'All Chats')}
               </ScopeButton>
             </div>
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {loading && messages.length === 0 ? <Spinner size={28} label="Searching…" padding="24px 0" /> : null}
+          {loading && messages.length === 0 ? <Spinner size={28} label={t('search.searching', 'Searching…')} padding="24px 0" /> : null}
           {needle.length === 0 ? (
-            <p className="m-0 px-2 py-3 text-sm text-muted">Type To Search {inChat ? 'This Chat' : 'All Chats'}.</p>
+            <p className="m-0 px-2 py-3 text-sm text-muted">
+              {inChat ? t('search.typeInThisChat', 'Type To Search This Chat.') : t('search.typeInAllChats', 'Type To Search All Chats.')}
+            </p>
           ) : null}
           {!loading && needle.length > 0 && messages.length === 0 && error === null ? (
-            <p className="m-0 px-2 py-3 text-sm text-muted">No Messages Found For “{needle}”.</p>
+            <p className="m-0 px-2 py-3 text-sm text-muted">
+              {t('search.noMessagesFound', 'No Messages Found For “{{query}}”.', { query: needle })}
+            </p>
           ) : null}
           {messages.length > 0 ? (
-            <ul className="m-0 flex list-none flex-col gap-0.5 p-0" aria-label="Search results">
+            <ul className="m-0 flex list-none flex-col gap-0.5 p-0" aria-label={t('a11y.searchResults', 'Search results')}>
               {messages.map((message) => {
                 const resultChat = chatById.get(message.chatId) ?? null;
-                const title = inChat ? (message.senderName ?? resultChat?.title ?? 'Message') : (resultChat?.title ?? 'Message');
+                const title = inChat
+                  ? (message.senderName ?? resultChat?.title ?? t('search.messageFallback', 'Message'))
+                  : (resultChat?.title ?? t('search.messageFallback', 'Message'));
                 return (
                   <li key={`${String(message.chatId)}:${String(message.id)}`}>
                     <button
@@ -173,7 +187,7 @@ export function SearchOverlay({ chat, initialScope, initialQuery = '', onOpenRes
               disabled={loadingMore}
               onClick={loadMore}
             >
-              {loadingMore ? 'Loading…' : 'Load More Results'}
+              {loadingMore ? t('common.loading', 'Loading…') : t('search.loadMore', 'Load More Results')}
             </button>
           ) : null}
         </div>

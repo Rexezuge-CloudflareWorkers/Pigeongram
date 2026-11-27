@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fetchBootstrap, logout } from '../api';
 import { useCallHost } from '../calls/host';
@@ -34,6 +35,7 @@ is one feature away from the god-file cap.
 */
 
 export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, onSignedOut }: SignedInShellProps) {
+  const { t } = useTranslation();
   const [me, setMe] = useState<MeDto | null>(initialMe);
   const { notice, notify, clearNotice } = useDropNotice();
   const { theme, setTheme } = useTheme();
@@ -307,7 +309,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={overlays.openNewChat}
-            aria-label="New Message"
+            aria-label={t('newChat.title', 'New Message')}
           >
             <Icon name="edit" />
           </button>
@@ -315,7 +317,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
             type="button"
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onClick={overlays.openGlobalSearch}
-            aria-label="Search Messages"
+            aria-label={t('a11y.sidebarSearch', 'Search Messages')}
           >
             <Icon name="search" />
           </button>

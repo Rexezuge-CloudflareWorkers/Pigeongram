@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
 import type { BotCommandDto, ChatDto, MessageDto, MessageReplyKeyboardButtonDto, StickerDto } from '../types';
 import type { UploadRequest } from '../upload';
@@ -61,23 +63,28 @@ export function ThreadFooter({
   onSendSticker,
   onPressReplyKeyboard,
 }: ThreadFooterProps) {
+  const { t } = useTranslation();
   if (preview !== null) {
     return (
       <div className="composer composer-notice flex items-center justify-between gap-3">
-        <span>You Are Previewing This Chat. Join It To Send Messages.</span>
+        <span>{t('thread.previewFooter', 'You Are Previewing This Chat. Join It To Send Messages.')}</span>
         <button
           type="button"
           className="shrink-0 rounded-full bg-accent px-4 py-2 font-semibold text-[#0b1a1a] transition-colors hover:bg-accent/90 focus-visible:bg-accent/90 focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
           onClick={onJoin}
           disabled={preview.joining || preview.requested}
         >
-          {preview.joining ? 'Joining…' : preview.requested ? 'Request Sent' : 'Join'}
+          {preview.joining
+            ? t('common.joining', 'Joining…')
+            : preview.requested
+              ? t('common.requestSent', 'Request Sent')
+              : t('common.join', 'Join')}
         </button>
       </div>
     );
   }
   if (!chat.canSendMessages) {
-    return <p className="composer composer-notice">{sendBlockedNotice(chat)}</p>;
+    return <p className="composer composer-notice">{sendBlockedNotice(t, chat)}</p>;
   }
   return (
     <>
@@ -87,7 +94,7 @@ export function ThreadFooter({
       */}
       <Composer
         key={chat.id}
-        placeholder={replyKeyboard?.keyboard.placeholder ?? 'Message'}
+        placeholder={replyKeyboard?.keyboard.placeholder ?? t('thread.messagePlaceholder', 'Message')}
         editTarget={editTarget}
         replyTarget={replyTarget}
         botCommands={botCommands}
@@ -109,8 +116,8 @@ export function ThreadFooter({
 The read-only notice shown in place of the composer: a broadcast channel
 explains itself, everything else was restricted by the chat's admins.
 */
-function sendBlockedNotice(chat: ChatDto): string {
+function sendBlockedNotice(t: TFunction, chat: ChatDto): string {
   return chat.kind === 'channel'
-    ? 'Only Admins Can Post In This Channel.'
-    : 'The Admins Of This Chat Have Restricted Your Ability To Send Messages.';
+    ? t('thread.channelRestricted', 'Only Admins Can Post In This Channel.')
+    : t('thread.sendRestricted', 'The Admins Of This Chat Have Restricted Your Ability To Send Messages.');
 }

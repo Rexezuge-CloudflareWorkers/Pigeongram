@@ -30,8 +30,9 @@ honours the `packageManager` pin). Every command below also works as `volta run 
 | `pnpm run format:check`           | `prettier --check .` (read-only; the CI formatting gate)                                                                  |
 | `pnpm run check:god-files`        | 300-line warn / 400-line hard gate (`--fail-on-hard`), tests and `scripts/` exempt                                        |
 | `pnpm run check:dead-code`        | `knip`: unused files, dependencies and exports (`knip.json` records the entries and the copied-script exemption)          |
+| `pnpm run validate:locales`       | bundle parity, placeholders, and two-way code↔catalogue key coverage (`scripts/validate-locales.ts`)                      |
 | `pnpm run test` / `test:coverage` | Vitest, both projects (worker under `node`, SPA under jsdom)                                                              |
-| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files + dead-code                                                                   |
+| `pnpm run checks:fast`            | typecheck + lint + format:check + god-files + dead-code + locales                                                         |
 | `pnpm run checks`                 | `checks:fast` + `test:coverage`                                                                                           |
 
 ## Local development
@@ -80,6 +81,9 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   and are re-exported from the barrel, `state/index.ts` the chat-list folds (with the pure reaction and poll folds in
   `state/reactions.ts` and `state/polls.ts`), `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
   and the archive move — `useNewChat.ts` the new-message picker's contacts and Telegram-wide search,
+  `i18n.ts` the i18next instance and the catalogue beside it in `locales/*/translation.json` (English only for
+  now; `useLanguage.ts` persists the choice and `docs/I18N.md` holds the rules — every visible string is Title Case,
+  accessible-only copy lives under `a11y.*`, and `validate:locales` is the gate),
   `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is
   `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send
@@ -141,7 +145,8 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   troubleshooting. `PWA.md`: the service worker's rules, the install build, the offline state, and how to verify it.
   `ANDROID.md`: the per-deployment TWA build, signing, Play notes and trust model. `DEPLOYMENT.md`: deployment config,
   secrets/variables and required checks. `TELEGRAM_WIDGETS.md`: why a widget
-  post arrives with no content, what the placeholder card is, and the layer-233 upgrade path.
+  post arrives with no content, what the placeholder card is, and the layer-233 upgrade path. `I18N.md`: the copy
+  catalogue, the Title Case / `a11y.*` split, how to add a language, and the validator.
 - `test/` — a **workspace package**, deliberately: an unhooked out-of-workspace `test/` cannot resolve workspace
   dependencies under pnpm's strict layout. If a bare import fails, add the dependency to `test/package.json` — never loosen
   the workspace.
@@ -164,8 +169,11 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   prepositions and conjunctions are capitalised too, and single words stay as they are. Dynamic interpolations keep
   their own casing (`Forwarded To ${chat.title}`, dates, units such as `5m`/`30s`, server text and user content).
   Non-visible accessible copy — `aria-label`, `title`, `alt` and `sr-only` — keeps sentence case. Keep the
-  accessible name in step with the visible label when both exist. `test/web/copy-style.test.ts` guards the TSX
-  half of this rule.
+  accessible name in step with the visible label when both exist. **The copy lives in
+  `apps/web/src/locales/en/translation.json`, and the namespace is the boundary the guard reads**:
+  `test/web/copy-style.test.ts` holds every key outside `a11y.*` to Title Case and exempts `a11y.*`, which is where
+  accessible-only strings go. A new visible string is a catalogue key with the English default passed as `t()`'s
+  second argument — never a literal in TSX — because `validate:locales` checks both directions of that link.
 - **The product was renamed to Pigeongram; `telegram-web-client` is the internal name.** Telegram's Terms of Service
   forbid a third-party product from using “Telegram” in its name, so every user-visible brand surface — the document
   title, the PWA `name`/`short_name`, the intro and offline eyebrow, and the Android app/launcher defaults — reads
@@ -496,7 +504,7 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   service worker, the manifest, the icons and the assetlinks generator are SPA code without a DOM, so their tests run
   under `node` too.
 - **The CI workflow's `name:` is `Continuous Integration`** — CD's `workflow_run` trigger matches by workflow _name_, not
-  filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Dead Code`, `Unit Tests`, `Worker Bundle`,
+  filename. Job names (`Typecheck`, `Lint`, `Format`, `God Files`, `Dead Code`, `Locales`, `Unit Tests`, `Worker Bundle`,
   `Build Web App`) are the required-check names; keep them stable. `Worker Bundle` always reports (so it is safe as a required check) but only
   installs and runs `wrangler deploy --dry-run` when the change set touches `apps/api/`, `packages/`, the wrangler
   config materializer (`scripts/prepare-wrangler-config.ts`, `scripts/lib/`, `scripts/wrangler-config/`), or the

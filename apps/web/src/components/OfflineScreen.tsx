@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { APP_NAME } from '../app-name';
 
 /**
@@ -13,16 +14,20 @@ interface OfflineScreenProps {
 }
 
 export function OfflineScreen({ onRetry }: OfflineScreenProps) {
+  const { t } = useTranslation();
   return (
     <main className="landing">
       <section className="landing-hero">
         <p className="eyebrow">{APP_NAME}</p>
-        <h1>You Are Offline</h1>
+        <h1>{t('offline.title', 'You Are Offline')}</h1>
         <p className="lead">
-          The Client Cannot Reach The Server, So It Cannot Read Your Chats. It Reconnects On Its Own As Soon As The Network Is Back.
+          {t(
+            'offline.body',
+            'The Client Cannot Reach The Server, So It Cannot Read Your Chats. It Reconnects On Its Own As Soon As The Network Is Back.',
+          )}
         </p>
         <button type="button" className="cta" onClick={onRetry}>
-          Try Again
+          {t('offline.tryAgain', 'Try Again')}
         </button>
       </section>
     </main>

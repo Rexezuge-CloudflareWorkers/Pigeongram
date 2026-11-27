@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { reactionKey } from '../state';
 import type { MessageDto, MessageReactionDto } from '../types';
 
@@ -24,10 +25,11 @@ export function MessageReactions({
   burstKey: string | null;
   burst: (key: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="reactions">
       {message.reactions.map((reaction) => {
-        const title = reaction.emoji ?? 'Custom emoji';
+        const title = reaction.emoji ?? t('a11y.customEmoji', 'Custom emoji');
         const emoji = <span className="reaction-emoji">{reaction.emoji ?? '◻'}</span>;
         const count = <span className="reaction-count">{reaction.count}</span>;
         if (!onReact) {
@@ -45,7 +47,7 @@ export function MessageReactions({
             className={`reaction${reaction.chosen ? ' chosen' : ''}${burstKey === reactionKey(reaction) ? ' burst' : ''}`}
             disabled={reacting}
             title={title}
-            aria-label={`React ${title} (${String(reaction.count)})`}
+            aria-label={t('thread.reactLabel', 'React {{title}} ({{count}})', { title, count: reaction.count })}
             aria-pressed={reaction.chosen}
             onClick={() => {
               if (!reaction.chosen) burst(reactionKey(reaction));

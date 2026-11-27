@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { formatListStamp, previewOf } from '../format';
 import type { ScheduledMessagesController } from '../useScheduledMessages';
 import { Button } from './Button';
@@ -19,22 +20,23 @@ interface ScheduledMessagesDialogProps {
 }
 
 export function ScheduledMessagesDialog({ controller }: ScheduledMessagesDialogProps) {
+  const { t } = useTranslation();
   const { isOpen, messages, loading, error, busyIds, close, sendNow, remove, edited } = controller;
   if (!isOpen) return null;
   return (
     <Dialog
-      title="Scheduled Messages"
+      title={t('scheduled.title', 'Scheduled Messages')}
       className="max-w-[520px]"
       onClose={close}
       actions={
         <Button variant="text" onClick={close} data-dialog-cancel>
-          Close
+          {t('common.close', 'Close')}
         </Button>
       }
     >
-      {loading && messages.length === 0 ? <Spinner inline size={16} label="Loading Scheduled Messages…" /> : null}
+      {loading && messages.length === 0 ? <Spinner inline size={16} label={t('scheduled.loading', 'Loading Scheduled Messages…')} /> : null}
       {error !== null && messages.length === 0 ? <p className="text-error">{error}</p> : null}
-      {!loading && error === null && messages.length === 0 ? <p>No Scheduled Messages.</p> : null}
+      {!loading && error === null && messages.length === 0 ? <p>{t('scheduled.empty', 'No Scheduled Messages.')}</p> : null}
       {messages.length > 0 ? (
         <ul className="max-h-[55vh] space-y-2 overflow-y-auto">
           {messages.map((message) => {
@@ -49,7 +51,7 @@ export function ScheduledMessagesDialog({ controller }: ScheduledMessagesDialogP
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   <Button variant="text" disabled={busy} onClick={() => void sendNow(message)}>
-                    Send Now
+                    {t('scheduled.sendNow', 'Send Now')}
                   </Button>
                   <Button
                     variant="text"
@@ -59,10 +61,10 @@ export function ScheduledMessagesDialog({ controller }: ScheduledMessagesDialogP
                       edited(message);
                     }}
                   >
-                    Edit
+                    {t('scheduled.edit', 'Edit')}
                   </Button>
                   <Button variant="text" tone="danger" disabled={busy} onClick={() => void remove(message)}>
-                    Delete
+                    {t('scheduled.delete', 'Delete')}
                   </Button>
                 </div>
               </li>

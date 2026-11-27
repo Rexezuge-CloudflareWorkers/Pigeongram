@@ -11,7 +11,9 @@
     "@pigeongram/web": "workspace:*",
     "@rexezuge/errors": "1.9.4",
     "@rexezuge/http": "1.9.4",
+    "@rexezuge/shared": "1.9.4",
     "@rexezuge/web": "1.9.4",
+    "i18next": "^27.1.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

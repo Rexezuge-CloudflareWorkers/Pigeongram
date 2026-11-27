@@ -1,10 +1,14 @@
 import { useId } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useDataSaverControls, type DataSaverKey } from '../data-saver';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { ToggleSwitch } from './ToggleSwitch';
+import { LanguageSettingsRow } from './LanguageSettingsRow';
+import { useLanguage } from '../useLanguage';
 import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
 /**
@@ -42,15 +46,40 @@ interface SettingsPopupProps {
   exiting?: boolean;
 }
 
-const DATA_SAVER_ROWS: ReadonlyArray<{ key: DataSaverKey; label: string; description: string; icon: IconName }> = [
-  { key: 'loadAvatars', label: 'Profile Pictures', description: 'Show Profile Photos Across The App', icon: 'person' },
-  { key: 'loadPreviews', label: 'Link Previews', description: 'Load Link Preview Thumbnails', icon: 'link' },
-  { key: 'loadMedia', label: 'Photos & Videos', description: 'Fetch Photo And Video Thumbnails', icon: 'image' },
-  { key: 'animateMedia', label: 'Autoplay Media', description: 'Play GIFs, Video Stickers And Animated Stickers', icon: 'gif' },
+const DATA_SAVER_ROWS: ReadonlyArray<{
+  key: DataSaverKey;
+  label: (t: TFunction) => string;
+  hint: (t: TFunction) => string;
+  icon: IconName;
+}> = [
+  {
+    key: 'loadAvatars',
+    label: (t) => t('settings.profiles', 'Profile Pictures'),
+    hint: (t) => t('settings.profilesHint', 'Show Profile Photos Across The App'),
+    icon: 'person',
+  },
+  {
+    key: 'loadPreviews',
+    label: (t) => t('settings.linkPreviews', 'Link Previews'),
+    hint: (t) => t('settings.linkPreviewsHint', 'Load Link Preview Thumbnails'),
+    icon: 'link',
+  },
+  {
+    key: 'loadMedia',
+    label: (t) => t('settings.media', 'Photos & Videos'),
+    hint: (t) => t('settings.mediaHint', 'Fetch Photo And Video Thumbnails'),
+    icon: 'image',
+  },
+  {
+    key: 'animateMedia',
+    label: (t) => t('settings.animate', 'Autoplay Media'),
+    hint: (t) => t('settings.animateHint', 'Play GIFs, Video Stickers And Animated Stickers'),
+    icon: 'gif',
+  },
   {
     key: 'loadPinnedMessages',
-    label: 'Pinned Messages',
-    description: 'Load Pinned Messages When Opening A Chat',
+    label: (t) => t('settings.pinned', 'Pinned Messages'),
+    hint: (t) => t('settings.pinnedHint', 'Load Pinned Messages When Opening A Chat'),
     icon: 'pin',
   },
 ];
@@ -66,42 +95,44 @@ export function SettingsPopup({
   returnFocus,
   exiting = false,
 }: SettingsPopupProps) {
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const appearanceId = useId();
   const dataSaverId = useId();
   const { settings: dataSaver, setSetting: onSetDataSaver } = useDataSaverControls();
 
   return (
     <Dialog
-      title="Settings"
+      title={t('settings.title', 'Settings')}
       onClose={onClose}
       returnFocus={returnFocus}
       exiting={exiting}
       className="max-w-[440px]"
       actions={
         <Button variant="text" onClick={onClose}>
-          Done
+          {t('common.done', 'Done')}
         </Button>
       }
     >
       <section className="flex flex-col gap-4" aria-labelledby={appearanceId}>
         <h3 id={appearanceId} className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Appearance
+          {t('settings.appearance', 'Appearance')}
         </h3>
         <div className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-2 text-sm font-medium text-fg">
             <Icon name={theme === 'dark' ? 'dark-mode' : 'light-mode'} size={18} className="text-muted" />
-            Theme
+            {t('settings.theme', 'Theme')}
           </span>
           <button
             type="button"
             className="rounded-full border border-outline px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             onClick={onToggleTheme}
           >
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            {theme === 'dark' ? t('settings.lightMode', 'Light Mode') : t('settings.darkMode', 'Dark Mode')}
           </button>
         </div>
-        <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label="Accent">
-          <span className="text-sm font-medium text-fg">Accent</span>
+        <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label={t('settings.accent', 'Accent')}>
+          <span className="text-sm font-medium text-fg">{t('settings.accent', 'Accent')}</span>
           <div className="flex gap-1.5">
             {SEEDS.map((option) => (
               <button
@@ -118,8 +149,8 @@ export function SettingsPopup({
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label="Contrast">
-          <span className="text-sm font-medium text-fg">Contrast</span>
+        <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label={t('settings.contrast', 'Contrast')}>
+          <span className="text-sm font-medium text-fg">{t('settings.contrast', 'Contrast')}</span>
           <div className="flex gap-1">
             {(['standard', 'medium', 'high'] as const).map((level) => (
               <button
@@ -130,27 +161,32 @@ export function SettingsPopup({
                 onClick={() => onSetContrast?.(level)}
                 className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${contrast === level ? 'bg-panel-2 text-fg' : 'text-muted hover:text-fg'}`}
               >
-                {level === 'standard' ? 'Standard' : level === 'medium' ? 'Medium' : 'High'}
+                {level === 'standard'
+                  ? t('settings.contrastStandard', 'Standard')
+                  : level === 'medium'
+                    ? t('settings.contrastMedium', 'Medium')
+                    : t('settings.contrastHigh', 'High')}
               </button>
             ))}
           </div>
         </div>
+        <LanguageSettingsRow language={language} onChange={setLanguage} />
       </section>
       <div className="h-px bg-line" role="separator" />
       <section className="flex flex-col gap-4" aria-labelledby={dataSaverId}>
         <h3 id={dataSaverId} className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Data Saver
+          {t('settings.dataSaver', 'Data Saver')}
         </h3>
         {DATA_SAVER_ROWS.map((row) => (
           <div key={row.key} className="flex items-center justify-between gap-4">
             <span className="flex min-w-0 items-center gap-2">
               <Icon name={row.icon} size={18} className="shrink-0 text-muted" />
               <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-medium text-fg">{row.label}</span>
-                <span className="text-xs text-muted">{row.description}</span>
+                <span className="text-sm font-medium text-fg">{row.label(t)}</span>
+                <span className="text-xs text-muted">{row.hint(t)}</span>
               </span>
             </span>
-            <ToggleSwitch checked={dataSaver[row.key]} label={row.label} onChange={(enabled) => onSetDataSaver(row.key, enabled)} />
+            <ToggleSwitch checked={dataSaver[row.key]} label={row.label(t)} onChange={(enabled) => onSetDataSaver(row.key, enabled)} />
           </div>
         ))}
       </section>

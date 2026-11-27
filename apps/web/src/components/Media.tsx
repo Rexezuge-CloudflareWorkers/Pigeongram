@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { fileUrl } from '../api';
 import { useDataSaver } from '../data-saver';
@@ -60,6 +61,7 @@ withheld behind a tap-to-load box; the first tap loads it in place and the
 second opens the viewer.
 */
 export function MessageMedia({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
+  const { t } = useTranslation();
   const src = fileUrl(message.chatId, message.id);
   const { loadMedia, animateMedia } = useDataSaver();
   const [revealed, setRevealed] = useState(false);
@@ -77,11 +79,16 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
     case 'photo': {
       if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
-        <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'photo'}`}>
+        <button
+          type="button"
+          className="media-open"
+          onClick={onOpen}
+          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'photo' })}
+        >
           <MediaThumb
             className="photo"
             src={photoSrc}
-            alt={media.fileName ?? 'Photo'}
+            alt={media.fileName ?? t('a11y.photoAlt', 'Photo')}
             width={media.width}
             height={media.height}
             onError={() => {
@@ -100,7 +107,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
     case 'video': {
       if (!loaded) return <MediaPlaceholder media={media} onLoad={reveal} />;
       return (
-        <button type="button" className="video-tile" onClick={onOpen} aria-label={`Play ${media.fileName ?? 'video'}`}>
+        <button
+          type="button"
+          className="video-tile"
+          onClick={onOpen}
+          aria-label={t('a11y.playMedia', 'Play {{name}}', { name: media.fileName ?? 'video' })}
+        >
           <MediaThumb
             src={fileUrl(message.chatId, message.id, { thumb: true })}
             alt=""
@@ -121,7 +133,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
       // when the viewer opens it.
       if (!animateMedia) {
         return (
-          <button type="button" className="video-tile" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'GIF'}`}>
+          <button
+            type="button"
+            className="video-tile"
+            onClick={onOpen}
+            aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'GIF' })}
+          >
             <MediaThumb
               src={fileUrl(message.chatId, message.id, { thumb: true })}
               alt=""
@@ -136,7 +153,12 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
         );
       }
       return (
-        <button type="button" className="media-open" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'GIF'}`}>
+        <button
+          type="button"
+          className="media-open"
+          onClick={onOpen}
+          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'GIF' })}
+        >
           <video
             className="video"
             src={src}
@@ -195,6 +217,7 @@ function DocumentImage({
   onOpen: () => void;
   loadMedia: boolean;
 }) {
+  const { t } = useTranslation();
   const original = fileUrl(message.chatId, message.id);
   const [revealed, setRevealed] = useState(false);
   const [src, setSrc] = useState(() =>
@@ -213,11 +236,16 @@ function DocumentImage({
   }
   if (failed) return <DocumentLink message={message} />;
   return (
-    <button type="button" className="media-open document-image" onClick={onOpen} aria-label={`Open ${media.fileName ?? 'image'}`}>
+    <button
+      type="button"
+      className="media-open document-image"
+      onClick={onOpen}
+      aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'image' })}
+    >
       <MediaThumb
         className="photo"
         src={src}
-        alt={media.fileName ?? 'Image'}
+        alt={media.fileName ?? t('a11y.imageAlt', 'Image')}
         width={media.width}
         height={media.height}
         onError={() => {
@@ -270,6 +298,7 @@ front. With the data saver's media switch off, the first tap loads the
 thumbnail and the second opens the viewer.
 */
 function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => void }) {
+  const { t } = useTranslation();
   const media = message.media;
   const { loadMedia } = useDataSaver();
   const [revealed, setRevealed] = useState(false);
@@ -288,7 +317,7 @@ function AlbumCell({ message, onOpen }: { message: MessageDto; onOpen: () => voi
               setRevealed(true);
             }
       }
-      aria-label={`${loaded ? 'Open' : 'Load'} ${name}`}
+      aria-label={loaded ? t('a11y.openMedia', 'Open {{name}}', { name }) : t('a11y.loadMedia', 'Load {{name}}', { name })}
     >
       {loaded ? (
         <MediaThumb

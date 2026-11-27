@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { initials } from '../format';
 import type { ChatInvitePreviewDto } from '../types';
 import { Button } from './Button';
@@ -32,17 +33,19 @@ interface InviteDialogProps {
   exiting?: boolean;
 }
 
-const KIND_LABEL: Record<ChatInvitePreviewDto['kind'], string> = {
-  group: 'Group',
-  supergroup: 'Supergroup',
-  channel: 'Channel',
+const KIND_KEY: Record<ChatInvitePreviewDto['kind'], [string, string]> = {
+  group: ['chats.kindGroup', 'Group'],
+  supergroup: ['chats.kindSupergroup', 'Supergroup'],
+  channel: ['chats.kindChannel', 'Channel'],
 };
 
 export function InviteDialog({ preview, joining, requested, onJoin, onClose, exiting = false }: InviteDialogProps) {
+  const { t } = useTranslation();
   const busy = joining || requested;
+  const [kindKey, kindText] = KIND_KEY[preview.kind];
   return (
     <Dialog
-      title="Join Chat"
+      title={t('invite.title', 'Join Chat')}
       onClose={onClose}
       busy={busy}
       initialFocus="cancel"
@@ -51,11 +54,11 @@ export function InviteDialog({ preview, joining, requested, onJoin, onClose, exi
         <>
           <span data-dialog-cancel className="contents">
             <Button tone="primary" variant="text" className="min-w-[88px]" disabled={busy} onClick={onClose}>
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
           </span>
           <Button tone="accent" className="min-w-[88px]" disabled={busy} onClick={onJoin}>
-            {joining ? 'Joining…' : requested ? 'Request Sent' : 'Join'}
+            {joining ? t('common.joining', 'Joining…') : requested ? t('common.requestSent', 'Request Sent') : t('common.join', 'Join')}
           </Button>
         </>
       }
@@ -67,12 +70,17 @@ export function InviteDialog({ preview, joining, requested, onJoin, onClose, exi
         <div>
           <p className="text-base font-medium">{preview.title}</p>
           <p className="text-sm text-muted">
-            {KIND_LABEL[preview.kind]} · {preview.memberCount.toLocaleString()} Members
+            {t(kindKey, kindText)} ·{' '}
+            {preview.memberCount === 1
+              ? t('invite.memberCountOne', '{{members}} Member', { members: preview.memberCount.toLocaleString() })
+              : t('invite.memberCount', '{{members}} Members', { members: preview.memberCount.toLocaleString() })}
           </p>
         </div>
         {preview.about === null ? null : <p className="text-sm text-muted">{preview.about}</p>}
-        {preview.withApproval ? <p className="text-sm text-muted">An Admin Has To Approve Your Join Request.</p> : null}
-        {requested ? <p className="text-sm text-muted">Your Join Request Was Sent.</p> : null}
+        {preview.withApproval ? (
+          <p className="text-sm text-muted">{t('invite.approval', 'An Admin Has To Approve Your Join Request.')}</p>
+        ) : null}
+        {requested ? <p className="text-sm text-muted">{t('invite.requestSent', 'Your Join Request Was Sent.')}</p> : null}
       </div>
     </Dialog>
   );

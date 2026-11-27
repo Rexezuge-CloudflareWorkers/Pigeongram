@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatBytes, mediaPreview } from '../format';
@@ -30,12 +32,13 @@ interface UploadDialogProps {
 }
 
 export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }: UploadDialogProps) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<File[]>(() => initialFiles.slice(0, MAX_UPLOAD_ITEMS));
   // Two picks in the same tick must not read a stale render closure: the ref
   // is the current selection, and the state exists only to render it.
   const filesRef = useRef(files);
   const [notice, setNotice] = useState<string | null>(() =>
-    initialFiles.length > MAX_UPLOAD_ITEMS ? overflowNotice(initialFiles.length - MAX_UPLOAD_ITEMS) : null,
+    initialFiles.length > MAX_UPLOAD_ITEMS ? overflowNotice(t, initialFiles.length - MAX_UPLOAD_ITEMS) : null,
   );
   // Albums are the better default for a multi-file selection, so the checkbox
   // starts checked; it is rendered disabled whenever the selection cannot group.
@@ -100,7 +103,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
     const next = merged.slice(0, MAX_UPLOAD_ITEMS);
     filesRef.current = next;
     setFiles(next);
-    setNotice(merged.length > MAX_UPLOAD_ITEMS ? overflowNotice(merged.length - MAX_UPLOAD_ITEMS) : null);
+    setNotice(merged.length > MAX_UPLOAD_ITEMS ? overflowNotice(t, merged.length - MAX_UPLOAD_ITEMS) : null);
   };
 
   const removeFile = (index: number): void => {
@@ -117,12 +120,14 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
 
   const sendLabel =
     files.length === 0
-      ? 'Send'
+      ? t('common.send', 'Send')
       : grouped && groupable && files.length > 1
-        ? `Send Album (${files.length})`
+        ? t('upload.sendAlbum', 'Send Album ({{count}})', { count: files.length })
         : files.length > 1
-          ? `Send ${files.length} Files`
-          : 'Send';
+          ? files.length === 1
+            ? t('upload.sendFilesOne', 'Send {{count}} File', { count: files.length })
+            : t('upload.sendFiles', 'Send {{count}} Files', { count: files.length })
+          : t('common.send', 'Send');
 
   return createPortal(
     <div
@@ -141,7 +146,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
       >
         <div className="flex shrink-0 items-baseline justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
           <h2 id={titleId} className="text-lg font-semibold sm:text-xl">
-            Send Files
+            {t('upload.title', 'Send Files')}
           </h2>
           <span className="text-sm text-muted">
             {files.length} / {MAX_UPLOAD_ITEMS}
@@ -153,10 +158,10 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
             viewport is. */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
           <p id={hintId} className="pt-1 text-sm text-muted">
-            Review The Selection, Then Send The Files Together As An Album Or One By One.
+            {t('upload.hint', 'Review The Selection, Then Send The Files Together As An Album Or One By One.')}
           </p>
 
-          <ul className="mt-4 space-y-2" aria-label="Selected files">
+          <ul className="mt-4 space-y-2" aria-label={t('a11y.selectedFiles', 'Selected files')}>
             {files.map((file, index) => (
               <UploadPreview
                 key={`${file.name}:${file.size}:${file.lastModified}:${index}`}
@@ -181,7 +186,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
               disabled={files.length >= MAX_UPLOAD_ITEMS}
               onClick={() => fileRef.current?.click()}
             >
-              Add Files
+              {t('upload.addFiles', 'Add Files')}
             </button>
             <input
               ref={fileRef}
@@ -206,8 +211,8 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
                 onChange={(event) => setGrouped(event.target.checked)}
               />
               <span>
-                <span className="block font-medium">Group Items</span>
-                <span className="block text-sm text-muted">{groupHint(files.length, groupable, sendAsFile)}</span>
+                <span className="block font-medium">{t('upload.groupItems', 'Group Items')}</span>
+                <span className="block text-sm text-muted">{groupHint(t, files.length, groupable, sendAsFile)}</span>
               </span>
             </label>
           </div>
@@ -216,10 +221,12 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
             <label className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
               <Checkbox className="mt-1" checked={sendAsFile} onChange={(event) => setSendAsFile(event.target.checked)} />
               <span>
-                <span className="block font-medium">Send As File</span>
+                <span className="block font-medium">{t('upload.sendAsFile', 'Send As File')}</span>
                 <span className="block text-sm text-muted">
-                  Uploads The Originals Untouched: No Re-Encoding And No Telegram Compression. Images Arrive As Files Instead Of Photo
-                  Bubbles.
+                  {t(
+                    'upload.sendAsFileHint',
+                    'Uploads The Originals Untouched: No Re-Encoding And No Telegram Compression. Images Arrive As Files Instead Of Photo Bubbles.',
+                  )}
                 </span>
               </span>
             </label>
@@ -233,7 +240,7 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
             className="min-w-[88px] rounded-full px-4 py-2 font-semibold text-accent transition-colors hover:bg-accent/10 focus-visible:bg-accent/10 focus-visible:outline-none"
             onClick={onCancel}
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </button>
           <button
             type="button"
@@ -266,6 +273,7 @@ interface UploadPreviewProps {
 }
 
 function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps) {
+  const { t } = useTranslation();
   const kind = sendAsFile ? 'document' : mediaKind(file);
   // The object URL is derived, not stored: a photo preview is a blob URL the
   // browser owns, and the effect below hands it back when the row unmounts.
@@ -297,7 +305,7 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
         {previewUrl ? <img src={previewUrl} alt="" className="h-full w-full object-cover" /> : <Icon name={KIND_ICONS[kind]} size={24} />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{file.name || 'File'}</span>
+        <span className="block truncate text-sm font-medium">{file.name || t('media.file', 'File')}</span>
         <span className="block text-xs text-muted">
           {mediaPreview(kind)}
           {size ? ` · ${size}` : ''}
@@ -306,7 +314,7 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
       <button
         type="button"
         className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-panel-2 hover:text-fg focus-visible:bg-panel-2 focus-visible:text-fg focus-visible:outline-none"
-        aria-label={`Remove ${file.name || 'file'}`}
+        aria-label={t('upload.removeFile', 'Remove {{name}}', { name: file.name || t('a11y.mediaFallback', 'media') })}
         onClick={onRemove}
       >
         <Icon name="close" size={18} />
@@ -315,13 +323,20 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
   );
 }
 
-function overflowNotice(dropped: number): string {
-  return `Only ${MAX_UPLOAD_ITEMS} Files Can Be Sent At Once; ${dropped === 1 ? 'One File Was' : `${dropped} Files Were`} Left Out. Send The Rest In Another Batch.`;
+function overflowNotice(t: TFunction, dropped: number): string {
+  return dropped === 1
+    ? t('upload.overflowOne', 'Only {{max}} Files Can Be Sent At Once; One File Was Left Out. Send The Rest In Another Batch.', {
+        max: MAX_UPLOAD_ITEMS,
+      })
+    : t('upload.overflowMany', 'Only {{max}} Files Can Be Sent At Once; {{count}} Files Were Left Out. Send The Rest In Another Batch.', {
+        max: MAX_UPLOAD_ITEMS,
+        count: dropped,
+      });
 }
 
-function groupHint(count: number, groupable: boolean, sendAsFile: boolean): string {
-  if (count < 2) return 'Select Two Or More Files To Send Them As An Album.';
-  if (sendAsFile) return 'Every File Goes As A Document, So Any Selection Can Share One Album.';
-  if (groupable) return 'Photos, Videos And GIFs Go Together; Documents Group With Documents.';
-  return 'These Files Cannot Share An Album. They Will Be Sent As Separate Messages.';
+function groupHint(t: TFunction, count: number, groupable: boolean, sendAsFile: boolean): string {
+  if (count < 2) return t('upload.groupTooFew', 'Select Two Or More Files To Send Them As An Album.');
+  if (sendAsFile) return t('upload.groupAsFile', 'Every File Goes As A Document, So Any Selection Can Share One Album.');
+  if (groupable) return t('upload.groupable', 'Photos, Videos And GIFs Go Together; Documents Group With Documents.');
+  return t('upload.groupNotPossible', 'These Files Cannot Share An Album. They Will Be Sent As Separate Messages.');
 }

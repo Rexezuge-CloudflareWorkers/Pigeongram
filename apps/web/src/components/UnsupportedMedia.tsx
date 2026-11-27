@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 
 /**
@@ -12,6 +13,7 @@ Telegram keeps the message readable as a placeholder — `docs/TELEGRAM_WIDGETS.
 records why (Telegram Widgets, layer 233) and what a real implementation needs.
 */
 export function MessageUnsupported({ link }: { link: string | null }) {
+  const { t } = useTranslation();
   return (
     <div
       className="unsupported-media flex items-start gap-3 rounded-xl border border-dashed border-outline-variant bg-surface-container p-3"
@@ -21,8 +23,10 @@ export function MessageUnsupported({ link }: { link: string | null }) {
         <Icon name="info" size={20} />
       </span>
       <div className="min-w-0 text-sm">
-        <p className="font-medium text-on-surface">This Message Isn&apos;t Supported Yet</p>
-        <p className="mt-0.5 text-on-surface-variant">It Uses A Newer Telegram Feature This App Can&apos;t Display.</p>
+        <p className="font-medium text-on-surface">{t('media.unsupportedTitle', "This Message Isn't Supported Yet")}</p>
+        <p className="mt-0.5 text-on-surface-variant">
+          {t('media.unsupportedBody', "It Uses A Newer Telegram Feature This App Can't Display.")}
+        </p>
         {link === null ? null : (
           <a
             className="mt-1.5 inline-flex items-center gap-1 font-medium text-primary hover:underline"
@@ -30,7 +34,7 @@ export function MessageUnsupported({ link }: { link: string | null }) {
             target="_blank"
             rel="noreferrer"
           >
-            Open In Telegram
+            {t('thread.openInTelegram', 'Open In Telegram')}
             <Icon name="open-in-new" size={14} />
           </a>
         )}

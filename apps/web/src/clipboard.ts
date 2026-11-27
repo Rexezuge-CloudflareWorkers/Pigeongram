@@ -1,3 +1,4 @@
+import { t } from './i18n';
 /**
 The clipboard.
 
@@ -74,7 +75,7 @@ export async function writeClipboard(text: string): Promise<void> {
     // The fallback below is the only chance left.
   }
   if (copyBySelection(text)) return;
-  throw new Error('The Clipboard Is Not Available');
+  throw new Error(t('errors.clipboardUnavailable', 'The Clipboard Is Not Available'));
 }
 
 /**

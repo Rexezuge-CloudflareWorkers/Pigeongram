@@ -136,6 +136,24 @@ jobs:
       - name: Check For Dead Code
         run: pnpm run check:dead-code
 
+  # A key a bundle lacks renders the inline English default for every reader in
+  # every language, and a key no caller reaches is a translation nobody can ship.
+  # Neither typecheck nor a test sees either: `t()` takes the key as a string and
+  # the default makes a missing resource indistinguishable from a present one.
+  locales:
+    name: Locales
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Validate Locale Bundles
+        run: pnpm run validate:locales
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest

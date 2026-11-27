@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { launchTelegramApp, miniAppDeepLink } from '../links';
 import { safeHref } from '../safe-url';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
@@ -20,8 +21,13 @@ interface ReplyKeyboardProps {
 }
 
 export function ReplyKeyboard({ keyboard, onPress }: ReplyKeyboardProps) {
+  const { t } = useTranslation();
   return (
-    <div className="reply-keyboard flex flex-col gap-1.5 border-t border-line bg-panel px-3 py-2" role="group" aria-label="Bot keyboard">
+    <div
+      className="reply-keyboard flex flex-col gap-1.5 border-t border-line bg-panel px-3 py-2"
+      role="group"
+      aria-label={t('a11y.botKeyboard', 'Bot keyboard')}
+    >
       {keyboard.keyboard.rows.map((row, rowIndex) => (
         <div className="flex gap-1.5" key={rowIndex}>
           {row.map((button, buttonIndex) => (

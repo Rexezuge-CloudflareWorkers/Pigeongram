@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchStickerLibrary, fetchStickerSet, stickerUrl } from '../api';
 import type { StickerDto, StickerLibraryDto, StickerSetDto } from '../types';
@@ -32,6 +33,7 @@ interface StickerPickerProps {
 }
 
 export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSticker }: StickerPickerProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<'sticker' | 'emoji'>(stickersEnabled ? 'sticker' : 'emoji');
   const activeTab = stickersEnabled ? tab : 'emoji';
@@ -118,7 +120,7 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Stickers and emoji"
+      aria-label={t('a11y.stickersAndEmojiPanel', 'Stickers and emoji')}
       className="absolute bottom-[calc(100%+8px)] left-3 right-3 z-30 flex h-[360px] max-h-[70vh] flex-col gap-2 rounded-xl border border-line bg-panel-2 p-3 shadow-2xl sm:right-auto sm:w-[380px]"
     >
       <div className="flex shrink-0 items-center gap-1">
@@ -129,7 +131,7 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
             aria-pressed={activeTab === 'sticker'}
             onClick={() => setTab('sticker')}
           >
-            Stickers
+            {t('stickers.stickersTab', 'Stickers')}
           </button>
         ) : null}
         <button
@@ -138,13 +140,13 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
           aria-pressed={activeTab === 'emoji'}
           onClick={() => setTab('emoji')}
         >
-          Emoji
+          {t('stickers.emojiTab', 'Emoji')}
         </button>
         <button
           type="button"
           className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-panel hover:text-fg"
-          aria-label="Close picker"
-          title="Close"
+          aria-label={t('a11y.closePicker', 'Close picker')}
+          title={t('common.close', 'Close')}
           onClick={onClose}
         >
           <Icon name="close" size={18} />
@@ -157,8 +159,8 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
           <input
             type="search"
             value={query}
-            placeholder="Search Sticker Packs"
-            aria-label="Search sticker packs"
+            placeholder={t('stickers.searchPacks', 'Search Sticker Packs')}
+            aria-label={t('a11y.searchStickerPacks', 'Search sticker packs')}
             className="w-full shrink-0 rounded-lg border border-line bg-panel px-3 py-1.5 text-sm text-fg outline-none focus-visible:border-accent"
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -172,8 +174,8 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
                   <button
                     type="button"
                     className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-panel hover:text-fg"
-                    aria-label="Back to packs"
-                    title="Back"
+                    aria-label={t('a11y.backToPacks', 'Back to packs')}
+                    title={t('common.back', 'Back')}
                     onClick={() => setOpenSet(null)}
                   >
                     <Icon name="arrow-left" size={18} />
@@ -204,6 +206,7 @@ interface StickerOverviewProps {
 }
 
 function StickerOverview({ library, packs, onPick, onOpenPack }: StickerOverviewProps) {
+  const { t } = useTranslation();
   if (library === null) {
     return (
       <div className="flex justify-center py-6">
@@ -213,12 +216,14 @@ function StickerOverview({ library, packs, onPick, onOpenPack }: StickerOverview
   }
   return (
     <div className="flex flex-col gap-3">
-      {library.recent.length > 0 ? <StickerSection title="Recent" stickers={library.recent} onPick={onPick} /> : null}
-      {library.faved.length > 0 ? <StickerSection title="Saved" stickers={library.faved} onPick={onPick} /> : null}
+      {library.recent.length > 0 ? (
+        <StickerSection title={t('stickers.recent', 'Recent')} stickers={library.recent} onPick={onPick} />
+      ) : null}
+      {library.faved.length > 0 ? <StickerSection title={t('stickers.saved', 'Saved')} stickers={library.faved} onPick={onPick} /> : null}
       <div>
-        <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">Packs</p>
+        <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{t('stickers.packs', 'Packs')}</p>
         {packs.length === 0 ? (
-          <p className="py-2 text-sm text-muted">No Sticker Packs.</p>
+          <p className="py-2 text-sm text-muted">{t('stickers.noPacks', 'No Sticker Packs.')}</p>
         ) : (
           <div className="grid grid-cols-4 gap-1">
             {packs.map((set) => (
@@ -278,6 +283,7 @@ function StickerGrid({
   onPick: (sticker: StickerDto) => void;
   label: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-4 gap-1">
       {stickers.map((sticker) => (
@@ -285,7 +291,11 @@ function StickerGrid({
           key={sticker.id}
           type="button"
           className="flex items-center justify-center rounded-lg p-1 hover:bg-panel focus-visible:bg-panel focus-visible:outline-none"
-          aria-label={sticker.emoji === null ? `${label} sticker` : `${sticker.emoji} sticker`}
+          aria-label={
+            sticker.emoji === null
+              ? t('a11y.stickerLabel', '{{label}} sticker', { label })
+              : t('a11y.emojiStickerLabel', '{{emoji}} sticker', { emoji: sticker.emoji })
+          }
           title={sticker.emoji ?? undefined}
           onClick={() => onPick(sticker)}
         >

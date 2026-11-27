@@ -136,7 +136,7 @@ The workflow:
    fingerprints the deployment no longer configures;
 2. renders `android/build/twa-manifest.json` from `android/twa-manifest.template.json`;
 3. runs Bubblewrap `update` and `build` with the pinned `1.27.0` release;
-4. verifies both signatures against the keystore fingerprint;
+4. verifies both signatures against the keystore fingerprint and that the APK declares the launch activity;
 5. uploads `app-release-signed.apk`, `app-release-bundle.aab` and `SHA256SUMS`.
 
 The step logic lives in `scripts/android/`, one script per step (`setup-sdk.ts`, `configure-bubblewrap.ts`,
@@ -196,6 +196,13 @@ The first build of a new package id has no previous code to beat; the default ru
   enabling delegation also changes the native manifest and requires a rebuild.
 
 ## Troubleshooting
+
+**The app closes immediately after it is opened.** `androidbrowserhelper` 2.7.4, which Bubblewrap 1.27.0 uses, toggles
+`ManageDataLauncherActivity` on every launch. Android throws `IllegalArgumentException: Component class ...ManageDataLauncherActivity
+does not exist` when the APK manifest does not declare it. Bubblewrap emits that declaration only when
+`enableSiteSettingsShortcut` is `true`, so the committed template keeps it on and the build checks the APK manifest. Do not set it
+to `false` in a fork's template; if a device still has an older APK installed, reinstall with `adb install -r` and confirm the
+version with `adb shell dumpsys package <package-id> | grep versionCode`. `adb logcat -b crash -d` shows the exception.
 
 **The URL bar is visible.** The assetlinks check failed. Confirm the URL returns `200` with no redirect, names the exact
 package id, and contains the exact keystore fingerprint. Re-deploy Pages after changing `ANDROID_PACKAGE_ID` or

@@ -27,7 +27,7 @@
   "webManifestUrl": "https://__HOST__/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
-  "enableSiteSettingsShortcut": false,
+  "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://__HOST__/",

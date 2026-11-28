@@ -17,11 +17,11 @@ The archive is a screen of its own (`/archived`): the chats the account
 archived, in the place Telegram keeps them.
 
 Settings is a screen too (`/settings`), and each group has its own path
-(`/settings/appearance`, `/settings/notifications`, `/settings/data`), so the
+(`/settings/appearance`, `/settings/notifications`, `/settings/data`, `/settings/storage`), so the
 browser's and the Android shell's back gesture step out one level at a time.
 */
 
-const SETTINGS_SECTIONS = ['appearance', 'notifications', 'data'] as const;
+const SETTINGS_SECTIONS = ['appearance', 'notifications', 'data', 'storage'] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 

@@ -119,7 +119,8 @@
     "seedAmber": "Amber",
     "seedMint": "Mint",
     "seedRose": "Roze",
-    "widget": "Widget"
+    "widget": "Widget",
+    "cacheSize": "Maximale cachegrootte"
   },
   "landing": {
     "title": "Jouw Telegram, op Cloudflare Workers",
@@ -400,7 +401,14 @@
     "notificationsDenied": "Meldingen zijn geblokkeerd — sta ze toe in de browserinstellingen",
     "notificationsUnsupported": "Meldingen zijn niet beschikbaar in deze browser",
     "notificationsFailed": "Meldingen konden niet worden gewijzigd",
-    "notificationsLimit": "Te veel apparaten zijn aangemeld voor meldingen"
+    "notificationsLimit": "Te veel apparaten zijn aangemeld voor meldingen",
+    "storage": "Opslag",
+    "cacheSize": "Cachegrootte",
+    "cacheSizeHint": "Chats, profielen en stickers bewaren voor sneller laden",
+    "cacheOff": "Uit",
+    "cacheUsage": "{{used}} van {{limit}} gebruikt",
+    "clearCache": "Cache wissen",
+    "cacheCleared": "Cache gewist"
   },
   "account": {
     "archivedChats": "Gearchiveerde chats",

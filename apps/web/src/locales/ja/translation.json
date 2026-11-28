@@ -119,7 +119,8 @@
     "seedAmber": "アンバー",
     "seedMint": "ミント",
     "seedRose": "ローズ",
-    "widget": "ウィジェット"
+    "widget": "ウィジェット",
+    "cacheSize": "最大キャッシュサイズ"
   },
   "landing": {
     "title": "Cloudflare Workers 上の Telegram",
@@ -400,7 +401,14 @@
     "notificationsDenied": "通知がブロックされています — ブラウザーの設定で許可してください",
     "notificationsUnsupported": "このブラウザーでは通知を利用できません",
     "notificationsFailed": "通知を変更できませんでした",
-    "notificationsLimit": "通知を購読しているデバイスが多すぎます"
+    "notificationsLimit": "通知を購読しているデバイスが多すぎます",
+    "storage": "ストレージ",
+    "cacheSize": "キャッシュサイズ",
+    "cacheSizeHint": "チャット、プロフィール、スタンプを保持して読み込みを高速化",
+    "cacheOff": "オフ",
+    "cacheUsage": "{{used}} / {{limit}} 使用中",
+    "clearCache": "キャッシュをクリア",
+    "cacheCleared": "キャッシュをクリアしました"
   },
   "account": {
     "archivedChats": "アーカイブ済みチャット",

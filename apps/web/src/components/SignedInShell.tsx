@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { fetchBootstrap, logout } from '../api';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { logout } from '../api';
+import { purgeAll } from '../cache';
 import { useCallHost } from '../calls/host';
 import { TelegramLinkProvider } from '../telegram-links';
 import type { MeDto, MessageDto, PeerId, UpdateEvent } from '../types';
@@ -9,6 +10,7 @@ import { useDialogs } from '../useDialogs';
 import { useForwarding } from '../useForwarding';
 import { useMessageFolds } from '../useMessageFolds';
 import { useShellOverlays } from '../useShellOverlays';
+import { useShellBoot } from '../useShellBoot';
 import { useSignedInNavigation } from '../useSignedInNavigation';
 import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
@@ -52,7 +54,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
   owns both reads and the live updates, so every lookup of a chat — the
   router, the thread, the read receipts — finds it in the same place.
   */
-  const dialogs = useDialogs({ onError, onNotice: notify });
+  const dialogs = useDialogs({ onError, onNotice: notify, me });
   const {
     all: allDialogs,
     main: mainDialogs,
@@ -60,6 +62,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     loading: dialogsLoading,
     archiveLoading,
     find: findDialog,
+    hydrate: hydrateDialogs,
     apply: applyDialogs,
     load: loadDialogs,
     loadArchive,
@@ -192,54 +195,21 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
 
   // ---- signed-in data: dialogs, live updates, thread ----------------------
 
-  const booted = useRef(false);
-  useEffect(() => {
-    if (booted.current) return;
-    booted.current = true;
-    void (async () => {
-      if (initialMe) setMe(initialMe);
-      const target = currentRoute();
-      const bootstrap = (async (): Promise<void> => {
-        try {
-          // The account and the chat list come back in one request. This read
-          // starts beside initial deep-link resolution so the thread does not
-          // wait for the sidebar to become usable.
-          const boot = await fetchBootstrap();
-          setMe(boot.me ?? initialMe ?? null);
-          applyDialogs(boot.dialogs);
-        } catch {
-          // The combined read failed; the chat list on its own may still work,
-          // and it reports its own failure if it does not.
-          await loadDialogs();
-        }
-      })();
-      const initial = prepareInitialRoute(target);
-      await Promise.race([bootstrap, initial]);
-      const deepLink = target.view === 'chat' || target.view === 'comments';
-      if (deepLink && canOpen(target)) {
-        // The target was resolved or found before the sidebar finished. Apply
-        // it now; the bootstrap continues in parallel and fills the sidebar.
-        bootRouter();
-        void (async () => {
-          await bootstrap;
-          if (canOpen(target)) return;
-          await loadArchive();
-          const resolved = findDialog(target.chatId);
-          if (resolved) {
-            setArchiveContext(resolved.archived);
-          } else {
-            router.replaceTo({ view: 'list' });
-          }
-        })();
-        return;
-      }
-      // A shared link may name a chat in the archive, which the chat list does
-      // not carry: finish both initial reads before the archive fallback.
-      await Promise.all([bootstrap, initial]);
-      if (deepLink && !canOpen(target)) await loadArchive();
-      bootRouter();
-    })();
-  }, [initialMe, applyDialogs, loadDialogs, loadArchive, canOpen, findDialog, bootRouter, currentRoute, prepareInitialRoute, router]);
+  useShellBoot({
+    initialMe,
+    setMe,
+    hydrateDialogs,
+    applyDialogs,
+    loadDialogs,
+    loadArchive,
+    canOpen,
+    findDialog,
+    bootRouter,
+    currentRoute,
+    prepareInitialRoute,
+    replaceTo: router.replaceTo,
+    onArchiveContext: setArchiveContext,
+  });
 
   const handleUpdate = useCallback(
     (update: UpdateEvent): void => {
@@ -275,6 +245,9 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     resetRouter();
     setArchiveContext(false);
     clearDialogs();
+    // The local projections are account data too. Sign-out drops them; the
+    // engine's push subscription is deliberately not part of this cache.
+    void purgeAll();
     setMe(null);
     onSignedOut();
   }, [
@@ -389,6 +362,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           onOpenSection={openSettingsSection}
           onClose={closeSettings}
           onError={(message) => onError(message)}
+          onNotice={notify}
         />
       )}
       {calls.overlay}

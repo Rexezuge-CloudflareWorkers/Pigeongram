@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchArchivedDialogs, fetchDialogs, setArchived as setArchivedRpc, setPinned as setPinnedRpc } from './api';
+import { useDialogCache } from './useDialogCache';
 import { t } from './i18n';
 import {
   applyDeletedMessages,
@@ -11,7 +12,7 @@ import {
   applyUserStatus,
 } from './state';
 import { applyPinnedDialog } from './state/pinned';
-import type { DialogDto, MessageDto, PeerId, UpdateEvent } from './types';
+import type { DialogDto, MeDto, MessageDto, PeerId, UpdateEvent } from './types';
 
 /**
 The account's chat list.
@@ -41,6 +42,10 @@ export interface DialogsController {
   The chat's dialog, in either list.
   */
   find: (chatId: PeerId) => DialogDto | undefined;
+  /**
+  Paints the cached lists only when the snapshot belongs to this account.
+  */
+  hydrate: (ownerId: number | null) => Promise<void>;
   /**
   Replaces the main list (the boot, a resync). The archive is left alone.
   */
@@ -99,6 +104,11 @@ export interface DialogsController {
 
 interface DialogsOptions {
   /**
+  The signed-in account, used as the owner of the cached snapshot. Null while
+  the boot has not settled it, which also keeps an empty write off the cache.
+  */
+  me?: MeDto | null;
+  /**
   Where a failed read or write is reported.
   */
   onError: (failure: unknown) => void;
@@ -108,7 +118,7 @@ interface DialogsOptions {
   onNotice: (text: string) => void;
 }
 
-export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsController {
+export function useDialogs({ onError, onNotice, me = null }: DialogsOptions): DialogsController {
   const [main, setMain] = useState<DialogDto[]>([]);
   const [archived, setArchivedList] = useState<DialogDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +129,8 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
   const mainRef = useRef<DialogDto[]>([]);
   const archivedRef = useRef<DialogDto[]>([]);
   const ref = useRef<DialogDto[]>([]);
+  // Only a controller that has read knows enough to write a snapshot.
+  const ready = useRef(false);
 
   /**
   Writes both lists. The refs come first: the caller may read the list in the
@@ -132,8 +144,18 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     setArchivedList(nextArchived);
   }, []);
 
+  const { hydrate } = useDialogCache({
+    me,
+    main,
+    archived,
+    readyRef: ready,
+    commit,
+    onHydrated: () => setLoading(false),
+  });
+
   const apply = useCallback(
     (dialogs: DialogDto[]): void => {
+      ready.current = true;
       commit(dialogs, archivedRef.current);
       // The list is here, so it is no longer loading: the boot read it in one
       // request and never asked for it again.
@@ -146,6 +168,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     setLoading(true);
     try {
       const result = await fetchDialogs();
+      ready.current = true;
       commit(result.dialogs, archivedRef.current);
     } catch (failure) {
       onError(failure);
@@ -158,6 +181,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     setArchiveLoading(true);
     try {
       const result = await fetchArchivedDialogs();
+      ready.current = true;
       commit(mainRef.current, result.dialogs);
     } catch (failure) {
       onError(failure);
@@ -321,6 +345,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
   );
 
   const clear = useCallback((): void => {
+    ready.current = false;
     commit([], []);
     setLoading(true);
     setArchiveLoading(false);
@@ -335,6 +360,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
     loading,
     archiveLoading,
     find,
+    hydrate,
     apply,
     load,
     loadArchive,

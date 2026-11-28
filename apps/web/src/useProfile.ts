@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { fetchProfile } from './api';
+import { isCacheAvailable, readProfile, writeProfile } from './cache';
 import { failureText } from './failure';
 import type { PeerId, ProfileDto } from './types';
 
@@ -66,14 +67,34 @@ export function useProfile(peer: PeerId | null): ProfileController {
     pending.current = chatId;
     setLoadingFor(chatId);
     setFailed(null);
-    void fetchProfile(chatId)
-      .then((result) => {
-        if (wanted.current !== chatId) return;
-        cache.current.set(chatId, result.profile);
+    void (async () => {
+      // The persistent cache answers a profile the reader already looked at
+      // on an earlier load. It never answers a failed read, and a stale one is
+      // harmless: a profile is descriptive text, not a watermark or a count.
+      let stored: ProfileDto | null = null;
+      if (isCacheAvailable()) {
+        try {
+          stored = await readProfile(chatId);
+        } catch {
+          stored = null;
+        }
+      }
+      if (wanted.current !== chatId) return;
+      if (stored !== null) {
+        cache.current.set(chatId, stored);
         remember(cache.current);
-        setRead({ chatId, profile: result.profile });
+        setRead({ chatId, profile: stored });
         setLoadingFor(null);
-      })
+        return;
+      }
+      const result = await fetchProfile(chatId);
+      if (wanted.current !== chatId) return;
+      cache.current.set(chatId, result.profile);
+      remember(cache.current);
+      void writeProfile(result.profile);
+      setRead({ chatId, profile: result.profile });
+      setLoadingFor(null);
+    })()
       .catch((failure: unknown) => {
         if (wanted.current !== chatId) return;
         setFailed({ chatId, message: failureText(failure) });

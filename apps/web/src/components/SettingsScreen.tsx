@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import type { SettingsSection } from '../routes';
 import { Icon } from './Icon';
 import { AppearanceSection, DataSaverSection, NotificationsSection, SETTINGS_SECTION_ROWS, SettingsIndex } from './SettingsSections';
+import { StorageSection } from './StorageSection';
 import { useMediaQuery } from './useMediaQuery';
 import type { Contrast, Seed } from './useDynamicColor';
 
@@ -42,6 +43,10 @@ interface SettingsScreenProps {
   Shows a setting failure in the app's failure toast.
   */
   onError: (message: string) => void;
+  /**
+  Shows an outcome (a cleared cache) in the app's notice toast.
+  */
+  onNotice: (text: string) => void;
 }
 
 export function SettingsScreen({
@@ -55,6 +60,7 @@ export function SettingsScreen({
   onOpenSection,
   onClose,
   onError,
+  onNotice,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const desktop = useMediaQuery(DESKTOP_QUERY);
@@ -146,6 +152,7 @@ export function SettingsScreen({
                   contrast={contrast}
                   onSetContrast={onSetContrast}
                   onError={onError}
+                  onNotice={onNotice}
                 />
               )}
             </div>
@@ -252,9 +259,20 @@ interface SettingsSectionBodyProps {
   contrast: Contrast;
   onSetContrast: (contrast: Contrast) => void;
   onError: (message: string) => void;
+  onNotice: (text: string) => void;
 }
 
-function SettingsSectionBody({ section, theme, onSetTheme, seed, onSetSeed, contrast, onSetContrast, onError }: SettingsSectionBodyProps) {
+function SettingsSectionBody({
+  section,
+  theme,
+  onSetTheme,
+  seed,
+  onSetSeed,
+  contrast,
+  onSetContrast,
+  onError,
+  onNotice,
+}: SettingsSectionBodyProps) {
   switch (section) {
     case 'appearance': {
       return (
@@ -274,6 +292,9 @@ function SettingsSectionBody({ section, theme, onSetTheme, seed, onSetSeed, cont
     case 'data': {
       return <DataSaverSection />;
     }
+    case 'storage': {
+      return <StorageSection onNotice={onNotice} />;
+    }
   }
 }
 
@@ -287,6 +308,9 @@ function settingsLabel(t: TFunction, section: SettingsSection | null): string {
     }
     case 'data': {
       return t('settings.dataSaver', 'Data Saver');
+    }
+    case 'storage': {
+      return t('settings.storage', 'Storage');
     }
     case null: {
       return t('settings.title', 'Settings');

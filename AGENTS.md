@@ -92,7 +92,9 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   layer, `useScheduledMessages.ts`/`scheduled-state.ts` the scheduled queue beside the thread (an on-demand read, not
   an optimistic row), with `components/ScheduleSendButton.tsx` and `components/ScheduledMessagesDialog.tsx` as its
   overlays, `thread-window.ts` the opening-window read (the newest messages, a window around a linked post, or the unread
-  watermark with its read context) and the forward-paging rule, `thread-state.ts` the loaded-range cursors and the
+  watermark with its read context) and the forward-paging rule, `thread-cache.ts` the memory LRU for reopens,
+  `cache/` the IndexedDB projections (`db.ts`, `policy.ts`, `settings.ts`, `index.ts`) painted before a bridge read,
+  `thread-state.ts` the loaded-range cursors and the
   live/sent/edit folds, `useThreadPaging.ts` the older/newer reads, `thread-paging.ts` the scroll-driven paging at
   either edge and the prepend anchor, `reading.ts` the unread-position logic they share, `components/` the
   screens). The calls live in `src/calls/` (`dh.ts` the
@@ -236,6 +238,12 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   list (and, for comments, the matching chat) behind the URL entry so browser back stays in the app; every entry carries
   `{ app: 'telegram-web-client', depth, layer?: 'viewer' }` in `history.state`, and the viewer is a same-URL layer so back
   closes it before leaving the thread.
+- **The browser cache is a paint, never an answer.** `apps/web/src/cache/` persists dialogs, thread windows, profiles and
+  the sticker library in IndexedDB so a reload paints the sidebar and a reopen paints a chat before the bridge reads. The
+  engine remains the truth: boot revalidates, `cachedOpen()` refuses an unread or gapped window, and every write is
+  best-effort. Hydration waits for Access and for the cached `me.id` to match, there is no offline read mode, and
+  logout purges the cache without touching the engine's push subscriptions. The reader's size cap lives in Settings →
+  Storage (`/settings/storage`); the browser's own HTTP cache already handles media. `docs/CACHE.md` is the runbook.
 - **The service worker never caches the account plane.** The worker is registered at the root (`/sw.js`, scope `/`), so
   it sees every request the page makes, and it answers the API plane from the network only: `/user/*` carries the
   account's data and the Cloudflare Access session, and a cached response would put one account's chats where the next

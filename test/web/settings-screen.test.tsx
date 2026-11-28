@@ -60,6 +60,7 @@ function renderSettings(
       onOpenSection={() => {}}
       onClose={() => {}}
       onError={() => {}}
+      onNotice={() => {}}
       {...overrides}
     />
   );
@@ -85,6 +86,34 @@ describe('SettingsScreen', () => {
     expect(screen.getByRole('button', { name: 'Appearance' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Data Saver' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Storage' })).toBeDefined();
+  });
+
+  it('shows the local-data budget in the storage section', () => {
+    renderSettings({ section: 'storage' });
+
+    expect(screen.getByRole('combobox', { name: 'Maximum cache size' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Clear Cache' })).toBeDefined();
+  });
+
+  it('changes the local-data size and reports usage', () => {
+    renderSettings({ section: 'storage' });
+    const select = screen.getByRole('combobox', { name: 'Maximum cache size' }) as unknown as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: '0' } });
+    expect(select.value).toBe('0');
+    expect(screen.getByText(/Using/)).toBeDefined();
+
+    fireEvent.change(select, { target: { value: '100' } });
+    expect(select.value).toBe('100');
+  });
+
+  it('announces a cleared cache', async () => {
+    const onNotice = vi.fn();
+    renderSettings({ section: 'storage', onNotice });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Cache' }));
+    await vi.waitFor(() => expect(onNotice).toHaveBeenCalledWith('Cache Cleared'));
   });
 
   it('pushes a section from the index rather than replacing the entry', () => {

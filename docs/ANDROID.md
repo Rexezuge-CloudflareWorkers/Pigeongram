@@ -237,3 +237,6 @@ reset; otherwise you need a new package id and a fresh install.
   mistake for a generic app.
 - Inspect the workflow and the template before trusting them; both are small and reviewed in the repository. The WebView
   renders the live origin over HTTPS and the worker is the only API surface, so the app has no privileged local bridge.
+- The WebView disables file access and `content://` URL access; page JavaScript cannot reach a content provider. It loads
+  only the deployed HTTPS origin. Attachments go through the system document picker instead, which grants the app a read
+  permission for each chosen URI.

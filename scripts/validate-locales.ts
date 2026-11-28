@@ -2,9 +2,9 @@
 /**
 Validate the SPA's locale bundles.
 
-The bundles are English-only today, but the checks are the ones that matter the
-moment a second catalogue lands, and they catch a mistake in the first one just
-as well:
+The checks are the ones that matter the moment a second catalogue lands, and
+they catch a mistake in the first one just as well. With all twelve kit
+locales shipping, they run across every bundle on every check:
 
 - **Two-way parity against `en`**: a key a bundle lacks renders the fallback in
   every language, and a key a bundle has that `en` does not is dead weight.

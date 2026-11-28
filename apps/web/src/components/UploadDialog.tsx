@@ -123,11 +123,9 @@ export function UploadDialog({ initialFiles, onCancel, onSend, exiting = false }
       ? t('common.send', 'Send')
       : grouped && groupable && files.length > 1
         ? t('upload.sendAlbum', 'Send Album ({{count}})', { count: files.length })
-        : files.length > 1
-          ? files.length === 1
-            ? t('upload.sendFilesOne', 'Send {{count}} File', { count: files.length })
-            : t('upload.sendFiles', 'Send {{count}} Files', { count: files.length })
-          : t('common.send', 'Send');
+        : files.length === 1
+          ? t('common.send', 'Send')
+          : t('upload.sendFiles', 'Send {{count, number}} Files', { count: files.length });
 
   return createPortal(
     <div
@@ -324,14 +322,11 @@ function UploadPreview({ file, index, sendAsFile, onRemove }: UploadPreviewProps
 }
 
 function overflowNotice(t: TFunction, dropped: number): string {
-  return dropped === 1
-    ? t('upload.overflowOne', 'Only {{max}} Files Can Be Sent At Once; One File Was Left Out. Send The Rest In Another Batch.', {
-        max: MAX_UPLOAD_ITEMS,
-      })
-    : t('upload.overflowMany', 'Only {{max}} Files Can Be Sent At Once; {{count}} Files Were Left Out. Send The Rest In Another Batch.', {
-        max: MAX_UPLOAD_ITEMS,
-        count: dropped,
-      });
+  return t(
+    'upload.overflow',
+    'Only {{max}} Files Can Be Sent At Once; {{count, number}} Files Were Left Out. Send The Rest In Another Batch.',
+    { max: MAX_UPLOAD_ITEMS, count: dropped },
+  );
 }
 
 function groupHint(t: TFunction, count: number, groupable: boolean, sendAsFile: boolean): string {

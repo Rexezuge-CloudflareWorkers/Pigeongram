@@ -70,10 +70,7 @@ export function InviteDialog({ preview, joining, requested, onJoin, onClose, exi
         <div>
           <p className="text-base font-medium">{preview.title}</p>
           <p className="text-sm text-muted">
-            {t(kindKey, kindText)} ·{' '}
-            {preview.memberCount === 1
-              ? t('invite.memberCountOne', '{{members}} Member', { members: preview.memberCount.toLocaleString() })
-              : t('invite.memberCount', '{{members}} Members', { members: preview.memberCount.toLocaleString() })}
+            {t(kindKey, kindText)} · {t('invite.memberCount', '{{count, number}} Members', { count: preview.memberCount })}
           </p>
         </div>
         {preview.about === null ? null : <p className="text-sm text-muted">{preview.about}</p>}

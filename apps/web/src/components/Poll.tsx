@@ -133,9 +133,7 @@ them with this account yet (a quiz before answering, typically).
 */
 function metaText(t: TFunction, poll: MessagePollDto, results: boolean): string | null {
   if (results && poll.totalVoters !== null) {
-    return poll.totalVoters === 1
-      ? t('poll.voteCountOne', '{{count}} Vote', { count: poll.totalVoters })
-      : t('poll.voteCount', '{{count}} Votes', { count: poll.totalVoters });
+    return t('poll.voteCount', '{{count, number}} Votes', { count: poll.totalVoters });
   }
   if (poll.closed) return t('poll.closed', 'Poll Closed');
   if (poll.hideResultsUntilClose) return t('poll.resultsHidden', 'Results Hidden Until The Poll Closes');

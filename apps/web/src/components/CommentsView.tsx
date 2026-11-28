@@ -224,11 +224,7 @@ export function CommentsView({
             onOpenMedia={onOpenMedia}
           />
         </div>
-        <div className="day">
-          {thread.count === 1
-            ? t('thread.commentCountOne', '{{count}} Comment', { count: thread.count })
-            : t('thread.commentCount', '{{count}} Comments', { count: thread.count })}
-        </div>
+        <div className="day">{t('thread.commentCount', '{{count, number}} Comments', { count: thread.count })}</div>
         {comments.length > 0 && thread.nextOffset ? (
           <button type="button" className="load-older" disabled={loadingOlder} aria-busy={loadingOlder} onClick={onLoadOlder}>
             {loadingOlder ? (

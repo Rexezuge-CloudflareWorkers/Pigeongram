@@ -21,13 +21,38 @@ export function formatTime(timestamp: number): string {
 }
 
 /**
+Full local date and time, used where a `title` spells out a scheduled send.
+The browser's own `toLocaleString` would follow the OS locale rather than the
+language the reader chose in Settings.
+*/
+export function formatDateTime(timestamp: number): string {
+  return new Intl.DateTimeFormat(formatLocale(), {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(timestamp);
+}
+
+/**
+Grouped number in the reader's chosen language: `1,234` in English, `1.234`
+in German. Interpolations that used `toLocaleString()` followed the browser
+instead of the app's language.
+*/
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat(formatLocale()).format(value);
+}
+
+/**
 Short stamp for the chat list: `now`, `5m`, `3h`, or `Mar 4`.
 */
 export function formatListStamp(timestamp: number, now = Date.now()): string {
   const diff = now - timestamp;
   if (diff < 60_000) return t('format.now', 'Now');
-  if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))}m`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  if (diff < 3_600_000) return t('format.minutes', '{{count}}m', { count: Math.max(1, Math.floor(diff / 60_000)) });
+  if (diff < 86_400_000) return t('format.hours', '{{count}}h', { count: Math.floor(diff / 3_600_000) });
   return new Intl.DateTimeFormat(formatLocale(), { month: 'short', day: 'numeric' }).format(timestamp);
 }
 
@@ -159,7 +184,7 @@ Human-readable byte size, e.g. `824 KB`; empty for unknown sizes.
 */
 export function formatBytes(bytes: number | null): string {
   if (bytes === null || !Number.isFinite(bytes) || bytes <= 0) return '';
-  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024) return `${decimal(bytes, 0)} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
   let value = bytes / 1024;
   let unit = 0;
@@ -167,16 +192,16 @@ export function formatBytes(bytes: number | null): string {
     value /= 1024;
     unit += 1;
   }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+  return `${decimal(value, value < 10 ? 1 : 0, value < 10 ? 1 : 0)} ${units[unit]}`;
 }
 
 /**
 Compact counter for values like channel-post views: `999`, `1.2K`, `123K`,
-`1.2M`. Telegram's own notation, kept locale-independent so the display does
-not vary with the browser locale.
+`1.2M`. Telegram's own notation is kept, but the decimal separator follows
+the chosen language (`1,2K` in German, `1.2K` in English).
 */
 export function formatCount(count: number): string {
-  if (count < 1000) return String(count);
+  if (count < 1000) return decimal(count, 0);
   if (count < 999_500) return `${compact(count / 1000)}K`;
   if (count < 999_500_000) return `${compact(count / 1_000_000)}M`;
   return `${compact(count / 1_000_000_000)}B`;
@@ -187,5 +212,17 @@ One decimal below 100 (dropped when it is zero), whole numbers above; the
 999,5xx thresholds in `formatCount` keep the round from escaping its unit.
 */
 function compact(value: number): string {
-  return String(value < 100 ? Math.round(value * 10) / 10 : Math.round(value));
+  return decimal(value < 100 ? Math.round(value * 10) / 10 : Math.round(value), 0, value < 100 ? 1 : 0);
+}
+
+/**
+A number without grouping, with the chosen language's decimal separator.
+Byte sizes and compact counters must not gain thousands separators.
+*/
+function decimal(value: number, minimumFractionDigits: number, maximumFractionDigits = minimumFractionDigits): string {
+  return new Intl.NumberFormat(formatLocale(), {
+    useGrouping: false,
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(value);
 }

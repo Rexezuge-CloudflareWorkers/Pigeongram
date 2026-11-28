@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { formatListStamp, previewOf } from '../format';
+import { formatDateTime, formatListStamp, previewOf } from '../format';
 import type { ScheduledMessagesController } from '../useScheduledMessages';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
@@ -44,7 +44,7 @@ export function ScheduledMessagesDialog({ controller }: ScheduledMessagesDialogP
             return (
               <li key={message.id} className="rounded-lg bg-surface-container-low px-3 py-2">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-xs text-on-surface-variant" title={new Date(message.date).toLocaleString()}>
+                  <span className="shrink-0 text-xs text-on-surface-variant" title={formatDateTime(message.date)}>
                     {formatListStamp(message.date)}
                   </span>
                   <span className="truncate text-sm text-on-surface-variant">{previewOf(message.text, message.media, message.poll)}</span>

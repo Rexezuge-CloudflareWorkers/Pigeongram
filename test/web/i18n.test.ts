@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { SUPPORTED_LOCALES, LOCALE_DISPLAY_NAMES } from '@rexezuge/shared';
 import { SUPPORTED_LANGUAGES, i18n, normalizeLanguage, LOCALE_NAMES } from '../../apps/web/src/i18n';
+import { formatBytes, formatCount, formatListStamp, formatNumber } from '../../apps/web/src/format';
 
 /**
 The catalogue's invariants, as tests rather than only as the CI script.
@@ -51,9 +52,13 @@ describe('the SPA language list', () => {
 
   it('normalizes an unknown or regional tag onto a supported one', () => {
     expect(normalizeLanguage('en-GB')).toBe('en');
-    expect(normalizeLanguage('zh-CN')).toBe('en'); // not offered yet, so it falls back
+    expect(normalizeLanguage('zh')).toBe('zh-CN');
+    expect(normalizeLanguage('zh-CN')).toBe('zh-CN');
+    expect(normalizeLanguage('zh-TW')).toBe('zh-TW');
+    expect(normalizeLanguage('de-AT')).toBe('de');
     expect(normalizeLanguage(null)).toBe('en');
     expect(normalizeLanguage('')).toBe('en');
+    expect(normalizeLanguage('xx')).toBe('en');
   });
 });
 
@@ -80,6 +85,17 @@ describe('the English catalogue', () => {
     expect(new Set(en.keys()).size).toBe(en.size);
   });
 
+  it('is actually translated in every shipped bundle', () => {
+    // Parity alone would pass for eleven copies of the English file. Shared
+    // product names and literals account for only a handful of values.
+    for (const tag of SUPPORTED_LANGUAGES) {
+      if (tag === 'en') continue;
+      const bundle = readBundle(tag);
+      const translated = [...en].filter(([key, value]) => bundle.get(key) !== value).length;
+      expect(translated / en.size, tag).toBeGreaterThan(0.8);
+    }
+  });
+
   it('keeps placeholder parity across the locales that do ship', () => {
     // A bounded scan rather than a regex with nested quantifiers: `{{…}}` is a
     // two-character delimiter and the closing pair ends the token.
@@ -102,5 +118,57 @@ describe('the English catalogue', () => {
       const bundle = readBundle(tag);
       for (const [key, value] of en) expect(placeholders(bundle.get(key) ?? ''), `${tag}:${key}`).toEqual(placeholders(value));
     }
+  });
+});
+
+/**
+Plural categories and number formatting are part of the language choice, not
+of the browser: a German reader sees a German decimal separator and a Polish
+reader gets the few/many forms. The suite runs in English everywhere else, so
+each case puts the language back when it is done.
+*/
+describe('locale-aware formatting', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('uses the language’s plural categories rather than an English count === 1 check', async () => {
+    await i18n.changeLanguage('pl');
+    const word = (count: number): string => i18n.t('poll.voteCount', { count }).replaceAll(/[\d\s.,]+/g, '');
+    const one = word(1);
+    const few = word(2);
+    const many = word(5);
+    expect(one).not.toBe(few);
+    expect(few).not.toBe(many);
+    expect(word(22)).toBe(few);
+
+    await i18n.changeLanguage('fr');
+    // French treats zero as singular, English does not.
+    const french = (count: number): string => i18n.t('poll.voteCount', { count }).replaceAll(/[\d\s.,]+/g, '');
+    expect(french(0)).toBe(french(1));
+    expect(french(2)).not.toBe(french(1));
+
+    await i18n.changeLanguage('ja');
+    // Japanese has only the `other` category, so every count reads the same.
+    const japanese = (count: number): string => i18n.t('poll.voteCount', { count }).replaceAll(/[\d\s.,]+/g, '');
+    expect(japanese(1)).toBe(japanese(2));
+  });
+
+  it('formats numbers with the chosen language and keeps compact units short', async () => {
+    expect(formatNumber(1234)).toBe('1,234');
+    expect(formatBytes(2048)).toBe('2.0 KB');
+    expect(formatCount(1200)).toBe('1.2K');
+    expect(formatListStamp(Date.now() - 5 * 60_000)).toBe('5m');
+
+    await i18n.changeLanguage('de');
+    expect(formatNumber(1234)).toBe('1.234');
+    expect(formatBytes(2048)).toBe('2,0 KB');
+    expect(formatCount(1200)).toBe('1,2K');
+  });
+
+  it('renders a grouped count inside a plural string', async () => {
+    expect(i18n.t('thread.commentCount', { count: 1234 })).toContain('1,234');
+    await i18n.changeLanguage('de');
+    expect(i18n.t('thread.commentCount', { count: 1234 })).toContain('1.234');
   });
 });

@@ -1,24 +1,25 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { LocaleUtil, LOCALE_DISPLAY_NAMES } from '@rexezuge/shared';
-import en from './locales/en/translation.json';
 
 /**
 The SPA's string catalogue.
 
-English is the base and the only language that ships today: the catalogue, the
-selectors, the validator and the tests are all in place, so adding a language is
-a directory and one entry in `SUPPORTED_LANGUAGES` rather than a refactor.
+`en` is the base; the other eleven bundles are the tags `@rexezuge/shared`
+supports. `validate:locales` cross-checks the list against the shipped bundle
+directories in both directions, so a language can never be offered without a
+catalogue.
 
-Every entry must be a tag `@rexezuge/shared` supports; `validate:locales`
-cross-checks the list against the shipped bundle directories in both
-directions, so a language can never be offered without a catalogue.
+`apps/web/src/locales/en/translation.json` is the source copy. A visible string
+is Title Case there (`AGENTS.md`), and accessible-only copy lives under
+`a11y.*` where the guard expects sentence case instead. The other bundles use
+their own language's casing, not English Title Case.
 
-`apps/web/src/locales/en/translation.json` is the copy. A visible string is
-Title Case (`AGENTS.md`), and accessible-only copy lives under `a11y.*` where
-the guard expects sentence case instead.
+Bundles are loaded eagerly rather than on demand: the `t` seam outside React
+(`format.ts`, the login copy, the recorder) is synchronous, and twelve small
+JSON files are a reasonable price for that.
 */
-export const SUPPORTED_LANGUAGES = ['en'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'ja', 'zh-CN', 'zh-TW', 'ko'] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -38,7 +39,7 @@ with no catalogue.
 */
 export function normalizeLanguage(tag: string | null | undefined): SupportedLanguage {
   const normalized = LocaleUtil.normalize(tag);
-  return (SUPPORTED_LANGUAGES as readonly string[]).includes(normalized) ? (normalized as SupportedLanguage) : 'en';
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(normalized) ? normalized : 'en';
 }
 
 /**
@@ -73,9 +74,27 @@ export function detectInitialLanguage(): SupportedLanguage {
   return normalizeLanguage(chosen);
 }
 
-const resources = {
-  en: { translation: en },
-} as const;
+/**
+All twelve bundles, loaded eagerly so the synchronous `t` seam outside React
+sees them from the first render. `import.meta.glob` keeps the TypeScript
+program from inferring a literal type for every string in every catalogue —
+twelve full JSON modules did that to the test program's heap — while Vite still
+emits them as ordinary static imports in the built app.
+*/
+const bundleModules = import.meta.glob<{ default: Record<string, unknown> }>('./locales/*/translation.json', {
+  eager: true,
+});
+
+function bundleFor(tag: SupportedLanguage): Record<string, unknown> {
+  const module = bundleModules[`./locales/${tag}/translation.json`];
+  if (!module) throw new Error(`No catalogue shipped for ${tag}`);
+  return module.default;
+}
+
+const resources = Object.fromEntries(SUPPORTED_LANGUAGES.map((tag) => [tag, { translation: bundleFor(tag) }])) as Record<
+  SupportedLanguage,
+  { translation: Record<string, unknown> }
+>;
 
 if (!i18n.isInitialized) {
   void i18n.use(initReactI18next).init({

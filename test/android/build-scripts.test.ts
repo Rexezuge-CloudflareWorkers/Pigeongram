@@ -188,6 +188,17 @@ describe('the committed native template', () => {
       readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'), 'utf8'),
     ).toContain('package __PACKAGE_ID__;');
   });
+
+  it('routes the back gesture through the page on Android 16', () => {
+    const manifest = readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    expect(manifest).toContain('android:enableOnBackInvokedCallback="true"');
+    const activity = readFileSync(
+      path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'),
+      'utf8',
+    );
+    expect(activity).toContain('registerOnBackInvokedCallback');
+    expect(activity).toContain('__pigeongramBack');
+  });
 });
 
 describe('the rendered Android project', () => {

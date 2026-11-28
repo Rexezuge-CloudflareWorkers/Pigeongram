@@ -253,6 +253,14 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   Gradle, and uploads APK/AAB artifacts. It is dispatch-only and never publishes an upstream-signed release: each
   deployment uses its own origin, package id and keystore, and must not install another deployment's build. The workflow
   checks the live origin and manifest before building, so Pages has to be deployed first.
+  The back gesture is delegated to the page: the shell targets SDK 36, where Android 16 no longer calls `onBackPressed`,
+  so `MainActivity` registers an `OnBackInvokedCallback` (with `onBackPressed` kept for API 24–32) and asks
+  `window.__pigeongramBack`, which the signed-in navigation installs from `apps/web/src/native-back.ts`. That function is the
+  in-app back button — the media viewer's history layer, a chat/comments/archive step — and answers "nothing to go back
+  to" only on the chat list, where the shell exits. When it is absent (the login screen, or a web build older than the
+  seam) the shell falls back to `copyBackForwardList()` and `history.back()`, never `canGoBack()`/`goBack()`, which go
+  stale for the entries `useRouter` seeds with back-to-back `replaceState`/`pushState`. The page exposes a boolean and
+  gains nothing native, so this is not the privileged bridge the shell deliberately lacks.
 - **The signed-in shell fits above the keyboard and the browser chrome.** `.app` is `height: 100dvh` capped by
   `--app-height` through a **`max-height`**. `dvh` is the dynamic viewport: it follows Chrome Android's auto-hiding URL
   bar, which the layout viewport (`100%`) deliberately does not (it stays at the URL-bar-shown height), and under

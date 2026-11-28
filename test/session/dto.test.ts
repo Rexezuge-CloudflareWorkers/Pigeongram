@@ -556,9 +556,12 @@ describe('toMessageDto', () => {
     expect(dto.replyKeyboard).toBeNull();
   });
 
-  it('maps the edit date, and leaves a never-edited message without one', () => {
+  it('maps the edit date, hides a reaction-driven edit, and leaves a never-edited message without one', () => {
     expect(toMessageDto(message({})).editDate).toBeNull();
     expect(toMessageDto(message({ editDate: 1_700_000_100 })).editDate).toBe(1_700_000_100_000);
+    // A reaction bumps `edit_date` but sets `edit_hide`: the row must stay unmarked.
+    expect(toMessageDto(message({ editDate: 1_700_000_100, editHide: true })).editDate).toBeNull();
+    expect(toMessageDto(message({ editDate: 1_700_000_100, editHide: false })).editDate).toBe(1_700_000_100_000);
   });
 
   it('carries Telegram’s pinned flag for the menu’s Pin or Unpin label', () => {

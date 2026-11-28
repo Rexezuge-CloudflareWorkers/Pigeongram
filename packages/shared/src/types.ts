@@ -499,7 +499,8 @@ export interface MessageDto {
   pinned: boolean;
   /**
   Unix milliseconds of the last edit, or null when the message was never
-  edited. The SPA renders its "Edited" marker from this alone.
+  edited or Telegram marked the edit as hidden (`edit_hide`, as it does for
+  reaction changes). The SPA renders its "Edited" marker from this alone.
   */
   editDate: number | null;
   /**

@@ -4,6 +4,12 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* The pane swap slides `.messages` a few pixels to the right. Clip that
+     overshoot here so the slide cannot put a horizontal scrollbar on the
+     document: `hidden` would turn `overflow-y` into `auto` and make the
+     thread its own scroll container, while `clip` leaves the other axis
+     alone. */
+  overflow-x: clip;
 }
 
 .thread.empty {

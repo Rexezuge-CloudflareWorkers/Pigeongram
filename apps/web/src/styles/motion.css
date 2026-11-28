@@ -6,7 +6,8 @@
  * gate itself. */
 
 /* Pane swap when the open chat changes (the thread pane slides so the
- * sidebar relationship stays legible on narrow windows). */
+ * sidebar relationship stays legible on narrow windows). `.thread` clips the
+ * overshoot, so the slide does not flash a horizontal scrollbar. */
 @keyframes pane-in {
   from {
     opacity: 0;

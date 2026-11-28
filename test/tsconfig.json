@@ -11,7 +11,14 @@
     // program: the app reads `import.meta.env.PROD` to decide whether to
     // register the service worker, and the SPA's own tsconfig declares the
     // same types.
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client"],
+    // The SPA's sandbox type stub applies here too: the test program compiles
+    // the same widget component and loader sources.
+    "paths": {
+      "@telegram/widget-sandbox/host/widget-host": ["../apps/web/src/widget-sandbox-api"],
+      "@telegram/widget-sandbox/host/renderer": ["../apps/web/src/widget-sandbox-api"],
+      "@telegram/widget-sandbox/host/shadow-renderer": ["../apps/web/src/widget-sandbox-api"]
+    }
   },
   // `worker-configuration.d.ts` is included because the tests import the API
   // package, whose source references generated globals like `DurableObjectState`.

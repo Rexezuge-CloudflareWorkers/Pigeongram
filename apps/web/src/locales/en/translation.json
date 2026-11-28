@@ -120,7 +120,8 @@
     "seedIndigo": "Indigo",
     "seedAmber": "Amber",
     "seedMint": "Mint",
-    "seedRose": "Rose"
+    "seedRose": "Rose",
+    "widget": "Widget"
   },
   "landing": {
     "title": "Your Telegram, On Cloudflare Workers",
@@ -540,9 +541,16 @@
       "voice": "Voice Message",
       "sticker": "Sticker",
       "document": "Document",
-      "unsupported": "Unsupported Message"
+      "unsupported": "Unsupported Message",
+      "widget": "Widget"
     },
     "minutes": "{{count}}m",
     "hours": "{{count}}h"
+  },
+  "widget": {
+    "openLinkTitle": "Open This Link?",
+    "openLinkMessage": "Open {{url}} In A New Tab?",
+    "openLinkConfirm": "Open Link",
+    "stopped": "Widget Stopped"
   }
 }

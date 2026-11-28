@@ -11,6 +11,7 @@ import { MediaPlaceholder } from './MediaPlaceholder';
 import { MediaThumb } from './MediaThumb';
 import { MessageText } from './MessageText';
 import { StickerMedia } from './Sticker';
+import { WidgetMedia } from './WidgetMedia';
 
 /**
 Whether a document is safe to render as an inline image. Telegram sends some
@@ -60,7 +61,17 @@ for the original bytes. With the data saver's media switch off, the preview is
 withheld behind a tap-to-load box; the first tap loads it in place and the
 second opens the viewer.
 */
-export function MessageMedia({ message, media, onOpen }: { message: MessageDto; media: MessageMediaDto; onOpen: () => void }) {
+export function MessageMedia({
+  message,
+  media,
+  onOpen,
+  link = null,
+}: {
+  message: MessageDto;
+  media: MessageMediaDto;
+  onOpen: () => void;
+  link?: string | null;
+}) {
   const { t } = useTranslation();
   const src = fileUrl(message.chatId, message.id);
   const { loadMedia, animateMedia } = useDataSaver();
@@ -181,6 +192,9 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
     }
     case 'sticker': {
       return <StickerMedia message={message} media={media} />;
+    }
+    case 'widget': {
+      return <WidgetMedia message={message} media={media} link={link} />;
     }
     case 'document': {
       return isImageDocument(media) ? (

@@ -120,7 +120,8 @@
     "seedIndigo": "Indigo",
     "seedAmber": "Amber",
     "seedMint": "Mint",
-    "seedRose": "Roze"
+    "seedRose": "Roze",
+    "widget": "Widget"
   },
   "landing": {
     "title": "Jouw Telegram, op Cloudflare Workers",
@@ -540,9 +541,16 @@
       "voice": "Spraakbericht",
       "sticker": "Sticker",
       "document": "Document",
-      "unsupported": "Niet-ondersteund bericht"
+      "unsupported": "Niet-ondersteund bericht",
+      "widget": "Widget"
     },
     "minutes": "{{count}} min",
     "hours": "{{count}} uur"
+  },
+  "widget": {
+    "openLinkTitle": "Deze Link Openen?",
+    "openLinkMessage": "{{url}} In Een Nieuw Tabblad Openen?",
+    "openLinkConfirm": "Link Openen",
+    "stopped": "Widget Gestopt"
   }
 }

@@ -853,9 +853,10 @@ describe('toMessageDto', () => {
   });
 
   it('names a payload newer than the client layer as unsupported media', () => {
-    // Telegram answers a media type the client's layer does not know with
-    // `messageMediaUnsupported` and blanks the caption (Telegram Widgets are
-    // the current case), so the DTO must keep the message addressable.
+    // A media type newer than the advertised layer arrives as
+    // `messageMediaUnsupported` with its caption blanked, so the DTO must
+    // keep the message addressable. Widgets are mapped at layer 233 above;
+    // this marker is the fallback for the next unknown type.
     const widget = message({ message: '', media: { _: 'messageMediaUnsupported' } });
     expect(toMessageDto(widget).media).toEqual({
       kind: 'unsupported',
@@ -867,6 +868,77 @@ describe('toMessageDto', () => {
       duration: null,
     });
     expect(toDialogMessageDto(widget).media?.kind).toBe('unsupported');
+  });
+
+  it('maps a layer-233 widget with its compressed payload, flags and state', () => {
+    // mtcute decodes `messageMediaWidget` at layer 233; the caption arrives
+    // with it, and no file route is involved — the HTML is inside the message.
+    const widget = message({
+      message: 'A caption',
+      media: {
+        _: 'messageMediaWidget',
+        isCopy: true,
+        canQuery: true,
+        backgroundQuery: false,
+        width: 0,
+        height: 240,
+        payload: new Uint8Array([0x78, 0x9c, 1, 2, 3]),
+        publicData: '{"score":1}',
+        publicDataHash: Long.fromNumber(42),
+        widgetId: Long.fromString('1234567890123456789'),
+      } as unknown as tl.RawMessageMediaWidget,
+    });
+    expect(widget.media?.type).toBe('widget');
+
+    const dto = toMessageDto(widget);
+    expect(dto.text).toBe('A caption');
+    expect(dto.media).toEqual({
+      kind: 'widget',
+      fileName: null,
+      mime: null,
+      size: null,
+      width: 0,
+      height: 240,
+      duration: null,
+      widget: {
+        payload: 'eJwBAgM=',
+        width: 0,
+        height: 240,
+        isCopy: true,
+        canQuery: true,
+        canQueryInBackground: false,
+        widgetId: '1234567890123456789',
+        publicData: '{"score":1}',
+        chatData: null,
+        publicDataHash: '42',
+      },
+    });
+    expect(toDialogMessageDto(widget).media?.kind).toBe('widget');
+  });
+
+  it('keeps a widget without a shared id or state free of phantom values', () => {
+    const widget = message({
+      media: {
+        _: 'messageMediaWidget',
+        width: 360,
+        height: 0,
+        payload: new Uint8Array([1, 2]),
+      } as unknown as tl.RawMessageMediaWidget,
+    });
+    expect(toMessageDto(widget).media).toMatchObject({
+      kind: 'widget',
+      width: 360,
+      height: 0,
+      widget: {
+        isCopy: false,
+        canQuery: false,
+        canQueryInBackground: false,
+        widgetId: null,
+        publicData: null,
+        chatData: null,
+        publicDataHash: null,
+      },
+    });
   });
 
   it('leaves a text-only message without a media DTO', () => {

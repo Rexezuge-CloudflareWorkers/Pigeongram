@@ -7,6 +7,7 @@ import { pwaBrandingPlugin } from './build/pwa/branding-plugin';
 import { createManifest } from './build/pwa/manifest';
 import { pwaIconsPlugin } from './build/pwa/plugin';
 import { voiceRecorderPlugin } from './build/recorder-plugin';
+import { widgetSandboxBundles } from './build/widget-sandbox-plugin';
 
 /**
 The SPA's Vite config, on the kit's factory.
@@ -21,6 +22,10 @@ export default defineWebViteConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // Serves the sandbox's prebuilt bundles and sets the development server's
+    // cross-origin isolation headers (SharedArrayBuffer needs them). The
+    // deployed origin carries the same headers in public/_headers.
+    widgetSandboxBundles(),
     // The product name in the document title (`VITE_APP_NAME`).
     pwaBrandingPlugin(branding),
     // The icons the manifest points at, drawn from the favicon's own geometry.

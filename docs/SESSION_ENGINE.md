@@ -444,8 +444,10 @@ A message's media arrives as `media` only for the kinds the UI can draw (`photo`
 `webPage`. A payload this client's MTProto layer cannot read — Telegram substitutes `messageMediaUnsupported` for a
 media type newer than the layer we advertise, **and blanks the caption** — is carried as `kind: 'unsupported'` with
 every other field null, so the SPA renders a labelled card with an _Open In Telegram_ link instead of an empty bubble.
-Telegram Widgets (layer 233) are the current case; see [TELEGRAM_WIDGETS.md](TELEGRAM_WIDGETS.md). Geo points,
-contacts, games, stories, paid media and todo lists stay text-only (`media` null) until they get a UI of their own.
+A layer-233 widget is carried as `kind: 'widget'` with its zlib payload (base64) and the server's flags in `widget`;
+the SPA inflates it and renders it read-only in the official sandbox. There is no file route for it — the document is
+inside the message — and it is never downloadable. See [TELEGRAM_WIDGETS.md](TELEGRAM_WIDGETS.md). Geo points, contacts,
+games, stories, paid media and todo lists stay text-only (`media` null) until they get a UI of their own.
 
 A link preview carries `webPage` beside `media` — Telegram's `messageMediaWebPage` has no message file either, so
 `media` stays null. `MessageWebPageDto` holds the page's `url` and `displayUrl`, `siteName`/`title`/`description`

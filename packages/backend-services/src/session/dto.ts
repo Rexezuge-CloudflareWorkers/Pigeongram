@@ -1,4 +1,5 @@
 import type { Dialog, Message, MessageEntity, MessageMedia, Peer, Poll, ReactionCount, User } from '@mtcute/core';
+import { encodeBase64 } from './base64';
 import { documentDimensions } from './dto-document';
 import { serviceText } from './service-text';
 import { toMessageMarkupDto, toMessageReplyKeyboardDto } from './markup';
@@ -242,6 +243,34 @@ function toMessageMediaDto(media: MessageMedia, options: { qualities?: boolean }
         duration: null,
       };
     }
+    case 'widget': {
+      // The HTML is a zlib stream inside the message, not a file the engine
+      // could serve: ship the compressed bytes and let the browser inflate
+      // them. A 32 KB document per message in JSON is not acceptable.
+      return {
+        kind: 'widget',
+        fileName: null,
+        mime: null,
+        size: null,
+        width: media.width,
+        height: media.height,
+        duration: null,
+        widget: {
+          payload: encodeBase64(media.payload),
+          width: media.width,
+          height: media.height,
+          // The TL getters pass the optional flags through; a widget sent
+          // without them must still cross as plain false, not undefined.
+          isCopy: media.isCopy ?? false,
+          canQuery: media.canQuery ?? false,
+          canQueryInBackground: media.canQueryInBackground ?? false,
+          widgetId: media.id?.toString() ?? null,
+          publicData: media.publicData ?? null,
+          chatData: media.chatData ?? null,
+          publicDataHash: media.publicDataHash?.toString() ?? null,
+        },
+      };
+    }
     default: {
       // Geo points, contacts, games and other non-file media stay text-only
       // in the UI; polls ride beside `media` through `toPollDto`, and link
@@ -261,9 +290,8 @@ with nothing to render. The engine keeps it addressable instead: the DTO
 names the kind `unsupported`, and the UI shows a labelled card with a link
 to the post in Telegram rather than an empty bubble.
 
-Telegram Widgets (layer 233) are the current case: our client advertises
-layer 232, so every widget arrives this way. `docs/TELEGRAM_WIDGETS.md`
-records the upgrade path.
+At layer 233 a widget is its own media kind (mapped above), so this marker is
+now a fallback for payloads newer than the client advertises.
 */
 function unsupportedMediaDto(message: Message): MessageMediaDto | null {
   const raw = message.raw;

@@ -2,8 +2,8 @@
 
 Pigeongram is an independent, unofficial Telegram web client that keeps your conversations available in a fast,
 installable web app. It supports QR sign-in, chats and threads, starting new chats from contacts or a Telegram-wide search,
-live updates, media, voice messages, scheduled messages, search, comments, voice calls between Pigeongram users, and an
-offline app shell.
+live updates, media, voice messages, scheduled messages, search, comments, voice calls between Pigeongram users,
+read-only Telegram Widgets, and an offline app shell.
 
 Pigeongram is not affiliated with Telegram Messenger LLP. “Pigeongram” is the product name; Telegram-related names in
 the repository are implementation identifiers or descriptions of the service.

@@ -199,9 +199,15 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   replaces the payload and the text for a media type the advertised layer cannot read, so mtcute reports no media and no
   text; the message would reach the SPA with nothing to render. The engine names it `MessageMediaDto.kind: 'unsupported'`
   and never `null`, the SPA renders `MessageUnsupported` (a labelled card with an _Open In Telegram_ link built from
-  `messageWebLink`), and a message with no media, text, poll or preview gets the same card. Telegram Widgets (layer 233)
-  are the case in hand: never render the widget HTML without the official `@telegram/widget-sandbox`, and never leave a
-  blank bubble in the meantime. `docs/TELEGRAM_WIDGETS.md` holds the upgrade path.
+  `messageWebLink`), and a message with no media, text, poll or preview gets the same card. Layer 233 Widgets are a media
+  kind of their own now: the engine carries the zlib payload as base64 and the server's flags in `MessageMediaDto.widget`,
+  and the SPA inflates it and renders it read-only in the official `@telegram/widget-sandbox` (strict policy, no
+  `onRequest`, no state or storage callbacks). Never render bot-supplied widget HTML in a hand-rolled iframe: the
+  sandbox's validator, quotas and lifecycle are the security boundary. Its SharedArrayBuffer bridge needs the three
+  cross-origin isolation headers in `apps/web/public/_headers` and the local bundling plugin in development; without
+  them the bubble falls back to the labelled card. The sandbox is a pinned Git dependency whose bundles are prebuilt by
+  `apps/web/build/widget-sandbox-bundles.ts` and served by `widget-sandbox-plugin.ts`; `docs/TELEGRAM_WIDGETS.md` holds
+  the runbook and the interactive follow-up.
 - **Bridge failures carry a stable code, and the engine logs one JSON line per event.** `EngineError` derives a coarse
   `code` from its status (`validation`, `not_found`, `conflict`, `access`, `rate_limited`, `upstream`, `unavailable`,
   `internal`) and a call site may name a more specific one; `errorResponse` sends the canonical

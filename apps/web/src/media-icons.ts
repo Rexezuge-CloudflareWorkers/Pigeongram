@@ -18,6 +18,9 @@ const MEDIA_ICONS: Record<MessageMediaKind, IconName | null> = {
   voice: 'mic',
   sticker: null,
   document: 'document',
+  // A widget's preview is its caption (or the "Widget" stub); a glyph would
+  // only crowd a line that Telegram already gives a body.
+  widget: null,
   unsupported: null,
 };
 

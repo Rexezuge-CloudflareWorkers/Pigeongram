@@ -120,7 +120,8 @@
     "seedIndigo": "インディゴ",
     "seedAmber": "アンバー",
     "seedMint": "ミント",
-    "seedRose": "ローズ"
+    "seedRose": "ローズ",
+    "widget": "ウィジェット"
   },
   "landing": {
     "title": "Cloudflare Workers 上の Telegram",
@@ -540,9 +541,16 @@
       "voice": "音声メッセージ",
       "sticker": "スタンプ",
       "document": "ドキュメント",
-      "unsupported": "サポートされていないメッセージ"
+      "unsupported": "サポートされていないメッセージ",
+      "widget": "ウィジェット"
     },
     "minutes": "{{count}}分",
     "hours": "{{count}}時間"
+  },
+  "widget": {
+    "openLinkTitle": "このリンクを開きますか？",
+    "openLinkMessage": "新しいタブで {{url}} を開きますか？",
+    "openLinkConfirm": "リンクを開く",
+    "stopped": "ウィジェットが停止しました"
   }
 }

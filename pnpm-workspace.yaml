@@ -19,3 +19,16 @@ allowBuilds:
 # applies instead — which blocks installing a just-published `@rexezuge/tooling`
 # release the day it lands.
 minimumReleaseAge: 0
+
+# `@telegram/widget-sandbox` is a git dependency whose own monorepo resolves
+# its QuickJS engine with `workspace:*`; outside that repo the protocol cannot
+# resolve, so the override points the same pinned tag at the sibling package.
+# pnpm also refuses exotic (git) subdependencies by default; both packages
+# come from the same tagged commit.
+overrides:
+  '@telegram/widget-sandbox-quickjs': 'github:TelegramMessenger/widget-sandbox#v0.6.5&path:packages/quickjs-wasm'
+  # The pinned sandbox's bundle plugin rewrites parse5's imports by exact
+  # text; parse5 8.1 changed them. Scope the pin to that package only — jsdom
+  # needs the newer parser-stream API from 8.1.
+  '@telegram/widget-sandbox>parse5': 8.0.1
+blockExoticSubdeps: false

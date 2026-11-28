@@ -120,7 +120,8 @@
     "seedIndigo": "인디고",
     "seedAmber": "호박색",
     "seedMint": "민트",
-    "seedRose": "로즈"
+    "seedRose": "로즈",
+    "widget": "위젯"
   },
   "landing": {
     "title": "Cloudflare Workers에서 만나는 Telegram",
@@ -540,9 +541,16 @@
       "voice": "음성 메시지",
       "sticker": "스티커",
       "document": "문서",
-      "unsupported": "지원되지 않는 메시지"
+      "unsupported": "지원되지 않는 메시지",
+      "widget": "위젯"
     },
     "minutes": "{{count}}분",
     "hours": "{{count}}시간"
+  },
+  "widget": {
+    "openLinkTitle": "이 링크를 열까요?",
+    "openLinkMessage": "새 탭에서 {{url}}을(를) 열까요?",
+    "openLinkConfirm": "링크 열기",
+    "stopped": "위젯이 중지되었습니다"
   }
 }

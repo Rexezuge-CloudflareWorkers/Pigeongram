@@ -565,15 +565,66 @@ export interface MessageDto {
 Kinds of user-visible media the bridge carries. `animation` is Telegram's
 GIF-style silent video.
 
+`widget` is a layer-233 mini-HTML document: the engine carries its compressed
+payload and flags, and the SPA inflates and renders it in the official sandbox.
+It has no file of its own, so `/user/file` does not serve it.
+
 `unsupported` is not a media type of its own: it names a payload this client's
-MTProto layer is too old to read. Telegram answers such a message with
-`messageMediaUnsupported` and blanks its caption, so the message would reach the
-SPA with nothing to show. The DTO keeps the message addressable instead, and
-the UI renders a labelled card with a link to the post in Telegram. Telegram
-Widgets (layer 233) are the current case — `docs/TELEGRAM_WIDGETS.md` has the
-upgrade path.
+MTProto layer is too old to read, or one the SPA cannot render. Telegram answers
+a media type newer than the advertised layer with `messageMediaUnsupported` and
+blanks its caption, so the DTO keeps the message addressable and the UI renders
+a labelled card with a link to the post in Telegram.
 */
-export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document' | 'unsupported';
+export type MessageMediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice' | 'sticker' | 'document' | 'widget' | 'unsupported';
+
+/**
+The bridge shape of a Telegram Widget. All bytes and 64-bit numbers are
+ JSON-safe: the HTML is a zlib (RFC 1950) stream carried as base64 and inflated
+ in the browser, and ids/hashes are decimal strings.
+
+ The SPA renders widgets read-only in this pass. The state and request fields
+ are carried so a message stays self-describing when interactivity lands; the
+ sandbox refuses every request while no `onRequest` is installed.
+*/
+export interface WidgetMediaDto {
+  /**
+  zlib-compressed mini-HTML, base64-encoded.
+  */
+  payload: string;
+  /**
+  Logical CSS pixels; `0` means auto on that axis.
+  */
+  width: number;
+  height: number;
+  /**
+  Whether this message is a forwarded copy of the widget.
+  */
+  isCopy: boolean;
+  /**
+  Whether the bot allowed requests on a tap.
+  */
+  canQuery: boolean;
+  /**
+  Whether the bot allowed requests without a tap.
+  */
+  canQueryInBackground: boolean;
+  /**
+  The shared widget object's id, when the widget is a shared one.
+  */
+  widgetId: string | null;
+  /**
+  The shared state as of this message, at most 1024 UTF-8 bytes.
+  */
+  publicData: string | null;
+  /**
+  The per-message state, never carried by a forwarded copy.
+  */
+  chatData: string | null;
+  /**
+  Hash of `publicData`, for a future shared-state read.
+  */
+  publicDataHash: string | null;
+}
 
 /**
 One streamable variant of a video. `index` is the selector for `/user/file`
@@ -633,6 +684,12 @@ export interface MessageMediaDto {
   otherwise, so the UI shows no quality selector and playback behaves as before.
   */
   qualities?: VideoQualityDto[];
+  /**
+  The widget document and the flags the server sent with it. Present only
+  when `kind === 'widget'`; the SPA inflates the payload in the browser
+  rather than asking the engine for the HTML.
+  */
+  widget?: WidgetMediaDto;
 }
 
 /**

@@ -120,7 +120,8 @@
     "seedIndigo": "靛藍",
     "seedAmber": "琥珀色",
     "seedMint": "薄荷綠",
-    "seedRose": "玫瑰色"
+    "seedRose": "玫瑰色",
+    "widget": "小工具"
   },
   "landing": {
     "title": "你的 Telegram，運行於 Cloudflare Workers",
@@ -540,9 +541,16 @@
       "voice": "語音訊息",
       "sticker": "貼圖",
       "document": "文件",
-      "unsupported": "不支援的訊息"
+      "unsupported": "不支援的訊息",
+      "widget": "小工具"
     },
     "minutes": "{{count}}分鐘",
     "hours": "{{count}}小時"
+  },
+  "widget": {
+    "openLinkTitle": "開啟此連結？",
+    "openLinkMessage": "在新分頁中開啟 {{url}}？",
+    "openLinkConfirm": "開啟連結",
+    "stopped": "小工具已停止"
   }
 }

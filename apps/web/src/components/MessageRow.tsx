@@ -323,7 +323,9 @@ export function MessageRow({
     >
       {bare ? (
         <>
-          {message.media ? <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} /> : null}
+          {message.media ? (
+            <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} link={link} />
+          ) : null}
           {meta}
         </>
       ) : (
@@ -338,7 +340,7 @@ export function MessageRow({
           ) : unsupported || emptyBody ? (
             <MessageUnsupported link={link} />
           ) : message.media ? (
-            <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} />
+            <MessageMedia message={message} media={message.media} onOpen={() => onOpenMedia(message.id)} link={link} />
           ) : null}
           {caption ? (
             <div className="text">

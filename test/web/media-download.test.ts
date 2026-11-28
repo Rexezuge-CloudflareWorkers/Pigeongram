@@ -81,5 +81,26 @@ describe('media downloads', () => {
   it('offers a download only for messages with file media', () => {
     expect(isDownloadable(message(photo))).toBe(true);
     expect(isDownloadable(message(null))).toBe(false);
+    // A widget's HTML is inside the message, not a file `/user/file` can serve.
+    expect(
+      isDownloadable(
+        message({
+          ...photo,
+          kind: 'widget',
+          widget: {
+            payload: 'eJwBAgM=',
+            width: 320,
+            height: 200,
+            isCopy: false,
+            canQuery: false,
+            canQueryInBackground: false,
+            widgetId: null,
+            publicData: null,
+            chatData: null,
+            publicDataHash: null,
+          },
+        }),
+      ),
+    ).toBe(false);
   });
 });

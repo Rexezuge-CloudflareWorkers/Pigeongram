@@ -16,7 +16,15 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    // The sandbox's host modules are raw TS built by its Vite plugin; point
+    // TypeScript at the small contract we actually consume. Vite resolves the
+    // real modules at build time, unaffected by these type-only paths.
+    "paths": {
+      "@telegram/widget-sandbox/host/widget-host": ["./src/widget-sandbox-api"],
+      "@telegram/widget-sandbox/host/renderer": ["./src/widget-sandbox-api"],
+      "@telegram/widget-sandbox/host/shadow-renderer": ["./src/widget-sandbox-api"]
+    }
   },
   // No `worker-configuration.d.ts` include: the SPA never touches worker
   // bindings — it talks to the worker over HTTP.

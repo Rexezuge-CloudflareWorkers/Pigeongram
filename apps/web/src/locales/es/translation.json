@@ -120,7 +120,8 @@
     "seedIndigo": "Índigo",
     "seedAmber": "Ámbar",
     "seedMint": "Menta",
-    "seedRose": "Rosa"
+    "seedRose": "Rosa",
+    "widget": "Widget"
   },
   "landing": {
     "title": "Tu Telegram, en Cloudflare Workers",
@@ -540,9 +541,16 @@
       "voice": "Mensaje de voz",
       "sticker": "Pegatina",
       "document": "Documento",
-      "unsupported": "Mensaje no compatible"
+      "unsupported": "Mensaje no compatible",
+      "widget": "Widget"
     },
     "minutes": "{{count}} min",
     "hours": "{{count}} h"
+  },
+  "widget": {
+    "openLinkTitle": "¿Abrir Este Enlace?",
+    "openLinkMessage": "¿Abrir {{url}} En Una Pestaña Nueva?",
+    "openLinkConfirm": "Abrir Enlace",
+    "stopped": "Widget Detenido"
   }
 }

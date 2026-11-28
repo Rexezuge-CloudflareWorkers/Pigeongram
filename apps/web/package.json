@@ -7,12 +7,13 @@
     ".": "./src/App.tsx"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "tsx build/widget-sandbox-bundles.ts && vite",
+    "build": "tsx build/widget-sandbox-bundles.ts && vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@pigeongram/shared": "workspace:*",
+    "@telegram/widget-sandbox": "github:TelegramMessenger/widget-sandbox#v0.6.5&path:packages/core",
     "@rexezuge/errors": "1.9.4",
     "@rexezuge/shared": "1.9.4",
     "@rexezuge/web": "1.9.4",
@@ -32,6 +33,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.3.0",
+    "esbuild": "0.28.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vite-plugin-pwa": "^2.0.0",

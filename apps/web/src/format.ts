@@ -173,6 +173,9 @@ function mediaLabel(kind: MessageMediaDto['kind']): string {
     case 'document': {
       return t('format.media.document', 'Document');
     }
+    case 'widget': {
+      return t('format.media.widget', 'Widget');
+    }
     case 'unsupported': {
       return t('format.media.unsupported', 'Unsupported Message');
     }

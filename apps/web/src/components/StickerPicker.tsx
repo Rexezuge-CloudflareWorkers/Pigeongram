@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchStickerLibrary, fetchStickerSet, stickerUrl } from '../api';
+import { isCacheAvailable, readStickerLibrary, writeStickerLibrary } from '../cache';
 import type { StickerDto, StickerLibraryDto, StickerSetDto } from '../types';
 import { EmojiPicker } from './EmojiPicker';
 import { Icon } from './Icon';
@@ -55,13 +56,29 @@ export function StickerPicker({ stickersEnabled, onClose, onPickEmoji, onSendSti
   useEffect(() => {
     if (!stickersEnabled || library !== null) return;
     let live = true;
-    fetchStickerLibrary()
-      .then((result) => {
-        if (live) setLibrary(result);
-      })
-      .catch((failure: unknown) => {
-        if (live) setError(failure instanceof Error ? failure.message : String(failure));
-      });
+    void (async () => {
+      // The library is a device-level projection of the installed packs, so
+      // the picker paints it before asking the engine again. Its sticker
+      // bytes are already in the browser's own media cache.
+      let stored: StickerLibraryDto | null = null;
+      if (isCacheAvailable()) {
+        try {
+          stored = await readStickerLibrary();
+        } catch {
+          stored = null;
+        }
+      }
+      if (!live) return;
+      if (stored !== null) {
+        setLibrary(stored);
+        return;
+      }
+      const result = await fetchStickerLibrary();
+      void writeStickerLibrary(result);
+      if (live) setLibrary(result);
+    })().catch((failure: unknown) => {
+      if (live) setError(failure instanceof Error ? failure.message : String(failure));
+    });
     return () => {
       live = false;
     };

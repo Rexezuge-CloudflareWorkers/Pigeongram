@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { failureText } from './failure';
 import { fetchChatScreen } from './api';
+import { isCacheAvailable, readThread, writeThread } from './cache';
 import { useDataSaver } from './data-saver';
 import { firstUnread } from './reading';
 import { foldKeyboardSeed } from './reply-keyboard';
@@ -119,7 +120,12 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
   // the copy a reopen would paint, and `ThreadCache` refuses a window that does
   // not reach the newest message.
   useEffect(() => {
-    if (thread !== null) cache.current?.set(thread);
+    if (thread === null) return;
+    cache.current?.set(thread);
+    const timer = setTimeout(() => {
+      void writeThread(thread);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [thread]);
 
   const reset = useCallback((): void => {
@@ -180,7 +186,14 @@ export function useThreadOpen({ thread, setThread, positions, setKeyboardSeed, o
       // A chat with unread messages opens at its own divider, not where the
       // last visit left it, and a linked post has its own landing rule: the
       // cache only serves a plain reopen.
-      const cached = postId === null ? (cache.current?.get(chat.id) ?? null) : null;
+      let cached = postId === null ? (cache.current?.get(chat.id) ?? null) : null;
+      if (cached === null && postId === null && isCacheAvailable()) {
+        // The persistent cache is the second level: an open in this session
+        // paints from memory, a fresh load paints from IndexedDB. Both go
+        // through the same rule, so a stale window is never trusted.
+        cached = await readThread(chat.id);
+        if (sequence !== ticket.current) return { messages: [], comments: null, commentsError: null };
+      }
       const painted = cachedOpen(cached, dialog);
       if (painted !== null) {
         setLoading(false);

@@ -119,7 +119,8 @@
     "seedAmber": "Bernstein",
     "seedMint": "Mint",
     "seedRose": "Rosé",
-    "widget": "Widget"
+    "widget": "Widget",
+    "cacheSize": "Maximale Cache-Größe"
   },
   "landing": {
     "title": "Dein Telegram auf Cloudflare Workers",
@@ -400,7 +401,14 @@
     "notificationsDenied": "Benachrichtigungen sind blockiert — erlaube sie in den Browser-Einstellungen",
     "notificationsUnsupported": "Benachrichtigungen sind in diesem Browser nicht verfügbar",
     "notificationsFailed": "Benachrichtigungen konnten nicht geändert werden",
-    "notificationsLimit": "Zu viele Geräte sind für Benachrichtigungen angemeldet"
+    "notificationsLimit": "Zu viele Geräte sind für Benachrichtigungen angemeldet",
+    "storage": "Speicher",
+    "cacheSize": "Cache-Größe",
+    "cacheSizeHint": "Chats, Profile und Sticker für schnelleres Laden behalten",
+    "cacheOff": "Aus",
+    "cacheUsage": "Verwendet {{used}} von {{limit}}",
+    "clearCache": "Cache leeren",
+    "cacheCleared": "Cache geleert"
   },
   "account": {
     "archivedChats": "Archivierte Chats",

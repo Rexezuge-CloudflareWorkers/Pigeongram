@@ -18,17 +18,20 @@ why its rules are written down rather than left to the framework's defaults.
 
 ## What is cached, and what is not
 
-| Request                                                                   | Answer                                                         |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| The build's own files (hashed assets, the shell, the icons, the manifest) | from the precache, offline included                            |
-| A navigation (`/`, `/chat/12`, `/archived`)                               | from the network; the precached shell when the network is gone |
-| `/user/*` (the account API, the media, the Access entry point)            | from the network, always; never cached                         |
-| `/api/*` (the public health plane)                                        | from the network, always; never cached                         |
-| A Web Push message                                                        | shown as a notification; never cached, never fetched by the SW |
+| Request                                                                   | Answer                                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| The build's own files (hashed assets, the shell, the icons, the manifest) | from the precache, offline included                                      |
+| The app's projections (dialogs, threads, profiles, stickers)              | from IndexedDB, painted before the bridge read; see [CACHE.md](CACHE.md) |
+| A navigation (`/`, `/chat/12`, `/archived`, `/settings/storage`)          | from the network; the precached shell when the network is gone           |
+| `/user/*` (the account API, the media, the Access entry point)            | from the network, always; never cached                                   |
+| `/api/*` (the public health plane)                                        | from the network, always; never cached                                   |
+| A Web Push message                                                        | shown as a notification; never cached, never fetched by the SW           |
 
 **The account plane is never cached.** The engine's data is read live through Cloudflare Access, and a cached
 `/user/*` response would put one account's chats in a cache the next reader could reach. Workbox precaches the
-build's files and adds no runtime-caching route, so the only thing in the cache is the app's own code.
+build's files and adds no runtime-caching route, so the worker's cache holds only the app's own code. The structured cache
+is separate: it lives in IndexedDB, is written by the page, and is read only after Access has admitted the reader. Media
+bytes are cached by the browser's own HTTP cache (`private, max-age=86400` + `ETag`), never by the worker.
 
 ## The Access rules
 
@@ -112,7 +115,9 @@ hot reloading. The dev server still serves the manifest and the icons, so the do
 
 ## Known limits
 
-- **No offline messages.** Only the shell is cached. Chats, media and history are read live, by design.
+- **No offline mode.** The shell is precached and the app's own projections are in IndexedDB, but hydration waits for
+  Access and the account reads still go to the edge. A reader without a network sees `OfflineScreen`, not cached chats.
+  Media stays in the browser's HTTP cache for a day. See [CACHE.md](CACHE.md).
 - **iOS may open the Access login outside the installed app.** That is how iOS handles a cross-origin navigation from a
   standalone web app, and it is not fixable from here.
 - **The worker does not call `skipWaiting`.** A new build's worker waits until the last client of the old one is gone,

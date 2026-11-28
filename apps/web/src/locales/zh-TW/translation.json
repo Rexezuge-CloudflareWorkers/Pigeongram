@@ -119,7 +119,8 @@
     "seedAmber": "琥珀色",
     "seedMint": "薄荷綠",
     "seedRose": "玫瑰色",
-    "widget": "小工具"
+    "widget": "小工具",
+    "cacheSize": "最大快取大小"
   },
   "landing": {
     "title": "你的 Telegram，運行於 Cloudflare Workers",
@@ -400,7 +401,14 @@
     "notificationsDenied": "通知已被封鎖 — 請在瀏覽器設定中允許",
     "notificationsUnsupported": "此瀏覽器不支援通知",
     "notificationsFailed": "無法變更通知設定",
-    "notificationsLimit": "訂閱通知的裝置過多"
+    "notificationsLimit": "訂閱通知的裝置過多",
+    "storage": "儲存空間",
+    "cacheSize": "快取大小",
+    "cacheSizeHint": "保留聊天、個人資料與貼圖以加快載入速度",
+    "cacheOff": "關閉",
+    "cacheUsage": "已使用 {{used}} / {{limit}}",
+    "clearCache": "清除快取",
+    "cacheCleared": "快取已清除"
   },
   "account": {
     "archivedChats": "封存的聊天室",

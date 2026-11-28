@@ -49,6 +49,7 @@ describe('routeForPath', () => {
     expect(routeForPath('/settings/appearance')).toEqual(settings('appearance'));
     expect(routeForPath('/settings/notifications')).toEqual(settings('notifications'));
     expect(routeForPath('/settings/data')).toEqual(settings('data'));
+    expect(routeForPath('/settings/storage')).toEqual(settings('storage'));
   });
 
   it('falls back to the settings index for an unknown section', () => {
@@ -69,6 +70,7 @@ describe('pathForRoute', () => {
       settings('appearance'),
       settings('notifications'),
       settings('data'),
+      settings('storage'),
       chat(2),
       chat(2, 42),
       chat(-1_000_000_000_030, 7),

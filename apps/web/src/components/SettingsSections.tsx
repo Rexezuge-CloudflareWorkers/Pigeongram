@@ -27,6 +27,7 @@ export const SETTINGS_SECTION_ROWS: ReadonlyArray<{
   { id: 'appearance', icon: 'palette', label: (t) => t('settings.appearance', 'Appearance') },
   { id: 'notifications', icon: 'notifications', label: (t) => t('settings.notifications', 'Notifications') },
   { id: 'data', icon: 'image', label: (t) => t('settings.dataSaver', 'Data Saver') },
+  { id: 'storage', icon: 'storage', label: (t) => t('settings.storage', 'Storage') },
 ];
 
 const DATA_SAVER_ROWS: ReadonlyArray<{

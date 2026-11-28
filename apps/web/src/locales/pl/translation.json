@@ -119,7 +119,8 @@
     "seedAmber": "Bursztyn",
     "seedMint": "Mięta",
     "seedRose": "Róż",
-    "widget": "Widget"
+    "widget": "Widget",
+    "cacheSize": "Maksymalny rozmiar pamięci podręcznej"
   },
   "landing": {
     "title": "Twój Telegram na Cloudflare Workers",
@@ -400,7 +401,14 @@
     "notificationsDenied": "Powiadomienia są zablokowane — zezwól na nie w ustawieniach przeglądarki",
     "notificationsUnsupported": "Powiadomienia nie są dostępne w tej przeglądarce",
     "notificationsFailed": "Nie można zmienić powiadomień",
-    "notificationsLimit": "Zbyt wiele urządzeń jest zapisanych do powiadomień"
+    "notificationsLimit": "Zbyt wiele urządzeń jest zapisanych do powiadomień",
+    "storage": "Pamięć",
+    "cacheSize": "Rozmiar pamięci podręcznej",
+    "cacheSizeHint": "Zachowaj czaty, profile i naklejki dla szybszego ładowania",
+    "cacheOff": "Wyłączone",
+    "cacheUsage": "Użyto {{used}} z {{limit}}",
+    "clearCache": "Wyczyść pamięć podręczną",
+    "cacheCleared": "Pamięć podręczna wyczyszczona"
   },
   "account": {
     "archivedChats": "Zarchiwizowane czaty",

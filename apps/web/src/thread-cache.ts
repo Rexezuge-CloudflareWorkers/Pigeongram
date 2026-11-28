@@ -61,7 +61,7 @@ export class ThreadCache {
   }
 }
 
-function cacheableThread(thread: ChatThread): boolean {
+export function cacheableThread(thread: ChatThread): boolean {
   return thread.messages.length > 0 && thread.windowEndId !== null && thread.focusMessageId === null && threadReachesLatest(thread);
 }
 

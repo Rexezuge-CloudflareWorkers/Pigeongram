@@ -119,7 +119,8 @@
     "seedAmber": "琥珀色",
     "seedMint": "薄荷绿",
     "seedRose": "玫瑰色",
-    "widget": "小组件"
+    "widget": "小组件",
+    "cacheSize": "最大缓存大小"
   },
   "landing": {
     "title": "你的 Telegram，运行于 Cloudflare Workers",
@@ -400,7 +401,14 @@
     "notificationsDenied": "通知已被屏蔽 — 请在浏览器设置中允许",
     "notificationsUnsupported": "此浏览器不支持通知",
     "notificationsFailed": "无法更改通知设置",
-    "notificationsLimit": "订阅通知的设备过多"
+    "notificationsLimit": "订阅通知的设备过多",
+    "storage": "存储空间",
+    "cacheSize": "缓存大小",
+    "cacheSizeHint": "保留聊天、个人资料和贴纸以加快加载速度",
+    "cacheOff": "关闭",
+    "cacheUsage": "已使用 {{used}} / {{limit}}",
+    "clearCache": "清除缓存",
+    "cacheCleared": "缓存已清除"
   },
   "account": {
     "archivedChats": "归档聊天",

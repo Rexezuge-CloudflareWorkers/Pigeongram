@@ -51,8 +51,8 @@
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
     "zoom": "Zoom",
-    "jumpInProgress": "Saltando al mensaje…",
-    "jumpToLatest": "Ir a lo último y marcar como leído",
+    "jumpInProgress": "Salto en curso",
+    "jumpToLatest": "Ir al último mensaje y marcar como leído",
     "pinnedMessages": "Mensajes fijados",
     "forwardMessage": "Reenviar mensaje",
     "forwardMessages": "Reenviar {{count, number}} mensajes",
@@ -95,20 +95,20 @@
     "forwardMessages_few": "Reenviar {{count, number}} mensajes",
     "forwardMessages_many": "Reenviar {{count, number}} mensajes",
     "forwardMessages_other": "Reenviar {{count, number}} mensajes",
-    "buttonNeedsPassword": "este botón necesita tu contraseña de Telegram; púlsalo en la app nativa.",
+    "buttonNeedsPassword": "Este botón necesita tu contraseña de Telegram; púlsalo en la app nativa.",
     "buttonSending": "Enviando…",
-    "buttonsUnavailable": "los botones no están disponibles en esta vista.",
-    "gameNeedsApp": "los juegos de Telegram necesitan la app nativa.",
-    "paymentNeedsApp": "los pagos de Telegram necesitan la app nativa.",
-    "inlineUnsupported": "el modo en línea no es compatible con este cliente.",
-    "loginButtonNeedsApp": "los botones de inicio de sesión de Telegram necesitan la app nativa.",
-    "profileUnsupported": "los perfiles no son compatibles con este cliente.",
-    "buttonDisabledByBot": "este botón está desactivado por el bot.",
-    "buttonUnsupported": "este botón no es compatible con este cliente.",
-    "phoneNeedsApp": "compartir un número de teléfono necesita la app nativa.",
-    "locationNeedsApp": "compartir una ubicación necesita la app nativa.",
-    "pollNeedsApp": "crear una encuesta necesita la app nativa.",
-    "chatPickerNeedsApp": "elegir un chat necesita la app nativa.",
+    "buttonsUnavailable": "Los botones no están disponibles en esta vista.",
+    "gameNeedsApp": "Los juegos de Telegram necesitan la app nativa.",
+    "paymentNeedsApp": "Los pagos de Telegram necesitan la app nativa.",
+    "inlineUnsupported": "El modo en línea no es compatible con este cliente.",
+    "loginButtonNeedsApp": "Los botones de inicio de sesión de Telegram necesitan la app nativa.",
+    "profileUnsupported": "Los perfiles no son compatibles con este cliente.",
+    "buttonDisabledByBot": "Este botón está desactivado por el bot.",
+    "buttonUnsupported": "Este botón no es compatible con este cliente.",
+    "phoneNeedsApp": "Compartir un número de teléfono necesita la app nativa.",
+    "locationNeedsApp": "Compartir una ubicación necesita la app nativa.",
+    "pollNeedsApp": "Crear una encuesta necesita la app nativa.",
+    "chatPickerNeedsApp": "Elegir un chat necesita la app nativa.",
     "stickerNoun": "pegatina",
     "photoNoun": "foto",
     "videoNoun": "vídeo",
@@ -123,7 +123,7 @@
   },
   "landing": {
     "title": "Tu Telegram, en Cloudflare Workers",
-    "lead": "Un cliente de una sola cuenta que permanece en línea en el edge: un Durable Object mantiene la sesión de Telegram activa, y esta página transmite los chats en directo mientras haya una pestaña conectada.",
+    "lead": "Un cliente de una sola cuenta que permanece en línea en el perímetro de la red: un Durable Object mantiene la sesión de Telegram activa, y esta página transmite los chats en directo mientras haya una pestaña conectada.",
     "signIn": "Iniciar sesión con Cloudflare Access",
     "footnote": "Cloudflare Access es la puerta de entrada. La API de la cuenta nunca es públicamente accesible.",
     "alwaysOnTitle": "Sesión siempre activa",
@@ -166,12 +166,12 @@
     "phasePassword": "Verificación en dos pasos: introduce tu contraseña de la nube de Telegram",
     "phaseError": "El motor de sesión informó de un error",
     "phasePreparing": "Preparando un código QR de inicio de sesión…",
-    "deliveryApp": "A tu aplicación de Telegram",
-    "deliverySms": "Por SMS",
-    "deliveryCall": "En una llamada telefónica",
-    "deliveryFlashCall": "Como una llamada flash",
-    "deliveryMissedCall": "Como una llamada perdida",
-    "deliveryEmail": "Por correo electrónico"
+    "deliveryApp": "a tu aplicación de Telegram",
+    "deliverySms": "por SMS",
+    "deliveryCall": "en una llamada telefónica",
+    "deliveryFlashCall": "como una llamada flash",
+    "deliveryMissedCall": "como una llamada perdida",
+    "deliveryEmail": "por correo electrónico"
   },
   "chats": {
     "archived": "Chats archivados",
@@ -210,7 +210,7 @@
     "edited": "Editado",
     "sendStatusRead": "Leído",
     "sendStatusSent": "Enviado",
-    "reactLabel": "Reaccionar {{title}} ({{count}})",
+    "reactLabel": "Reaccionar con {{title}} ({{count}})",
     "goToReplied": "Ir al mensaje respondido",
     "cancelReply": "Cancelar respuesta",
     "editingMessage": "Editando mensaje",
@@ -334,7 +334,7 @@
     "people": "Personas",
     "chats": "Chats",
     "resultsHint": "Resultados de Telegram, incluidas personas que no están en tus contactos.",
-    "contactsHint": "Tus contactos. Busca para encontrar a cualquier persona en Telegram."
+    "contactsHint": "Tus contactos. Busca a cualquiera en Telegram."
   },
   "scheduled": {
     "title": "Mensajes programados",
@@ -357,7 +357,7 @@
     "memberCount_few": "{{count, number}} miembros",
     "memberCount_many": "{{count, number}} miembros",
     "memberCount_other": "{{count, number}} miembros",
-    "requestPending": "Tu solicitud de unirse fue enviada. Un administrador debe aprobarla.",
+    "requestPending": "Tu solicitud de unión fue enviada. Un administrador debe aprobarla.",
     "nativeAppRequired": "Telegram necesita completar esta unión en su propia aplicación.",
     "expired": "Este enlace de invitación ha caducado.",
     "invalid": "Este enlace de invitación no es válido."
@@ -382,7 +382,7 @@
     "contrastMedium": "Medio",
     "contrastHigh": "Alto",
     "dataSaver": "Ahorro de datos",
-    "dataSaverHint": "Desactiva Todas Las Descargas Opcionales A La Vez",
+    "dataSaverHint": "Desactiva todas las descargas opcionales a la vez",
     "profiles": "Fotos de perfil",
     "profilesHint": "Mostrar fotos de perfil en toda la aplicación",
     "linkPreviews": "Vistas previas de enlaces",
@@ -396,11 +396,11 @@
     "language": "Idioma",
     "languageHint": "Elige tu idioma de visualización preferido.",
     "notifications": "Notificaciones",
-    "notificationsHint": "Avisar Cuando Llegue Un Mensaje",
-    "notificationsDenied": "Las Notificaciones Están Bloqueadas — Permítelas En La Configuración Del Navegador",
-    "notificationsUnsupported": "Las Notificaciones No Están Disponibles En Este Navegador",
-    "notificationsFailed": "No Se Pudieron Cambiar Las Notificaciones",
-    "notificationsLimit": "Demasiados Dispositivos Están Suscritos A Las Notificaciones"
+    "notificationsHint": "Avisar cuando llegue un mensaje",
+    "notificationsDenied": "Las notificaciones están bloqueadas — permítelas en la configuración del navegador",
+    "notificationsUnsupported": "Las notificaciones no están disponibles en este navegador",
+    "notificationsFailed": "No se pudieron cambiar las notificaciones",
+    "notificationsLimit": "Demasiados dispositivos están suscritos a las notificaciones"
   },
   "account": {
     "archivedChats": "Chats archivados",
@@ -507,7 +507,7 @@
   },
   "errors": {
     "clipboardUnavailable": "El portapapeles no está disponible",
-    "uploadNetwork": "Error al subir — error de red",
+    "uploadNetwork": "Fallo de subida — error de red",
     "uploadCancelled": "Subida cancelada",
     "callInProgress": "Ya hay una llamada en curso",
     "callSetupFailed": "No se pudo configurar la llamada",
@@ -531,7 +531,7 @@
     "presenceMonth": "Visto en el último mes",
     "presenceLastSeen": "Visto por última vez {{day}} a las {{time}}",
     "pollPreview": "Encuesta: {{question}}",
-    "stickerWithEmoji": "{{emoji}} pegatina",
+    "stickerWithEmoji": "Pegatina {{emoji}}",
     "media": {
       "photo": "Foto",
       "video": "Vídeo",
@@ -547,9 +547,9 @@
     "hours": "{{count}} h"
   },
   "widget": {
-    "openLinkTitle": "¿Abrir Este Enlace?",
-    "openLinkMessage": "¿Abrir {{url}} En Una Pestaña Nueva?",
-    "openLinkConfirm": "Abrir Enlace",
-    "stopped": "Widget Detenido"
+    "openLinkTitle": "¿Abrir este enlace?",
+    "openLinkMessage": "¿Abrir {{url}} en una pestaña nueva?",
+    "openLinkConfirm": "Abrir enlace",
+    "stopped": "Widget detenido"
   }
 }

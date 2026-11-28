@@ -107,7 +107,7 @@
     "buttonUnsupported": "이 클라이언트에서는 이 버튼을 지원하지 않습니다.",
     "phoneNeedsApp": "전화번호 공유는 네이티브 앱이 필요합니다.",
     "locationNeedsApp": "위치 공유는 네이티브 앱이 필요합니다.",
-    "pollNeedsApp": "투표 만들기는 네이티브 앱이 필요합니다.",
+    "pollNeedsApp": "설문조사 만들기는 네이티브 앱이 필요합니다.",
     "chatPickerNeedsApp": "채팅 선택은 네이티브 앱이 필요합니다.",
     "stickerNoun": "스티커",
     "photoNoun": "사진",
@@ -346,7 +346,7 @@
     "schedule": "메시지 예약",
     "sendLater": "나중에 보내기",
     "sendAt": "보낼 시각",
-    "futureTime": "미래 시각을 선택하세요."
+    "futureTime": "이후 시각을 선택하세요."
   },
   "invite": {
     "title": "채팅 참여",
@@ -390,7 +390,7 @@
     "media": "사진 및 동영상",
     "mediaHint": "사진 및 동영상 썸네일 불러오기",
     "animate": "미디어 자동 재생",
-    "animateHint": "GIF, 비디오 스티커 및 애니메이션 스티커 재생",
+    "animateHint": "GIF, 동영상 스티커 및 애니메이션 스티커 재생",
     "pinned": "고정된 메시지",
     "pinnedHint": "채팅을 열 때 고정된 메시지 불러오기",
     "language": "언어",
@@ -441,7 +441,7 @@
     "deleteMessage": "메시지 삭제",
     "deleteMessages": "메시지 삭제",
     "deleteOneBody": "이 메시지는 모든 사람에 대해 삭제됩니다.",
-    "deleteManyBody": "이 {{count}}개의 메시지는 모두에 대해 삭제됩니다.",
+    "deleteManyBody": "이 {{count}}개의 메시지는 모든 사람에 대해 삭제됩니다.",
     "chatArchived": "채팅을 보관함에 넣었습니다",
     "chatRestored": "채팅을 복원했습니다",
     "chatPinned": "채팅을 고정했습니다",

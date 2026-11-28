@@ -95,20 +95,20 @@
     "forwardMessages_few": "Prześlij {{count, number}} wiadomości",
     "forwardMessages_many": "Prześlij {{count, number}} wiadomości",
     "forwardMessages_other": "Prześlij {{count, number}} wiadomości",
-    "buttonNeedsPassword": "ten przycisk wymaga hasła Telegram; naciśnij go w natywnej aplikacji.",
+    "buttonNeedsPassword": "Ten przycisk wymaga hasła Telegramu; naciśnij go w natywnej aplikacji.",
     "buttonSending": "Wysyłanie…",
-    "buttonsUnavailable": "przyciski nie są dostępne w tym widoku.",
-    "gameNeedsApp": "gry Telegram wymagają natywnej aplikacji.",
-    "paymentNeedsApp": "płatności Telegram wymagają natywnej aplikacji.",
-    "inlineUnsupported": "tryb inline nie jest obsługiwany przez tego klienta.",
-    "loginButtonNeedsApp": "przyciski logowania Telegram wymagają natywnej aplikacji.",
-    "profileUnsupported": "profile nie są obsługiwane przez tego klienta.",
-    "buttonDisabledByBot": "ten przycisk jest wyłączony przez bota.",
-    "buttonUnsupported": "ten przycisk nie jest obsługiwany przez tego klienta.",
-    "phoneNeedsApp": "udostępnianie numeru telefonu wymaga natywnej aplikacji.",
-    "locationNeedsApp": "udostępnianie lokalizacji wymaga natywnej aplikacji.",
-    "pollNeedsApp": "tworzenie ankiety wymaga natywnej aplikacji.",
-    "chatPickerNeedsApp": "wybór czatu wymaga natywnej aplikacji.",
+    "buttonsUnavailable": "Przyciski nie są dostępne w tym widoku.",
+    "gameNeedsApp": "Gry Telegramu wymagają natywnej aplikacji.",
+    "paymentNeedsApp": "Płatności Telegramu wymagają natywnej aplikacji.",
+    "inlineUnsupported": "Tryb inline nie jest obsługiwany przez tego klienta.",
+    "loginButtonNeedsApp": "Przyciski logowania Telegramu wymagają natywnej aplikacji.",
+    "profileUnsupported": "Profile nie są obsługiwane przez tego klienta.",
+    "buttonDisabledByBot": "Ten przycisk jest wyłączony przez bota.",
+    "buttonUnsupported": "Ten przycisk nie jest obsługiwany przez tego klienta.",
+    "phoneNeedsApp": "Udostępnianie numeru telefonu wymaga natywnej aplikacji.",
+    "locationNeedsApp": "Udostępnianie lokalizacji wymaga natywnej aplikacji.",
+    "pollNeedsApp": "Tworzenie ankiety wymaga natywnej aplikacji.",
+    "chatPickerNeedsApp": "Wybór czatu wymaga natywnej aplikacji.",
     "stickerNoun": "naklejka",
     "photoNoun": "zdjęcie",
     "videoNoun": "wideo",
@@ -127,7 +127,7 @@
     "signIn": "Zaloguj się przez Cloudflare Access",
     "footnote": "Cloudflare Access to drzwi wejściowe. API konta nigdy nie jest publicznie dostępne.",
     "alwaysOnTitle": "Sesja stale online",
-    "alwaysOnBody": "Durable Object budzi się z alarmu, odtwarza pominięte aktualizacje i wraca do snu.",
+    "alwaysOnBody": "Durable Object budzi się alarmem, odtwarza pominięte aktualizacje i wraca do snu.",
     "liveTitle": "Aktualizacje na żywo",
     "liveBody": "Nowe wiadomości, edycje i potwierdzenia przeczytania przychodzą przez jedno połączenie WebSocket, gdy tu jesteś.",
     "privateTitle": "Prywatność domyślnie",
@@ -166,12 +166,12 @@
     "phasePassword": "Weryfikacja dwuetapowa: wpisz hasło chmury Telegramu",
     "phaseError": "Silnik sesji zgłosił błąd",
     "phasePreparing": "Przygotowywanie kodu QR do logowania…",
-    "deliveryApp": "Do aplikacji Telegram",
+    "deliveryApp": "do aplikacji Telegram",
     "deliverySms": "SMS-em",
-    "deliveryCall": "Przez połączenie telefoniczne",
-    "deliveryFlashCall": "Jako połączenie flash",
-    "deliveryMissedCall": "Jako nieodebrane połączenie",
-    "deliveryEmail": "E-mailem"
+    "deliveryCall": "przez połączenie telefoniczne",
+    "deliveryFlashCall": "jako połączenie flash",
+    "deliveryMissedCall": "jako nieodebrane połączenie",
+    "deliveryEmail": "e-mailem"
   },
   "chats": {
     "archived": "Zarchiwizowane czaty",
@@ -249,7 +249,7 @@
     "commentCount_one": "{{count, number}} komentarz",
     "commentCount_few": "{{count, number}} komentarze",
     "commentCount_many": "{{count, number}} komentarzy",
-    "commentCount_other": "{{count, number}} komentarzy",
+    "commentCount_other": "{{count, number}} komentarza",
     "empty": "Jeszcze nie ma wiadomości.",
     "emptyGreeting": "Jeszcze nie ma wiadomości. Napisz coś.",
     "leaveAComment": "Zostaw komentarz"
@@ -354,9 +354,9 @@
     "requestSent": "Twoja prośba o dołączenie została wysłana.",
     "memberCount": "{{count, number}} członków",
     "memberCount_one": "{{count, number}} członek",
-    "memberCount_few": "{{count, number}} członków",
+    "memberCount_few": "{{count, number}} członkowie",
     "memberCount_many": "{{count, number}} członków",
-    "memberCount_other": "{{count, number}} członków",
+    "memberCount_other": "{{count, number}} członka",
     "requestPending": "Twoja prośba o dołączenie została wysłana. Administrator musi ją zatwierdzić.",
     "nativeAppRequired": "Telegram musi zakończyć dołączenie w swojej aplikacji.",
     "expired": "Ten link zaproszenia wygasł.",
@@ -366,9 +366,9 @@
     "loading": "Ładowanie profilu…",
     "memberCount": "{{count, number}} członków",
     "memberCount_one": "{{count, number}} członek",
-    "memberCount_few": "{{count, number}} członków",
+    "memberCount_few": "{{count, number}} członkowie",
     "memberCount_many": "{{count, number}} członków",
-    "memberCount_other": "{{count, number}} członków"
+    "memberCount_other": "{{count, number}} członka"
   },
   "settings": {
     "title": "Ustawienia",
@@ -382,7 +382,7 @@
     "contrastMedium": "Średni",
     "contrastHigh": "Wysoki",
     "dataSaver": "Oszczędzanie danych",
-    "dataSaverHint": "Wyłącz Wszystkie Opcjonalne Pobierania Naraz",
+    "dataSaverHint": "Wyłącz wszystkie opcjonalne pobierania naraz",
     "profiles": "Zdjęcia profilowe",
     "profilesHint": "Pokazuj zdjęcia profilowe w całej aplikacji",
     "linkPreviews": "Podglądy odnośników",
@@ -396,11 +396,11 @@
     "language": "Język",
     "languageHint": "Wybierz preferowany język interfejsu.",
     "notifications": "Powiadomienia",
-    "notificationsHint": "Powiadom O Nowej Wiadomości",
-    "notificationsDenied": "Powiadomienia Są Zablokowane — Zezwól Na Nie W Ustawieniach Przeglądarki",
-    "notificationsUnsupported": "Powiadomienia Nie Są Dostępne W Tej Przeglądarce",
-    "notificationsFailed": "Nie Można Zmienić Powiadomień",
-    "notificationsLimit": "Zbyt Wiele Urządzeń Jest Zapisanych Na Powiadomienia"
+    "notificationsHint": "Powiadom o nowej wiadomości",
+    "notificationsDenied": "Powiadomienia są zablokowane — zezwól na nie w ustawieniach przeglądarki",
+    "notificationsUnsupported": "Powiadomienia nie są dostępne w tej przeglądarce",
+    "notificationsFailed": "Nie można zmienić powiadomień",
+    "notificationsLimit": "Zbyt wiele urządzeń jest zapisanych do powiadomień"
   },
   "account": {
     "archivedChats": "Zarchiwizowane czaty",
@@ -430,12 +430,12 @@
     "sendFiles_one": "Wyślij {{count, number}} plik",
     "sendFiles_few": "Wyślij {{count, number}} pliki",
     "sendFiles_many": "Wyślij {{count, number}} plików",
-    "sendFiles_other": "Wyślij {{count, number}} plików",
+    "sendFiles_other": "Wyślij {{count, number}} pliku",
     "overflow": "Naraz można wysłać tylko {{max}} plików; pominięto {{count, number}} plików. Wyślij pozostałe w kolejnej partii.",
     "overflow_one": "Naraz można wysłać tylko {{max}} plików; pominięto jeden plik. Wyślij pozostałe w kolejnej partii.",
     "overflow_few": "Naraz można wysłać tylko {{max}} plików; pominięto {{count, number}} pliki. Wyślij pozostałe w kolejnej partii.",
     "overflow_many": "Naraz można wysłać tylko {{max}} plików; pominięto {{count, number}} plików. Wyślij pozostałe w kolejnej partii.",
-    "overflow_other": "Naraz można wysłać tylko {{max}} plików; pominięto {{count, number}} plików. Wyślij pozostałe w kolejnej partii."
+    "overflow_other": "Naraz można wysłać tylko {{max}} plików; pominięto {{count, number}} pliku. Wyślij pozostałe w kolejnej partii."
   },
   "dialogs": {
     "deleteMessage": "Usuń wiadomość",
@@ -464,7 +464,7 @@
     "fileCount_one": "{{count, number}} plik",
     "fileCount_few": "{{count, number}} pliki",
     "fileCount_many": "{{count, number}} plików",
-    "fileCount_other": "{{count, number}} plików",
+    "fileCount_other": "{{count, number}} pliku",
     "copiedToClipboard": "Skopiowano do schowka"
   },
   "reactions": {
@@ -503,7 +503,7 @@
     "voteCount_one": "{{count, number}} głos",
     "voteCount_few": "{{count, number}} głosy",
     "voteCount_many": "{{count, number}} głosów",
-    "voteCount_other": "{{count, number}} głosów"
+    "voteCount_other": "{{count, number}} głosu"
   },
   "errors": {
     "clipboardUnavailable": "Schowek nie jest dostępny",
@@ -511,7 +511,7 @@
     "uploadCancelled": "Przesyłanie anulowano",
     "callInProgress": "Połączenie już trwa",
     "callSetupFailed": "Nie udało się nawiązać połączenia",
-    "callConnectFailed": "Nie udało się połączyć rozmowy",
+    "callConnectFailed": "Nie udało się nawiązać połączenia z rozmówcą",
     "voiceUnsupported": "Nagrywanie głosu nie jest obsługiwane w tej przeglądarce.",
     "micDenied": "Dostęp do mikrofonu został odmówiony.",
     "micNotFound": "Nie znaleziono mikrofonu.",
@@ -547,9 +547,9 @@
     "hours": "{{count}} godz."
   },
   "widget": {
-    "openLinkTitle": "Otworzyć Ten Link?",
-    "openLinkMessage": "Otworzyć {{url}} W Nowej Karcie?",
-    "openLinkConfirm": "Otwórz Link",
-    "stopped": "Widget Zatrzymany"
+    "openLinkTitle": "Otworzyć ten link?",
+    "openLinkMessage": "Otworzyć {{url}} w nowej karcie?",
+    "openLinkConfirm": "Otwórz link",
+    "stopped": "Widget zatrzymany"
   }
 }

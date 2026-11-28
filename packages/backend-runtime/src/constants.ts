@@ -58,6 +58,8 @@ export const ENGINE_PATHS: ReadonlySet<string> = new Set([
   '/user/file',
   '/user/avatar',
   '/user/sticker',
+  '/user/push/subscribe',
+  '/user/push/unsubscribe',
 ]);
 
 /**

@@ -93,7 +93,8 @@
     "forwardMessages_one": "{{count, number}} Nachricht weiterleiten",
     "forwardMessages_few": "{{count, number}} Nachrichten weiterleiten",
     "forwardMessages_many": "{{count, number}} Nachrichten weiterleiten",
-    "forwardMessages_other": "{{count, number}} Nachrichten weiterleiten"
+    "forwardMessages_other": "{{count, number}} Nachrichten weiterleiten",
+    "notifications": "Benachrichtigungen Für Neue Nachrichten Anzeigen"
   },
   "landing": {
     "title": "Dein Telegram auf Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Angeheftete Nachrichten",
     "pinnedHint": "Angeheftete Nachrichten beim Öffnen eines Chats laden",
     "language": "Sprache",
-    "languageHint": "Wähle deine bevorzugte Anzeigesprache."
+    "languageHint": "Wähle deine bevorzugte Anzeigesprache.",
+    "notifications": "Benachrichtigungen",
+    "notificationsHint": "Bei Einer Neuen Nachricht Benachrichtigen",
+    "notificationsDenied": "Benachrichtigungen Sind Blockiert — Erlaube Sie In Den Browser-Einstellungen",
+    "notificationsUnsupported": "Benachrichtigungen Sind In Diesem Browser Nicht Verfügbar",
+    "notificationsFailed": "Benachrichtigungen Konnten Nicht Geändert Werden",
+    "notificationsLimit": "Zu Viele Geräte Sind Für Benachrichtigungen Angemeldet"
   },
   "account": {
     "archivedChats": "Archivierte Chats",

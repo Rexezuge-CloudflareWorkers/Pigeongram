@@ -14,6 +14,9 @@ import { prepareExclusively } from './platform';
 import { log } from './log';
 import { avatarResponse, fileResponse, stickerResponse, uploadGroupResponse, uploadResponse } from './media-routes';
 import { clampInt } from './params';
+import type { PushNotifier } from './push-notifier';
+import { parsePushSubscription } from './push-spec';
+import type { PushSubscriptions } from './push-subscriptions';
 import type { UpdatesSocketHub } from './socket-hub';
 import type { EngineStore } from './stats';
 import type { StatsDto } from './stats';
@@ -60,6 +63,14 @@ export interface EngineDeps {
   avatar cache's ordering read it.
   */
   now?: () => number;
+  /**
+  The device subscriptions the notifier fans out to.
+  */
+  pushSubscriptions?: PushSubscriptions;
+  /**
+  The outbound delivery seam, replaceable in tests.
+  */
+  notifier?: PushNotifier;
 }
 
 /**
@@ -80,6 +91,8 @@ export class SessionEngine {
   private readonly loginApi: LoginApi;
   private readonly hub: UpdatesSocketHub;
   private readonly lifecycle: SessionLifecycle;
+  private readonly notifier: PushNotifier;
+  private readonly pushSubscriptions: PushSubscriptions;
   private readonly routes: ReadonlyMap<string, EngineRouteHandler>;
   private me: MeDto | null;
 
@@ -110,6 +123,8 @@ export class SessionEngine {
     this.hub = container.get(Tokens.hub);
     this.login = container.get(Tokens.login);
     this.loginApi = container.get(Tokens.loginApi);
+    this.notifier = container.get(Tokens.notifier);
+    this.pushSubscriptions = container.get(Tokens.pushSubscriptions);
     this.me = readStoredMe(this.store);
     // One table, built once per object: a route is data, not a branch in a
     // switch that has to be kept in step with ENGINE_PATHS by hand.
@@ -126,6 +141,8 @@ export class SessionEngine {
       ['POST /user/upload', (request, url) => uploadResponse(this.driver, request, url, this.config)],
       ['POST /user/upload-group', (request, url) => uploadGroupResponse(this.driver, request, url, this.config)],
       ['POST /user/wake', async () => Response.json(await this.lifecycle.runWake('manual'))],
+      ['POST /user/push/subscribe', async (request) => Response.json(await this.pushSubscribe(request))],
+      ['POST /user/push/unsubscribe', async (request) => Response.json(await this.pushUnsubscribe(request))],
       ['GET /user/stats', (_request, url) => Promise.resolve(Response.json(this.stats(url)))],
       ['GET /user/file', (request, url) => fileResponse(this.driver, request, url)],
       ['HEAD /user/file', (request, url) => fileResponse(this.driver, request, url)],
@@ -234,8 +251,32 @@ export class SessionEngine {
     return this.store.stats(days);
   }
 
+  /**
+  Registers (or refreshes) one browser device. The subscription is a secret
+  as much as a Telegram session is, so it lives behind the same Access gate
+  as the rest of `/user/*` and is never echoed back to a caller.
+  */
+  private async pushSubscribe(request: Request): Promise<{ ok: true }> {
+    const subscription = parsePushSubscription(await readJsonBody(request));
+    this.pushSubscriptions.upsert(subscription);
+    return { ok: true };
+  }
+
+  private async pushUnsubscribe(request: Request): Promise<{ ok: true }> {
+    const body = await readJsonBody(request);
+    if (typeof body.endpoint !== 'string' || body.endpoint.length === 0) {
+      throw new EngineError('Missing push endpoint', 400, 'validation');
+    }
+    this.pushSubscriptions.remove(body.endpoint);
+    return { ok: true };
+  }
+
   private async logout(): Promise<{ ok: true }> {
     this.login.cancel();
+    // A signed-out account must not keep receiving notifications from the
+    // browser that just left it. Deletes are writes, but logout is already a
+    // write path and the subscription table is tiny.
+    this.pushSubscriptions.clear();
     this.lifecycle.detach();
     for (const socket of this.state.getWebSockets()) {
       try {
@@ -296,8 +337,14 @@ export class SessionEngine {
 
   private handleEvent(event: UpdateEvent | null): void {
     this.lifecycle.countUpdate();
-    if (!event || !this.lifecycle.isLive) return;
-    this.hub.broadcast({ type: 'update', update: event });
+    if (!event) return;
+    if (this.lifecycle.isLive) {
+      this.hub.broadcast({ type: 'update', update: event });
+      return;
+    }
+    // No tab is attached: a wake still sees missed messages through
+    // getDifference. This is the only moment a system notification is useful.
+    this.notifier.offer(event);
   }
 }
 

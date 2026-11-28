@@ -42,6 +42,20 @@ stays observable in `/user/stats`) and connects nothing.
 
 `WAKE_INTERVAL_SECONDS` (wrangler var, default `300`, minimum `30`) is the only cadence knob.
 
+### Browser push
+
+A wake sees missed messages through `getDifference` even with no tab attached, so `SessionEngine.handleEvent` offers
+every `new_message` to `PushNotifier` when the engine is **not** live. Outgoing messages are ignored, ids are deduplicated
+in memory, and a short coalescing window turns a replay of forty messages into one notification per device. The batch is
+flushed through `SessionLifecycle.background`, so signing a JWT and calling a push service never hold the input gate;
+an invalid VAPID key or an empty subscription table is a no-op.
+
+One row per browser lives in `engine_push_subscriptions` (bounded at 12 devices). The table is written only on
+subscribe/unsubscribe/cleanup, never on delivery: a 404/410 from a push service drops the dead row and three refused
+deliveries retire it. Signing out clears the table. The payload is RFC 8291-encrypted with the VAPID public key and the
+subscription's auth secret; the browser decrypts it before the service worker reads it. Latency is the wake cadence —
+up to five minutes with the default — by design: shortening it would spend the Free plan's row budget on alarms.
+
 ## Latency
 
 A Durable Object hands out **one event at a time**: while a handler awaits, the next request waits behind it. Two
@@ -116,26 +130,28 @@ navigates to `GET /user/login`, which sits behind the same Access gate; after th
 the browser back into the SPA. The optional `next` query must be a same-origin absolute path (protocol-relative URLs,
 backslashes, and CR/LF are rejected) and defaults to `/`.
 
-| Route                       | Body / query                                     | Returns                                                     |
-| --------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| `GET /api/health`           | —                                                | `{"status":"ok","service":"telegram-web-client"}`; public   |
-| `GET /user/login`           | `?next=/path` (optional)                         | `302` into the SPA; the Access entry point                  |
-| `GET /user/state`           | —                                                | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …)  |
-| `POST /user/login/qr`       | —                                                | `EngineStateDto`; starts (or joins) the QR login            |
-| `POST /user/login/phone`    | `{"phone": string}`                              | `EngineStateDto`; sends a login code (phone-number path)    |
-| `POST /user/login/code`     | `{"code": string}`                               | `EngineStateDto`; submits the login code                    |
-| `POST /user/login/password` | `{"password": string}`                           | `EngineStateDto`; submits the 2FA cloud password            |
-| `POST /user/login/cancel`   | —                                                | `EngineStateDto`; aborts an in-flight login                 |
-| `POST /user/logout`         | —                                                | `{"ok": true}`; logs out, closes updates sockets, re-arms   |
-| `POST /user/rpc`            | `{"method": string, "params"?: object}`          | method-specific JSON (below)                                |
-| `GET /user/updates`         | WebSocket                                        | server events (below)                                       |
-| `GET /user/file`            | `?chatId=&messageId=&thumb=1&quality=` + `Range` | media bytes (see below)                                     |
-| `GET /user/avatar`          | `?chatId=&size=small\|big`                       | profile photo bytes (`image/jpeg`, cached a day)            |
-| `GET /user/sticker`         | `?documentId=&thumb=1`                           | sticker bytes, or its thumbnail (`image/webp`)              |
-| `POST /user/upload`         | query params + raw body (see below)              | `{"message": MessageDto}`; sends one file                   |
-| `POST /user/upload-group`   | `?chatId=&manifest=` + raw body                  | `{"messages": MessageDto[]}`; sends 2–10 files as one album |
-| `POST /user/wake`           | —                                                | `WakeCountersDto`; runs one wake cycle now                  |
-| `GET /user/stats`           | `?days=1..30` (default 7)                        | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)   |
+| Route                         | Body / query                                     | Returns                                                     |
+| ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| `GET /api/health`             | —                                                | `{"status":"ok","service":"telegram-web-client"}`; public   |
+| `GET /user/login`             | `?next=/path` (optional)                         | `302` into the SPA; the Access entry point                  |
+| `GET /user/state`             | —                                                | `EngineStateDto` (`phase`, `authorized`, `me`, `qrUrl`, …)  |
+| `POST /user/login/qr`         | —                                                | `EngineStateDto`; starts (or joins) the QR login            |
+| `POST /user/login/phone`      | `{"phone": string}`                              | `EngineStateDto`; sends a login code (phone-number path)    |
+| `POST /user/login/code`       | `{"code": string}`                               | `EngineStateDto`; submits the login code                    |
+| `POST /user/login/password`   | `{"password": string}`                           | `EngineStateDto`; submits the 2FA cloud password            |
+| `POST /user/login/cancel`     | —                                                | `EngineStateDto`; aborts an in-flight login                 |
+| `POST /user/logout`           | —                                                | `{"ok": true}`; logs out, closes updates sockets, re-arms   |
+| `POST /user/rpc`              | `{"method": string, "params"?: object}`          | method-specific JSON (below)                                |
+| `GET /user/updates`           | WebSocket                                        | server events (below)                                       |
+| `GET /user/file`              | `?chatId=&messageId=&thumb=1&quality=` + `Range` | media bytes (see below)                                     |
+| `GET /user/avatar`            | `?chatId=&size=small\|big`                       | profile photo bytes (`image/jpeg`, cached a day)            |
+| `GET /user/sticker`           | `?documentId=&thumb=1`                           | sticker bytes, or its thumbnail (`image/webp`)              |
+| `POST /user/upload`           | query params + raw body (see below)              | `{"message": MessageDto}`; sends one file                   |
+| `POST /user/upload-group`     | `?chatId=&manifest=` + raw body                  | `{"messages": MessageDto[]}`; sends 2–10 files as one album |
+| `POST /user/wake`             | —                                                | `WakeCountersDto`; runs one wake cycle now                  |
+| `GET /user/stats`             | `?days=1..30` (default 7)                        | `StatsDto` (`counters`, per-day buckets, `databaseBytes`)   |
+| `POST /user/push/subscribe`   | `PushSubscriptionDto`                            | `{"ok": true}`; stores one browser device                   |
+| `POST /user/push/unsubscribe` | `{"endpoint": string}`                           | `{"ok": true}`; drops one browser device                    |
 
 `GET /api/health` lives on the worker, not the engine, and is never gated; it carries no account data. The old
 `/health` alias is gone, and no account route is served under `/api/*`: an old `/api/state` call is a 404.

@@ -62,6 +62,16 @@ interface CloudflareEnv {
   one-per-byte-range, so a single budget over both throttles normal browsing.
   */
   MEDIA_RATE_LIMIT_PER_MINUTE?: string;
+  /**
+  base64url PKCS#8 P-256 private key used to sign VAPID JWTs. A secret, so it
+  is never in the wrangler template; without it, notifications are off.
+  */
+  VAPID_PRIVATE_KEY?: string;
+  /**
+  The `sub` claim sent to push services (a contact URL). Optional; the
+  engine falls back to a generic address when the deployment sets nothing.
+  */
+  VAPID_SUBJECT?: string;
 }
 
 /**

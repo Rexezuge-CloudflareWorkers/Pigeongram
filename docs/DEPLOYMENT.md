@@ -24,6 +24,7 @@ Set these repository secrets:
 | `CLOUDFLARE_API_TOKEN`                  | Deploys Workers and Pages                                                                       |
 | `CLOUDFLARE_ACCOUNT_ID`                 | Selects the Cloudflare account                                                                  |
 | `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` | Optional Telegram API credentials; CD defaults to `2496` and `8da85b0d5bfe62527e5b244c209159c3` |
+| `VAPID_PRIVATE_KEY`                     | Optional base64url PKCS#8 P-256 key for Web Push; no key means notifications are off            |
 
 Set these repository variables:
 
@@ -32,6 +33,14 @@ Set these repository variables:
 | `CLOUDFLARE_PAGES_PROJECT_NAME`         | Optional Pages project name                              |
 | `VITE_APP_NAME` / `VITE_APP_SHORT_NAME` | Optional product and launcher names                      |
 | `WRANGLER_VARS_PATCH_JSON`              | Deployment values such as `TEAM_DOMAIN` and `POLICY_AUD` |
+| `VITE_VAPID_PUBLIC_KEY`                 | Public VAPID point paired with the secret above          |
+
+Generate a deployment's VAPID pair with `pnpm run generate:vapid`, then set the public value as
+`VITE_VAPID_PUBLIC_KEY` and the private value as the `VAPID_PRIVATE_KEY` secret. Both halves must be from the same run:
+changing either invalidates every browser subscription, so the reader has to turn notifications on again. Notifications
+are optional — an absent private key simply disables delivery, and the SPA hides the toggle when no public key was
+inlined at build time. `VAPID_SUBJECT` (a contact URL) can be supplied through `WRANGLER_VARS_PATCH_JSON`; without it
+the engine uses a generic address.
 
 The Access variables are public configuration, not secrets:
 

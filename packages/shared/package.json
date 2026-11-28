@@ -14,7 +14,8 @@
     "./contact-types": "./src/contact-types.ts",
     "./search-types": "./src/search-types.ts",
     "./sticker-types": "./src/sticker-types.ts",
-    "./call-types": "./src/call-types.ts"
+    "./call-types": "./src/call-types.ts",
+    "./push-types": "./src/push-types.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

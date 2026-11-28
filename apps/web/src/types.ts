@@ -13,3 +13,4 @@ export * from '@pigeongram/shared/rpc-types';
 export * from '@pigeongram/shared/search-types';
 export * from '@pigeongram/shared/sticker-types';
 export * from '@pigeongram/shared/call-types';
+export * from '@pigeongram/shared/push-types';

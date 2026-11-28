@@ -19,7 +19,8 @@
     "test:coverage": "NODE_ENV=test vitest run --coverage",
     "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint --fix --quiet .",
     "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv",
-    "validate:locales": "tsx scripts/validate-locales.ts"
+    "validate:locales": "tsx scripts/validate-locales.ts",
+    "generate:vapid": "tsx scripts/generate-vapid-keys.ts"
   },
   "devDependencies": {
     "@rexezuge/tooling": "1.9.4",

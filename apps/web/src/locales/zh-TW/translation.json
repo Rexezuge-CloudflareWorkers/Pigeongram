@@ -93,7 +93,8 @@
     "forwardMessages_one": "轉寄 {{count, number}} 則訊息",
     "forwardMessages_few": "轉寄 {{count, number}} 則訊息",
     "forwardMessages_many": "轉寄 {{count, number}} 則訊息",
-    "forwardMessages_other": "轉寄 {{count, number}} 則訊息"
+    "forwardMessages_other": "轉寄 {{count, number}} 則訊息",
+    "notifications": "顯示新訊息通知"
   },
   "landing": {
     "title": "你的 Telegram，運行於 Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "置頂訊息",
     "pinnedHint": "開啟聊天室時載入置頂訊息",
     "language": "語言",
-    "languageHint": "選擇你偏好的顯示語言。"
+    "languageHint": "選擇你偏好的顯示語言。",
+    "notifications": "通知",
+    "notificationsHint": "收到訊息時通知",
+    "notificationsDenied": "通知已被封鎖 — 請在瀏覽器設定中允許",
+    "notificationsUnsupported": "此瀏覽器不支援通知",
+    "notificationsFailed": "無法變更通知設定",
+    "notificationsLimit": "訂閱通知的裝置過多"
   },
   "account": {
     "archivedChats": "封存的聊天室",

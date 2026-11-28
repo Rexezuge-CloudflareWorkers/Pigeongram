@@ -93,7 +93,8 @@
     "forwardMessages_one": "{{count, number}} bericht doorsturen",
     "forwardMessages_few": "{{count, number}} berichten doorsturen",
     "forwardMessages_many": "{{count, number}} berichten doorsturen",
-    "forwardMessages_other": "{{count, number}} berichten doorsturen"
+    "forwardMessages_other": "{{count, number}} berichten doorsturen",
+    "notifications": "Meldingen voor nieuwe berichten weergeven"
   },
   "landing": {
     "title": "Jouw Telegram, op Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Vaste berichten",
     "pinnedHint": "Vaste berichten laden bij het openen van een chat",
     "language": "Taal",
-    "languageHint": "Kies je gewenste weergavetaal."
+    "languageHint": "Kies je gewenste weergavetaal.",
+    "notifications": "Meldingen",
+    "notificationsHint": "Melden Wanneer Een Bericht Aankomt",
+    "notificationsDenied": "Meldingen Zijn Geblokkeerd — Sta Ze Toe In De Browserinstellingen",
+    "notificationsUnsupported": "Meldingen Zijn Niet Beschikbaar In Deze Browser",
+    "notificationsFailed": "Meldingen Konden Niet Worden Gewijzigd",
+    "notificationsLimit": "Te Veel Apparaten Zijn Aangemeld Voor Meldingen"
   },
   "account": {
     "archivedChats": "Gearchiveerde chats",

@@ -1,6 +1,7 @@
 import { engineHandler } from './engine';
 import { healthHandler } from './health';
 import { loginHandler } from './login';
+import { pushSubscribeHandler, pushUnsubscribeHandler } from './push';
 import { uploadGroupHandler, uploadHandler } from './upload';
 import type { ApiHandler } from '../types';
 
@@ -28,6 +29,8 @@ const userRoutes: readonly RouteDefinition[] = [
   { method: 'get', path: '/user/login', handler: loginHandler },
   { method: 'post', path: '/user/upload', handler: uploadHandler },
   { method: 'post', path: '/user/upload-group', handler: uploadGroupHandler },
+  { method: 'post', path: '/user/push/subscribe', handler: pushSubscribeHandler },
+  { method: 'post', path: '/user/push/unsubscribe', handler: pushUnsubscribeHandler },
   { method: 'all', path: '/user/*', handler: engineHandler },
 ];
 

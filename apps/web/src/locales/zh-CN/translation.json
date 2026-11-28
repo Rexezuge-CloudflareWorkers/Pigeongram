@@ -93,7 +93,8 @@
     "forwardMessages_one": "转发 {{count, number}} 条消息",
     "forwardMessages_few": "转发 {{count, number}} 条消息",
     "forwardMessages_many": "转发 {{count, number}} 条消息",
-    "forwardMessages_other": "转发 {{count, number}} 条消息"
+    "forwardMessages_other": "转发 {{count, number}} 条消息",
+    "notifications": "显示新消息通知"
   },
   "landing": {
     "title": "你的 Telegram，运行于 Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "置顶消息",
     "pinnedHint": "打开聊天时加载置顶消息",
     "language": "语言",
-    "languageHint": "选择你偏好的显示语言。"
+    "languageHint": "选择你偏好的显示语言。",
+    "notifications": "通知",
+    "notificationsHint": "收到消息时通知",
+    "notificationsDenied": "通知已被屏蔽 — 请在浏览器设置中允许",
+    "notificationsUnsupported": "此浏览器不支持通知",
+    "notificationsFailed": "无法更改通知设置",
+    "notificationsLimit": "订阅通知的设备过多"
   },
   "account": {
     "archivedChats": "归档聊天",

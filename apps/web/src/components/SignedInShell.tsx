@@ -304,6 +304,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
             onSetSeed={setSeed}
             contrast={contrast}
             onSetContrast={setContrast}
+            onError={(message) => onError(message)}
           />
           <button
             type="button"

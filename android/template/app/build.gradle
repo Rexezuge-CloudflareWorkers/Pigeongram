@@ -13,35 +13,35 @@ if (!signingFile.exists()) {
 signingFile.withInputStream { signingProperties.load(it) }
 
 android {
-    namespace '__PACKAGE_ID__'
-    compileSdk 36
+    namespace = '__PACKAGE_ID__'
+    compileSdk = 36
 
     defaultConfig {
-        applicationId '__PACKAGE_ID__'
-        minSdk 24
-        targetSdk 36
-        versionCode __VERSION_CODE__
-        versionName '__VERSION_NAME__'
+        applicationId = '__PACKAGE_ID__'
+        minSdk = 24
+        targetSdk = 36
+        versionCode = __VERSION_CODE__
+        versionName = '__VERSION_NAME__'
     }
 
     signingConfigs {
         release {
-            storeFile rootProject.file(signingProperties.getProperty('storeFile'))
-            storePassword signingProperties.getProperty('storePassword')
-            keyAlias signingProperties.getProperty('keyAlias')
-            keyPassword signingProperties.getProperty('keyPassword')
+            storeFile = rootProject.file(signingProperties.getProperty('storeFile'))
+            storePassword = signingProperties.getProperty('storePassword')
+            keyAlias = signingProperties.getProperty('keyAlias')
+            keyPassword = signingProperties.getProperty('keyPassword')
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
+            signingConfig = signingConfigs.release
+            minifyEnabled = false
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }

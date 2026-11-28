@@ -10,7 +10,6 @@ import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
-import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -104,7 +103,7 @@ public final class MainActivity extends Activity {
             @Override
             public void onDownloadStart(String url, String userAgent, String disposition, String mimeType, long contentLength) {
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                intent.setType(mimeType == null || mimeType.isEmpty() ? URLUtil.guessMimeType(url) : mimeType);
+                intent.setType(mimeType == null || mimeType.isEmpty() ? "*/*" : mimeType);
                 try {
                     startActivity(intent);
                 } catch (ActivityNotFoundException ignored) {

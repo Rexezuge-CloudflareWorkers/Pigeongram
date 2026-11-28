@@ -183,7 +183,7 @@ describe('the committed native template', () => {
   });
 
   it('keeps the deployment placeholders in the Java and Gradle sources', () => {
-    expect(readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'build.gradle'), 'utf8')).toContain("applicationId '__PACKAGE_ID__'");
+    expect(readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'build.gradle'), 'utf8')).toContain("applicationId = '__PACKAGE_ID__'");
     expect(
       readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'), 'utf8'),
     ).toContain('package __PACKAGE_ID__;');
@@ -212,9 +212,9 @@ describe('the rendered Android project', () => {
     render(outputDirectory);
 
     const gradle = readFileSync(path.join(outputDirectory, 'app', 'build.gradle'), 'utf8');
-    expect(gradle).toContain("applicationId 'com.example.telegramweb'");
-    expect(gradle).toContain('versionCode 42');
-    expect(gradle).toContain("versionName '1.2.3'");
+    expect(gradle).toContain("applicationId = 'com.example.telegramweb'");
+    expect(gradle).toContain('versionCode = 42');
+    expect(gradle).toContain("versionName = '1.2.3'");
     expect(existsSync(path.join(outputDirectory, 'app', 'src', 'main', 'java', 'com', 'example', 'telegramweb', 'MainActivity.java'))).toBe(
       true,
     );

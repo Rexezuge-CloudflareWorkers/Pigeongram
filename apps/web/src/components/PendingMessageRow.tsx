@@ -86,7 +86,7 @@ function PendingMedia({ entry, media, t }: { entry: PendingMessage; media: Messa
       <span className="pending-file">
         <Icon name="attach" size={14} /> {media.fileName ?? t('media.file', 'File')}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
-        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count}} Files', { count: entry.fileCount })}` : ''}
+        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count, number}} Files', { count: entry.fileCount })}` : ''}
       </span>
     );
   }
@@ -101,7 +101,7 @@ function PendingMedia({ entry, media, t }: { entry: PendingMessage; media: Messa
       <span className="pending-file">
         <Icon name="attach" size={14} /> {media.fileName ?? t('media.file', 'File')}
         {media.size === null ? '' : ` · ${formatBytes(media.size)}`}
-        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count}} Files', { count: entry.fileCount })}` : ''}
+        {entry.fileCount > 1 ? ` · ${t('messages.fileCount', '{{count, number}} Files', { count: entry.fileCount })}` : ''}
       </span>
     );
   }

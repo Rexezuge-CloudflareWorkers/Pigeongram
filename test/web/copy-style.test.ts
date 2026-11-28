@@ -34,8 +34,10 @@ Unit suffixes that legitimately follow a dynamic value: `${n}s`, `${n}m`.
 const UNIT_SUFFIXES = new Set(['s', 'm', 'h', 'd']);
 
 function isTitleCased(text: string): boolean {
-  for (const rawToken of text.split(/\s+/)) {
-    // An interpolation is data, not authored copy.
+  // An interpolation is data, not authored copy. Strip the whole token first,
+  // including i18next formatter suffixes such as `{{count, number}}`, whose
+  // interior would otherwise be read as a lowercase English word.
+  for (const rawToken of text.replaceAll(/\{\{[^{}]+\}\}/g, '').split(/\s+/)) {
     if (rawToken.includes('{{')) continue;
     const start = rawToken.search(/[\p{L}\p{N}]/u);
     if (start === -1) continue;

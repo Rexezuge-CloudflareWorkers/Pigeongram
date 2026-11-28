@@ -79,7 +79,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
   const label =
     messages.length === 1
       ? t('a11y.forwardMessage', 'Forward message')
-      : t('a11y.forwardMessages', 'Forward {{count}} messages', { count: messages.length });
+      : t('a11y.forwardMessages', 'Forward {{count, number}} messages', { count: messages.length });
 
   return createPortal(
     <div
@@ -100,11 +100,7 @@ export function ForwardPicker({ messages, dialogs, onForward, onClose, exiting =
         <header className="flex items-start gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0 flex-1">
             <h2 className="m-0 text-base font-semibold">{t('forward.title', 'Forward To…')}</h2>
-            <p className="m-0 text-xs text-muted">
-              {messages.length === 1
-                ? t('forward.oneMessage', '1 Message')
-                : t('forward.manyMessages', '{{count}} Messages', { count: messages.length })}
-            </p>
+            <p className="m-0 text-xs text-muted">{t('forward.messageCount', '{{count, number}} Messages', { count: messages.length })}</p>
           </div>
           <button
             type="button"

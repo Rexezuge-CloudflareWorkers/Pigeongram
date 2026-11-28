@@ -81,9 +81,11 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   and are re-exported from the barrel, `state/index.ts` the chat-list folds (with the pure reaction and poll folds in
   `state/reactions.ts` and `state/polls.ts`), `useDialogs.ts` the chat-list controller — the main list and the archive in one list, the live updates
   and the archive move — `useNewChat.ts` the new-message picker's contacts and Telegram-wide search,
-  `i18n.ts` the i18next instance and the catalogue beside it in `locales/*/translation.json` (English only for
-  now; `useLanguage.ts` persists the choice and `docs/I18N.md` holds the rules — every visible string is Title Case,
-  accessible-only copy lives under `a11y.*`, and `validate:locales` is the gate),
+  `i18n.ts` the i18next instance and one catalogue per shipped language in `locales/*/translation.json` (all twelve
+  tags `@rexezuge/shared` supports; `useLanguage.ts` persists the choice, `format.ts` formats dates and numbers in
+  that language, and `docs/I18N.md` holds the rules — English visible copy is Title Case, accessible-only copy lives
+  under `a11y.*`, plural groups use i18next `_one`/`_few`/`_many`/`_other` suffixes with a base alias for the validator,
+  and `validate:locales` is the gate),
   `useThread.ts`/`useComments.ts` the thread controllers — open, scroll-driven read receipts,
   send/attach/react and forward with a writable-destination picker; the comments controller's write half is
   `useCommentsSend.ts` and its live fold `useCommentsUpdates.ts` — `outbox.ts`/`useOutbox.ts` the optimistic send

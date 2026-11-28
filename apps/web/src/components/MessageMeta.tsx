@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { formatCount, formatTime } from '../format';
+import { formatCount, formatNumber, formatTime } from '../format';
 import type { MessageDto } from '../types';
 import { Icon } from './Icon';
 
@@ -28,7 +28,7 @@ export function MessageMeta({ message, showStatus, read }: MessageMetaProps) {
   return (
     <span className="meta">
       {message.views === null ? null : (
-        <span className="views" title={t('a11y.views', '{{views}} views', { views: message.views.toLocaleString() })}>
+        <span className="views" title={t('a11y.views', '{{views}} views', { views: formatNumber(message.views) })}>
           <Icon name="eye" size={12} /> {formatCount(message.views)}
         </span>
       )}

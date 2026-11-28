@@ -54,7 +54,7 @@
     "jumpToLatest": "Jump To Latest And Mark As Read",
     "pinnedMessages": "Pinned messages",
     "forwardMessage": "Forward message",
-    "forwardMessages": "Forward {{count}} messages",
+    "forwardMessages": "Forward {{count, number}} messages",
     "searchResults": "Search results",
     "stickersAndEmojiPanel": "Stickers and emoji",
     "searchEmoji": "Search emoji",
@@ -89,7 +89,11 @@
     "correctAnswer": "Correct answer",
     "wrongAnswer": "Wrong answer",
     "voteFor": "Vote for {{answer}}",
-    "voteForPercent": "Vote for {{answer}} ({{percent}}%)"
+    "voteForPercent": "Vote for {{answer}} ({{percent}}%)",
+    "forwardMessages_one": "Forward {{count, number}} message",
+    "forwardMessages_few": "Forward {{count, number}} messages",
+    "forwardMessages_many": "Forward {{count, number}} messages",
+    "forwardMessages_other": "Forward {{count, number}} messages"
   },
   "landing": {
     "title": "Your Telegram, On Cloudflare Workers",
@@ -195,7 +199,7 @@
     "noCommentsLoaded": "No Comments Loaded.",
     "hiddenUser": "A Hidden User",
     "you": "You",
-    "commentCount": "{{count}} Comments",
+    "commentCount": "{{count, number}} Comments",
     "loadOlderMessages": "Load Older Messages",
     "loadNewerMessages": "Load Newer Messages",
     "channelRestricted": "Only Admins Can Post In This Channel.",
@@ -214,8 +218,11 @@
     "archiveConfirmTitle": "Archive This Chat?",
     "quotedUnavailable": "Quoted Content Unavailable",
     "replyToName": "Reply To {{name}}",
-    "commentCountOne": "{{count}} Comment",
-    "loadOlderPinned": "Load Older Pinned Messages"
+    "loadOlderPinned": "Load Older Pinned Messages",
+    "commentCount_one": "{{count, number}} Comment",
+    "commentCount_few": "{{count, number}} Comments",
+    "commentCount_many": "{{count, number}} Comments",
+    "commentCount_other": "{{count, number}} Comments"
   },
   "composer": {
     "attachFiles": "Attach Files",
@@ -275,10 +282,13 @@
     "forwarding": "Forwarding…",
     "close": "Close Forward Picker",
     "placeholder": "Search Chats",
-    "oneMessage": "1 Message",
-    "manyMessages": "{{count}} Messages",
     "noMatches": "No Chats Match “{{query}}”.",
-    "noDestinations": "No Chats You Can Write To."
+    "noDestinations": "No Chats You Can Write To.",
+    "messageCount": "{{count, number}} Messages",
+    "messageCount_one": "{{count, number}} Message",
+    "messageCount_few": "{{count, number}} Messages",
+    "messageCount_many": "{{count, number}} Messages",
+    "messageCount_other": "{{count, number}} Messages"
   },
   "newChat": {
     "title": "New Message",
@@ -311,13 +321,19 @@
     "title": "Join Chat",
     "approval": "An Admin Has To Approve Your Join Request.",
     "requestSent": "Your Join Request Was Sent.",
-    "memberCount": "{{members}} Members",
-    "memberCountOne": "{{members}} Member"
+    "memberCount": "{{count, number}} Members",
+    "memberCount_one": "{{count, number}} Member",
+    "memberCount_few": "{{count, number}} Members",
+    "memberCount_many": "{{count, number}} Members",
+    "memberCount_other": "{{count, number}} Members"
   },
   "profile": {
     "loading": "Loading The Profile…",
-    "memberCount": "{{members}} Members",
-    "memberCountOne": "{{members}} Member"
+    "memberCount": "{{count, number}} Members",
+    "memberCount_one": "{{count, number}} Member",
+    "memberCount_few": "{{count, number}} Members",
+    "memberCount_many": "{{count, number}} Members",
+    "memberCount_other": "{{count, number}} Members"
   },
   "settings": {
     "title": "Settings",
@@ -367,10 +383,16 @@
     "groupAsFile": "Every File Goes As A Document, So Any Selection Can Share One Album.",
     "groupable": "Photos, Videos And GIFs Go Together; Documents Group With Documents.",
     "groupNotPossible": "These Files Cannot Share An Album. They Will Be Sent As Separate Messages.",
-    "sendFilesOne": "Send {{count}} File",
-    "overflowOne": "Only {{max}} Files Can Be Sent At Once; One File Was Left Out. Send The Rest In Another Batch.",
-    "overflowMany": "Only {{max}} Files Can Be Sent At Once; {{count}} Files Were Left Out. Send The Rest In Another Batch.",
-    "sendFiles": "Send {{count}} Files"
+    "sendFiles": "Send {{count, number}} Files",
+    "sendFiles_one": "Send {{count, number}} File",
+    "sendFiles_few": "Send {{count, number}} Files",
+    "sendFiles_many": "Send {{count, number}} Files",
+    "sendFiles_other": "Send {{count, number}} Files",
+    "overflow": "Only {{max}} Files Can Be Sent At Once; {{count, number}} Files Were Left Out. Send The Rest In Another Batch.",
+    "overflow_one": "Only {{max}} Files Can Be Sent At Once; One File Was Left Out. Send The Rest In Another Batch.",
+    "overflow_few": "Only {{max}} Files Can Be Sent At Once; {{count, number}} Files Were Left Out. Send The Rest In Another Batch.",
+    "overflow_many": "Only {{max}} Files Can Be Sent At Once; {{count, number}} Files Were Left Out. Send The Rest In Another Batch.",
+    "overflow_other": "Only {{max}} Files Can Be Sent At Once; {{count, number}} Files Were Left Out. Send The Rest In Another Batch."
   },
   "dialogs": {
     "deleteMessage": "Delete Message",
@@ -391,7 +413,11 @@
     "uploadingLabel": "Uploading… · ",
     "uploadingPercentLabel": "Uploading {{percent}}% · ",
     "sendingLabel": "Sending… · ",
-    "fileCount": "{{count}} Files"
+    "fileCount": "{{count, number}} Files",
+    "fileCount_one": "{{count, number}} File",
+    "fileCount_few": "{{count, number}} Files",
+    "fileCount_many": "{{count, number}} Files",
+    "fileCount_other": "{{count, number}} Files"
   },
   "reactions": {
     "hideAll": "Hide All Reactions",
@@ -424,8 +450,11 @@
     "retractVote": "Retract Vote",
     "closed": "Poll Closed",
     "resultsHidden": "Results Hidden Until The Poll Closes",
-    "voteCount": "{{count}} Votes",
-    "voteCountOne": "{{count}} Vote"
+    "voteCount": "{{count, number}} Votes",
+    "voteCount_one": "{{count, number}} Vote",
+    "voteCount_few": "{{count, number}} Votes",
+    "voteCount_many": "{{count, number}} Votes",
+    "voteCount_other": "{{count, number}} Votes"
   },
   "errors": {
     "clipboardUnavailable": "The Clipboard Is Not Available",
@@ -459,6 +488,8 @@
       "sticker": "Sticker",
       "document": "Document",
       "unsupported": "Unsupported Message"
-    }
+    },
+    "minutes": "{{count}}m",
+    "hours": "{{count}}h"
   }
 }

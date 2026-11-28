@@ -140,11 +140,7 @@ export function ProfilePopup({ chat, profile, loading, error, onClose, returnFoc
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {!loading && !error && profile?.about ? <p className="max-w-[46ch] text-[15px] text-muted">{profile.about}</p> : null}
           {loading || error || members === null ? null : (
-            <p className="text-sm text-muted">
-              {members === 1
-                ? t('profile.memberCountOne', '{{members}} Member', { members: members.toLocaleString() })
-                : t('profile.memberCount', '{{members}} Members', { members: members.toLocaleString() })}
-            </p>
+            <p className="text-sm text-muted">{t('profile.memberCount', '{{count, number}} Members', { count: members })}</p>
           )}
         </div>
       </div>

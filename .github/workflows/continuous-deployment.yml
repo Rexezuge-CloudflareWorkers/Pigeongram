@@ -79,6 +79,20 @@ jobs:
           printf '%s' "$TELEGRAM_API_ID" | pnpm exec wrangler secret put TELEGRAM_API_ID
           printf '%s' "$TELEGRAM_API_HASH" | pnpm exec wrangler secret put TELEGRAM_API_HASH
 
+      # Web Push is optional: without the private key the engine simply never
+      # delivers notifications. The public half is a build-time repository
+      # variable on the Pages side; changing one without the other breaks every
+      # existing browser subscription.
+      - name: Configure Web Push Secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          if [ -n "$VAPID_PRIVATE_KEY" ]; then
+            printf '%s' "$VAPID_PRIVATE_KEY" | pnpm exec wrangler secret put VAPID_PRIVATE_KEY
+          fi
+
       # A gate, not a rehearsal. Separate from the deploy below and deliberately
       # **not** retried: a dry run that fails is a real defect — a bundle over
       # the size limit, a binding the template no longer declares — and retrying
@@ -120,6 +134,9 @@ jobs:
           # truncate it.
           VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'Pigeongram' }}
           VITE_APP_SHORT_NAME: ${{ vars.VITE_APP_SHORT_NAME || vars.VITE_APP_NAME || 'Pigeongram' }}
+          # The public VAPID point, paired with the worker's private-key secret.
+          # Absent means the notification toggle is hidden on every screen.
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
         run: pnpm --filter @pigeongram/web build
 
       - name: Configure Pages Service Bindings

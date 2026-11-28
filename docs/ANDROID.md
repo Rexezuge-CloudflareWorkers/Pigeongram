@@ -182,7 +182,9 @@ The first build of a new package id has no previous code to beat; the default ru
 - The shell supports Android 7.0 (API 24) and newer, targets SDK 36, and compiles with Java 17. When Play raises its
   target requirement, bump the plugin/Gradle pins in `android/template/build.gradle` and the workflow together and
   rebuild deliberately.
-- The web app does not use web push. Nothing needs notification delegation in the native shell.
+- Web notifications come from the browser's push service, not from the native shell: the worker keeps the subscription
+  and the page's service worker shows the notification. Android's POST_NOTIFICATIONS permission is therefore the
+  browser's to request, and no notification delegation is needed in `MainActivity`.
 
 ## Troubleshooting
 

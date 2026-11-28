@@ -93,7 +93,8 @@
     "forwardMessages_one": "Inoltra {{count, number}} messaggio",
     "forwardMessages_few": "Inoltra {{count, number}} messaggi",
     "forwardMessages_many": "Inoltra {{count, number}} messaggi",
-    "forwardMessages_other": "Inoltra {{count, number}} messaggi"
+    "forwardMessages_other": "Inoltra {{count, number}} messaggi",
+    "notifications": "Mostra le notifiche per i nuovi messaggi"
   },
   "landing": {
     "title": "Il tuo Telegram, su Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Messaggi fissati",
     "pinnedHint": "Carica i messaggi fissati quando apri una chat",
     "language": "Lingua",
-    "languageHint": "Scegli la lingua di visualizzazione preferita."
+    "languageHint": "Scegli la lingua di visualizzazione preferita.",
+    "notifications": "Notifiche",
+    "notificationsHint": "Avvisa Quando Arriva Un Messaggio",
+    "notificationsDenied": "Le Notifiche Sono Bloccate — Consentile Nelle Impostazioni Del Browser",
+    "notificationsUnsupported": "Le Notifiche Non Sono Disponibili In Questo Browser",
+    "notificationsFailed": "Impossibile Modificare Le Notifiche",
+    "notificationsLimit": "Troppi Dispositivi Sono Iscritti Alle Notifiche"
   },
   "account": {
     "archivedChats": "Chat archiviate",

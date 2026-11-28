@@ -6,3 +6,4 @@ export * from './contact-types';
 export * from './search-types';
 export * from './sticker-types';
 export * from './call-types';
+export * from './push-types';

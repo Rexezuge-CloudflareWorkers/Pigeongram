@@ -93,7 +93,8 @@
     "forwardMessages_one": "{{count, number}} 件のメッセージを転送",
     "forwardMessages_few": "{{count, number}} 件のメッセージを転送",
     "forwardMessages_many": "{{count, number}} 件のメッセージを転送",
-    "forwardMessages_other": "{{count, number}} 件のメッセージを転送"
+    "forwardMessages_other": "{{count, number}} 件のメッセージを転送",
+    "notifications": "新しいメッセージの通知を表示"
   },
   "landing": {
     "title": "Cloudflare Workers 上の Telegram",
@@ -358,7 +359,13 @@
     "pinned": "ピン留めされたメッセージ",
     "pinnedHint": "チャットを開いたときにピン留めされたメッセージを読み込む",
     "language": "言語",
-    "languageHint": "表示言語を選択してください。"
+    "languageHint": "表示言語を選択してください。",
+    "notifications": "通知",
+    "notificationsHint": "メッセージが届いたら通知する",
+    "notificationsDenied": "通知がブロックされています — ブラウザーの設定で許可してください",
+    "notificationsUnsupported": "このブラウザーでは通知を利用できません",
+    "notificationsFailed": "通知を変更できませんでした",
+    "notificationsLimit": "通知を購読しているデバイスが多すぎます"
   },
   "account": {
     "archivedChats": "アーカイブ済みチャット",

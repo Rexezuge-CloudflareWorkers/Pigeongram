@@ -237,6 +237,17 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   navigation to it must reach the edge — answering it with the precached shell would swallow the redirect and the
   sign-in would never happen. Every other navigation falls back to the precached `index.html`, which is the document
   Pages serves for a pathname route anyway.
+- **Browser push fills the gap when no tab is attached.** Web Push is optional and per deployment: the VAPID private key
+  is a worker secret (`VAPID_PRIVATE_KEY`) and its public point is the build-time `VITE_VAPID_PUBLIC_KEY`; neither is in
+  the wrangler template, and changing one invalidates every subscription. The Settings toggle subscribes through the
+  Access-gated `POST /user/push/subscribe`, and the engine keeps one row per device in `engine_push_subscriptions`
+  (`session/push-subscriptions.ts`, bounded at 12, cleared on logout). `SessionEngine.handleEvent` offers new messages
+  to `session/push-notifier.ts` **only while not live** — a wake's `getDifference` is precisely when a notification is
+  useful — and the notifier deduplicates, coalesces and flushes through `lifecycle.background`, so signing and delivery
+  never hold the input gate and a delivery never writes a row. The payload is RFC 8291-encrypted with WebCrypto and the
+  VAPID JWT is ES256; `apps/web/sw/push.ts` only reads the browser-decrypted JSON and opens `/chat/:id` on a click. The
+  SW's notification copy is Title Case too, asserted by `test/pwa/push.test.ts`; `docs/PWA.md` and
+  `docs/SESSION_ENGINE.md` hold the runbooks.
 - **The worker does not call `skipWaiting`.** A new build's worker waits until the last client of the old one is gone,
   so the update lands on the next fresh load. Skipping the wait would purge the old hashed assets while an open tab
   still runs the old JavaScript.

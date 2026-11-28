@@ -25,6 +25,8 @@ import { EngineStore } from './stats';
 import { LoginApi } from './login-api';
 import { LoginFlow } from './login-flow';
 import { SessionLifecycle } from './lifecycle';
+import { PushNotifier } from './push-notifier';
+import { PushSubscriptions } from './push-subscriptions';
 import { UpdatesSocketHub } from './socket-hub';
 
 /**
@@ -42,6 +44,8 @@ export const Tokens = {
   login: Symbol('LoginFlow') as Token<LoginFlow>,
   loginApi: Symbol('LoginApi') as Token<LoginApi>,
   lifecycle: Symbol('SessionLifecycle') as Token<SessionLifecycle>,
+  pushSubscriptions: Symbol('PushSubscriptions') as Token<PushSubscriptions>,
+  notifier: Symbol('PushNotifier') as Token<PushNotifier>,
 } as const;
 
 /**
@@ -113,6 +117,21 @@ export function createEngineContainer(
           store: container.get(Tokens.store),
           config: container.get(Tokens.config),
           now: container.get(Tokens.now),
+        }),
+    )
+    .bind(
+      Tokens.pushSubscriptions,
+      () => deps.pushSubscriptions ?? new PushSubscriptions(container.get(Tokens.state).storage.sql, container.get(Tokens.now)),
+    )
+    .bind(
+      Tokens.notifier,
+      () =>
+        deps.notifier ??
+        new PushNotifier({
+          env: container.get(Tokens.env),
+          subscriptions: container.get(Tokens.pushSubscriptions),
+          now: container.get(Tokens.now),
+          schedule: (work) => container.get(Tokens.lifecycle).background(work()),
         }),
     )
     .bind(Tokens.loginApi, () => new LoginApi(container.get(Tokens.login), () => callbacks.stateSnapshot()));

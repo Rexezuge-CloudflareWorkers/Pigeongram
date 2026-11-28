@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
-import type { MeDto } from '../../packages/backend-services/src/types';
+import type { MeDto, UpdateEvent } from '../../packages/backend-services/src/types';
 import { AvatarCache } from '../../packages/backend-services/src/session/avatar-cache';
 import { readEngineConfig } from '../../packages/backend-services/src/session/config';
 import type { TelegramDriver } from '../../packages/backend-services/src/session/driver';
@@ -8,6 +8,8 @@ import { SessionEngine } from '../../packages/backend-services/src/session/engin
 import type { EngineDeps } from '../../packages/backend-services/src/session/engine';
 import { errorResponse } from '../../packages/backend-services/src/session/http';
 import { SessionLifecycle } from '../../packages/backend-services/src/session/lifecycle';
+import type { PushNotifier } from '../../packages/backend-services/src/session/push-notifier';
+import type { PushSubscriptions } from '../../packages/backend-services/src/session/push-subscriptions';
 import type { EngineStore, StatsDto } from '../../packages/backend-services/src/session/stats';
 import { createNodeSqlStorage, createNodeTransactionalStorage, openNodeDatabase } from './node-sql';
 
@@ -596,7 +598,15 @@ to a decision without wasm, a Telegram connection or a real account, and the
 quota failures can be produced by the store instead of by exhausting a
 budget.
 */
-function createSeamedHarness(options: { authorized?: boolean; me?: MeDto; store?: ReturnType<typeof fakeStore> } = {}) {
+function createSeamedHarness(
+  options: {
+    authorized?: boolean;
+    me?: MeDto;
+    store?: ReturnType<typeof fakeStore>;
+    pushSubscriptions?: PushSubscriptions;
+    notifier?: PushNotifier;
+  } = {},
+) {
   const alarms: number[] = [];
   const driver = fakeDriver(options);
   const store = options.store ?? fakeStore();
@@ -619,6 +629,8 @@ function createSeamedHarness(options: { authorized?: boolean; me?: MeDto; store?
     driver: driver as unknown as TelegramDriver,
     store: store as unknown as EngineStore,
     avatars,
+    pushSubscriptions: options.pushSubscriptions,
+    notifier: options.notifier,
   });
   return { engine, driver, store, avatars, alarms };
 }
@@ -827,5 +839,95 @@ describe('SessionEngine (route table over the seams)', () => {
     expect(alarms.length).toBeGreaterThan(0);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe('SessionEngine (browser push)', () => {
+  const SUBSCRIPTION = {
+    endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/token',
+    keys: {
+      p256dh: Buffer.alloc(65, 4).toString('base64url'),
+      auth: Buffer.alloc(16, 7).toString('base64url'),
+    },
+  };
+
+  function fakeSubscriptions() {
+    return {
+      upsert: vi.fn(),
+      remove: vi.fn(),
+      clear: vi.fn(),
+      all: vi.fn(() => []),
+      count: vi.fn(() => 0),
+      has: vi.fn(() => false),
+      noteFailure: vi.fn(() => 1),
+    };
+  }
+
+  function newMessage(outgoing: boolean) {
+    return {
+      type: 'new_message',
+      message: { chatId: 1, id: 2, outgoing, senderName: 'Ada', text: 'Hello' },
+    } as unknown as UpdateEvent;
+  }
+
+  it('stores a subscription and drops it on unsubscribe', async () => {
+    const subscriptions = fakeSubscriptions();
+    const { engine } = createSeamedHarness({ pushSubscriptions: subscriptions as unknown as PushSubscriptions });
+
+    const added = await engine.fetch(request('POST', '/user/push/subscribe', SUBSCRIPTION));
+    expect(added.status).toBe(200);
+    expect(subscriptions.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: SUBSCRIPTION.endpoint, keys: SUBSCRIPTION.keys }),
+    );
+    const removed = await engine.fetch(request('POST', '/user/push/unsubscribe', { endpoint: SUBSCRIPTION.endpoint }));
+    expect(removed.status).toBe(200);
+    expect(subscriptions.remove).toHaveBeenCalledWith(SUBSCRIPTION.endpoint);
+  });
+
+  it('refuses a subscription that is not a public HTTPS endpoint', async () => {
+    const subscriptions = fakeSubscriptions();
+    const { engine } = createSeamedHarness({ pushSubscriptions: subscriptions as unknown as PushSubscriptions });
+
+    const response = await engine.fetch(
+      request('POST', '/user/push/subscribe', { ...SUBSCRIPTION, endpoint: 'http://localhost:8787/push' }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(subscriptions.upsert).not.toHaveBeenCalled();
+  });
+
+  it('refuses an unsubscribe without an endpoint', async () => {
+    const subscriptions = fakeSubscriptions();
+    const { engine } = createSeamedHarness({ pushSubscriptions: subscriptions as unknown as PushSubscriptions });
+
+    const response = await engine.fetch(request('POST', '/user/push/unsubscribe', { endpoint: '' }));
+
+    expect(response.status).toBe(400);
+    expect(subscriptions.remove).not.toHaveBeenCalled();
+  });
+
+  it('clears the device list on sign-out', async () => {
+    const subscriptions = fakeSubscriptions();
+    const { engine } = createSeamedHarness({ pushSubscriptions: subscriptions as unknown as PushSubscriptions });
+
+    await engine.fetch(request('POST', '/user/logout'));
+
+    expect(subscriptions.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers new messages to the notifier when no tab is attached', () => {
+    const notifier = { offer: vi.fn() };
+    const { driver } = createSeamedHarness({ notifier: notifier as unknown as PushNotifier });
+    const calls = driver.onEvent.mock.calls as unknown as Array<[(event: UpdateEvent | null) => void]>;
+    const onEvent = calls[0]?.[0] as (event: UpdateEvent | null) => void;
+
+    onEvent(newMessage(false));
+    onEvent(newMessage(true));
+
+    // The notifier itself filters outgoing messages; the engine's job is only
+    // to hand new messages over when no socket is attached.
+    expect(notifier.offer).toHaveBeenCalledTimes(2);
+    expect(notifier.offer).toHaveBeenCalledWith(newMessage(false));
+    expect(notifier.offer).toHaveBeenCalledWith(newMessage(true));
   });
 });

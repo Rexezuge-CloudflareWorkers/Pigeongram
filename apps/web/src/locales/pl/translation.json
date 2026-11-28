@@ -93,7 +93,8 @@
     "forwardMessages_one": "Prześlij {{count, number}} wiadomość",
     "forwardMessages_few": "Prześlij {{count, number}} wiadomości",
     "forwardMessages_many": "Prześlij {{count, number}} wiadomości",
-    "forwardMessages_other": "Prześlij {{count, number}} wiadomości"
+    "forwardMessages_other": "Prześlij {{count, number}} wiadomości",
+    "notifications": "Pokazuj powiadomienia o nowych wiadomościach"
   },
   "landing": {
     "title": "Twój Telegram na Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Przypięte wiadomości",
     "pinnedHint": "Ładuj przypięte wiadomości przy otwieraniu czatu",
     "language": "Język",
-    "languageHint": "Wybierz preferowany język interfejsu."
+    "languageHint": "Wybierz preferowany język interfejsu.",
+    "notifications": "Powiadomienia",
+    "notificationsHint": "Powiadom O Nowej Wiadomości",
+    "notificationsDenied": "Powiadomienia Są Zablokowane — Zezwól Na Nie W Ustawieniach Przeglądarki",
+    "notificationsUnsupported": "Powiadomienia Nie Są Dostępne W Tej Przeglądarce",
+    "notificationsFailed": "Nie Można Zmienić Powiadomień",
+    "notificationsLimit": "Zbyt Wiele Urządzeń Jest Zapisanych Na Powiadomienia"
   },
   "account": {
     "archivedChats": "Zarchiwizowane czaty",

@@ -2,17 +2,21 @@
 
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { openNotification, showNotification } from './push';
 import { SHELL_URL, isPassthroughPath } from './routes';
 
 /**
 The app's service worker.
 
-It does two things, and deliberately nothing else:
+It does three things, and deliberately nothing else:
 
 1. It precaches the build's own assets — the hashed scripts and stylesheets,
    the shell, the icons — so the app can boot without a network.
 2. It answers navigations from the network, and falls back to the precached
    shell when the network is gone.
+3. It shows a Web Push notification and opens the chat a click names. It still
+   never fetches or caches `/user/*`: the payload arrives decrypted from the
+   push service, and a click is an ordinary navigation through Access.
 
 It never caches the account API. The engine's data is read live through
 Cloudflare Access, and a cached `/user/*` response would put one account's
@@ -51,3 +55,13 @@ registerRoute(
     }
   }),
 );
+
+self.addEventListener('push', (event) => {
+  const push = event;
+  push.waitUntil(showNotification(push, self));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  const click = event;
+  click.waitUntil(openNotification(click, self));
+});

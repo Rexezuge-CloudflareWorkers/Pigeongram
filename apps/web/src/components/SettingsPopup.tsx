@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useCallback, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useDataSaverControls, type DataSaverKey } from '../data-saver';
@@ -9,6 +9,7 @@ import type { IconName } from './Icon';
 import { ToggleSwitch } from './ToggleSwitch';
 import { LanguageSettingsRow } from './LanguageSettingsRow';
 import { useLanguage } from '../useLanguage';
+import { useNotifications, type NotificationProblem } from '../pwa/useNotifications';
 import { SEEDS, type Contrast, type Seed } from './useDynamicColor';
 
 /**
@@ -34,6 +35,10 @@ interface SettingsPopupProps {
   contrast: Contrast;
   onSetContrast?: (contrast: Contrast) => void;
   onClose: () => void;
+  /**
+  Shows a setting failure in the app's failure toast.
+  */
+  onError?: (message: string) => void;
   /**
   Focuses this callback's target when the popup unmounts. Defaults to the
   element focused at mount, which can already be gone when the popup opens
@@ -92,14 +97,29 @@ export function SettingsPopup({
   contrast,
   onSetContrast,
   onClose,
+  onError = () => {},
   returnFocus,
   exiting = false,
 }: SettingsPopupProps) {
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
   const appearanceId = useId();
+  const notificationsId = useId();
   const dataSaverId = useId();
   const { settings: dataSaver, setSetting: onSetDataSaver } = useDataSaverControls();
+  const reportProblem = useCallback(
+    (problem: NotificationProblem): void => {
+      const message = {
+        denied: t('settings.notificationsDenied', 'Notifications Are Blocked — Allow Them In Your Browser Settings'),
+        unsupported: t('settings.notificationsUnsupported', 'Notifications Are Not Available In This Browser'),
+        failed: t('settings.notificationsFailed', 'Notifications Could Not Be Changed'),
+        limit: t('settings.notificationsLimit', 'Too Many Devices Are Subscribed To Notifications'),
+      }[problem];
+      onError(message);
+    },
+    [onError, t],
+  );
+  const notifications = useNotifications(reportProblem);
 
   return (
     <Dialog
@@ -171,6 +191,27 @@ export function SettingsPopup({
           </div>
         </div>
         <LanguageSettingsRow language={language} onChange={setLanguage} />
+        {notifications.available ? (
+          <section className="flex flex-col gap-2" aria-labelledby={notificationsId}>
+            <h3 id={notificationsId} className="text-xs font-semibold tracking-wide text-muted uppercase">
+              {t('settings.notifications', 'Notifications')}
+            </h3>
+            <div className="flex items-center justify-between gap-4" aria-busy={notifications.busy}>
+              <span className="flex min-w-0 items-center gap-2">
+                <Icon name="notifications" size={18} className="shrink-0 text-muted" />
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-medium text-fg">{t('settings.notifications', 'Notifications')}</span>
+                  <span className="text-xs text-muted">{t('settings.notificationsHint', 'Notify When A Message Arrives')}</span>
+                </span>
+              </span>
+              <ToggleSwitch
+                checked={notifications.enabled}
+                label={t('a11y.notifications', 'Show notifications for new messages')}
+                onChange={() => void notifications.toggle()}
+              />
+            </div>
+          </section>
+        ) : null}
       </section>
       <div className="h-px bg-line" role="separator" />
       <section className="flex flex-col gap-4" aria-labelledby={dataSaverId}>

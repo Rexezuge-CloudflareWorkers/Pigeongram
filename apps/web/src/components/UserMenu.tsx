@@ -40,6 +40,10 @@ interface UserMenuProps {
   onSetSeed?: (seed: Seed) => void;
   contrast?: Contrast;
   onSetContrast?: (contrast: Contrast) => void;
+  /**
+  Shows a settings failure in the app's failure toast.
+  */
+  onError?: (message: string) => void;
 }
 
 /**
@@ -65,6 +69,7 @@ export function UserMenu({
   onSetSeed,
   contrast = 'standard',
   onSetContrast,
+  onError = () => {},
 }: UserMenuProps) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -226,6 +231,7 @@ export function UserMenu({
             contrast={contrast}
             onSetContrast={onSetContrast}
             onClose={() => setSettingsOpen(false)}
+            onError={onError}
             returnFocus={focusTrigger}
           />
         ) : null}

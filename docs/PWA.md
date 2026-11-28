@@ -9,7 +9,8 @@ never do, and how the pieces are built.
 browser ──▶ service worker (apps/web/sw/sw.ts, built by vite-plugin-pwa)
               │  precache: the build's own files (hashed assets, shell, icons, manifest)
               │  navigations: network first, the precached shell as the offline fallback
-              └─▶ never touches /user/* or /api/*
+              │  push: shows a notification; a click opens /chat/:id
+              └─▶ never caches /user/* or /api/*
 ```
 
 The worker is registered at the origin's root (`/sw.js`, scope `/`), so it sees every request the page makes. That is
@@ -23,6 +24,7 @@ why its rules are written down rather than left to the framework's defaults.
 | A navigation (`/`, `/chat/12`, `/archived`)                               | from the network; the precached shell when the network is gone |
 | `/user/*` (the account API, the media, the Access entry point)            | from the network, always; never cached                         |
 | `/api/*` (the public health plane)                                        | from the network, always; never cached                         |
+| A Web Push message                                                        | shown as a notification; never cached, never fetched by the SW |
 
 **The account plane is never cached.** The engine's data is read live through Cloudflare Access, and a cached
 `/user/*` response would put one account's chats in a cache the next reader could reach. Workbox precaches the
@@ -40,6 +42,21 @@ build's files and adds no runtime-caching route, so the only thing in the cache 
 - Every other navigation falls back to the precached `index.html`, which is the very document Cloudflare Pages serves
   for a pathname route. The offline app therefore boots exactly like the online one — the same reason the repo has no
   `404.html`.
+
+## Notifications
+
+The account engine sends a Web Push message when it sees an incoming message with no browser socket attached — that is,
+on the next wake of the 300 s cadence. The browser decrypts the RFC 8291 payload before the `push` event reaches
+`apps/web/sw/push.ts`, so the worker only reads `{ chatId, title, body }`, shows one notification per chat (`tag`), and
+opens `/chat/:id` on a click. A payload it cannot parse becomes a generic "New Message" notification rather than
+nothing; a click is an ordinary navigation, so Access still applies.
+
+The toggle lives in Settings. It asks for notification permission, subscribes `pushManager` with the build-time VAPID
+public key, and posts the subscription to the Access-gated `/user/push/subscribe`; turning it off reverses both. The
+engine keeps one row per device in `engine_push_subscriptions`, drops a device whose push service answers 404/410, and
+clears the table on sign-out. Keys and deployment steps are in [DEPLOYMENT.md](DEPLOYMENT.md); the fan-out's cost and
+deduplication rules are in [SESSION_ENGINE.md](SESSION_ENGINE.md). The worker is registered only in a production build,
+so the browser half cannot be exercised in development — verify it on a deployed HTTPS origin.
 
 ## The build
 
@@ -89,11 +106,12 @@ hot reloading. The dev server still serves the manifest and the icons, so the do
 4. Put the browser back online: the screen retries itself on the `online` event.
 5. Install it (the account menu offers "Install App" when the browser raised the prompt) and open the installed app:
    it starts at `/`, which is public, and decides between the intro and the chat list by itself.
+6. Turn on Settings → Notifications, close every tab, send a message to the account from Telegram, and wait for one
+   wake interval: a notification arrives and clicking it opens the chat. A second message before the wake is coalesced
+   into one notification.
 
 ## Known limits
 
-- **No push.** The worker never wakes the browser; the Durable Object's live mode is what pushes updates, and it only
-  runs while a tab is attached.
 - **No offline messages.** Only the shell is cached. Chats, media and history are read live, by design.
 - **iOS may open the Access login outside the installed app.** That is how iOS handles a cross-origin navigation from a
   standalone web app, and it is not fixable from here.

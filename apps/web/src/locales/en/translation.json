@@ -93,7 +93,8 @@
     "forwardMessages_one": "Forward {{count, number}} message",
     "forwardMessages_few": "Forward {{count, number}} messages",
     "forwardMessages_many": "Forward {{count, number}} messages",
-    "forwardMessages_other": "Forward {{count, number}} messages"
+    "forwardMessages_other": "Forward {{count, number}} messages",
+    "notifications": "Show notifications for new messages"
   },
   "landing": {
     "title": "Your Telegram, On Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Pinned Messages",
     "pinnedHint": "Load Pinned Messages When Opening A Chat",
     "language": "Language",
-    "languageHint": "Choose Your Preferred Display Language."
+    "languageHint": "Choose Your Preferred Display Language.",
+    "notifications": "Notifications",
+    "notificationsHint": "Notify When A Message Arrives",
+    "notificationsDenied": "Notifications Are Blocked — Allow Them In Your Browser Settings",
+    "notificationsUnsupported": "Notifications Are Not Available In This Browser",
+    "notificationsFailed": "Notifications Could Not Be Changed",
+    "notificationsLimit": "Too Many Devices Are Subscribed To Notifications"
   },
   "account": {
     "archivedChats": "Archived Chats",

@@ -93,7 +93,8 @@
     "forwardMessages_one": "Transférer {{count, number}} message",
     "forwardMessages_few": "Transférer {{count, number}} messages",
     "forwardMessages_many": "Transférer {{count, number}} messages",
-    "forwardMessages_other": "Transférer {{count, number}} messages"
+    "forwardMessages_other": "Transférer {{count, number}} messages",
+    "notifications": "Afficher les notifications pour les nouveaux messages"
   },
   "landing": {
     "title": "Votre Telegram, sur Cloudflare Workers",
@@ -358,7 +359,13 @@
     "pinned": "Messages épinglés",
     "pinnedHint": "Charger les messages épinglés à l'ouverture d'une discussion",
     "language": "Langue",
-    "languageHint": "Choisissez votre langue d'affichage préférée."
+    "languageHint": "Choisissez votre langue d'affichage préférée.",
+    "notifications": "Notifications",
+    "notificationsHint": "Avertir À L'Arrivée D'Un Message",
+    "notificationsDenied": "Les Notifications Sont Bloquées — Autorisez-les Dans Les Paramètres Du Navigateur",
+    "notificationsUnsupported": "Les Notifications Ne Sont Pas Disponibles Dans Ce Navigateur",
+    "notificationsFailed": "Les Notifications N'Ont Pas Pu Être Modifiées",
+    "notificationsLimit": "Trop D'Appareils Sont Abonnés Aux Notifications"
   },
   "account": {
     "archivedChats": "Discussions archivées",

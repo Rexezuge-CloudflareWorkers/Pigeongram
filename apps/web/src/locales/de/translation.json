@@ -95,20 +95,20 @@
     "forwardMessages_few": "{{count, number}} Nachrichten weiterleiten",
     "forwardMessages_many": "{{count, number}} Nachrichten weiterleiten",
     "forwardMessages_other": "{{count, number}} Nachrichten weiterleiten",
-    "buttonNeedsPassword": "dieser Button benötigt dein Telegram-Passwort; drücke ihn in der nativen App.",
+    "buttonNeedsPassword": "Dieser Button benötigt dein Telegram-Cloud-Passwort; drücke ihn in der nativen App.",
     "buttonSending": "Wird gesendet…",
     "buttonsUnavailable": "Buttons sind in dieser Ansicht nicht verfügbar.",
     "gameNeedsApp": "Telegram-Spiele benötigen die native App.",
     "paymentNeedsApp": "Telegram-Zahlungen benötigen die native App.",
-    "inlineUnsupported": "der Inline-Modus wird in diesem Client nicht unterstützt.",
+    "inlineUnsupported": "Der Inline-Modus wird in diesem Client nicht unterstützt.",
     "loginButtonNeedsApp": "Telegram-Anmeldebuttons benötigen die native App.",
     "profileUnsupported": "Profile werden in diesem Client nicht unterstützt.",
-    "buttonDisabledByBot": "dieser Button wurde vom Bot deaktiviert.",
-    "buttonUnsupported": "dieser Button wird in diesem Client nicht unterstützt.",
-    "phoneNeedsApp": "das Teilen einer Telefonnummer benötigt die native App.",
-    "locationNeedsApp": "das Teilen eines Standorts benötigt die native App.",
-    "pollNeedsApp": "das Erstellen einer Umfrage benötigt die native App.",
-    "chatPickerNeedsApp": "das Auswählen eines Chats benötigt die native App.",
+    "buttonDisabledByBot": "Dieser Button wurde vom Bot deaktiviert.",
+    "buttonUnsupported": "Dieser Button wird in diesem Client nicht unterstützt.",
+    "phoneNeedsApp": "Das Teilen einer Telefonnummer benötigt die native App.",
+    "locationNeedsApp": "Das Teilen eines Standorts benötigt die native App.",
+    "pollNeedsApp": "Das Erstellen einer Umfrage benötigt die native App.",
+    "chatPickerNeedsApp": "Das Auswählen eines Chats benötigt die native App.",
     "stickerNoun": "Sticker",
     "photoNoun": "Foto",
     "videoNoun": "Video",
@@ -149,7 +149,7 @@
     "usePhone": "Stattdessen Telefonnummer verwenden",
     "useQr": "Stattdessen QR-Code verwenden",
     "footnote": "Sitzungs-Engine: Cloudflare Durable Object, MTProto über WSS. Der Client speichert nur deine Sitzung; Nachrichten werden live von Telegram geladen.",
-    "qrValid": "Code gültig für {{seconds}}s — Telegram-Anmeldecodes leben etwa 30 Sekunden, scanne ihn also möglichst sofort.",
+    "qrValid": "Code gültig für {{seconds}}s — Telegram-Anmeldecodes sind nur etwa 30 Sekunden gültig, scanne den QR-Code also möglichst sofort.",
     "qrWaiting": "Warten auf einen neuen QR-Code…",
     "phonePlaceholder": "+15551234567",
     "sending": "Wird gesendet…",
@@ -166,12 +166,12 @@
     "phasePassword": "Zwei-Faktor-Authentifizierung: Gib dein Telegram-Cloud-Passwort ein",
     "phaseError": "Die Sitzungs-Engine hat einen Fehler gemeldet",
     "phasePreparing": "Anmelde-QR-Code wird vorbereitet…",
-    "deliveryApp": "An deine Telegram-App",
-    "deliverySms": "Per SMS",
-    "deliveryCall": "In einem Telefonanruf",
-    "deliveryFlashCall": "Als Flash-Anruf",
-    "deliveryMissedCall": "Als verpasster Anruf",
-    "deliveryEmail": "Per E-Mail"
+    "deliveryApp": "an deine Telegram-App",
+    "deliverySms": "per SMS",
+    "deliveryCall": "in einem Telefonanruf",
+    "deliveryFlashCall": "als Flash-Anruf",
+    "deliveryMissedCall": "als verpasster Anruf",
+    "deliveryEmail": "per E-Mail"
   },
   "chats": {
     "archived": "Archivierte Chats",
@@ -251,7 +251,7 @@
     "commentCount_many": "{{count, number}} Kommentare",
     "commentCount_other": "{{count, number}} Kommentare",
     "empty": "Noch keine Nachrichten.",
-    "emptyGreeting": "Noch keine Nachrichten. Sag Hallo.",
+    "emptyGreeting": "Noch keine Nachrichten — sag Hallo.",
     "leaveAComment": "Kommentar schreiben"
   },
   "composer": {
@@ -382,7 +382,7 @@
     "contrastMedium": "Mittel",
     "contrastHigh": "Hoch",
     "dataSaver": "Daten sparen",
-    "dataSaverHint": "Alle Optionalen Downloads Auf Einmal Abschalten",
+    "dataSaverHint": "Alle optionalen Downloads auf einmal abschalten",
     "profiles": "Profilbilder",
     "profilesHint": "Profilfotos in der ganzen App anzeigen",
     "linkPreviews": "Link-Vorschauen",
@@ -396,11 +396,11 @@
     "language": "Sprache",
     "languageHint": "Wähle deine bevorzugte Anzeigesprache.",
     "notifications": "Benachrichtigungen",
-    "notificationsHint": "Bei Einer Neuen Nachricht Benachrichtigen",
-    "notificationsDenied": "Benachrichtigungen Sind Blockiert — Erlaube Sie In Den Browser-Einstellungen",
-    "notificationsUnsupported": "Benachrichtigungen Sind In Diesem Browser Nicht Verfügbar",
-    "notificationsFailed": "Benachrichtigungen Konnten Nicht Geändert Werden",
-    "notificationsLimit": "Zu Viele Geräte Sind Für Benachrichtigungen Angemeldet"
+    "notificationsHint": "Bei einer neuen Nachricht benachrichtigen",
+    "notificationsDenied": "Benachrichtigungen sind blockiert — erlaube sie in den Browser-Einstellungen",
+    "notificationsUnsupported": "Benachrichtigungen sind in diesem Browser nicht verfügbar",
+    "notificationsFailed": "Benachrichtigungen konnten nicht geändert werden",
+    "notificationsLimit": "Zu viele Geräte sind für Benachrichtigungen angemeldet"
   },
   "account": {
     "archivedChats": "Archivierte Chats",
@@ -445,7 +445,7 @@
     "chatArchived": "Chat archiviert",
     "chatRestored": "Chat wiederhergestellt",
     "chatPinned": "Chat angeheftet",
-    "chatUnpinned": "Chat losgelöst"
+    "chatUnpinned": "Anheften des Chats aufgehoben"
   },
   "messages": {
     "retry": "Erneut versuchen",
@@ -526,7 +526,7 @@
     "today": "Heute",
     "yesterday": "Gestern",
     "presenceOnline": "Online",
-    "presenceRecently": "Zuletzt kürzlich gesehen",
+    "presenceRecently": "Kürzlich gesehen",
     "presenceWeek": "Zuletzt innerhalb einer Woche gesehen",
     "presenceMonth": "Zuletzt innerhalb eines Monats gesehen",
     "presenceLastSeen": "Zuletzt gesehen {{day}} um {{time}}",
@@ -547,9 +547,9 @@
     "hours": "{{count}} Std."
   },
   "widget": {
-    "openLinkTitle": "Diesen Link Öffnen?",
-    "openLinkMessage": "{{url}} In Neuem Tab Öffnen?",
-    "openLinkConfirm": "Link Öffnen",
-    "stopped": "Widget Gestoppt"
+    "openLinkTitle": "Diesen Link öffnen?",
+    "openLinkMessage": "{{url}} in einem neuen Tab öffnen?",
+    "openLinkConfirm": "Link öffnen",
+    "stopped": "Widget gestoppt"
   }
 }

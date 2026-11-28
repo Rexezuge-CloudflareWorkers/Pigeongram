@@ -161,7 +161,10 @@ export function toMessageDto(message: Message): MessageDto {
     outgoing: message.isOutgoing,
     date: message.date.getTime(),
     pinned: message.isPinned ?? false,
-    editDate: message.editDate?.getTime() ?? null,
+    // Telegram bumps `edit_date` when reactions change but sets `edit_hide` so
+    // the message must still show as unedited. mtcute exposes that as
+    // `hideEditMark`; the SPA renders its marker from `editDate` alone.
+    editDate: message.hideEditMark ? null : (message.editDate?.getTime() ?? null),
     text: message.isService ? serviceText(message, senderName) : message.text,
     entities: message.entities.map(toMessageEntityDto),
     reactions: toMessageReactionDtos(message.reactions?.reactions ?? []),

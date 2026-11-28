@@ -89,6 +89,32 @@ describe('mapRawUpdate', () => {
     expect(event).toMatchObject({ type: 'edit_message', message: { text: 'edited' } });
   });
 
+  it('keeps a reaction-driven hidden edit from marking the message as edited', () => {
+    const event = mapRawUpdate(
+      info({
+        _: 'updateEditMessage',
+        message: rawMessage({
+          editDate: 1_700_000_100,
+          editHide: true,
+          reactions: {
+            _: 'messageReactions',
+            results: [{ _: 'reactionCount', reaction: { _: 'reactionEmoji', emoticon: '🔥' }, count: 1, chosenOrder: 1 }],
+          },
+        }),
+        pts: 4,
+        ptsCount: 1,
+      }),
+    );
+    expect(event).toMatchObject({
+      type: 'edit_message',
+      message: {
+        id: 7,
+        editDate: null,
+        reactions: [{ emoji: '🔥', customEmojiId: null, count: 1, chosen: true }],
+      },
+    });
+  });
+
   it('maps reaction updates with the aggregate list', () => {
     const event = mapRawUpdate(
       info({

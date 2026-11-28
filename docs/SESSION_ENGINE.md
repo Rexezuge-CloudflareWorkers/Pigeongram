@@ -632,7 +632,9 @@ the account's pts — so the engine sends `chatId: null` and the SPA folds it by
 window; a chat's ids are its own, which makes a match proof. The engine also emits this event after its own
 `deleteMessages` RPC, because mtcute swallows the delete's own update.
 The `edit_message` update carries the full `MessageDto` (`editDate` set), and the engine emits it after its own
-`editMessage` RPC for the same reason: the chat list's preview and every other tab follow the edit.
+`editMessage` RPC for the same reason: the chat list's preview and every other tab follow the edit. Telegram also
+sends an edit update when a message's first reaction arrives; that one carries `edit_hide`, so the bridge reports
+`editDate: null` for it — a reaction must never look like an edit to the SPA.
 The `message_pinned` update carries `{chatId, messageIds, pinned}` and is the message-level pin, distinct from the
 chat-list `pinned` event above. A channel or supergroup names its chat exactly (`updatePinnedChannelMessages`); the
 account-level `updatePinnedMessages` shares the account's pts, so the engine sends its peer when Telegram provides one

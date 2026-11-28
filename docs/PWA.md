@@ -51,7 +51,7 @@ on the next wake of the 300 s cadence. The browser decrypts the RFC 8291 payload
 opens `/chat/:id` on a click. A payload it cannot parse becomes a generic "New Message" notification rather than
 nothing; a click is an ordinary navigation, so Access still applies.
 
-The toggle lives in Settings. It asks for notification permission, subscribes `pushManager` with the build-time VAPID
+The toggle lives in the Notifications section of the settings screen (`/settings/notifications`). It asks for notification permission, subscribes `pushManager` with the build-time VAPID
 public key, and posts the subscription to the Access-gated `/user/push/subscribe`; turning it off reverses both. The
 engine keeps one row per device in `engine_push_subscriptions`, drops a device whose push service answers 404/410, and
 clears the table on sign-out. Keys and deployment steps are in [DEPLOYMENT.md](DEPLOYMENT.md); the fan-out's cost and

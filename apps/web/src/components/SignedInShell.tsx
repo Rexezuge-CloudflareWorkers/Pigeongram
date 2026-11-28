@@ -13,9 +13,10 @@ import { useSignedInNavigation } from '../useSignedInNavigation';
 import { useThread } from '../useThread';
 import { ArchiveBar } from './ArchiveBar';
 import { ChatList } from './ChatList';
-import { Icon } from './Icon';
 import { MediaViewer } from './MediaViewer';
 import { ShellOverlays } from './ShellOverlays';
+import { SidebarHeader } from './SidebarHeader';
+import { SettingsScreen } from './SettingsScreen';
 import { ThreadPane } from './ThreadPane';
 import { Toasts } from './Toasts';
 import type { SignedInShellProps } from './signed-in-shell-types';
@@ -23,7 +24,6 @@ import { useDropNotice } from './useDropNotice';
 import { useExitAnimation } from './useExitAnimation';
 import { useTheme } from './useTheme';
 import { useDynamicColor } from './useDynamicColor';
-import { UserMenu } from './UserMenu';
 
 /**
 The signed-in shell: the chat list and its archive, the thread and comments
@@ -164,6 +164,10 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
     openFoundChat,
     openArchive,
     leaveArchive,
+    settings,
+    openSettings,
+    openSettingsSection,
+    closeSettings,
     handleTelegramLink,
     preview,
     invite,
@@ -291,38 +295,16 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
   return (
     <div className={`app${selected ? ' thread-open' : ''}`} data-theme={theme}>
       <aside className="sidebar">
-        <header className="me">
-          <UserMenu
-            me={me}
-            connected={connected}
-            pwa={pwa}
-            onSignOut={handleLogout}
-            onOpenArchive={openArchive}
-            onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
-            theme={theme}
-            seed={seed}
-            onSetSeed={setSeed}
-            contrast={contrast}
-            onSetContrast={setContrast}
-            onError={(message) => onError(message)}
-          />
-          <button
-            type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            onClick={overlays.openNewChat}
-            aria-label={t('newChat.title', 'New Message')}
-          >
-            <Icon name="edit" />
-          </button>
-          <button
-            type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            onClick={overlays.openGlobalSearch}
-            aria-label={t('a11y.sidebarSearch', 'Search Messages')}
-          >
-            <Icon name="search" />
-          </button>
-        </header>
+        <SidebarHeader
+          me={me}
+          connected={connected}
+          pwa={pwa}
+          onSignOut={handleLogout}
+          onOpenArchive={openArchive}
+          onOpenSettings={openSettings}
+          onNewChat={overlays.openNewChat}
+          onSearch={overlays.openGlobalSearch}
+        />
         {showArchive ? <ArchiveBar count={archivedDialogs.length} onBack={leaveArchive} /> : null}
         <ChatList
           dialogs={showArchive ? archivedDialogs : mainDialogs}
@@ -391,6 +373,24 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
         onJoinInvite={joinInvite}
         onCloseInvite={dismissInvite}
       />
+      {/*
+        Settings layers over the shell: the chat list and the thread behind it
+        stay mounted (and loaded) while it is up.
+      */}
+      {settings === null ? null : (
+        <SettingsScreen
+          section={settings.section}
+          theme={theme}
+          onSetTheme={setTheme}
+          seed={seed}
+          onSetSeed={setSeed}
+          contrast={contrast}
+          onSetContrast={setContrast}
+          onOpenSection={openSettingsSection}
+          onClose={closeSettings}
+          onError={(message) => onError(message)}
+        />
+      )}
       {calls.overlay}
       <Toasts error={error} notice={notice} onDismissError={onDismissError} onDismissNotice={clearNotice} />
     </div>

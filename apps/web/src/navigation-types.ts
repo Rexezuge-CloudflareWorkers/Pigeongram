@@ -1,6 +1,6 @@
 import type { CommentsController } from './comments-controller';
 import type { TelegramChatTarget, TelegramLink } from './links';
-import type { Route } from './routes';
+import type { Route, SettingsSection } from './routes';
 import type { ThreadController } from './thread-controller';
 import type { ChatDto, ChatInvitePreviewDto, MessageDto, MessageForwardDto, PeerId } from './types';
 import type { DialogsController } from './useDialogs';
@@ -116,6 +116,27 @@ export interface SignedInNavigation {
   openFoundChat: (chat: ChatDto) => void;
   openArchive: () => void;
   leaveArchive: () => void;
+  /**
+  The settings screen's route, or null when it is closed. The section is null
+  on the index (`/settings`); the screen decides what a null section shows at
+  its width.
+  */
+  settings: { section: SettingsSection | null } | null;
+  /**
+  Opens settings over the current screen. The thread behind it stays mounted.
+  */
+  openSettings: () => void;
+  /**
+  Moves to a section. `replace` swaps the current entry instead of pushing
+  one: the desktop rail is a tab switch, so leaving settings stays one back
+  press, while the mobile index pushes and back returns to it.
+  */
+  openSettingsSection: (section: SettingsSection, options?: { replace?: boolean }) => void;
+  /**
+  Steps out of settings: a section returns to the index on a narrow screen,
+  and the index (or the rail) leaves for the screen behind.
+  */
+  closeSettings: () => void;
   handleTelegramLink: (url: string) => boolean;
   /**
   The open chat as a preview, or null when it is in the account's list. The

@@ -39,6 +39,12 @@ export function useChatNavigation({
 
   return useCallback(
     async (route: Route, options: RouteApplyOptions): Promise<void> => {
+      if (route.view === 'settings') {
+        // Settings layers over the current screen, so the thread behind it
+        // stays mounted and loaded: stepping back returns to the same scroll
+        // position without re-reading the window.
+        return;
+      }
       if (route.view === 'list' || route.view === 'archived') {
         // The archive is a screen of its own: it shows the archived chats, so
         // the open thread closes like it does for the chat list.

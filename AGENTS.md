@@ -114,7 +114,8 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   `/user/state` probe means Access is through, and `state.authorized` then picks QR vs chat list. The intro's sign-in
   link is `/user/login`; the worker redirects it back into the SPA, carrying a validated same-origin `next` so a
   bookmarked chat link survives the Access round-trip. Navigation is pathname-based: `routes.ts` is the pure
-  route grammar (`/`, `/archived`, `/chat/:id`, `/chat/:id/post/:id`, `/chat/:id/post/:id/comments`), `useRouter.ts`
+  route grammar (`/`, `/archived`, `/settings`, `/settings/<section>`, `/chat/:id`, `/chat/:id/post/:id`,
+  `/chat/:id/post/:id/comments`), `useRouter.ts`
   owns `location`/`history`/`popstate`, `useChatNavigation.ts` applies routes to the thread and comments controllers,
   and `useMediaViewer.ts` makes the media viewer a history layer on the same URL. `links.ts` is the Telegram link grammar
   (t.me URLs and `tg://` deep links normalized to one target) plus the native-app handoff, `telegram-links.tsx` the
@@ -420,6 +421,17 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   (`getProfile`, a read-only method on the batch whitelist) rather than with the chat screen: the reader asks for it
   by opening it, and a thread open would otherwise pay for a read nobody looks at. The popup lives in the thread header
   (`apps/web/src/components/ThreadHeader.tsx`), so the signed-in shell does not grow.
+- **Settings is a routed screen, not a popup.** `apps/web/src/components/SettingsScreen.tsx` paints
+  `/settings` and `/settings/<section>` (`appearance`, `notifications`, `data`) over the shell without unmounting it:
+  the chat list and the thread behind it keep their scroll position and loaded window, and `useChatNavigation.ts`
+  returns early for a settings route. Two navigations live in one screen — at 900px and up a rail lists the sections
+  and choosing one **replaces** the history entry (a tab switch, so leaving settings stays one back press); narrower
+  than that the index is the screen and a section is **pushed**, so back returns to the index
+  (`useMediaQuery.ts` supplies the width, defaulting to the narrow layout where `matchMedia` is absent). The account
+  menu stops owning any settings state (`UserMenu.tsx` calls `onOpenSettings`), and the device choices stay where they
+  were: the theme in `useTheme`, the seed and contrast in `useDynamicColor`, every data-saver switch in
+  `data-saver.tsx` — whose master switch turns all of `DATA_SAVER_KEYS` on or off and reports the mixed state through
+  `ToggleSwitch`'s `indeterminate`.
 - **A min peer in mtcute's cache turns a valid chat into `PEER_ID_INVALID`.** Telegram's `min` user/channel carries a
   reduced access hash that only works inside an `inputPeer*FromMessage`, and mtcute's in-memory peer cache hands a
   cached peer back from `storage.peers.getById` without the `isMin` check its SQLite branch has

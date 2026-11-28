@@ -6,15 +6,14 @@ import { Avatar } from './Avatar';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import { Presence } from './Presence';
-import { SettingsPopup } from './SettingsPopup';
 import { AnchoredMenu, useAnchoredMenu } from './useAnchoredMenu';
-import { type Contrast, type Seed } from './useDynamicColor';
 
 /**
 The sidebar's account control. The profile row is the trigger for a
 Material-style menu anchored under it; the archive, Settings, installing the app
-and Sign out live in that menu. Settings opens the appearance window, and Sign
-out asks for confirmation in a modal before the existing logout flow runs.
+and Sign out live in that menu. Settings opens the settings screen — a route of
+its own, so no window lives here — and Sign out asks for confirmation in a
+modal before the existing logout flow runs.
 
 The menu is a portal with `position: fixed` so the sidebar cannot clip it. Its
 position is measured from the trigger once the menu has a size, then clamped to
@@ -34,16 +33,10 @@ interface UserMenuProps {
   Opens the archive: the chats the account archived.
   */
   onOpenArchive: () => void;
-  onToggleTheme?: () => void;
-  theme?: 'dark' | 'light';
-  seed?: Seed;
-  onSetSeed?: (seed: Seed) => void;
-  contrast?: Contrast;
-  onSetContrast?: (contrast: Contrast) => void;
   /**
-  Shows a settings failure in the app's failure toast.
+  Opens the settings screen over the current one.
   */
-  onError?: (message: string) => void;
+  onOpenSettings: () => void;
 }
 
 /**
@@ -57,23 +50,9 @@ function displayHandle(me: MeDto | null): string | undefined {
   return phone.startsWith('+') ? phone : `+${phone}`;
 }
 
-export function UserMenu({
-  me,
-  connected,
-  pwa,
-  onSignOut,
-  onOpenArchive,
-  onToggleTheme,
-  theme = 'dark',
-  seed = 'telegram',
-  onSetSeed,
-  contrast = 'standard',
-  onSetContrast,
-  onError = () => {},
-}: UserMenuProps) {
+export function UserMenu({ me, connected, pwa, onSignOut, onOpenArchive, onOpenSettings }: UserMenuProps) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -109,7 +88,7 @@ export function UserMenu({
 
   const requestSettings = (): void => {
     setMenuOpen(false);
-    setSettingsOpen(true);
+    onOpenSettings();
   };
 
   /**
@@ -220,22 +199,6 @@ export function UserMenu({
           </button>
         </AnchoredMenu>
       ) : null}
-
-      <Presence visible={settingsOpen}>
-        {settingsOpen ? (
-          <SettingsPopup
-            theme={theme}
-            onToggleTheme={onToggleTheme}
-            seed={seed}
-            onSetSeed={onSetSeed}
-            contrast={contrast}
-            onSetContrast={onSetContrast}
-            onClose={() => setSettingsOpen(false)}
-            onError={onError}
-            returnFocus={focusTrigger}
-          />
-        ) : null}
-      </Presence>
 
       <Presence visible={confirmOpen}>
         {confirmOpen ? (

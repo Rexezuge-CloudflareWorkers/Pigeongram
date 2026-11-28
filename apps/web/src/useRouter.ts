@@ -165,6 +165,20 @@ export function useRouter({ onRoute, canOpen, onViewerEnter, onViewerLeave }: Ro
 
           break;
         }
+        case 'settings': {
+          // Settings layers over whatever screen was open, so the chat list
+          // goes behind it. A section gets the settings index behind it too:
+          // that is the level the narrow layout's back button steps up to, and
+          // a shared section link must behave like one reached from the index.
+          depthRef.current = 1;
+          history.pushState(marker(1), '', '/settings');
+          if (route.section !== null) {
+            depthRef.current = 2;
+            history.pushState(marker(2), '', pathForRoute(route));
+          }
+
+          break;
+        }
         case 'comments': {
           const post = { view: 'chat' as const, chatId: route.chatId, postId: route.postId };
           depthRef.current = 1;

@@ -207,11 +207,12 @@ A device with no file manager cannot show one; install one and retry.
 `onBackPressed`, so it registers an `OnBackInvokedCallback` and asks the page first. The SPA exposes
 `window.__pigeongramBack` (installed by the signed-in navigation in `apps/web/src/native-back.ts`), which is the same
 traversal as its own back button: it closes the media viewer, leaves a chat, a comments thread or the archive for its
-parent, and answers "nothing to go back to" only on the chat list, where the shell exits. The profile and settings popups
-and the forward picker are not history layers (the same as in a browser tab), so back leaves the thread rather than
-dismissing them. When the page has no such function — the login screen, or a web build older than the seam — the shell
-falls back to the WebView's back-forward list and then exits. An APK that still exits from a chat is a build from before
-this seam; rebuild and reinstall it.
+parent, and answers "nothing to go back to" only on the chat list, where the shell exits. The profile popup and the
+forward picker are not history layers (the same as in a browser tab), so back leaves the thread rather than dismissing
+them; settings **is** a route (`/settings`, `/settings/<section>`), so back steps out of a section to the settings index
+and then out of settings. When the page has no such function — the login screen, or a web build older than the seam — the
+shell falls back to the WebView's back-forward list and then exits. An APK that still exits from a chat is a build from
+before this seam; rebuild and reinstall it.
 
 **`INSTALL_FAILED_UPDATE_INCOMPATIBLE`.** The same package id is installed but signed with a different key. Uninstall the
 old app first, or choose a new package id (which makes it a new app).

@@ -18,7 +18,7 @@ Data Saver flag, which the user may have set system-wide) or a slow
 stored and wins from the next visit on.
 */
 
-interface DataSaverSettings {
+export interface DataSaverSettings {
   /**
   Request profile pictures. Off renders initials everywhere.
   */
@@ -43,9 +43,9 @@ interface DataSaverSettings {
   loadPinnedMessages: boolean;
 }
 
-const DATA_SAVER_KEYS = ['loadAvatars', 'loadPreviews', 'loadMedia', 'animateMedia', 'loadPinnedMessages'] as const;
+export const DATA_SAVER_KEYS = ['loadAvatars', 'loadPreviews', 'loadMedia', 'animateMedia', 'loadPinnedMessages'] as const;
 
-export type DataSaverKey = (typeof DATA_SAVER_KEYS)[number];
+type DataSaverKey = (typeof DATA_SAVER_KEYS)[number];
 
 export const DEFAULT_DATA_SAVER: DataSaverSettings = {
   loadAvatars: true,
@@ -99,7 +99,7 @@ function parseSettings(raw: string): DataSaverSettings {
 }
 
 /**
-The data-saver state and the setter the settings window reports to. The
+The data-saver state and the setter the settings screen reports to. The
 stored value is read once (falling back to the browser's hint when there is
 none) and written back on every change.
 */
@@ -166,7 +166,7 @@ export function useDataSaver(): DataSaverSettings {
 }
 
 /**
-The choices and the setter, for the settings window.
+The choices and the setter, for the settings screen.
 */
 export function useDataSaverControls(): DataSaverControls {
   return useContext(DataSaverContext);

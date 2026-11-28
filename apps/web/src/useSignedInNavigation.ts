@@ -4,8 +4,8 @@ import { joinChat, readHistory, resolveChat } from './api';
 import { t } from './i18n';
 import { launchTelegramApp, targetAppLink } from './links';
 import type { ChatPreview, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
-import type { Route, RouteApplyOptions } from './routes';
-import { routeForChat } from './routes';
+import type { Route, RouteApplyOptions, SettingsSection } from './routes';
+import { routeForChat, routeForPath } from './routes';
 import type { ChatDto, DialogDto, MessageDto, PeerId } from './types';
 import { useChatNavigation } from './useChatNavigation';
 import { useLinkRouting } from './useLinkRouting';
@@ -62,26 +62,38 @@ export function useSignedInNavigation({
   const [preview, setPreview] = useState<ChatPreview | null>(null);
   const openChatId = threads.thread?.chat.id ?? null;
   const activePreview = preview !== null && preview.chatId === openChatId ? preview : null;
+  /**
+  The route the screen is on, as state so the shell re-renders when it moves
+  (the thread and archive controllers cover the chat screens; settings is an
+  overlay over them and changes nothing else). Initialised from the URL, so a
+  deep link paints its screen before the boot read resolves.
+  */
+  const [activeRoute, setActiveRoute] = useState<Route>(() => routeForPath(location.pathname));
 
   /**
   The route drives the screen, and the archive is a screen of its own: the
   sidebar shows the archived chats while the route names it or while the open
-  chat came from it.
+  chat came from it. Settings leaves both alone: it layers over the screen the
+  reader was on, so the sidebar and the thread behind it stay as they were.
   */
   const applyRoute = useCallback(
     (route: Route, options: RouteApplyOptions): Promise<void> => {
       resolution.current += 1;
-      const target = route.view === 'chat' || route.view === 'comments' ? resolveDialog(route.chatId) : null;
-      onArchiveContext(route.view === 'archived' || target?.archived === true);
-      // The archive is read when it is opened, not before: the main list is the
-      // account's chats, and the archive is a screen the reader asks for.
-      if (route.view === 'archived') void loadArchive();
+      setActiveRoute(route);
+      if (route.view !== 'settings') {
+        const target = route.view === 'chat' || route.view === 'comments' ? resolveDialog(route.chatId) : null;
+        onArchiveContext(route.view === 'archived' || target?.archived === true);
+        // The archive is read when it is opened, not before: the main list is
+        // the account's chats, and the archive is a screen the reader asks for.
+        if (route.view === 'archived') void loadArchive();
+      }
       return navigate(route, options);
     },
     [resolveDialog, loadArchive, navigate, onArchiveContext],
   );
   const canOpen = useCallback(
-    (route: Route): boolean => route.view === 'list' || route.view === 'archived' || resolveDialog(route.chatId) !== undefined,
+    (route: Route): boolean =>
+      route.view === 'list' || route.view === 'archived' || route.view === 'settings' || resolveDialog(route.chatId) !== undefined,
     [resolveDialog],
   );
   const router = useRouter({
@@ -203,6 +215,34 @@ export function useSignedInNavigation({
   );
 
   /**
+  Opens the settings screen over the current one: the thread and the sidebar
+  stay mounted underneath, so stepping back returns to the same place.
+  */
+  const openSettings = useCallback((): void => {
+    router.navigateTo({ view: 'settings', section: null });
+  }, [router]);
+
+  /**
+  Moves between settings sections. The desktop rail replaces the entry (it is
+  a tab switch, and leaving settings should stay one back press); the mobile
+  index pushes, so back returns to the list of sections.
+  */
+  const openSettingsSection = useCallback(
+    (section: SettingsSection, options?: { replace?: boolean }): void => {
+      if (options?.replace === true) {
+        router.replaceTo({ view: 'settings', section });
+        return;
+      }
+      router.navigateTo({ view: 'settings', section });
+    },
+    [router],
+  );
+
+  const closeSettings = useCallback((): void => {
+    router.back();
+  }, [router]);
+
+  /**
   Joins the open preview chat. The resolved DTO is folded into the thread in
   place, so the composer appears without re-reading the window; the chat list
   is read again because the chat now belongs there.
@@ -298,6 +338,10 @@ export function useSignedInNavigation({
     openFoundChat,
     openArchive,
     leaveArchive,
+    settings: activeRoute.view === 'settings' ? { section: activeRoute.section } : null,
+    openSettings,
+    openSettingsSection,
+    closeSettings,
     handleTelegramLink,
     preview: activePreview,
     invite,

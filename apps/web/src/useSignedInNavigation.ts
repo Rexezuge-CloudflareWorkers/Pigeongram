@@ -9,6 +9,7 @@ import type { ChatDto, DialogDto, MessageDto, PeerId } from './types';
 import { useChatNavigation } from './useChatNavigation';
 import { useLinkRouting } from './useLinkRouting';
 import { useMediaViewer } from './useMediaViewer';
+import { useNativeBack } from './native-back';
 import { useRouter } from './useRouter';
 
 /**
@@ -88,6 +89,10 @@ export function useSignedInNavigation({
     onViewerEnter: viewer.reopen,
     onViewerLeave: viewer.close,
   });
+
+  // The Android shell's back press is the in-app back button: the page decides
+  // whether it moved, and only the chat list hands the press back to the shell.
+  useNativeBack(router);
 
   const openViewer = useCallback(
     (source: 'thread' | 'comments', messageId: number): void => {

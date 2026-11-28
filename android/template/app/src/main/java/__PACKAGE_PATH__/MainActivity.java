@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -16,6 +17,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +38,7 @@ public final class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
     private PermissionRequest pendingAudio;
+    private OnBackInvokedCallback backCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +47,15 @@ public final class MainActivity extends Activity {
 
         webView = new WebView(this);
         setContentView(webView);
+
+        // Apps targeting SDK 36 are no longer called back through
+        // onBackPressed on Android 16, so the gesture is registered with the
+        // platform dispatcher. The onBackPressed override stays as the
+        // API 24-32 path.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backCallback = this::handleBack;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
+        }
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -180,15 +193,54 @@ public final class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        handleBack();
+    }
+
+    /**
+     * The page owns in-app navigation, so back asks it first. The SPA's
+     * `window.__pigeongramBack` is the same traversal as its own back button:
+     * it answers 1 when it moved, 0 when the chat list is the root, and is
+     * absent on the login screen or a web build older than the seam.
+     */
+    private void handleBack() {
+        if (webView == null) {
+            finish();
             return;
         }
-        super.onBackPressed();
+        webView.evaluateJavascript(
+                "(window.__pigeongramBack ? (window.__pigeongramBack() ? 1 : 0) : -1)",
+                value -> {
+                    if ("1".equals(value)) {
+                        return;
+                    }
+                    if ("0".equals(value)) {
+                        finish();
+                        return;
+                    }
+                    goBackInHistory();
+                });
+    }
+
+    /**
+     * The fallback when the page cannot answer. canGoBack() and goBack() go
+     * stale for entries the SPA seeds with back-to-back replaceState and
+     * pushState, so the back-forward list gates the step and the page's own
+     * history performs it.
+     */
+    private void goBackInHistory() {
+        if (webView.copyBackForwardList().getCurrentIndex() > 0) {
+            webView.evaluateJavascript("history.back()", null);
+            return;
+        }
+        finish();
     }
 
     @Override
     protected void onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backCallback != null) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
+        }
+        backCallback = null;
         if (fileCallback != null) {
             fileCallback.onReceiveValue(null);
         }

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { joinChat, readHistory, resolveChat } from './api';
+import { t } from './i18n';
 import { launchTelegramApp, targetAppLink } from './links';
 import type { ChatPreview, SignedInNavigation, UseSignedInNavigationOptions } from './navigation-types';
 import type { Route, RouteApplyOptions } from './routes';
@@ -223,11 +224,11 @@ export function useSignedInNavigation({
         }
         if (result.status === 'request_sent') {
           setPreview((state) => (state !== null && state.chatId === current.chatId ? { ...state, requested: true } : state));
-          onNotice('Your Join Request Was Sent. An Admin Has To Approve It.');
+          onNotice(t('invite.requestPending', 'Your Join Request Was Sent. An Admin Has To Approve It.'));
           return;
         }
         if (result.status !== 'webview') return;
-        onNotice('Telegram Needs This Join Completed In Its Own App.');
+        onNotice(t('invite.nativeAppRequired', 'Telegram Needs This Join Completed In Its Own App.'));
         const link = targetAppLink(current.target);
         if (link !== null) launchTelegramApp(link.deepLink, link.webUrl);
       })

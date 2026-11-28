@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { launchTelegramApp, miniAppDeepLink } from '../links';
 import { safeHref } from '../safe-url';
 import type { ActiveReplyKeyboard } from '../reply-keyboard';
@@ -46,6 +47,7 @@ function ReplyKeyboardButton({
   button: MessageReplyKeyboardButtonDto;
   onPress: (button: MessageReplyKeyboardButtonDto) => void;
 }) {
+  const { t } = useTranslation();
   const className = replyButtonClass(button.style);
 
   if (button.kind === 'webview') {
@@ -79,7 +81,7 @@ function ReplyKeyboardButton({
   }
 
   return (
-    <button type="button" className={className} disabled title={unsupportedReason(button.kind)}>
+    <button type="button" className={className} disabled title={unsupportedReason(t, button.kind)}>
       {button.text}
     </button>
   );
@@ -109,22 +111,22 @@ function replyButtonClass(style: MessageReplyKeyboardButtonDto['style']): string
   }
 }
 
-function unsupportedReason(kind: MessageReplyKeyboardButtonDto['kind']): string {
+function unsupportedReason(t: TFunction, kind: MessageReplyKeyboardButtonDto['kind']): string {
   switch (kind) {
     case 'request_phone': {
-      return 'Sharing a phone number needs the native app.';
+      return t('a11y.phoneNeedsApp', 'Sharing a phone number needs the native app.');
     }
     case 'request_geo': {
-      return 'Sharing a location needs the native app.';
+      return t('a11y.locationNeedsApp', 'Sharing a location needs the native app.');
     }
     case 'request_poll': {
-      return 'Creating a poll needs the native app.';
+      return t('a11y.pollNeedsApp', 'Creating a poll needs the native app.');
     }
     case 'request_peer': {
-      return 'Choosing a chat needs the native app.';
+      return t('a11y.chatPickerNeedsApp', 'Choosing a chat needs the native app.');
     }
     default: {
-      return 'This button is not supported in this client.';
+      return t('a11y.buttonUnsupported', 'This button is not supported in this client.');
     }
   }
 }

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 /**
 The placeholder of a thread with no loaded messages.
 
@@ -19,9 +21,14 @@ interface ThreadEmptyProps {
 }
 
 export function ThreadEmpty({ description, preview }: ThreadEmptyProps) {
+  const { t } = useTranslation();
   const text = description?.trim() ? description : null;
   if (text !== null) {
     return <p className="muted pad max-w-[46ch] self-center break-words whitespace-pre-wrap text-center text-[15px] leading-6">{text}</p>;
   }
-  return <p className="muted pad">{preview ? 'No Messages Yet.' : 'No Messages Yet — Say Hello.'}</p>;
+  return (
+    <p className="muted pad">
+      {preview ? t('thread.empty', 'No Messages Yet.') : t('thread.emptyGreeting', 'No Messages Yet — Say Hello.')}
+    </p>
+  );
 }

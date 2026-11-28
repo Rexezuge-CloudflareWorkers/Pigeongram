@@ -58,10 +58,10 @@ The code→status table lives with the contract in `@pigeongram/shared/errors`,
 so a code added to the engine cannot silently fall through to a 500 here: the
 table and the code union are checked together at compile time.
 */
-export function batchResult<T>(outcome: RpcBatchOutcome | undefined, what: string): T {
+export function batchResult<T>(outcome: RpcBatchOutcome | undefined, failureMessage: string): T {
   if (!outcome || !outcome.ok) {
     const status = outcome?.code ? statusForCode(outcome.code) : 500;
-    throw new HttpStatusError(status, outcome?.error ?? `The ${what} Could Not Be Read`, outcome?.code ?? null);
+    throw new HttpStatusError(status, outcome?.error ?? failureMessage, outcome?.code ?? null);
   }
   return outcome.result as T;
 }

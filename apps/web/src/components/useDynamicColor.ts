@@ -16,12 +16,12 @@ is a pure token rename.
 export type Seed = 'telegram' | 'indigo' | 'amber' | 'mint' | 'rose';
 export type Contrast = 'standard' | 'medium' | 'high';
 
-export const SEEDS: ReadonlyArray<{ id: Seed; label: string; hex: string }> = [
-  { id: 'telegram', label: 'Telegram Blue', hex: '#2aabee' },
-  { id: 'indigo', label: 'Indigo', hex: '#5f6cff' },
-  { id: 'amber', label: 'Amber', hex: '#f0a13c' },
-  { id: 'mint', label: 'Mint', hex: '#46c887' },
-  { id: 'rose', label: 'Rose', hex: '#f15b7f' },
+export const SEEDS: ReadonlyArray<{ id: Seed; hex: string }> = [
+  { id: 'telegram', hex: '#2aabee' },
+  { id: 'indigo', hex: '#5f6cff' },
+  { id: 'amber', hex: '#f0a13c' },
+  { id: 'mint', hex: '#46c887' },
+  { id: 'rose', hex: '#f15b7f' },
 ];
 
 const SEED_KEY = 'pigeongram-seed';

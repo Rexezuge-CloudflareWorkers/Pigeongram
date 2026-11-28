@@ -332,7 +332,7 @@ export function SignedInShell({ initialMe, error, pwa, onError, onDismissError, 
           onSelect={openChat}
           onMarkRead={markAllRead}
           onSetPinned={(chatId, pinned) => void setPinned(chatId, pinned)}
-          emptyLabel={showArchive ? 'No Archived Chats.' : undefined}
+          emptyLabel={showArchive ? t('chats.noArchived', 'No Archived Chats.') : undefined}
         />
       </aside>
       <TelegramLinkProvider handler={handleTelegramLink} onHashtag={overlays.searchHashtag} onOpenForward={openForwardOrigin}>

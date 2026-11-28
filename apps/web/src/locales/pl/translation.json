@@ -14,7 +14,9 @@
     "send": "Wyślij",
     "sendCode": "Wyślij kod",
     "submit": "Prześlij",
-    "submitCode": "Prześlij kod"
+    "submitCode": "Prześlij kod",
+    "dismiss": "Odrzuć",
+    "working": "Przetwarzanie…"
   },
   "a11y": {
     "backToChannel": "Powrót do kanału",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "Prześlij {{count, number}} wiadomości",
     "forwardMessages_many": "Prześlij {{count, number}} wiadomości",
     "forwardMessages_other": "Prześlij {{count, number}} wiadomości",
-    "notifications": "Pokazuj powiadomienia o nowych wiadomościach"
+    "notifications": "Pokazuj powiadomienia o nowych wiadomościach",
+    "buttonNeedsPassword": "ten przycisk wymaga hasła Telegram; naciśnij go w natywnej aplikacji.",
+    "buttonSending": "Wysyłanie…",
+    "buttonsUnavailable": "przyciski nie są dostępne w tym widoku.",
+    "gameNeedsApp": "gry Telegram wymagają natywnej aplikacji.",
+    "paymentNeedsApp": "płatności Telegram wymagają natywnej aplikacji.",
+    "inlineUnsupported": "tryb inline nie jest obsługiwany przez tego klienta.",
+    "loginButtonNeedsApp": "przyciski logowania Telegram wymagają natywnej aplikacji.",
+    "profileUnsupported": "profile nie są obsługiwane przez tego klienta.",
+    "buttonDisabledByBot": "ten przycisk jest wyłączony przez bota.",
+    "buttonUnsupported": "ten przycisk nie jest obsługiwany przez tego klienta.",
+    "phoneNeedsApp": "udostępnianie numeru telefonu wymaga natywnej aplikacji.",
+    "locationNeedsApp": "udostępnianie lokalizacji wymaga natywnej aplikacji.",
+    "pollNeedsApp": "tworzenie ankiety wymaga natywnej aplikacji.",
+    "chatPickerNeedsApp": "wybór czatu wymaga natywnej aplikacji.",
+    "stickerNoun": "naklejka",
+    "photoNoun": "zdjęcie",
+    "videoNoun": "wideo",
+    "gifNoun": "GIF",
+    "imageNoun": "obraz",
+    "seedTelegram": "Niebieski Telegram",
+    "seedIndigo": "Indygo",
+    "seedAmber": "Bursztyn",
+    "seedMint": "Mięta",
+    "seedRose": "Róż"
   },
   "landing": {
     "title": "Twój Telegram na Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Grupa",
     "kindSupergroup": "Superskupina",
-    "kindChannel": "Kanał"
+    "kindChannel": "Kanał",
+    "noArchived": "Brak zarchiwizowanych czatów."
   },
   "thread": {
     "noChatSelected": "Nie wybrano czatu",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} komentarz",
     "commentCount_few": "{{count, number}} komentarze",
     "commentCount_many": "{{count, number}} komentarzy",
-    "commentCount_other": "{{count, number}} komentarzy"
+    "commentCount_other": "{{count, number}} komentarzy",
+    "empty": "Jeszcze nie ma wiadomości.",
+    "emptyGreeting": "Jeszcze nie ma wiadomości. Napisz coś.",
+    "leaveAComment": "Zostaw komentarz"
   },
   "composer": {
     "attachFiles": "Dołącz pliki",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} wiadomość",
     "messageCount_few": "{{count, number}} wiadomości",
     "messageCount_many": "{{count, number}} wiadomości",
-    "messageCount_other": "{{count, number}} wiadomości"
+    "messageCount_other": "{{count, number}} wiadomości",
+    "done": "Przesłano do {{title}}"
   },
   "newChat": {
     "title": "Nowa wiadomość",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} członek",
     "memberCount_few": "{{count, number}} członków",
     "memberCount_many": "{{count, number}} członków",
-    "memberCount_other": "{{count, number}} członków"
+    "memberCount_other": "{{count, number}} członków",
+    "requestPending": "Twoja prośba o dołączenie została wysłana. Administrator musi ją zatwierdzić.",
+    "nativeAppRequired": "Telegram musi zakończyć dołączenie w swojej aplikacji.",
+    "expired": "Ten link zaproszenia wygasł.",
+    "invalid": "Ten link zaproszenia jest nieprawidłowy."
   },
   "profile": {
     "loading": "Ładowanie profilu…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Wylogować się z Telegramu?",
     "signOutBody": "To zakończy sesję w tym kliencie. Aby korzystać z aplikacji, trzeba będzie zalogować się ponownie.",
     "signingOut": "Wylogowywanie…",
-    "connecting": "Łączenie…"
+    "connecting": "Łączenie…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Wyślij pliki",
@@ -405,7 +441,11 @@
     "deleteMessage": "Usuń wiadomość",
     "deleteMessages": "Usuń wiadomości",
     "deleteOneBody": "Ta wiadomość zostanie usunięta dla wszystkich.",
-    "deleteManyBody": "Te {{count}} wiadomości zostaną usunięte dla wszystkich."
+    "deleteManyBody": "Te {{count}} wiadomości zostaną usunięte dla wszystkich.",
+    "chatArchived": "Czat zarchiwizowany",
+    "chatRestored": "Czat przywrócony",
+    "chatPinned": "Czat przypięty",
+    "chatUnpinned": "Czat odpięty"
   },
   "messages": {
     "retry": "Ponów",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} plik",
     "fileCount_few": "{{count, number}} pliki",
     "fileCount_many": "{{count, number}} plików",
-    "fileCount_other": "{{count, number}} plików"
+    "fileCount_other": "{{count, number}} plików",
+    "copiedToClipboard": "Skopiowano do schowka"
   },
   "reactions": {
     "hideAll": "Ukryj wszystkie reakcje",
@@ -448,7 +489,8 @@
     "categoryActivities": "Czynności",
     "categoryTravel": "Podróże",
     "categoryObjects": "Obiekty",
-    "categorySymbols": "Symbole"
+    "categorySymbols": "Symbole",
+    "packInstalled": "Zainstalowano pakiet naklejek: {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "Nagrywanie głosu nie jest obsługiwane w tej przeglądarce.",
     "micDenied": "Dostęp do mikrofonu został odmówiony.",
     "micNotFound": "Nie znaleziono mikrofonu.",
-    "micStartFailed": "Nie udało się uruchomić mikrofonu."
+    "micStartFailed": "Nie udało się uruchomić mikrofonu.",
+    "chatListRead": "Nie udało się odczytać listy czatów",
+    "chatHistoryRead": "Nie udało się odczytać historii czatu",
+    "commentsRead": "Nie udało się odczytać komentarzy",
+    "botPopupBlocked": "Bot poprosił o otwarcie linku; zezwól na wyskakujące okna dla tej witryny."
   },
   "format": {
     "now": "Teraz",

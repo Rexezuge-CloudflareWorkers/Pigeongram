@@ -14,7 +14,9 @@
     "send": "Envoyer",
     "sendCode": "Envoyer le code",
     "submit": "Valider",
-    "submitCode": "Valider le code"
+    "submitCode": "Valider le code",
+    "dismiss": "Ignorer",
+    "working": "Traitement…"
   },
   "a11y": {
     "backToChannel": "Retour au canal",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "Transférer {{count, number}} messages",
     "forwardMessages_many": "Transférer {{count, number}} messages",
     "forwardMessages_other": "Transférer {{count, number}} messages",
-    "notifications": "Afficher les notifications pour les nouveaux messages"
+    "notifications": "Afficher les notifications pour les nouveaux messages",
+    "buttonNeedsPassword": "ce bouton nécessite votre mot de passe Telegram ; appuyez dessus dans l'application native.",
+    "buttonSending": "Envoi en cours…",
+    "buttonsUnavailable": "les boutons ne sont pas disponibles dans cette vue.",
+    "gameNeedsApp": "les jeux Telegram nécessitent l’application native.",
+    "paymentNeedsApp": "les paiements Telegram nécessitent l’application native.",
+    "inlineUnsupported": "le mode en ligne n'est pas pris en charge par ce client.",
+    "loginButtonNeedsApp": "les boutons de connexion Telegram nécessitent l'application native.",
+    "profileUnsupported": "les profils ne sont pas pris en charge par ce client.",
+    "buttonDisabledByBot": "ce bouton est désactivé par le bot.",
+    "buttonUnsupported": "ce bouton n'est pas pris en charge par ce client.",
+    "phoneNeedsApp": "le partage d'un numéro de téléphone nécessite l'application native.",
+    "locationNeedsApp": "le partage d'une position nécessite l'application native.",
+    "pollNeedsApp": "la création d'un sondage nécessite l'application native.",
+    "chatPickerNeedsApp": "le choix d'une discussion nécessite l'application native.",
+    "stickerNoun": "autocollant",
+    "photoNoun": "photo",
+    "videoNoun": "vidéo",
+    "gifNoun": "GIF",
+    "imageNoun": "image",
+    "seedTelegram": "Bleu Telegram",
+    "seedIndigo": "Indigo",
+    "seedAmber": "Ambre",
+    "seedMint": "Menthe",
+    "seedRose": "Rose"
   },
   "landing": {
     "title": "Votre Telegram, sur Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Groupe",
     "kindSupergroup": "Supergroupe",
-    "kindChannel": "Canal"
+    "kindChannel": "Canal",
+    "noArchived": "Aucune discussion archivée."
   },
   "thread": {
     "noChatSelected": "Aucune discussion sélectionnée",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} commentaire",
     "commentCount_few": "{{count, number}} commentaires",
     "commentCount_many": "{{count, number}} commentaires",
-    "commentCount_other": "{{count, number}} commentaires"
+    "commentCount_other": "{{count, number}} commentaires",
+    "empty": "Aucun message pour l'instant.",
+    "emptyGreeting": "Aucun message pour l'instant. Dites bonjour.",
+    "leaveAComment": "Laisser un commentaire"
   },
   "composer": {
     "attachFiles": "Joindre des fichiers",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} message",
     "messageCount_few": "{{count, number}} messages",
     "messageCount_many": "{{count, number}} messages",
-    "messageCount_other": "{{count, number}} messages"
+    "messageCount_other": "{{count, number}} messages",
+    "done": "Transféré à {{title}}"
   },
   "newChat": {
     "title": "Nouveau message",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} membre",
     "memberCount_few": "{{count, number}} membres",
     "memberCount_many": "{{count, number}} membres",
-    "memberCount_other": "{{count, number}} membres"
+    "memberCount_other": "{{count, number}} membres",
+    "requestPending": "Votre demande d'adhésion a été envoyée. Un administrateur doit l'approuver.",
+    "nativeAppRequired": "Telegram doit finaliser cette adhésion dans sa propre application.",
+    "expired": "Ce lien d'invitation a expiré.",
+    "invalid": "Ce lien d'invitation n'est pas valide."
   },
   "profile": {
     "loading": "Chargement du profil…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Se déconnecter de Telegram ?",
     "signOutBody": "Cela met fin à la session sur ce client. Vous devrez vous reconnecter pour utiliser l'application.",
     "signingOut": "Déconnexion…",
-    "connecting": "Connexion…"
+    "connecting": "Connexion…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Envoyer des fichiers",
@@ -405,7 +441,11 @@
     "deleteMessage": "Supprimer le message",
     "deleteMessages": "Supprimer les messages",
     "deleteOneBody": "Ce message sera supprimé pour tout le monde.",
-    "deleteManyBody": "Ces {{count}} messages seront supprimés pour tout le monde."
+    "deleteManyBody": "Ces {{count}} messages seront supprimés pour tout le monde.",
+    "chatArchived": "Discussion archivée",
+    "chatRestored": "Discussion restaurée",
+    "chatPinned": "Discussion épinglée",
+    "chatUnpinned": "Discussion désépinglée"
   },
   "messages": {
     "retry": "Réessayer",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} fichier",
     "fileCount_few": "{{count, number}} fichiers",
     "fileCount_many": "{{count, number}} fichiers",
-    "fileCount_other": "{{count, number}} fichiers"
+    "fileCount_other": "{{count, number}} fichiers",
+    "copiedToClipboard": "Copié dans le presse-papiers"
   },
   "reactions": {
     "hideAll": "Masquer toutes les réactions",
@@ -448,7 +489,8 @@
     "categoryActivities": "Activités",
     "categoryTravel": "Voyages",
     "categoryObjects": "Objets",
-    "categorySymbols": "Symboles"
+    "categorySymbols": "Symboles",
+    "packInstalled": "Paquet d'autocollants installé : {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "L'enregistrement vocal n'est pas pris en charge dans ce navigateur.",
     "micDenied": "L'accès au micro a été refusé.",
     "micNotFound": "Aucun micro n'a été trouvé.",
-    "micStartFailed": "Le micro n'a pas pu être démarré."
+    "micStartFailed": "Le micro n'a pas pu être démarré.",
+    "chatListRead": "La liste des discussions n'a pas pu être lue",
+    "chatHistoryRead": "L'historique de la discussion n'a pas pu être lu",
+    "commentsRead": "Les commentaires n'ont pas pu être lus",
+    "botPopupBlocked": "Le bot a demandé d'ouvrir un lien ; autorisez les fenêtres contextuelles pour ce site."
   },
   "format": {
     "now": "Maintenant",

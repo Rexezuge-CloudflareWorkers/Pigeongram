@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { MutableRefObject } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { installStickerSet, resolveChat } from './api';
+import { t } from './i18n';
 import { findLinkedChat, handOffTarget, launchTelegramApp, linkTarget, parseTelegramLink } from './links';
 import type { TelegramChatTarget } from './links';
 import type { ChatPreview, PendingInvite, ResolveRequest } from './navigation-types';
@@ -194,7 +195,7 @@ export function useLinkRouting({
       if (link.stickerSet !== null) {
         const shortName = link.stickerSet;
         void installStickerSet(shortName)
-          .then((set) => onNotice(`Sticker Pack Installed: ${set.title}`))
+          .then((set) => onNotice(t('stickers.packInstalled', 'Sticker Pack Installed: {{title}}', { title: set.title })))
           .catch(onError);
         return true;
       }

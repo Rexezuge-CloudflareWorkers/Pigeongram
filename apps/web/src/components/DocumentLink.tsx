@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { fileUrl } from '../api';
 import { formatBytes } from '../format';
 import { downloadFileName } from '../media-download';
@@ -10,6 +11,7 @@ downloaded through the same `/user/file` route the players use. A download alway
 asks for the maximum-quality variant.
 */
 export function DocumentLink({ message }: { message: MessageDto }) {
+  const { t } = useTranslation();
   const media = message.media;
   return (
     <a
@@ -20,7 +22,7 @@ export function DocumentLink({ message }: { message: MessageDto }) {
       rel="noreferrer"
     >
       <Icon name="download" size={16} />
-      <span className="doc-name">{media?.fileName ?? 'File'}</span>
+      <span className="doc-name">{media?.fileName ?? t('media.file', 'File')}</span>
       {media && media.size !== null ? <span className="doc-size">{formatBytes(media.size)}</span> : null}
     </a>
   );

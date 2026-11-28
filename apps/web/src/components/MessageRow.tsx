@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { albumCaption, isVisualAlbum } from '../groups';
 import { isDownloadable } from '../media-download';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { ChatDto, MessageButtonDto, MessageCommentsDto, MessageDto, MessageReactionDto } from '../types';
 import { Avatar } from './Avatar';
 import { ForwardOrigin } from './ForwardOrigin';
@@ -171,6 +173,7 @@ export function MessageRow({
   onOpenComments,
   onOpenMedia,
 }: MessageRowProps) {
+  const { t } = useTranslation();
   const message = group[0];
   const own = message.outgoing;
   // Channels report views instead of read receipts, and service messages have
@@ -356,7 +359,7 @@ export function MessageRow({
           {meta}
           {onOpenComments && comments && (comments.hasComments || comments.count > 0) ? (
             <button type="button" className="comments-button inline-flex items-center gap-1.5" onClick={() => onOpenComments(message)}>
-              <Icon name="comment" size={14} /> {commentLabel(comments)}
+              <Icon name="comment" size={14} /> {commentLabel(t, comments)}
             </button>
           ) : null}
         </>
@@ -388,7 +391,7 @@ export function MessageRow({
   );
 }
 
-function commentLabel(comments: MessageCommentsDto): string {
-  if (comments.count === 0) return 'Leave A Comment';
-  return comments.count === 1 ? '1 Comment' : `${comments.count} Comments`;
+function commentLabel(t: TFunction, comments: MessageCommentsDto): string {
+  if (comments.count === 0) return t('thread.leaveAComment', 'Leave A Comment');
+  return t('thread.commentCount', '{{count, number}} Comments', { count: comments.count });
 }

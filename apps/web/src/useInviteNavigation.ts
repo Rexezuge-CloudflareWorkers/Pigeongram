@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { ServiceError } from '@rexezuge/errors';
 import { joinInvite as requestJoinInvite, resolveInvite } from './api';
+import { t } from './i18n';
 import { launchTelegramApp } from './links';
 import type { TelegramLink } from './links';
 import type { PendingInvite } from './navigation-types';
@@ -109,12 +110,12 @@ export function useInviteNavigation({
         }
         if (result.status === 'request_sent') {
           setInvite((state) => (state === null ? state : { ...state, requested: true }));
-          onNotice('Your Join Request Was Sent. An Admin Has To Approve It.');
+          onNotice(t('invite.requestPending', 'Your Join Request Was Sent. An Admin Has To Approve It.'));
           return;
         }
         if (result.status !== 'webview') return;
         setInvite(null);
-        onNotice('Telegram Needs This Join Completed In Its Own App.');
+        onNotice(t('invite.nativeAppRequired', 'Telegram Needs This Join Completed In Its Own App.'));
         launchTelegramApp(invite.link.deepLink, invite.link.webUrl);
       })
       .catch((failure: unknown) => {
@@ -151,7 +152,7 @@ handoff would not help, because the link is dead in every client.
 */
 function inviteFailureNotice(failure: unknown): string | null {
   if (!(failure instanceof ServiceError)) return null;
-  if (failure.type === 'invite_expired') return 'This Invite Link Has Expired.';
-  if (failure.type === 'invite_invalid') return 'This Invite Link Is Not Valid.';
+  if (failure.type === 'invite_expired') return t('invite.expired', 'This Invite Link Has Expired.');
+  if (failure.type === 'invite_invalid') return t('invite.invalid', 'This Invite Link Is Not Valid.');
   return null;
 }

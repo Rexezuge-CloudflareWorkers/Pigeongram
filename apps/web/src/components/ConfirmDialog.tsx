@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 
@@ -48,15 +49,16 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   tone = 'danger',
   busy = false,
-  busyLabel = 'Working…',
+  busyLabel,
   onConfirm,
   onCancel,
   returnFocus,
   exiting = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   const messageId = useId();
   return (
     <Dialog
@@ -70,11 +72,11 @@ export function ConfirmDialog({
         <>
           <span data-dialog-cancel className="contents">
             <Button tone="primary" variant="text" className="min-w-[88px]" disabled={busy} onClick={onCancel}>
-              {cancelLabel}
+              {cancelLabel ?? t('common.cancel', 'Cancel')}
             </Button>
           </span>
           <Button tone={tone === 'accent' ? 'accent' : 'danger'} className="min-w-[88px]" disabled={busy} onClick={onConfirm}>
-            {busy ? busyLabel : confirmLabel}
+            {busy ? (busyLabel ?? t('common.working', 'Working…')) : confirmLabel}
           </Button>
         </>
       }

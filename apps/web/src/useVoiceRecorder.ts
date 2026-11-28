@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { t } from './i18n';
 import type { RecordedVoice, VoiceRecording } from './recorder';
 import { startVoiceRecording } from './recorder';
 import { VOICE_MAX_SECONDS } from './types';
@@ -108,7 +109,7 @@ export function useVoiceRecorder({ onRecorded, onError, maxSeconds = VOICE_MAX_S
       .catch((error: unknown) => {
         if (!mounted.current || attempt.current !== id) return;
         setState('idle');
-        const message = error instanceof Error ? error.message : 'The Microphone Could Not Be Started.';
+        const message = error instanceof Error ? error.message : t('errors.micStartFailed', 'The Microphone Could Not Be Started.');
         errorRef.current(message);
       });
   }, []);

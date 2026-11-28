@@ -14,7 +14,9 @@
     "send": "Verzenden",
     "sendCode": "Code verzenden",
     "submit": "Indienen",
-    "submitCode": "Code indienen"
+    "submitCode": "Code indienen",
+    "dismiss": "Sluiten",
+    "working": "Bezig…"
   },
   "a11y": {
     "backToChannel": "Terug naar het kanaal",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "{{count, number}} berichten doorsturen",
     "forwardMessages_many": "{{count, number}} berichten doorsturen",
     "forwardMessages_other": "{{count, number}} berichten doorsturen",
-    "notifications": "Meldingen voor nieuwe berichten weergeven"
+    "notifications": "Meldingen voor nieuwe berichten weergeven",
+    "buttonNeedsPassword": "deze knop heeft je Telegram-wachtwoord nodig; druk erop in de native app.",
+    "buttonSending": "Verzenden…",
+    "buttonsUnavailable": "knoppen zijn in deze weergave niet beschikbaar.",
+    "gameNeedsApp": "Telegram-spellen hebben de native app nodig.",
+    "paymentNeedsApp": "Telegram-betalingen hebben de native app nodig.",
+    "inlineUnsupported": "de inline-modus wordt door deze client niet ondersteund.",
+    "loginButtonNeedsApp": "Telegram-inlogknoppen hebben de native app nodig.",
+    "profileUnsupported": "profielen worden door deze client niet ondersteund.",
+    "buttonDisabledByBot": "deze knop is door de bot uitgeschakeld.",
+    "buttonUnsupported": "deze knop wordt door deze client niet ondersteund.",
+    "phoneNeedsApp": "een telefoonnummer delen heeft de native app nodig.",
+    "locationNeedsApp": "een locatie delen heeft de native app nodig.",
+    "pollNeedsApp": "een peiling maken heeft de native app nodig.",
+    "chatPickerNeedsApp": "een chat kiezen heeft de native app nodig.",
+    "stickerNoun": "sticker",
+    "photoNoun": "foto",
+    "videoNoun": "video",
+    "gifNoun": "GIF",
+    "imageNoun": "afbeelding",
+    "seedTelegram": "Telegram-blauw",
+    "seedIndigo": "Indigo",
+    "seedAmber": "Amber",
+    "seedMint": "Mint",
+    "seedRose": "Roze"
   },
   "landing": {
     "title": "Jouw Telegram, op Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Groep",
     "kindSupergroup": "Supergroep",
-    "kindChannel": "Kanaal"
+    "kindChannel": "Kanaal",
+    "noArchived": "Geen gearchiveerde chats."
   },
   "thread": {
     "noChatSelected": "Geen chat geselecteerd",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} reactie",
     "commentCount_few": "{{count, number}} reacties",
     "commentCount_many": "{{count, number}} reacties",
-    "commentCount_other": "{{count, number}} reacties"
+    "commentCount_other": "{{count, number}} reacties",
+    "empty": "Nog geen berichten.",
+    "emptyGreeting": "Nog geen berichten. Zeg hallo.",
+    "leaveAComment": "Plaats een reactie"
   },
   "composer": {
     "attachFiles": "Bestanden toevoegen",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} bericht",
     "messageCount_few": "{{count, number}} berichten",
     "messageCount_many": "{{count, number}} berichten",
-    "messageCount_other": "{{count, number}} berichten"
+    "messageCount_other": "{{count, number}} berichten",
+    "done": "Doorgestuurd naar {{title}}"
   },
   "newChat": {
     "title": "Nieuw bericht",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} lid",
     "memberCount_few": "{{count, number}} leden",
     "memberCount_many": "{{count, number}} leden",
-    "memberCount_other": "{{count, number}} leden"
+    "memberCount_other": "{{count, number}} leden",
+    "requestPending": "Je verzoek om toe te treden is verzonden. Een beheerder moet het goedkeuren.",
+    "nativeAppRequired": "Telegram moet deze toetreding in de eigen app afronden.",
+    "expired": "Deze uitnodigingslink is verlopen.",
+    "invalid": "Deze uitnodigingslink is ongeldig."
   },
   "profile": {
     "loading": "Profiel laden…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Afmelden bij Telegram?",
     "signOutBody": "Hiermee beëindig je de sessie in deze client. Je moet je opnieuw aanmelden om de app te gebruiken.",
     "signingOut": "Afmelden…",
-    "connecting": "Verbinden…"
+    "connecting": "Verbinden…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Bestanden verzenden",
@@ -405,7 +441,11 @@
     "deleteMessage": "Bericht verwijderen",
     "deleteMessages": "Berichten verwijderen",
     "deleteOneBody": "Dit bericht wordt voor iedereen verwijderd.",
-    "deleteManyBody": "Deze {{count}} berichten worden voor iedereen verwijderd."
+    "deleteManyBody": "Deze {{count}} berichten worden voor iedereen verwijderd.",
+    "chatArchived": "Chat gearchiveerd",
+    "chatRestored": "Chat hersteld",
+    "chatPinned": "Chat vastgemaakt",
+    "chatUnpinned": "Chat losgemaakt"
   },
   "messages": {
     "retry": "Opnieuw proberen",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} bestand",
     "fileCount_few": "{{count, number}} bestanden",
     "fileCount_many": "{{count, number}} bestanden",
-    "fileCount_other": "{{count, number}} bestanden"
+    "fileCount_other": "{{count, number}} bestanden",
+    "copiedToClipboard": "Gekopieerd naar klembord"
   },
   "reactions": {
     "hideAll": "Alle reacties verbergen",
@@ -448,7 +489,8 @@
     "categoryActivities": "Activiteiten",
     "categoryTravel": "Reizen",
     "categoryObjects": "Objecten",
-    "categorySymbols": "Symbolen"
+    "categorySymbols": "Symbolen",
+    "packInstalled": "Stickerpakket geïnstalleerd: {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "Spraakopname wordt niet ondersteund in deze browser.",
     "micDenied": "Toegang tot de microfoon is geweigerd.",
     "micNotFound": "Er is geen microfoon gevonden.",
-    "micStartFailed": "De microfoon kon niet worden gestart."
+    "micStartFailed": "De microfoon kon niet worden gestart.",
+    "chatListRead": "De chatlijst kon niet worden gelezen",
+    "chatHistoryRead": "De chatgeschiedenis kon niet worden gelezen",
+    "commentsRead": "De reacties konden niet worden gelezen",
+    "botPopupBlocked": "De bot wilde een link openen; sta pop-ups toe voor deze site."
   },
   "format": {
     "now": "Nu",

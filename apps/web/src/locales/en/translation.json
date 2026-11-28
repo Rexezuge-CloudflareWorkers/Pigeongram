@@ -14,7 +14,9 @@
     "send": "Send",
     "sendCode": "Send Code",
     "submit": "Submit",
-    "submitCode": "Submit Code"
+    "submitCode": "Submit Code",
+    "dismiss": "Dismiss",
+    "working": "Working…"
   },
   "a11y": {
     "backToChannel": "Back To The Channel",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "Forward {{count, number}} messages",
     "forwardMessages_many": "Forward {{count, number}} messages",
     "forwardMessages_other": "Forward {{count, number}} messages",
-    "notifications": "Show notifications for new messages"
+    "notifications": "Show notifications for new messages",
+    "buttonNeedsPassword": "This button needs your Telegram password; press it in the native app.",
+    "buttonSending": "Sending…",
+    "buttonsUnavailable": "Buttons are not available in this view.",
+    "gameNeedsApp": "Telegram games need the native app.",
+    "paymentNeedsApp": "Telegram payments need the native app.",
+    "inlineUnsupported": "Inline mode is not supported in this client.",
+    "loginButtonNeedsApp": "Telegram login buttons need the native app.",
+    "profileUnsupported": "Profiles are not supported in this client.",
+    "buttonDisabledByBot": "This button is disabled by the bot.",
+    "buttonUnsupported": "This button is not supported in this client.",
+    "phoneNeedsApp": "Sharing a phone number needs the native app.",
+    "locationNeedsApp": "Sharing a location needs the native app.",
+    "pollNeedsApp": "Creating a poll needs the native app.",
+    "chatPickerNeedsApp": "Choosing a chat needs the native app.",
+    "stickerNoun": "sticker",
+    "photoNoun": "photo",
+    "videoNoun": "video",
+    "gifNoun": "GIF",
+    "imageNoun": "image",
+    "seedTelegram": "Telegram Blue",
+    "seedIndigo": "Indigo",
+    "seedAmber": "Amber",
+    "seedMint": "Mint",
+    "seedRose": "Rose"
   },
   "landing": {
     "title": "Your Telegram, On Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Group",
     "kindSupergroup": "Supergroup",
-    "kindChannel": "Channel"
+    "kindChannel": "Channel",
+    "noArchived": "No Archived Chats."
   },
   "thread": {
     "noChatSelected": "No Chat Selected",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} Comment",
     "commentCount_few": "{{count, number}} Comments",
     "commentCount_many": "{{count, number}} Comments",
-    "commentCount_other": "{{count, number}} Comments"
+    "commentCount_other": "{{count, number}} Comments",
+    "empty": "No Messages Yet.",
+    "emptyGreeting": "No Messages Yet — Say Hello.",
+    "leaveAComment": "Leave A Comment"
   },
   "composer": {
     "attachFiles": "Attach Files",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} Message",
     "messageCount_few": "{{count, number}} Messages",
     "messageCount_many": "{{count, number}} Messages",
-    "messageCount_other": "{{count, number}} Messages"
+    "messageCount_other": "{{count, number}} Messages",
+    "done": "Forwarded To {{title}}"
   },
   "newChat": {
     "title": "New Message",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} Member",
     "memberCount_few": "{{count, number}} Members",
     "memberCount_many": "{{count, number}} Members",
-    "memberCount_other": "{{count, number}} Members"
+    "memberCount_other": "{{count, number}} Members",
+    "requestPending": "Your Join Request Was Sent. An Admin Has To Approve It.",
+    "nativeAppRequired": "Telegram Needs This Join Completed In Its Own App.",
+    "expired": "This Invite Link Has Expired.",
+    "invalid": "This Invite Link Is Not Valid."
   },
   "profile": {
     "loading": "Loading The Profile…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Sign Out Of Telegram?",
     "signOutBody": "This Ends The Session On This Client. You'll Need To Sign In Again To Use The App.",
     "signingOut": "Signing Out…",
-    "connecting": "Connecting…"
+    "connecting": "Connecting…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Send Files",
@@ -405,7 +441,11 @@
     "deleteMessage": "Delete Message",
     "deleteMessages": "Delete Messages",
     "deleteOneBody": "This Message Will Be Deleted For Everyone.",
-    "deleteManyBody": "These {{count}} Messages Will Be Deleted For Everyone."
+    "deleteManyBody": "These {{count}} Messages Will Be Deleted For Everyone.",
+    "chatArchived": "Chat Archived",
+    "chatRestored": "Chat Restored",
+    "chatPinned": "Chat Pinned",
+    "chatUnpinned": "Chat Unpinned"
   },
   "messages": {
     "retry": "Retry",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} File",
     "fileCount_few": "{{count, number}} Files",
     "fileCount_many": "{{count, number}} Files",
-    "fileCount_other": "{{count, number}} Files"
+    "fileCount_other": "{{count, number}} Files",
+    "copiedToClipboard": "Copied To Clipboard"
   },
   "reactions": {
     "hideAll": "Hide All Reactions",
@@ -448,7 +489,8 @@
     "categoryActivities": "Activities",
     "categoryTravel": "Travel",
     "categoryObjects": "Objects",
-    "categorySymbols": "Symbols"
+    "categorySymbols": "Symbols",
+    "packInstalled": "Sticker Pack Installed: {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "Voice Recording Isn't Supported In This Browser.",
     "micDenied": "Microphone Access Was Denied.",
     "micNotFound": "No Microphone Was Found.",
-    "micStartFailed": "The Microphone Could Not Be Started."
+    "micStartFailed": "The Microphone Could Not Be Started.",
+    "chatListRead": "The Chat List Could Not Be Read",
+    "chatHistoryRead": "The Chat History Could Not Be Read",
+    "commentsRead": "The Comments Could Not Be Read",
+    "botPopupBlocked": "The Bot Asked To Open A Link; Allow Pop-Ups For This Site."
   },
   "format": {
     "now": "Now",

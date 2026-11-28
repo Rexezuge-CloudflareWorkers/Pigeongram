@@ -14,7 +14,9 @@
     "send": "发送",
     "sendCode": "发送验证码",
     "submit": "提交",
-    "submitCode": "提交验证码"
+    "submitCode": "提交验证码",
+    "dismiss": "关闭",
+    "working": "处理中…"
   },
   "a11y": {
     "backToChannel": "返回频道",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "转发 {{count, number}} 条消息",
     "forwardMessages_many": "转发 {{count, number}} 条消息",
     "forwardMessages_other": "转发 {{count, number}} 条消息",
-    "notifications": "显示新消息通知"
+    "notifications": "显示新消息通知",
+    "buttonNeedsPassword": "此按钮需要你的 Telegram 密码；请在原生应用中点击.",
+    "buttonSending": "发送中…",
+    "buttonsUnavailable": "此视图中不可用按钮.",
+    "gameNeedsApp": "Telegram 游戏需要原生应用.",
+    "paymentNeedsApp": "Telegram 支付需要原生应用.",
+    "inlineUnsupported": "此客户端不支持内联模式.",
+    "loginButtonNeedsApp": "Telegram 登录按钮需要原生应用.",
+    "profileUnsupported": "此客户端不支持个人资料.",
+    "buttonDisabledByBot": "此按钮已被机器人禁用.",
+    "buttonUnsupported": "此客户端不支持此按钮.",
+    "phoneNeedsApp": "分享电话号码需要原生应用.",
+    "locationNeedsApp": "分享位置需要原生应用.",
+    "pollNeedsApp": "创建投票需要原生应用.",
+    "chatPickerNeedsApp": "选择聊天需要原生应用.",
+    "stickerNoun": "贴纸",
+    "photoNoun": "照片",
+    "videoNoun": "视频",
+    "gifNoun": "GIF",
+    "imageNoun": "图片",
+    "seedTelegram": "Telegram 蓝",
+    "seedIndigo": "靛蓝",
+    "seedAmber": "琥珀色",
+    "seedMint": "薄荷绿",
+    "seedRose": "玫瑰色"
   },
   "landing": {
     "title": "你的 Telegram，运行于 Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "机器人",
     "kindGroup": "群组",
     "kindSupergroup": "超级群组",
-    "kindChannel": "频道"
+    "kindChannel": "频道",
+    "noArchived": "没有已归档的聊天。"
   },
   "thread": {
     "noChatSelected": "未选择聊天",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} 条评论",
     "commentCount_few": "{{count, number}} 条评论",
     "commentCount_many": "{{count, number}} 条评论",
-    "commentCount_other": "{{count, number}} 条评论"
+    "commentCount_other": "{{count, number}} 条评论",
+    "empty": "还没有消息。",
+    "emptyGreeting": "还没有消息，打个招呼吧。",
+    "leaveAComment": "发表评论"
   },
   "composer": {
     "attachFiles": "附加文件",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} 条消息",
     "messageCount_few": "{{count, number}} 条消息",
     "messageCount_many": "{{count, number}} 条消息",
-    "messageCount_other": "{{count, number}} 条消息"
+    "messageCount_other": "{{count, number}} 条消息",
+    "done": "已转发至 {{title}}"
   },
   "newChat": {
     "title": "新消息",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} 位成员",
     "memberCount_few": "{{count, number}} 位成员",
     "memberCount_many": "{{count, number}} 位成员",
-    "memberCount_other": "{{count, number}} 位成员"
+    "memberCount_other": "{{count, number}} 位成员",
+    "requestPending": "已发送加入请求，需要管理员批准。",
+    "nativeAppRequired": "需要在 Telegram 应用中完成加入操作。",
+    "expired": "此邀请链接已过期。",
+    "invalid": "此邀请链接无效。"
   },
   "profile": {
     "loading": "正在加载个人资料…",
@@ -375,7 +410,8 @@
     "signOutTitle": "退出 Telegram 登录？",
     "signOutBody": "这将结束此客户端上的会话。你需要重新登录才能使用本应用。",
     "signingOut": "正在退出登录…",
-    "connecting": "正在连接…"
+    "connecting": "正在连接…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "发送文件",
@@ -405,7 +441,11 @@
     "deleteMessage": "删除消息",
     "deleteMessages": "删除消息",
     "deleteOneBody": "此消息将对所有人删除。",
-    "deleteManyBody": "这 {{count}} 条消息将对所有人删除。"
+    "deleteManyBody": "这 {{count}} 条消息将对所有人删除。",
+    "chatArchived": "已归档聊天",
+    "chatRestored": "已恢复聊天",
+    "chatPinned": "已置顶聊天",
+    "chatUnpinned": "已取消置顶聊天"
   },
   "messages": {
     "retry": "重试",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} 个文件",
     "fileCount_few": "{{count, number}} 个文件",
     "fileCount_many": "{{count, number}} 个文件",
-    "fileCount_other": "{{count, number}} 个文件"
+    "fileCount_other": "{{count, number}} 个文件",
+    "copiedToClipboard": "已复制到剪贴板"
   },
   "reactions": {
     "hideAll": "隐藏所有回应",
@@ -448,7 +489,8 @@
     "categoryActivities": "活动",
     "categoryTravel": "旅行",
     "categoryObjects": "物品",
-    "categorySymbols": "符号"
+    "categorySymbols": "符号",
+    "packInstalled": "已安装贴纸包：{{title}}"
   },
   "poll": {
     "quiz": "测验",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "此浏览器不支持语音录制。",
     "micDenied": "麦克风访问权限被拒绝。",
     "micNotFound": "未找到麦克风。",
-    "micStartFailed": "无法启动麦克风。"
+    "micStartFailed": "无法启动麦克风。",
+    "chatListRead": "无法读取聊天列表",
+    "chatHistoryRead": "无法读取聊天记录",
+    "commentsRead": "无法读取评论",
+    "botPopupBlocked": "机器人请求打开链接；请允许此网站弹出窗口。"
   },
   "format": {
     "now": "刚刚",

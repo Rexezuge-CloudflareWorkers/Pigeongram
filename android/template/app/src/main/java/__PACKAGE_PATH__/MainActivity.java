@@ -62,7 +62,10 @@ public final class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
         settings.setUseWideViewPort(true);
         settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(true);
+        // Attachments come from the native picker below, which grants this app
+        // a read permission for each chosen URI. The WebView itself only loads
+        // the deployed https origin, so it never needs to load content:// URLs.
+        settings.setAllowContentAccess(false);
 
         // Access runs on the origin itself, but its login round trip may involve
         // another Cloudflare host. Both need cookies to survive inside WebView.

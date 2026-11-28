@@ -199,6 +199,16 @@ describe('the committed native template', () => {
     expect(activity).toContain('registerOnBackInvokedCallback');
     expect(activity).toContain('__pigeongramBack');
   });
+
+  it('denies content URL access in the WebView', () => {
+    const activity = readFileSync(
+      path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'),
+      'utf8',
+    );
+    expect(activity).toContain('setAllowContentAccess(false)');
+    expect(activity).not.toContain('setAllowContentAccess(true)');
+    expect(activity).toContain('setAllowFileAccess(false)');
+  });
 });
 
 describe('the rendered Android project', () => {

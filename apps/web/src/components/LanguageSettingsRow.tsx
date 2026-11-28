@@ -3,7 +3,7 @@ import { SUPPORTED_LANGUAGES, LOCALE_NAMES } from '../i18n';
 import { Select } from './Select';
 
 /**
-The language row in the settings popup.
+The language row in the settings screen.
 
 Per device, like the theme and the data-saver switches: the choice is stored in
 `localStorage` under `LANGUAGE_STORAGE_KEY` (by `useLanguage`) and never reaches

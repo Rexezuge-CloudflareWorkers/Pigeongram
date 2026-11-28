@@ -9,13 +9,15 @@ const me: MeDto = { id: 1, firstName: 'Ada', lastName: 'Lovelace', username: 'ad
 
 const pwa = { canInstall: false, install: () => {} };
 
-function renderMenu(onSignOut: () => Promise<void> | void = async () => {}): HTMLButtonElement {
-  render(<UserMenu me={me} connected pwa={pwa} onSignOut={onSignOut} onOpenArchive={() => {}} />);
+function renderMenu(onSignOut: () => Promise<void> | void = async () => {}, onOpenSettings: () => void = () => {}): HTMLButtonElement {
+  render(<UserMenu me={me} connected pwa={pwa} onSignOut={onSignOut} onOpenArchive={() => {}} onOpenSettings={onOpenSettings} />);
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
 function renderStatus(connected: boolean): HTMLButtonElement {
-  render(<UserMenu me={me} connected={connected} pwa={pwa} onSignOut={async () => {}} onOpenArchive={() => {}} />);
+  render(
+    <UserMenu me={me} connected={connected} pwa={pwa} onSignOut={async () => {}} onOpenArchive={() => {}} onOpenSettings={() => {}} />,
+  );
   return screen.getByRole('button', { name: 'Account menu for Ada Lovelace' });
 }
 
@@ -69,14 +71,15 @@ describe('UserMenu', () => {
     expect(onSignOut).not.toHaveBeenCalled();
   });
 
-  it('opens the settings window from the account menu and closes the menu', () => {
-    const trigger = renderMenu();
+  it('opens the settings screen from the account menu and closes the menu', () => {
+    const onOpenSettings = vi.fn();
+    const trigger = renderMenu(async () => {}, onOpenSettings);
 
     const menu = openMenu(trigger);
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Settings' }));
 
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeDefined();
   });
 
   it('shows the phone handle with a plus when the account has no username', () => {
@@ -87,6 +90,7 @@ describe('UserMenu', () => {
         pwa={pwa}
         onSignOut={async () => {}}
         onOpenArchive={() => {}}
+        onOpenSettings={() => {}}
       />,
     );
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
@@ -98,7 +102,7 @@ describe('UserMenu', () => {
 
   it('opens the archive from the profile menu and closes the menu', () => {
     const onOpenArchive = vi.fn();
-    render(<UserMenu me={me} connected pwa={pwa} onSignOut={async () => {}} onOpenArchive={onOpenArchive} />);
+    render(<UserMenu me={me} connected pwa={pwa} onSignOut={async () => {}} onOpenArchive={onOpenArchive} onOpenSettings={() => {}} />);
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
 
     const menu = openMenu(trigger);
@@ -110,7 +114,16 @@ describe('UserMenu', () => {
 
   it('offers the install only while the browser raised the prompt', () => {
     const install = vi.fn();
-    render(<UserMenu me={me} connected pwa={{ canInstall: true, install }} onSignOut={async () => {}} onOpenArchive={() => {}} />);
+    render(
+      <UserMenu
+        me={me}
+        connected
+        pwa={{ canInstall: true, install }}
+        onSignOut={async () => {}}
+        onOpenArchive={() => {}}
+        onOpenSettings={() => {}}
+      />,
+    );
     const trigger = screen.getByRole('button', { name: 'Account menu for Ada Lovelace' }) as HTMLButtonElement;
 
     const menu = openMenu(trigger);

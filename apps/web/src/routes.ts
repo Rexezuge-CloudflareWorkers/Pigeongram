@@ -15,11 +15,20 @@ the app on an empty screen.
 
 The archive is a screen of its own (`/archived`): the chats the account
 archived, in the place Telegram keeps them.
+
+Settings is a screen too (`/settings`), and each group has its own path
+(`/settings/appearance`, `/settings/notifications`, `/settings/data`), so the
+browser's and the Android shell's back gesture step out one level at a time.
 */
+
+const SETTINGS_SECTIONS = ['appearance', 'notifications', 'data'] as const;
+
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export type Route =
   | { view: 'list' }
   | { view: 'archived' }
+  | { view: 'settings'; section: SettingsSection | null }
   | { view: 'chat'; chatId: PeerId; postId: number | null }
   | { view: 'comments'; chatId: PeerId; postId: number };
 
@@ -42,6 +51,14 @@ export function routeForPath(pathname: string): Route {
   // The archive is its own screen: the chats the account archived, in the
   // place Telegram keeps them.
   if (segments.length === 1 && segments[0] === 'archived') return { view: 'archived' };
+  if (segments[0] === 'settings') {
+    // An unknown section falls back to the settings index rather than the
+    // chat list: the screen is still reachable, and a mistyped path must not
+    // drop the reader out of settings.
+    if (segments.length === 1) return { view: 'settings', section: null };
+    if (segments.length === 2) return { view: 'settings', section: settingsSection(segments[1]) };
+    return { view: 'list' };
+  }
   if (segments[0] !== 'chat' || segments.length < 2) return { view: 'list' };
   const chatId = peerId(segments[1]);
   if (chatId === null) return { view: 'list' };
@@ -57,6 +74,7 @@ export function routeForPath(pathname: string): Route {
 export function pathForRoute(route: Route): string {
   if (route.view === 'list') return '/';
   if (route.view === 'archived') return '/archived';
+  if (route.view === 'settings') return route.section === null ? '/settings' : `/settings/${route.section}`;
   if (route.view === 'chat') {
     return route.postId === null ? `/chat/${String(route.chatId)}` : `/chat/${String(route.chatId)}/post/${String(route.postId)}`;
   }
@@ -66,7 +84,8 @@ export function pathForRoute(route: Route): string {
 export function sameRoute(left: Route, right: Route): boolean {
   if (left.view !== right.view) return false;
   if (left.view === 'list' || left.view === 'archived') return true;
-  if (right.view === 'list' || right.view === 'archived') return false;
+  if (left.view === 'settings') return right.view === 'settings' && left.section === right.section;
+  if (right.view === 'list' || right.view === 'archived' || right.view === 'settings') return false;
   return left.chatId === right.chatId && left.postId === right.postId;
 }
 
@@ -83,13 +102,19 @@ export function routeForChat(chatId: PeerId, postId: number | null, commentId?: 
 }
 
 /**
-The view one step up: a comment thread returns to its post's chat, the
-archive returns to the chat list, and a chat returns to the list. Used as
-the fallback when a history entry has no in-app parent.
+The view one step up: a comment thread returns to its post's chat, a settings
+section returns to the settings index, the archive returns to the chat list,
+and a chat returns to the list. Used as the fallback when a history entry has
+no in-app parent.
 */
 export function parentRoute(route: Route): Route {
   if (route.view === 'comments') return { view: 'chat', chatId: route.chatId, postId: route.postId };
+  if (route.view === 'settings' && route.section !== null) return { view: 'settings', section: null };
   return { view: 'list' };
+}
+
+function settingsSection(value: string | undefined): SettingsSection | null {
+  return SETTINGS_SECTIONS.find((section) => section === value) ?? null;
 }
 
 function peerId(value: string | undefined): PeerId | null {

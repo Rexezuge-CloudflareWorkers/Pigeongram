@@ -25,4 +25,16 @@ describe('ToggleSwitch', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Profile Pictures' }));
     expect(onChange).toHaveBeenLastCalledWith(true);
   });
+
+  it('reports the mixed state of a switch that governs several choices', () => {
+    const onChange = vi.fn();
+    render(<ToggleSwitch checked={false} indeterminate label="Data Saver" onChange={onChange} />);
+
+    const control = screen.getByRole('switch', { name: 'Data Saver' });
+    expect(control.getAttribute('aria-checked')).toBe('mixed');
+
+    // The mixed state is "partly on", so the next click turns the rest on.
+    fireEvent.click(control);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
 });

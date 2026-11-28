@@ -63,6 +63,26 @@ describe('useRouter', () => {
     expect(test.onRoute).toHaveBeenCalledWith({ view: 'comments', chatId: 2, postId: 5 }, expect.anything());
   });
 
+  it('seeds the settings index behind a shared settings section', () => {
+    history.replaceState(null, '', '/settings/data');
+    const test = harness();
+
+    act(() => test.result.current.boot());
+
+    expect(history.state).toEqual(marker(2));
+    expect(test.result.current.route()).toEqual({ view: 'settings', section: 'data' });
+  });
+
+  it('seeds only the list behind a shared settings index', () => {
+    history.replaceState(null, '', '/settings');
+    const test = harness();
+
+    act(() => test.result.current.boot());
+
+    expect(history.state).toEqual(marker(1));
+    expect(test.result.current.route()).toEqual({ view: 'settings', section: null });
+  });
+
   it('restores a reloaded entry and drops a viewer layer', () => {
     history.replaceState(marker(2, 'viewer'), '', '/chat/2');
     const test = harness();
@@ -145,6 +165,33 @@ describe('useRouter', () => {
     history.replaceState(marker(0), '', '/chat/2/post/5/comments');
     act(() => test.result.current.back());
     expect(test.result.current.route()).toEqual({ view: 'chat', chatId: 2, postId: 5 });
+  });
+
+  it('pushes a settings section and steps back to the index', () => {
+    const back = vi.spyOn(history, 'back').mockImplementation(() => {});
+    const test = harness();
+    act(() => test.result.current.boot());
+
+    act(() => test.result.current.navigateTo({ view: 'settings', section: null }));
+    expect(history.state).toEqual(marker(1));
+
+    act(() => test.result.current.navigateTo({ view: 'settings', section: 'data' }));
+    expect(history.state).toEqual(marker(2));
+    expect(test.result.current.route()).toEqual({ view: 'settings', section: 'data' });
+
+    act(() => test.result.current.back());
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('replaces the entry when a settings section is a tab switch', () => {
+    const test = harness();
+    act(() => test.result.current.boot());
+    act(() => test.result.current.navigateTo({ view: 'settings', section: null }));
+
+    act(() => test.result.current.replaceTo({ view: 'settings', section: 'appearance' }));
+
+    expect(history.state).toEqual(marker(1));
+    expect(test.result.current.route()).toEqual({ view: 'settings', section: 'appearance' });
   });
 
   it('opens and closes the viewer layer', () => {

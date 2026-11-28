@@ -21,6 +21,7 @@ import type {
   SendVoteResult,
   SetMessagePinnedResult,
 } from '../types';
+import { t } from '../i18n';
 import { batchResult, rpc, rpcBatch } from './request';
 
 /**
@@ -116,7 +117,7 @@ export async function fetchChatScreen(
     calls.push({ method: 'getHistory', params: { chatId, limit: 1 } });
   }
   const outcomes = await rpcBatch(calls);
-  const messages = batchResult<GetHistoryResult>(outcomes[0], 'Chat History').messages;
+  const messages = batchResult<GetHistoryResult>(outcomes[0], t('errors.chatHistoryRead', 'The Chat History Could Not Be Read')).messages;
   // A chat without a command menu is normal, and a failed lookup is no
   // worse than an empty one: the composer simply offers no menu and the
   // empty thread keeps its generic prompt.
@@ -132,7 +133,10 @@ export async function fetchChatScreen(
     commands: menu?.commands ?? [],
     description: menu?.description ?? null,
     comments: commentsOutcome?.ok ? (commentsOutcome.result as GetCommentsResult) : null,
-    commentsError: commentsOutcome === undefined || commentsOutcome.ok ? null : (commentsOutcome.error ?? 'The Comments Could Not Be Read'),
+    commentsError:
+      commentsOutcome === undefined || commentsOutcome.ok
+        ? null
+        : (commentsOutcome.error ?? t('errors.commentsRead', 'The Comments Could Not Be Read')),
     pinned: pinnedOutcome?.ok ? ((pinnedOutcome.result as GetPinnedMessagesResult).messages[0] ?? null) : null,
   };
 }

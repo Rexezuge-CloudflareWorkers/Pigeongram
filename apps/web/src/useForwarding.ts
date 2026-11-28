@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { forwardMessages } from './api';
+import { t } from './i18n';
 import type { DialogDto, MessageDto, UpdateEvent } from './types';
 
 /**
@@ -54,7 +55,7 @@ export function useForwarding(
         onApplyUpdate({ type: 'new_message', message });
       }
       setTarget(null);
-      onNotice(`Forwarded To ${dialog.chat.title}`);
+      onNotice(t('forward.done', 'Forwarded To {{title}}', { title: dialog.chat.title }));
     },
     [target, onSent, onApplyUpdate, onNotice],
   );

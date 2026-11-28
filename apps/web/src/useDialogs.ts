@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchArchivedDialogs, fetchDialogs, setArchived as setArchivedRpc, setPinned as setPinnedRpc } from './api';
+import { t } from './i18n';
 import {
   applyDeletedMessages,
   applyEditedMessage,
@@ -263,7 +264,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
       commit(moved.main, moved.archived);
       try {
         await setArchivedRpc(chatId, archived);
-        onNotice(archived ? 'Chat Archived' : 'Chat Restored');
+        onNotice(archived ? t('dialogs.chatArchived', 'Chat Archived') : t('dialogs.chatRestored', 'Chat Restored'));
       } catch (failure) {
         // Undo the move against the *current* lists. A live update that arrived
         // while the bridge call was in flight must survive the rollback.
@@ -295,7 +296,7 @@ export function useDialogs({ onError, onNotice }: DialogsOptions): DialogsContro
       commit(applyPinnedDialog(before.main, chatId, pinned), applyPinnedDialog(before.archived, chatId, pinned));
       try {
         await setPinnedRpc(chatId, pinned);
-        onNotice(pinned ? 'Chat Pinned' : 'Chat Unpinned');
+        onNotice(pinned ? t('dialogs.chatPinned', 'Chat Pinned') : t('dialogs.chatUnpinned', 'Chat Unpinned'));
       } catch (failure) {
         // Re-apply the inverse pin to the current lists, so an unrelated
         // update folded during the call is not thrown away with the snapshot.

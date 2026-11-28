@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { t } from './i18n';
 import type { Route, RouteApplyOptions } from './routes';
 import type { DialogDto, PeerId } from './types';
 import type { CommentsController, PrefetchedComments } from './comments-controller';
@@ -91,7 +92,7 @@ export function useChatNavigation({
         opened === null
           ? undefined
           : opened.comments === null
-            ? { ok: false, error: opened.commentsError ?? 'The Comments Could Not Be Read' }
+            ? { ok: false, error: opened.commentsError ?? t('errors.commentsRead', 'The Comments Could Not Be Read') }
             : { ok: true, result: opened.comments };
       await comments.open(dialog.chat, post, prefetched);
     },

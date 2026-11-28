@@ -79,7 +79,7 @@ export function UserMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
-  const displayName = me ? `${me.firstName}${me.lastName ? ` ${me.lastName}` : ''}` : 'Telegram';
+  const displayName = me ? `${me.firstName}${me.lastName ? ` ${me.lastName}` : ''}` : t('account.telegramName', 'Telegram');
   const handle = displayHandle(me);
 
   const focusTrigger = useCallback((): void => {

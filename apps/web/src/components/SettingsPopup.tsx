@@ -51,6 +51,30 @@ interface SettingsPopupProps {
   exiting?: boolean;
 }
 
+/**
+The accessible name of an accent swatch. A literal key per seed keeps the
+call-site scanner able to see every label; the colour is data, not copy.
+*/
+function seedLabel(t: TFunction, seed: Seed): string {
+  switch (seed) {
+    case 'telegram': {
+      return t('a11y.seedTelegram', 'Telegram Blue');
+    }
+    case 'indigo': {
+      return t('a11y.seedIndigo', 'Indigo');
+    }
+    case 'amber': {
+      return t('a11y.seedAmber', 'Amber');
+    }
+    case 'mint': {
+      return t('a11y.seedMint', 'Mint');
+    }
+    case 'rose': {
+      return t('a11y.seedRose', 'Rose');
+    }
+  }
+}
+
 const DATA_SAVER_ROWS: ReadonlyArray<{
   key: DataSaverKey;
   label: (t: TFunction) => string;
@@ -154,19 +178,22 @@ export function SettingsPopup({
         <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label={t('settings.accent', 'Accent')}>
           <span className="text-sm font-medium text-fg">{t('settings.accent', 'Accent')}</span>
           <div className="flex gap-1.5">
-            {SEEDS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={seed === option.id}
-                aria-label={option.label}
-                title={option.label}
-                onClick={() => onSetSeed?.(option.id)}
-                className={`size-7 rounded-full border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${seed === option.id ? 'border-primary' : 'border-transparent'}`}
-                style={{ background: option.hex }}
-              />
-            ))}
+            {SEEDS.map((option) => {
+              const label = seedLabel(t, option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={seed === option.id}
+                  aria-label={label}
+                  title={label}
+                  onClick={() => onSetSeed?.(option.id)}
+                  className={`size-7 rounded-full border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${seed === option.id ? 'border-primary' : 'border-transparent'}`}
+                  style={{ background: option.hex }}
+                />
+              );
+            })}
           </div>
         </div>
         <div className="flex items-center justify-between gap-4" role="radiogroup" aria-label={t('settings.contrast', 'Contrast')}>

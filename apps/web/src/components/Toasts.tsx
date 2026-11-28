@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ToastMessage } from '../toast-message';
 import { Snackbar } from './Snackbar';
 import { useExitAnimation } from './useExitAnimation';
@@ -110,9 +111,10 @@ A failure stays long enough to read and can be dismissed by hand. The paint is
 the MD3 snackbar — inverse surface in both themes.
 */
 export function Toasts({ error, notice, onDismissError, onDismissNotice }: ToastsProps) {
+  const { t } = useTranslation();
   return (
     <div className="toasts">
-      <ToastSlot toast={error} role="alert" durationMs={ERROR_MS} actionLabel="Dismiss" onDismiss={onDismissError} />
+      <ToastSlot toast={error} role="alert" durationMs={ERROR_MS} actionLabel={t('common.dismiss', 'Dismiss')} onDismiss={onDismissError} />
       <ToastSlot toast={notice} role="status" durationMs={NOTICE_MS} onDismiss={onDismissNotice} />
     </div>
   );

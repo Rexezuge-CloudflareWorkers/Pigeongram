@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AnimationItem } from 'lottie-web';
 import { fileUrl } from '../api';
 import { useDataSaver } from '../data-saver';
@@ -24,13 +25,14 @@ prompt.
 */
 export function StickerMedia({ message, media }: StickerProps) {
   const { animateMedia } = useDataSaver();
+  const { t } = useTranslation();
   switch (media.mime) {
     case 'image/webp': {
       return (
         <img
           className="sticker"
           src={fileUrl(message.chatId, message.id)}
-          alt="Sticker"
+          alt={t('media.stickerAlt', 'Sticker')}
           width={media.width ?? undefined}
           height={media.height ?? undefined}
           loading="lazy"
@@ -80,6 +82,7 @@ The TGS player: decompress, then let Lottie draw. The effect owns the fetch and
 the animation so unmounting (or StrictMode's second mount) cancels both.
 */
 function AnimatedSticker({ message, media }: StickerProps) {
+  const { t } = useTranslation();
   const src = fileUrl(message.chatId, message.id);
   const container = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -128,7 +131,9 @@ function AnimatedSticker({ message, media }: StickerProps) {
 
   if (failed) return <StickerThumb message={message} media={media} />;
   const aspectRatio = `${String(media.width ?? 1)} / ${String(media.height ?? 1)}`;
-  return <div ref={container} className="sticker-lottie" role="img" aria-label="Sticker" style={{ aspectRatio }} />;
+  return (
+    <div ref={container} className="sticker-lottie" role="img" aria-label={t('media.stickerAlt', 'Sticker')} style={{ aspectRatio }} />
+  );
 }
 
 /**
@@ -137,6 +142,7 @@ the original file. It keeps an unplayable sticker previewable instead of
 turning the bubble into a download row.
 */
 function StickerThumb({ message, media }: StickerProps) {
+  const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   if (failed) return <DocumentLink message={message} />;
   return (
@@ -145,12 +151,12 @@ function StickerThumb({ message, media }: StickerProps) {
       href={fileUrl(message.chatId, message.id)}
       target="_blank"
       rel="noreferrer"
-      aria-label={`Open ${media.fileName ?? 'sticker'}`}
+      aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? t('a11y.stickerNoun', 'sticker') })}
     >
       <img
         className="sticker"
         src={fileUrl(message.chatId, message.id, { thumb: true })}
-        alt="Sticker"
+        alt={t('media.stickerAlt', 'Sticker')}
         width={media.width ?? undefined}
         height={media.height ?? undefined}
         loading="lazy"

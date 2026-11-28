@@ -14,7 +14,9 @@
     "send": "送信",
     "sendCode": "コードを送信",
     "submit": "確定",
-    "submitCode": "コードを確定"
+    "submitCode": "コードを確定",
+    "dismiss": "閉じる",
+    "working": "処理中…"
   },
   "a11y": {
     "backToChannel": "チャンネルに戻る",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "{{count, number}} 件のメッセージを転送",
     "forwardMessages_many": "{{count, number}} 件のメッセージを転送",
     "forwardMessages_other": "{{count, number}} 件のメッセージを転送",
-    "notifications": "新しいメッセージの通知を表示"
+    "notifications": "新しいメッセージの通知を表示",
+    "buttonNeedsPassword": "このボタンには Telegram のパスワードが必要です。ネイティブアプリで押してください.",
+    "buttonSending": "送信中…",
+    "buttonsUnavailable": "この表示ではボタンを使用できません.",
+    "gameNeedsApp": "Telegram のゲームにはネイティブアプリが必要です.",
+    "paymentNeedsApp": "Telegram の支払いにはネイティブアプリが必要です.",
+    "inlineUnsupported": "このクライアントではインラインモードはサポートされていません.",
+    "loginButtonNeedsApp": "Telegram のログインボタンにはネイティブアプリが必要です.",
+    "profileUnsupported": "このクライアントではプロフィールはサポートされていません.",
+    "buttonDisabledByBot": "このボタンはボットによって無効化されています.",
+    "buttonUnsupported": "このクライアントではこのボタンはサポートされていません.",
+    "phoneNeedsApp": "電話番号の共有にはネイティブアプリが必要です.",
+    "locationNeedsApp": "位置情報の共有にはネイティブアプリが必要です.",
+    "pollNeedsApp": "投票の作成にはネイティブアプリが必要です.",
+    "chatPickerNeedsApp": "チャットの選択にはネイティブアプリが必要です.",
+    "stickerNoun": "スタンプ",
+    "photoNoun": "写真",
+    "videoNoun": "動画",
+    "gifNoun": "GIF",
+    "imageNoun": "画像",
+    "seedTelegram": "Telegram ブルー",
+    "seedIndigo": "インディゴ",
+    "seedAmber": "アンバー",
+    "seedMint": "ミント",
+    "seedRose": "ローズ"
   },
   "landing": {
     "title": "Cloudflare Workers 上の Telegram",
@@ -159,7 +185,8 @@
     "kindBot": "ボット",
     "kindGroup": "グループ",
     "kindSupergroup": "スーパーグループ",
-    "kindChannel": "チャンネル"
+    "kindChannel": "チャンネル",
+    "noArchived": "アーカイブされたチャットはありません。"
   },
   "thread": {
     "noChatSelected": "チャットが選択されていません",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} 件のコメント",
     "commentCount_few": "{{count, number}} 件のコメント",
     "commentCount_many": "{{count, number}} 件のコメント",
-    "commentCount_other": "{{count, number}} 件のコメント"
+    "commentCount_other": "{{count, number}} 件のコメント",
+    "empty": "まだメッセージはありません。",
+    "emptyGreeting": "まだメッセージはありません。挨拶してみましょう。",
+    "leaveAComment": "コメントする"
   },
   "composer": {
     "attachFiles": "ファイルを添付",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} 件のメッセージ",
     "messageCount_few": "{{count, number}} 件のメッセージ",
     "messageCount_many": "{{count, number}} 件のメッセージ",
-    "messageCount_other": "{{count, number}} 件のメッセージ"
+    "messageCount_other": "{{count, number}} 件のメッセージ",
+    "done": "{{title}} に転送しました"
   },
   "newChat": {
     "title": "新しいメッセージ",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} 人のメンバー",
     "memberCount_few": "{{count, number}} 人のメンバー",
     "memberCount_many": "{{count, number}} 人のメンバー",
-    "memberCount_other": "{{count, number}} 人のメンバー"
+    "memberCount_other": "{{count, number}} 人のメンバー",
+    "requestPending": "参加リクエストを送信しました。管理者の承認が必要です。",
+    "nativeAppRequired": "Telegram のアプリで参加手続きを完了する必要があります。",
+    "expired": "この招待リンクは期限切れです。",
+    "invalid": "この招待リンクは無効です。"
   },
   "profile": {
     "loading": "プロフィールを読み込み中…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Telegram からログアウトしますか？",
     "signOutBody": "このクライアントのセッションが終了します。アプリを使うには再度ログインが必要です。",
     "signingOut": "ログアウト中…",
-    "connecting": "接続中…"
+    "connecting": "接続中…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "ファイルを送信",
@@ -405,7 +441,11 @@
     "deleteMessage": "メッセージを削除",
     "deleteMessages": "メッセージを削除",
     "deleteOneBody": "このメッセージは全員から削除されます。",
-    "deleteManyBody": "これら {{count}} 件のメッセージは全員から削除されます。"
+    "deleteManyBody": "これら {{count}} 件のメッセージは全員から削除されます。",
+    "chatArchived": "チャットをアーカイブしました",
+    "chatRestored": "チャットを復元しました",
+    "chatPinned": "チャットをピン留めしました",
+    "chatUnpinned": "チャットのピン留めを解除しました"
   },
   "messages": {
     "retry": "再試行",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} 個のファイル",
     "fileCount_few": "{{count, number}} 個のファイル",
     "fileCount_many": "{{count, number}} 個のファイル",
-    "fileCount_other": "{{count, number}} 個のファイル"
+    "fileCount_other": "{{count, number}} 個のファイル",
+    "copiedToClipboard": "クリップボードにコピーしました"
   },
   "reactions": {
     "hideAll": "すべてのリアクションを非表示",
@@ -448,7 +489,8 @@
     "categoryActivities": "アクティビティ",
     "categoryTravel": "旅行",
     "categoryObjects": "物",
-    "categorySymbols": "記号"
+    "categorySymbols": "記号",
+    "packInstalled": "スタンプパックをインストールしました: {{title}}"
   },
   "poll": {
     "quiz": "クイズ",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "このブラウザは音声録音をサポートしていません。",
     "micDenied": "マイクへのアクセスが拒否されました。",
     "micNotFound": "マイクが見つかりません。",
-    "micStartFailed": "マイクを起動できませんでした。"
+    "micStartFailed": "マイクを起動できませんでした。",
+    "chatListRead": "チャット一覧を読み込めませんでした",
+    "chatHistoryRead": "チャットの履歴を読み込めませんでした",
+    "commentsRead": "コメントを読み込めませんでした",
+    "botPopupBlocked": "ボットがリンクを開こうとしました。このサイトでポップアップを許可してください。"
   },
   "format": {
     "now": "今",

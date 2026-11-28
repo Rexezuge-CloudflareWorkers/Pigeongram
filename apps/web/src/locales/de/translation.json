@@ -14,7 +14,9 @@
     "send": "Senden",
     "sendCode": "Code senden",
     "submit": "Absenden",
-    "submitCode": "Code bestätigen"
+    "submitCode": "Code bestätigen",
+    "dismiss": "Schließen",
+    "working": "Wird bearbeitet…"
   },
   "a11y": {
     "backToChannel": "Zurück zum Kanal",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "{{count, number}} Nachrichten weiterleiten",
     "forwardMessages_many": "{{count, number}} Nachrichten weiterleiten",
     "forwardMessages_other": "{{count, number}} Nachrichten weiterleiten",
-    "notifications": "Benachrichtigungen Für Neue Nachrichten Anzeigen"
+    "notifications": "Benachrichtigungen Für Neue Nachrichten Anzeigen",
+    "buttonNeedsPassword": "dieser Button benötigt dein Telegram-Passwort; drücke ihn in der nativen App.",
+    "buttonSending": "Wird gesendet…",
+    "buttonsUnavailable": "Buttons sind in dieser Ansicht nicht verfügbar.",
+    "gameNeedsApp": "Telegram-Spiele benötigen die native App.",
+    "paymentNeedsApp": "Telegram-Zahlungen benötigen die native App.",
+    "inlineUnsupported": "der Inline-Modus wird in diesem Client nicht unterstützt.",
+    "loginButtonNeedsApp": "Telegram-Anmeldebuttons benötigen die native App.",
+    "profileUnsupported": "Profile werden in diesem Client nicht unterstützt.",
+    "buttonDisabledByBot": "dieser Button wurde vom Bot deaktiviert.",
+    "buttonUnsupported": "dieser Button wird in diesem Client nicht unterstützt.",
+    "phoneNeedsApp": "das Teilen einer Telefonnummer benötigt die native App.",
+    "locationNeedsApp": "das Teilen eines Standorts benötigt die native App.",
+    "pollNeedsApp": "das Erstellen einer Umfrage benötigt die native App.",
+    "chatPickerNeedsApp": "das Auswählen eines Chats benötigt die native App.",
+    "stickerNoun": "Sticker",
+    "photoNoun": "Foto",
+    "videoNoun": "Video",
+    "gifNoun": "GIF",
+    "imageNoun": "Bild",
+    "seedTelegram": "Telegram-Blau",
+    "seedIndigo": "Indigo",
+    "seedAmber": "Bernstein",
+    "seedMint": "Mint",
+    "seedRose": "Rosé"
   },
   "landing": {
     "title": "Dein Telegram auf Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Gruppe",
     "kindSupergroup": "Supergruppe",
-    "kindChannel": "Kanal"
+    "kindChannel": "Kanal",
+    "noArchived": "Keine archivierten Chats."
   },
   "thread": {
     "noChatSelected": "Kein Chat ausgewählt",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} Kommentar",
     "commentCount_few": "{{count, number}} Kommentare",
     "commentCount_many": "{{count, number}} Kommentare",
-    "commentCount_other": "{{count, number}} Kommentare"
+    "commentCount_other": "{{count, number}} Kommentare",
+    "empty": "Noch keine Nachrichten.",
+    "emptyGreeting": "Noch keine Nachrichten. Sag Hallo.",
+    "leaveAComment": "Kommentar schreiben"
   },
   "composer": {
     "attachFiles": "Dateien anhängen",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} Nachricht",
     "messageCount_few": "{{count, number}} Nachrichten",
     "messageCount_many": "{{count, number}} Nachrichten",
-    "messageCount_other": "{{count, number}} Nachrichten"
+    "messageCount_other": "{{count, number}} Nachrichten",
+    "done": "Weitergeleitet an {{title}}"
   },
   "newChat": {
     "title": "Neue Nachricht",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} Mitglied",
     "memberCount_few": "{{count, number}} Mitglieder",
     "memberCount_many": "{{count, number}} Mitglieder",
-    "memberCount_other": "{{count, number}} Mitglieder"
+    "memberCount_other": "{{count, number}} Mitglieder",
+    "requestPending": "Deine Beitrittsanfrage wurde gesendet. Ein Admin muss sie genehmigen.",
+    "nativeAppRequired": "Telegram muss diesen Beitritt in der eigenen App abschließen.",
+    "expired": "Dieser Einladungslink ist abgelaufen.",
+    "invalid": "Dieser Einladungslink ist ungültig."
   },
   "profile": {
     "loading": "Profil wird geladen…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Bei Telegram abmelden?",
     "signOutBody": "Damit wird die Sitzung auf diesem Client beendet. Du musst dich erneut anmelden, um die App zu nutzen.",
     "signingOut": "Abmeldung läuft…",
-    "connecting": "Verbinde…"
+    "connecting": "Verbinde…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Dateien senden",
@@ -405,7 +441,11 @@
     "deleteMessage": "Nachricht löschen",
     "deleteMessages": "Nachrichten löschen",
     "deleteOneBody": "Diese Nachricht wird für alle gelöscht.",
-    "deleteManyBody": "Diese {{count}} Nachrichten werden für alle gelöscht."
+    "deleteManyBody": "Diese {{count}} Nachrichten werden für alle gelöscht.",
+    "chatArchived": "Chat archiviert",
+    "chatRestored": "Chat wiederhergestellt",
+    "chatPinned": "Chat angeheftet",
+    "chatUnpinned": "Chat losgelöst"
   },
   "messages": {
     "retry": "Erneut versuchen",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} Datei",
     "fileCount_few": "{{count, number}} Dateien",
     "fileCount_many": "{{count, number}} Dateien",
-    "fileCount_other": "{{count, number}} Dateien"
+    "fileCount_other": "{{count, number}} Dateien",
+    "copiedToClipboard": "In die Zwischenablage kopiert"
   },
   "reactions": {
     "hideAll": "Alle Reaktionen ausblenden",
@@ -448,7 +489,8 @@
     "categoryActivities": "Aktivitäten",
     "categoryTravel": "Reisen",
     "categoryObjects": "Gegenstände",
-    "categorySymbols": "Symbole"
+    "categorySymbols": "Symbole",
+    "packInstalled": "Sticker-Paket installiert: {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "Sprachaufnahmen werden in diesem Browser nicht unterstützt.",
     "micDenied": "Zugriff auf das Mikrofon wurde verweigert.",
     "micNotFound": "Es wurde kein Mikrofon gefunden.",
-    "micStartFailed": "Das Mikrofon konnte nicht gestartet werden."
+    "micStartFailed": "Das Mikrofon konnte nicht gestartet werden.",
+    "chatListRead": "Die Chatliste konnte nicht gelesen werden",
+    "chatHistoryRead": "Der Chatverlauf konnte nicht gelesen werden",
+    "commentsRead": "Die Kommentare konnten nicht gelesen werden",
+    "botPopupBlocked": "Der Bot wollte einen Link öffnen; erlaube Pop-ups für diese Website."
   },
   "format": {
     "now": "Jetzt",

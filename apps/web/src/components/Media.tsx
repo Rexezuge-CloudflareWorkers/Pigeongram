@@ -83,7 +83,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
           type="button"
           className="media-open"
           onClick={onOpen}
-          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'photo' })}
+          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? t('a11y.photoNoun', 'photo') })}
         >
           <MediaThumb
             className="photo"
@@ -111,7 +111,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
           type="button"
           className="video-tile"
           onClick={onOpen}
-          aria-label={t('a11y.playMedia', 'Play {{name}}', { name: media.fileName ?? 'video' })}
+          aria-label={t('a11y.playMedia', 'Play {{name}}', { name: media.fileName ?? t('a11y.videoNoun', 'video') })}
         >
           <MediaThumb
             src={fileUrl(message.chatId, message.id, { thumb: true })}
@@ -137,7 +137,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
             type="button"
             className="video-tile"
             onClick={onOpen}
-            aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'GIF' })}
+            aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? t('a11y.gifNoun', 'GIF') })}
           >
             <MediaThumb
               src={fileUrl(message.chatId, message.id, { thumb: true })}
@@ -157,7 +157,7 @@ export function MessageMedia({ message, media, onOpen }: { message: MessageDto; 
           type="button"
           className="media-open"
           onClick={onOpen}
-          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'GIF' })}
+          aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? t('a11y.gifNoun', 'GIF') })}
         >
           <video
             className="video"
@@ -240,7 +240,7 @@ function DocumentImage({
       type="button"
       className="media-open document-image"
       onClick={onOpen}
-      aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? 'image' })}
+      aria-label={t('a11y.openMedia', 'Open {{name}}', { name: media.fileName ?? t('a11y.imageNoun', 'image') })}
     >
       <MediaThumb
         className="photo"

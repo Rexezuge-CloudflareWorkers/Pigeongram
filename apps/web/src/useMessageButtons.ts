@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { pressCallbackButton } from './api';
 import { writeClipboard } from './clipboard';
+import { t } from './i18n';
 import { safeHref } from './safe-url';
 import type { MessageButtonDto, MessageDto } from './types';
 
@@ -32,7 +33,7 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
     (message: MessageDto, button: MessageButtonDto): void => {
       if (button.kind === 'copy') {
         void writeClipboard(button.copyText)
-          .then(() => onNotice('Copied To Clipboard'))
+          .then(() => onNotice(t('messages.copiedToClipboard', 'Copied To Clipboard')))
           .catch(onError);
         return;
       }
@@ -45,7 +46,7 @@ export function useMessageButtons(onNotice: (text: string) => void, onError: (fa
           // become a navigation; the rest is ignored, not opened.
           const url = answer.url === null ? null : safeHref(answer.url);
           if (url !== null && window.open(url, '_blank', 'noopener,noreferrer') === null) {
-            onNotice('The Bot Asked To Open A Link; Allow Pop-Ups For This Site.');
+            onNotice(t('errors.botPopupBlocked', 'The Bot Asked To Open A Link; Allow Pop-Ups For This Site.'));
           }
           if (answer.text !== null && answer.text.length > 0) {
             if (answer.alert) alert(answer.text);

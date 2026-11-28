@@ -96,6 +96,19 @@ describe('the English catalogue', () => {
     }
   });
 
+  it('covers the toast and accessible copy extracted from the components', () => {
+    // These used to be literals in hooks and JSX; the English bundle is the
+    // single copy they now come from, literal defaults included.
+    expect(i18n.t('messages.copiedToClipboard')).toBe('Copied To Clipboard');
+    expect(i18n.t('dialogs.chatArchived')).toBe('Chat Archived');
+    expect(i18n.t('errors.commentsRead')).toBe('The Comments Could Not Be Read');
+    expect(i18n.t('stickers.packInstalled', { title: 'Utya Duck' })).toBe('Sticker Pack Installed: Utya Duck');
+    expect(i18n.t('a11y.buttonNeedsPassword')).toBe('This button needs your Telegram password; press it in the native app.');
+    expect(i18n.t('a11y.buttonSending')).toBe('Sending…');
+    expect(i18n.t('a11y.photoNoun')).toBe('photo');
+    expect(i18n.t('a11y.seedTelegram')).toBe('Telegram Blue');
+  });
+
   it('keeps placeholder parity across the locales that do ship', () => {
     // A bounded scan rather than a regex with nested quantifiers: `{{…}}` is a
     // two-character delimiter and the closing pair ends the token.
@@ -164,6 +177,14 @@ describe('locale-aware formatting', () => {
     expect(formatNumber(1234)).toBe('1.234');
     expect(formatBytes(2048)).toBe('2,0 KB');
     expect(formatCount(1200)).toBe('1,2K');
+  });
+
+  it('translates the extracted button explanations and toast copy', async () => {
+    await i18n.changeLanguage('de');
+    expect(i18n.t('a11y.gameNeedsApp')).toBe('Telegram-Spiele benötigen die native App.');
+    expect(i18n.t('messages.copiedToClipboard')).toBe('In die Zwischenablage kopiert');
+    expect(i18n.t('dialogs.chatArchived')).toBe('Chat archiviert');
+    expect(i18n.t('stickers.packInstalled', { title: 'Utya Duck' })).toBe('Sticker-Paket installiert: Utya Duck');
   });
 
   it('renders a grouped count inside a plural string', async () => {

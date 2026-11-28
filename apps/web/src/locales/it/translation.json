@@ -14,7 +14,9 @@
     "send": "Invia",
     "sendCode": "Invia codice",
     "submit": "Conferma",
-    "submitCode": "Conferma codice"
+    "submitCode": "Conferma codice",
+    "dismiss": "Ignora",
+    "working": "Elaborazione…"
   },
   "a11y": {
     "backToChannel": "Torna al canale",
@@ -94,7 +96,31 @@
     "forwardMessages_few": "Inoltra {{count, number}} messaggi",
     "forwardMessages_many": "Inoltra {{count, number}} messaggi",
     "forwardMessages_other": "Inoltra {{count, number}} messaggi",
-    "notifications": "Mostra le notifiche per i nuovi messaggi"
+    "notifications": "Mostra le notifiche per i nuovi messaggi",
+    "buttonNeedsPassword": "questo pulsante richiede la password di Telegram; premilo nell'app nativa.",
+    "buttonSending": "Invio in corso…",
+    "buttonsUnavailable": "i pulsanti non sono disponibili in questa vista.",
+    "gameNeedsApp": "i giochi di Telegram richiedono l'app nativa.",
+    "paymentNeedsApp": "i pagamenti di Telegram richiedono l'app nativa.",
+    "inlineUnsupported": "la modalità inline non è supportata da questo client.",
+    "loginButtonNeedsApp": "i pulsanti di accesso di Telegram richiedono l'app nativa.",
+    "profileUnsupported": "i profili non sono supportati da questo client.",
+    "buttonDisabledByBot": "questo pulsante è disattivato dal bot.",
+    "buttonUnsupported": "questo pulsante non è supportato da questo client.",
+    "phoneNeedsApp": "condividere un numero di telefono richiede l'app nativa.",
+    "locationNeedsApp": "condividere una posizione richiede l'app nativa.",
+    "pollNeedsApp": "creare un sondaggio richiede l'app nativa.",
+    "chatPickerNeedsApp": "scegliere una chat richiede l'app nativa.",
+    "stickerNoun": "adesivo",
+    "photoNoun": "foto",
+    "videoNoun": "video",
+    "gifNoun": "GIF",
+    "imageNoun": "immagine",
+    "seedTelegram": "Blu Telegram",
+    "seedIndigo": "Indaco",
+    "seedAmber": "Ambra",
+    "seedMint": "Menta",
+    "seedRose": "Rosa"
   },
   "landing": {
     "title": "Il tuo Telegram, su Cloudflare Workers",
@@ -159,7 +185,8 @@
     "kindBot": "Bot",
     "kindGroup": "Gruppo",
     "kindSupergroup": "Supergruppo",
-    "kindChannel": "Canale"
+    "kindChannel": "Canale",
+    "noArchived": "Nessuna chat archiviata."
   },
   "thread": {
     "noChatSelected": "Nessuna chat selezionata",
@@ -223,7 +250,10 @@
     "commentCount_one": "{{count, number}} commento",
     "commentCount_few": "{{count, number}} commenti",
     "commentCount_many": "{{count, number}} commenti",
-    "commentCount_other": "{{count, number}} commenti"
+    "commentCount_other": "{{count, number}} commenti",
+    "empty": "Non ci sono ancora messaggi.",
+    "emptyGreeting": "Non ci sono ancora messaggi. Di' ciao.",
+    "leaveAComment": "Lascia un commento"
   },
   "composer": {
     "attachFiles": "Allega file",
@@ -289,7 +319,8 @@
     "messageCount_one": "{{count, number}} messaggio",
     "messageCount_few": "{{count, number}} messaggi",
     "messageCount_many": "{{count, number}} messaggi",
-    "messageCount_other": "{{count, number}} messaggi"
+    "messageCount_other": "{{count, number}} messaggi",
+    "done": "Inoltrato a {{title}}"
   },
   "newChat": {
     "title": "Nuovo messaggio",
@@ -326,7 +357,11 @@
     "memberCount_one": "{{count, number}} membro",
     "memberCount_few": "{{count, number}} membri",
     "memberCount_many": "{{count, number}} membri",
-    "memberCount_other": "{{count, number}} membri"
+    "memberCount_other": "{{count, number}} membri",
+    "requestPending": "La tua richiesta di adesione è stata inviata. Un amministratore deve approvarla.",
+    "nativeAppRequired": "Telegram deve completare l'adesione nella sua app.",
+    "expired": "Questo link di invito è scaduto.",
+    "invalid": "Questo link di invito non è valido."
   },
   "profile": {
     "loading": "Caricamento del profilo…",
@@ -375,7 +410,8 @@
     "signOutTitle": "Uscire da Telegram?",
     "signOutBody": "Questo termina la sessione su questo client. Dovrai accedere di nuovo per usare l'app.",
     "signingOut": "Disconnessione in corso…",
-    "connecting": "Connessione in corso…"
+    "connecting": "Connessione in corso…",
+    "telegramName": "Telegram"
   },
   "upload": {
     "title": "Invia file",
@@ -405,7 +441,11 @@
     "deleteMessage": "Elimina messaggio",
     "deleteMessages": "Elimina messaggi",
     "deleteOneBody": "Questo messaggio verrà eliminato per tutti.",
-    "deleteManyBody": "Questi {{count}} messaggi verranno eliminati per tutti."
+    "deleteManyBody": "Questi {{count}} messaggi verranno eliminati per tutti.",
+    "chatArchived": "Chat archiviata",
+    "chatRestored": "Chat ripristinata",
+    "chatPinned": "Chat fissata",
+    "chatUnpinned": "Chat non più fissata"
   },
   "messages": {
     "retry": "Riprova",
@@ -424,7 +464,8 @@
     "fileCount_one": "{{count, number}} file",
     "fileCount_few": "{{count, number}} file",
     "fileCount_many": "{{count, number}} file",
-    "fileCount_other": "{{count, number}} file"
+    "fileCount_other": "{{count, number}} file",
+    "copiedToClipboard": "Copiato negli appunti"
   },
   "reactions": {
     "hideAll": "Nascondi tutte le reazioni",
@@ -448,7 +489,8 @@
     "categoryActivities": "Attività",
     "categoryTravel": "Viaggi",
     "categoryObjects": "Oggetti",
-    "categorySymbols": "Simboli"
+    "categorySymbols": "Simboli",
+    "packInstalled": "Pacchetto di adesivi installato: {{title}}"
   },
   "poll": {
     "quiz": "Quiz",
@@ -473,7 +515,11 @@
     "voiceUnsupported": "La registrazione vocale non è supportata in questo browser.",
     "micDenied": "L'accesso al microfono è stato negato.",
     "micNotFound": "Nessun microfono trovato.",
-    "micStartFailed": "Impossibile avviare il microfono."
+    "micStartFailed": "Impossibile avviare il microfono.",
+    "chatListRead": "Non è stato possibile leggere la lista delle chat",
+    "chatHistoryRead": "Non è stato possibile leggere la cronologia della chat",
+    "commentsRead": "Non è stato possibile leggere i commenti",
+    "botPopupBlocked": "Il bot ha chiesto di aprire un link; consenti i popup per questo sito."
   },
   "format": {
     "now": "Adesso",

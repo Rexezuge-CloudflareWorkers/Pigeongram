@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { miniAppDeepLink, launchTelegramApp } from '../links';
 import { safeHref } from '../safe-url';
 import { useTelegramLinkHandler } from '../telegram-links';
@@ -59,6 +61,7 @@ function MessageButton({
   pressing: boolean;
   onPress?: (message: MessageDto, button: MessageButtonDto) => void;
 }) {
+  const { t } = useTranslation();
   const handleLink = useTelegramLinkHandler();
   const className = `button${button.style === null ? '' : ` ${button.style}`}`;
   // The bot chose this URL. An unsafe scheme becomes an inert label rather
@@ -103,7 +106,7 @@ function MessageButton({
   }
 
   const actionable = button.kind === 'callback' || button.kind === 'copy';
-  const disabledReason = buttonDisabledReason(button, actionable, onPress !== undefined, pressing);
+  const disabledReason = buttonDisabledReason(t, button, actionable, onPress !== undefined, pressing);
   const disabled = disabledReason !== null;
   const reasonId = disabled ? `message-button-reason-${button.text}` : undefined;
   return (
@@ -132,41 +135,47 @@ function MessageButton({
   );
 }
 
-function buttonDisabledReason(button: MessageButtonDto, actionable: boolean, hasHandler: boolean, pressing: boolean): string | null {
+function buttonDisabledReason(
+  t: TFunction,
+  button: MessageButtonDto,
+  actionable: boolean,
+  hasHandler: boolean,
+  pressing: boolean,
+): string | null {
   if (button.kind === 'callback' && button.requiresPassword) {
-    return 'This button needs your Telegram password; press it in the native app.';
+    return t('a11y.buttonNeedsPassword', 'This button needs your Telegram password; press it in the native app.');
   }
-  if (pressing && button.kind === 'callback') return 'Sending…';
-  if (!actionable) return unsupportedReason(button.kind);
-  if (!hasHandler) return 'Buttons are not available in this view.';
+  if (pressing && button.kind === 'callback') return t('a11y.buttonSending', 'Sending…');
+  if (!actionable) return unsupportedReason(t, button.kind);
+  if (!hasHandler) return t('a11y.buttonsUnavailable', 'Buttons are not available in this view.');
   return null;
 }
 
-function unsupportedReason(kind: MessageButtonDto['kind']): string {
+function unsupportedReason(t: TFunction, kind: MessageButtonDto['kind']): string {
   switch (kind) {
     case 'game': {
-      return 'Telegram games need the native app.';
+      return t('a11y.gameNeedsApp', 'Telegram games need the native app.');
     }
     case 'pay': {
-      return 'Telegram payments need the native app.';
+      return t('a11y.paymentNeedsApp', 'Telegram payments need the native app.');
     }
     case 'switch_inline': {
-      return 'Inline mode is not supported in this client.';
+      return t('a11y.inlineUnsupported', 'Inline mode is not supported in this client.');
     }
     case 'url_auth': {
-      return 'Telegram login buttons need the native app.';
+      return t('a11y.loginButtonNeedsApp', 'Telegram login buttons need the native app.');
     }
     case 'user_profile': {
-      return 'Profiles are not supported in this client.';
+      return t('a11y.profileUnsupported', 'Profiles are not supported in this client.');
     }
     case 'disabled': {
-      return 'This button is disabled by the bot.';
+      return t('a11y.buttonDisabledByBot', 'This button is disabled by the bot.');
     }
     case 'callback':
     case 'url':
     case 'webview':
     case 'copy': {
-      return 'This button is not supported in this client.';
+      return t('a11y.buttonUnsupported', 'This button is not supported in this client.');
     }
   }
 }

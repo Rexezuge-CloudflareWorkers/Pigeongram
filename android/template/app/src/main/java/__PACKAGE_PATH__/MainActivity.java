@@ -58,6 +58,13 @@ public final class MainActivity extends Activity {
         }
 
         WebSettings settings = webView.getSettings();
+        // The deployed origin is a React SPA, so a WebView with JS disabled
+        // renders nothing. The risk this setting names is bounded by the
+        // shell's trust model: it starts on the compiled-in https origin,
+        // cleartext traffic is refused by the manifest, file and content://
+        // access are off, no addJavascriptInterface bridge is exposed, and the
+        // account API sits behind Cloudflare Access.
+        // codeql[java/android/websettings-javascript-enabled]
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setUseWideViewPort(true);

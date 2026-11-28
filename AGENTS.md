@@ -261,6 +261,10 @@ the forwarded request's own URL origin is the worker's port, not the browser's.
   seam) the shell falls back to `copyBackForwardList()` and `history.back()`, never `canGoBack()`/`goBack()`, which go
   stale for the entries `useRouter` seeds with back-to-back `replaceState`/`pushState`. The page exposes a boolean and
   gains nothing native, so this is not the privileged bridge the shell deliberately lacks.
+  JavaScript is deliberately enabled: the deployed origin is a React SPA and a WebView with JS disabled would be blank.
+  CodeQL's `java/android/websettings-javascript-enabled` alert is suppressed at the call with that justification; the
+  shell exposes no `addJavascriptInterface` bridge, refuses cleartext, file and `content://` access, and keeps the account
+  API behind Access, which is what makes the exception safe. Ordinary web links can still load in the WebView.
 - **The signed-in shell fits above the keyboard and the browser chrome.** `.app` is `height: 100dvh` capped by
   `--app-height` through a **`max-height`**. `dvh` is the dynamic viewport: it follows Chrome Android's auto-hiding URL
   bar, which the layout viewport (`100%`) deliberately does not (it stays at the URL-bar-shown height), and under

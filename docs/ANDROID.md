@@ -237,6 +237,12 @@ reset; otherwise you need a new package id and a fresh install.
   mistake for a generic app.
 - Inspect the workflow and the template before trusting them; both are small and reviewed in the repository. The WebView
   renders the live origin over HTTPS and the worker is the only API surface, so the app has no privileged local bridge.
-- The WebView disables file access and `content://` URL access; page JavaScript cannot reach a content provider. It loads
-  only the deployed HTTPS origin. Attachments go through the system document picker instead, which grants the app a read
-  permission for each chosen URI.
+- The WebView disables file access and `content://` URL access; page JavaScript cannot reach a content provider. It starts
+  on the deployed HTTPS origin and refuses cleartext traffic. Attachments go through the system document picker instead,
+  which grants the app a read permission for each chosen URI.
+- JavaScript is deliberately enabled: the deployed origin is a React SPA, so a WebView with JS disabled would render
+  nothing. CodeQL's `java/android/websettings-javascript-enabled` alert is suppressed at the call with that justification.
+  The controls in this section bound it: the shell starts on the compiled-in HTTPS origin, cleartext traffic is refused,
+  file and `content://` access are off, no `addJavascriptInterface` bridge is exposed, and the account API is Access-gated
+  with no token in the URL. Ordinary web links keep their default behaviour and can load in the WebView, so never add a
+  privileged bridge or put an account token in a URL.

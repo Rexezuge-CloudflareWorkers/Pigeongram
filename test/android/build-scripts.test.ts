@@ -209,6 +209,19 @@ describe('the committed native template', () => {
     expect(activity).not.toContain('setAllowContentAccess(true)');
     expect(activity).toContain('setAllowFileAccess(false)');
   });
+
+  it('keeps JavaScript enabled only with a documented suppression', () => {
+    const activity = readFileSync(
+      path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'java', '__PACKAGE_PATH__', 'MainActivity.java'),
+      'utf8',
+    );
+    const manifest = readFileSync(path.join(TEMPLATE_DIRECTORY, 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
+    expect(activity).toContain('settings.setJavaScriptEnabled(true)');
+    expect(activity).toContain('// codeql[java/android/websettings-javascript-enabled]');
+    expect(activity).toContain('React SPA');
+    expect(activity).not.toContain('webView.addJavascriptInterface(');
+    expect(manifest).toContain('android:usesCleartextTraffic="false"');
+  });
 });
 
 describe('the rendered Android project', () => {
